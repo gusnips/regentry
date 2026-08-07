@@ -5,6 +5,7 @@ import { useConversationStore } from "./store";
 import { toAttachment } from "./image";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
+import { ZoomableImage } from "@/components/ZoomableImage";
 
 interface Attachment {
   /** The "[Image #1]" token that stands in for this image inside the task text. */
@@ -138,9 +139,10 @@ export function ChatInput() {
         <div className="flex flex-wrap gap-2">
           {attachments.map((a) => (
             <div key={a.token} className="relative">
-              <img
+              <ZoomableImage
                 src={a.dataUrl}
                 alt={a.token}
+                caption={a.token.replace(/[[\]]/g, "")}
                 className="h-14 w-14 rounded border border-neutral-200 object-cover dark:border-neutral-700"
               />
               <button

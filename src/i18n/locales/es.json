@@ -157,6 +157,7 @@
     "details": "Detalles",
     "screenshotAlt": "Captura de la página que tomó el agente",
     "attachmentAlt": "Imagen adjunta {{number}}",
+    "enlargeTitle": "Ampliar imagen",
     "removeAttachment": "Eliminar {{token}}",
     "attachFailed": "No se pudo leer esa imagen — puede que el formato no sea compatible. Cópiala de nuevo como PNG o JPEG y vuelve a pegarla.",
     "queue": "En cola",

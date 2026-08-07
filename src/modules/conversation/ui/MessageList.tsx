@@ -10,6 +10,7 @@ import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { Button } from "@/components/Button";
+import { ZoomableImage } from "@/components/ZoomableImage";
 
 type HintKey = "badKey" | "quota" | "rateLimited" | "rejected" | "network" | "noProvider";
 type CtaKey = "updateKey" | "checkUrl" | "addProvider";
@@ -105,7 +106,7 @@ function StepRow({ msg }: { msg: Message }) {
       <div className="mt-1 ml-4 flex flex-col gap-1.5">
         {hint && msg.content && msg.ok !== false && <div>{msg.content}</div>}
         {msg.images?.map((src, i) => (
-          <img
+          <ZoomableImage
             key={i}
             src={src}
             alt={t("chat.screenshotAlt")}
@@ -258,7 +259,7 @@ function MessageBubble({
       return (
         <div className="flex max-w-[85%] flex-col gap-1.5 self-end rounded-lg bg-brand-600 px-3 py-2 text-sm break-words whitespace-pre-wrap text-white">
           {msg.images?.map((src, i) => (
-            <img
+            <ZoomableImage
               key={i}
               src={src}
               alt={t("chat.attachmentAlt", { number: i + 1 })}

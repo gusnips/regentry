@@ -157,6 +157,7 @@
     "details": "Details",
     "screenshotAlt": "Screenshot of the page the agent captured",
     "attachmentAlt": "Attached image {{number}}",
+    "enlargeTitle": "Enlarge image",
     "removeAttachment": "Remove {{token}}",
     "attachFailed": "Couldn't read that image — the format may be unsupported. Copy it again as PNG or JPEG and paste once more.",
     "queue": "Queue",
