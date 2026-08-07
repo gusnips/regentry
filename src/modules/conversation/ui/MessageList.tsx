@@ -572,8 +572,9 @@ function Transcript() {
   const multiTab = new Set(
     messages.flatMap((m) => (m.role === "user" && m.tab ? [m.tab.url] : [])),
   ).size > 1;
-  // `end` is "reader sits at the live edge" — the old stickRef/stuck pair.
-  const { end: stuck } = useMessageScrollerScrollable();
+  // `end` is "unseen content below the viewport" — the old !stuck: true once
+  // the reader scrolls off the live edge, so the pill shows exactly then.
+  const { end: offEnd } = useMessageScrollerScrollable();
   const { scrollToEnd } = useMessageScroller();
 
   return (
@@ -661,7 +662,7 @@ function Transcript() {
           )}
         </MessageScrollerContent>
       </MessageScrollerViewport>
-      {!stuck && (
+      {offEnd && (
         <Button
           variant="ghost"
           size="sm"
