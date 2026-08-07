@@ -67,7 +67,7 @@ describe("loadAgentContext", () => {
     const ctx = await loadAgentContext();
     expect(ctx.memoryOn).toBe(true);
 
-    const prompt = buildSystemPrompt(ctx);
+    const prompt = buildSystemPrompt(ctx, "English");
     expect(prompt).toContain("Always confirm before paying.");
     expect(prompt).toContain("- The user's handle is gus.");
     expect(buildToolDefs(ctx.memoryOn).map((t) => t.name)).toContain("remember");
@@ -79,7 +79,7 @@ describe("loadAgentContext", () => {
     await memoryEnabled.set(false);
 
     const ctx = await loadAgentContext();
-    const prompt = buildSystemPrompt(ctx);
+    const prompt = buildSystemPrompt(ctx, "English");
     expect(prompt).toContain("Always confirm before paying.");
     expect(prompt).not.toContain("MEMORY.md");
     expect(prompt).not.toContain("gus");
@@ -87,9 +87,14 @@ describe("loadAgentContext", () => {
   });
 
   it("still announces MEMORY.md while it is empty — an unmentioned file is never written to", async () => {
-    const prompt = buildSystemPrompt(await loadAgentContext());
+    const prompt = buildSystemPrompt(await loadAgentContext(), "English");
     expect(prompt).toContain("# MEMORY.md");
     expect(prompt).toContain("(empty");
     expect(prompt).not.toContain("# AGENTS.md");
+  });
+
+  it("names the user's language for the plan steps and the done summary", async () => {
+    const prompt = buildSystemPrompt(await loadAgentContext(), "Português (Brasil)");
+    expect(prompt).toContain("Português (Brasil)");
   });
 });

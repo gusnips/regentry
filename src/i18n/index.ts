@@ -31,6 +31,16 @@ export function resolveLocale(stored: Locale | null): Locale {
  */
 export const i18n = i18next.createInstance();
 
+/**
+ * The active language's own name — "English", "Português (Brasil)". The model's
+ * plan steps and done summary are rendered verbatim in the panel, so the system
+ * prompt names the language outright instead of hoping the model guesses it.
+ */
+export function currentLanguageName(): string {
+  const locale = SUPPORTED_LOCALES.find((l) => l === i18n.language) ?? DEFAULT_LOCALE;
+  return LOCALE_LABELS[locale];
+}
+
 let started: Promise<unknown> | null = null;
 
 /** Idempotent. Resolves once the catalogs are loaded and the storage watch is live. */
