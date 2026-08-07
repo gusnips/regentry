@@ -71,11 +71,41 @@ let intentionalDisconnect = false;
 let pingTimer: ReturnType<typeof setInterval> | null = null;
 /** Storage watch on the conversation index — background appends land here too. */
 let unwatchConversations: (() => void) | null = null;
-/** Did this run stream any prose? If not, the done summary is the only answer. */
+/** Did this run stream any prose? Governs done-summary dedup, never its display. */
 let sawAssistantText = false;
 
 function makeMsg(role: Message["role"], content: string, extra?: Partial<Message>): Message {
   return { id: crypto.randomUUID(), role, content, timestamp: Date.now(), ...extra };
+}
+
+/** Case/whitespace/trailing-punctuation-blind equality — enough to spot a
+ * summary repeating streamed prose verbatim. Deliberately conservative: a
+ * dedup that swallows a genuinely different summary re-creates the silence. */
+function sameText(a: string, b: string): boolean {
+  const norm = (s: string) =>
+    s
+      .trim()
+      .replace(/[.!?…,:;]+$/, "")
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  return norm(a) === norm(b);
+}
+
+/**
+ * The done summary is the run's closing word — the user must never be left
+ * without one. Dropping it whenever ANY prose streamed (the old gate) made
+ * runs end silent the moment the model spent a one-liner mid-way; only a
+ * verbatim repeat of prose already shown adds nothing.
+ */
+export function closingSummary(
+  sawProse: boolean,
+  lastProse: string | undefined,
+  summary: string | undefined,
+): string | null {
+  const text = summary?.trim();
+  if (!text) return null;
+  if (sawProse && lastProse !== undefined && sameText(lastProse, text)) return null;
+  return text;
 }
 
 export const useConversationStore = create<ConversationState>((set, get) => {
@@ -289,9 +319,13 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       case "done": {
         flushReasoning();
         flushStreaming();
-        // A run that only ever called tools has no prose of its own — then the
-        // done summary IS the answer, not a duplicate of something above.
-        if (!sawAssistantText && event.summary) pushMsg(makeMsg("assistant", event.summary));
+        // After the flush above, the newest assistant message — if any — is the
+        // prose this very run streamed, so it is the only dedup target.
+        const lastProse = [...get().messages]
+          .reverse()
+          .find((m) => m.role === "assistant")?.content;
+        const closing = closingSummary(sawAssistantText, lastProse, event.summary);
+        if (closing) pushMsg(makeMsg("assistant", closing));
         recallQueue();
         settleRun("idle");
         break;
