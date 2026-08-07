@@ -47,7 +47,7 @@ bun run build
 ```
 
 Then `chrome://extensions` → **Developer mode** → **Load unpacked** → select
-`.output/chrome-mv3`. Click the Regent toolbar icon to open the side panel, add a provider
+`dist/chrome-mv3`. Click the Regent toolbar icon to open the side panel, add a provider
 (options page), and describe a task.
 
 Works on Chrome, Brave, Edge, Arc, Opera, and Vivaldi. Chromium-only by design: Firefox has no

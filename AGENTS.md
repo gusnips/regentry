@@ -7,7 +7,7 @@ logged-in sessions. Chromium-only (`chrome.debugger` has no Firefox/Safari equiv
 
 ```bash
 bun run dev        # dev mode with hot reload
-bun run build      # production build → .output/chrome-mv3
+bun run build      # production build → dist/chrome-mv3
 bun run test       # vitest
 bun run lint       # eslint
 bun run compile    # tsc --noEmit
@@ -16,7 +16,7 @@ bun run deadcode   # knip (deadcode:fix to auto-fix)
 bun run icons      # regenerate public/icon/* + docs/og.png from src/shared/logo.ts
 ```
 
-Load: `chrome://extensions` → Developer mode → Load unpacked → `.output/chrome-mv3`.
+Load: `chrome://extensions` → Developer mode → Load unpacked → `dist/chrome-mv3`.
 
 Before submitting work: `compile`, `lint`, `test`, `deadcode` — all green.
 

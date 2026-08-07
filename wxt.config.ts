@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   srcDir: "src",
+  outDir: "dist",
   manifest: {
     name: "Regent",
     description: "Provider-agnostic browser agent",
