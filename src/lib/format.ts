@@ -9,3 +9,8 @@ export function formatDuration(ms: number): string {
 export function formatTokens(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
+
+/** Cap the TOTAL length including the ellipsis — for UI strings that must fit a row. */
+export function truncateTo(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
