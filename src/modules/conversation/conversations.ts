@@ -137,8 +137,32 @@ function stripTransientImages(msg: Message): Message {
   return stored;
 }
 
+/**
+ * Every stored write is read-modify-write, and the panel fires them from an
+ * event stream: a run that streams prose and then lands a done summary starts
+ * two appends in the same tick, both read the same array, and the second write
+ * erases the first. Serializing them is what makes the transcript — and the
+ * history the next run replays from it — complete.
+ *
+ * ponytail: one chain per JS context, not a cross-context lock. The ceiling is
+ * that the worker's own append (the panel-closed breadcrumb) races the panel's;
+ * it only happens as the panel dies, which is the moment it stops writing.
+ */
+let writes: Promise<unknown> = Promise.resolve();
+
+function serialized<T>(op: () => Promise<T>): Promise<T> {
+  const next = writes.then(op, op);
+  // The chain must survive a failed write — swallow here, callers still see it.
+  writes = next.catch(() => {});
+  return next;
+}
+
 /** Appends to the active conversation and returns its id. */
-export async function appendMessage(msg: Message): Promise<string> {
+export function appendMessage(msg: Message): Promise<string> {
+  return serialized(() => append(msg));
+}
+
+async function append(msg: Message): Promise<string> {
   const meta = await ensureActive();
   const item = messagesItem(meta.id);
   const messages = [...(await item.get()), stripTransientImages(msg)].slice(-MAX_MESSAGES);
@@ -160,7 +184,11 @@ export async function appendMessage(msg: Message): Promise<string> {
  * Rewrites one stored message in place. The plan card is state, not an entry:
  * appending every revision would bury the transcript in stale checklists.
  */
-export async function replaceMessage(msg: Message): Promise<void> {
+export function replaceMessage(msg: Message): Promise<void> {
+  return serialized(() => replace(msg));
+}
+
+async function replace(msg: Message): Promise<void> {
   const id = await activeItem.get();
   if (!id) return;
   const item = messagesItem(id);

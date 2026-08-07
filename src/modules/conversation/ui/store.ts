@@ -109,10 +109,11 @@ export function closingSummary(
 }
 
 export const useConversationStore = create<ConversationState>((set, get) => {
-  const pushMsg = (msg: Message) => {
+  /** Resolves once the message is stored — awaited only where ordering matters. */
+  const pushMsg = (msg: Message): Promise<void> => {
     set({ messages: [...get().messages, msg] });
     // A fresh conversation is created by the first append — adopt its id.
-    void appendMessage(msg).then((id) => {
+    return appendMessage(msg).then((id) => {
       if (get().activeId !== id) set({ activeId: id });
     });
   };
@@ -436,7 +437,12 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       } catch {
         // No stamp — the run still gets its tab from the background.
       }
-      pushMsg(makeMsg("user", task, { ...(images?.length ? { images } : {}), ...(tab ? { tab } : {}) }));
+      // Stored BEFORE the run starts: the worker builds this run's history by
+      // reading the transcript, so a fire-and-forget write would race it and
+      // cost the model the exchange it is being asked to continue.
+      await pushMsg(
+        makeMsg("user", task, { ...(images?.length ? { images } : {}), ...(tab ? { tab } : {}) }),
+      );
       startRun(p, task, images);
     },
 

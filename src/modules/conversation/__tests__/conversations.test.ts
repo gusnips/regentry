@@ -64,6 +64,25 @@ describe("conversations", () => {
     expect(await getActiveId()).toBeNull();
   });
 
+  it("keeps every message when appends are fired in the same tick", async () => {
+    // The regression: read-modify-write appends started together all read the
+    // same array and the last write won, silently dropping the others — which
+    // cost the next run the exchange it was asked to continue.
+    await setActiveConversation(null);
+    const ids = await Promise.all([
+      appendMessage(msg("user", "propose names")),
+      appendMessage(msg("assistant", "here is the list")),
+      appendMessage(msg("user", "search them")),
+    ]);
+
+    expect(new Set(ids).size).toBe(1); // one conversation, not three
+    expect((await getMessages(ids[0]!)).map((m) => m.content)).toEqual([
+      "propose names",
+      "here is the list",
+      "search them",
+    ]);
+  });
+
   it("re-creates a conversation whose record was deleted mid-run", async () => {
     await setActiveConversation(null);
     const id = await appendMessage(msg("user", "long run"));

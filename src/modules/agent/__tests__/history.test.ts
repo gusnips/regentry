@@ -75,13 +75,15 @@ describe("buildConversationHistory", () => {
   it("on overflow keeps the original task plus the newest exchanges", () => {
     const transcript: Message[] = [];
     for (let i = 1; i <= 60; i++) {
-      transcript.push(msg("user", `task ${i}`), msg("assistant", `outcome ${i}`));
+      // 1k each — 120k total, far past the budget.
+      transcript.push(msg("user", `task ${i} `.padEnd(1000, ".")), msg("assistant", `outcome ${i} `.padEnd(1000, ".")));
     }
     // A run-start transcript always ends on the fresh task.
     transcript.push(msg("user", "current task"));
     const history = buildConversationHistory(transcript);
 
-    expect(history.length).toBeLessThanOrEqual(40);
+    const chars = history.reduce((n, m) => n + m.content.length, 0);
+    expect(chars).toBeLessThanOrEqual(24_000);
     expect(history[0]?.content).toContain("task 1");
     expect(history.at(-1)?.content).toContain("outcome 60");
     // Still strictly alternating.
@@ -91,15 +93,28 @@ describe("buildConversationHistory", () => {
     });
   });
 
-  it("strips image tokens and caps long entries", () => {
+  it("keeps a long answer whole — the next message refers to it", () => {
+    // The regression: a 28-name list truncated mid-way made "search those"
+    // search half a list.
+    const list = Array.from({ length: 28 }, (_, i) => `${i + 1}. name${i + 1}`).join("\n");
     const history = buildConversationHistory([
-      msg("user", `look at this ${"[Image #1]"} and ${"x".repeat(1000)}`),
+      msg("user", "propose names"),
+      msg("assistant", list),
+      msg("user", "search them"),
+    ]);
+
+    expect(history[1]?.content).toContain("28. name28");
+  });
+
+  it("strips image tokens and caps a single runaway entry", () => {
+    const history = buildConversationHistory([
+      msg("user", `look at this ${"[Image #1]"} and ${"x".repeat(9000)}`),
       msg("assistant", "ok"),
       msg("user", "next"),
     ]);
 
     expect(history[0]?.content).not.toContain("[Image #1]");
-    expect(history[0]!.content.length).toBeLessThanOrEqual(601);
+    expect(history[0]!.content.length).toBeLessThanOrEqual(4_001);
   });
 
   it("returns nothing for a fresh conversation", () => {

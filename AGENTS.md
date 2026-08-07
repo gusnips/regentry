@@ -71,12 +71,16 @@ never reach the service-worker bundle.
 (id, title, counts, driven tabs) plus one `conversation:<id>` key per transcript — appending
 rewrites a single transcript, never the whole store. The panel writes through `appendMessage`,
 which resolves the active id itself, so the background worker can append (e.g. the panel-closed
-breadcrumb) without knowing which conversation is open. A fresh conversation is created lazily by
+breadcrumb) without knowing which conversation is open. Every write is read-modify-write and the
+panel fires them from an event stream, so `appendMessage`/`replaceMessage` are **serialized** on
+one promise chain — concurrent appends otherwise read the same array and the last write wins.
+`sendTask` **awaits** its user message before posting `run`: the worker builds the run's history
+by reading the transcript, and a fire-and-forget write loses that race every time. A fresh conversation is created lazily by
 its first message, so "New chat" never leaves an empty row behind. The transcript doubles as the
 model's memory, strictly per conversation: at run start the background rebuilds *that*
 conversation's transcript as alternating user/assistant wire turns (`buildConversationHistory`
-in `agent/history.ts`) — entries capped, window bounded, the original task always kept — and
-replays it ahead of the new task message, so "continue" lands on a model that has read the same
+in `agent/history.ts`) — entries capped, a total char budget spent newest-first, the original task
+always kept — and replays it ahead of the new task message, so "continue" lands on a model that has read the same
 exchange. A new chat starts clean; the only context that crosses chats is AGENTS.md / MEMORY.md.
 Steps and reasoning stay out of it; outcomes live in the assistant's own words, ask_user
 questions included. Conversations remain scrollback you can revisit and delete.
