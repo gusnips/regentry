@@ -108,9 +108,11 @@ not the transcript; conversations are scrollback you can revisit and delete.
 
 ## Reference material
 
-`refs/` is **gitignored** — proprietary code (Claude extension, Kimi WebBridge) kept locally as
-read-only reference; nanobrowser (Apache-2.0) also lives there. Patterns may be studied; never
-copy a line from the proprietary ones.
+Reference material lives **outside the repo**, in `../regent-refs/` — proprietary code (Claude
+extension, Kimi WebBridge) kept locally as read-only reference, plus nanobrowser (Apache-2.0) and
+claude-code-original. The project directory must stay zip-sharable, so none of it may ever be
+distributed or copied into the repo. Patterns may be studied; never copy a line from the
+proprietary ones.
 
 ## Conventions
 
