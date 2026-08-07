@@ -50,7 +50,9 @@ never reach the service-worker bundle.
 - `shared/` — Port protocol, shared types, brand mark (`logo.ts`).
 - `src/components/` — cross-domain Base UI primitives: Button, Select, SegmentedControl,
   TextField, PasswordField, TextArea, ConfirmDialog, plus the ThemeToggle/LanguageToggle
-  preference controls shared by the panel's gear menu and the options page.
+  preference controls shared by the panel's gear menu and the options page, and the chat
+  primitives adapted from shadcn's June-2026 drop: Bubble (framed message, house tokens)
+  and MessageScroller (styled shells over `@shadcn/react`'s headless scroller).
 - `src/i18n/` — the one i18next instance, the `en`/`pt-BR`/`es` catalogs, and typed keys.
   Not a `modules/` domain because every layer needs it, background included.
 - `src/lib/` — storage helpers, logger, Tailwind theme tokens (`brand-*` purple scale).

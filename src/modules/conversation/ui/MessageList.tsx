@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { Markdown } from "./Markdown";
@@ -13,6 +12,16 @@ import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { Button } from "@/components/Button";
+import { Bubble, BubbleContent } from "@/components/Bubble";
+import {
+  MessageScroller,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+  useMessageScroller,
+  useMessageScrollerScrollable,
+} from "@/components/MessageScroller";
 import { ZoomableImage } from "@/components/ZoomableImage";
 import { useStoredItem } from "@/components/useStoredItem";
 
@@ -269,8 +278,7 @@ const BURST_COUNT_KEYS = {
 } as const;
 
 type BurstCountKey =
-  | (typeof BURST_COUNT_KEYS)[keyof typeof BURST_COUNT_KEYS]
-  | "chat.burstCount.action";
+  (typeof BURST_COUNT_KEYS)[keyof typeof BURST_COUNT_KEYS] | "chat.burstCount.action";
 
 function burstCountKey(tool: string | undefined): BurstCountKey {
   return BURST_COUNT_KEYS[tool as keyof typeof BURST_COUNT_KEYS] ?? "chat.burstCount.action";
@@ -336,10 +344,12 @@ function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoni
 /** The assistant bubble — rendered for stored messages and the live stream alike. */
 function AssistantBubble({ content, cursor }: { content: string; cursor?: boolean }) {
   return (
-    <div className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
-      <Markdown>{content}</Markdown>
-      {cursor && <span className="animate-pulse">▊</span>}
-    </div>
+    <Bubble>
+      <BubbleContent>
+        <Markdown>{content}</Markdown>
+        {cursor && <span className="animate-pulse">▊</span>}
+      </BubbleContent>
+    </Bubble>
   );
 }
 
@@ -347,12 +357,38 @@ function AssistantBubble({ content, cursor }: { content: string; cursor?: boolea
 const ERROR_ACTION_CLASSES =
   "text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900";
 
+/**
+ * Where a user message was sent from. Rendered only when the conversation
+ * spans more than one tab — with a single tab every message is obviously
+ * there, so the label would be noise.
+ */
+function TabStamp({ tab }: { tab: NonNullable<Message["tab"]> }) {
+  const [iconOk, setIconOk] = useState(true);
+  return (
+    <span
+      title={tab.url}
+      className="flex max-w-[85%] min-w-0 items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500"
+    >
+      {tab.favIconUrl && iconOk && (
+        <img
+          src={tab.favIconUrl}
+          alt=""
+          className="h-3 w-3 shrink-0 rounded-[2px]"
+          onError={() => setIconOk(false)}
+        />
+      )}
+      <span className="truncate">{tab.title}</span>
+    </span>
+  );
+}
+
 function MessageBubble({
   msg,
   activeProvider,
   onRetry,
   showReasoningOn,
   onToggleReasoning,
+  showTab,
 }: {
   msg: Message;
   activeProvider?: ProviderConfig;
@@ -360,21 +396,26 @@ function MessageBubble({
   onRetry?: () => void;
   showReasoningOn: boolean;
   onToggleReasoning: () => void;
+  /** The conversation spans more than one tab, so user messages name theirs. */
+  showTab: boolean;
 }) {
   const { t } = useTranslation();
   switch (msg.role) {
     case "user":
       return (
-        <div className="flex max-w-[85%] flex-col gap-1.5 self-end rounded-lg bg-brand-600 px-3 py-2 text-sm break-words whitespace-pre-wrap text-white">
-          {msg.images?.map((src, i) => (
-            <ZoomableImage
-              key={i}
-              src={src}
-              alt={t("chat.attachmentAlt", { number: i + 1 })}
-              className="max-h-48 rounded border border-white/25 object-contain"
-            />
-          ))}
-          {msg.content}
+        <div className="flex flex-col items-end gap-0.5">
+          {showTab && msg.tab && <TabStamp tab={msg.tab} />}
+          <Bubble variant="default" align="end" className="gap-1.5">
+            {msg.images?.map((src, i) => (
+              <ZoomableImage
+                key={i}
+                src={src}
+                alt={t("chat.attachmentAlt", { number: i + 1 })}
+                className="max-h-48 rounded border border-white/25 object-contain"
+              />
+            ))}
+            {msg.content}
+          </Bubble>
         </div>
       );
     case "assistant":
@@ -396,7 +437,7 @@ function MessageBubble({
       const hint = errorHint(msg.content);
       const { summary, detail } = splitErrorDetail(msg.content);
       return (
-        <div className="max-w-[85%] self-start break-words rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <Bubble variant="destructive">
           <div className="whitespace-pre-wrap">{summary}</div>
           {detail && (
             <details className="group mt-1">
@@ -433,7 +474,7 @@ function MessageBubble({
               />
             )}
           </div>
-        </div>
+        </Bubble>
       );
     }
   }
@@ -443,46 +484,6 @@ export function MessageList() {
   const { t } = useTranslation();
   const messages = useConversationStore((s) => s.messages);
   const streamingText = useConversationStore((s) => s.streamingText);
-  const reasoningText = useConversationStore((s) => s.reasoningText);
-  const reasoningStartedAt = useConversationStore((s) => s.reasoningStartedAt);
-  const status = useConversationStore((s) => s.status);
-  const lastRun = useConversationStore((s) => s.lastRun);
-  const retry = useConversationStore((s) => s.retry);
-  const activeProvider = useProvidersStore((s) => s.providers.find((p) => p.id === s.activeId));
-  // One global preference, read and watched once here — never per reasoning block.
-  const showReasoningOn = useStoredItem(showReasoning);
-  const toggleReasoning = () => void showReasoning.set(!showReasoningOn);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  /**
-   * Scroll follows the stream only while the user sits near the bottom.
-   * Scrolling up unlocks (stick = false); the pill re-engages it.
-   */
-  const stickRef = useRef(true);
-  const [stuck, setStuck] = useState(true);
-  const hasLiveStep = messages.some((m) => m.live);
-
-  const onScroll = () => {
-    const el = containerRef.current;
-    if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    stickRef.current = atBottom;
-    setStuck(atBottom);
-  };
-
-  const jumpToLatest = () => {
-    stickRef.current = true;
-    setStuck(true);
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    if (stickRef.current) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
-
-  useEffect(() => {
-    if (stickRef.current) bottomRef.current?.scrollIntoView({ behavior: "instant" });
-  }, [streamingText, reasoningText]);
 
   if (messages.length === 0 && !streamingText) {
     return (
@@ -501,74 +502,128 @@ export function MessageList() {
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      <div
-        ref={containerRef}
-        onScroll={onScroll}
-        className="flex flex-1 flex-col gap-2 overflow-y-auto p-3"
-      >
-        {(showReasoningOn
-          ? messages.map((m) => ({ kind: "message" as const, msg: m }))
-          : groupBursts(messages)
-        ).map((item) =>
-          item.kind === "burst" ? (
-            <BurstCard key={item.id} burst={item} onToggleReasoning={toggleReasoning} />
-          ) : (
-            <MessageBubble
-              key={item.msg.id}
-              msg={item.msg}
-              activeProvider={activeProvider}
-              showReasoningOn={showReasoningOn}
-              onToggleReasoning={toggleReasoning}
-              onRetry={
-                // Only the newest error offers Retry, and only once the run has settled.
-                item.msg.role === "error" &&
-                item.msg.id === messages[messages.length - 1]?.id &&
-                status !== "running" &&
-                lastRun
-                  ? retry
-                  : undefined
-              }
-            />
-          ),
-        )}
-        {reasoningText && (
-          <ReasoningBlock
-            text={reasoningText}
-            startedAt={reasoningStartedAt}
-            show={showReasoningOn}
-            onToggle={toggleReasoning}
-          />
-        )}
-        {streamingText && <AssistantBubble content={streamingText} cursor={status === "running"} />}
-        {/* Dots cover the gaps only — a live tool row carries its own spinner. */}
-        {status === "running" && !streamingText && !reasoningText && !hasLiveStep && (
-          <div
-            role="status"
-            aria-label={t("chat.working")}
-            className="flex items-center gap-1 self-start rounded-lg bg-neutral-100 px-3 py-2.5 dark:bg-neutral-800"
-          >
-            {[0, 150, 300].map((d) => (
-              <span
-                key={d}
-                className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-400 dark:bg-neutral-500"
-                style={{ animationDelay: `${d}ms` }}
+    <MessageScrollerProvider
+      autoScroll
+      // Reopened transcripts land on the last turn with a peek of what came
+      // before, instead of flying by from the top.
+      defaultScrollPosition="last-anchor"
+      // Same stick threshold as before the scroller: near-bottom follows.
+      scrollEdgeThreshold={80}
+    >
+      <Transcript />
+    </MessageScrollerProvider>
+  );
+}
+
+/** Rows + jump pill. The scroller hooks must run under the Provider. */
+function Transcript() {
+  const { t } = useTranslation();
+  const messages = useConversationStore((s) => s.messages);
+  const streamingText = useConversationStore((s) => s.streamingText);
+  const reasoningText = useConversationStore((s) => s.reasoningText);
+  const reasoningStartedAt = useConversationStore((s) => s.reasoningStartedAt);
+  const status = useConversationStore((s) => s.status);
+  const lastRun = useConversationStore((s) => s.lastRun);
+  const retry = useConversationStore((s) => s.retry);
+  const activeProvider = useProvidersStore((s) => s.providers.find((p) => p.id === s.activeId));
+  // One global preference, read and watched once here — never per reasoning block.
+  const showReasoningOn = useStoredItem(showReasoning);
+  const toggleReasoning = () => void showReasoning.set(!showReasoningOn);
+  const hasLiveStep = messages.some((m) => m.live);
+  // User messages name their tab only once a conversation spans more than one —
+  // with a single tab every message is obviously there, so the label is noise.
+  const multiTab = new Set(
+    messages.flatMap((m) => (m.role === "user" && m.tab ? [m.tab.url] : [])),
+  ).size > 1;
+  // `end` is "reader sits at the live edge" — the old stickRef/stuck pair.
+  const { end: stuck } = useMessageScrollerScrollable();
+  const { scrollToEnd } = useMessageScroller();
+
+  return (
+    <MessageScroller>
+      <MessageScrollerViewport>
+        <MessageScrollerContent>
+          {(showReasoningOn
+            ? messages.map((m) => ({ kind: "message" as const, msg: m }))
+            : groupBursts(messages)
+          ).map((item) =>
+            item.kind === "burst" ? (
+              <MessageScrollerItem key={item.id} messageId={item.id}>
+                <BurstCard burst={item} onToggleReasoning={toggleReasoning} />
+              </MessageScrollerItem>
+            ) : (
+              <MessageScrollerItem
+                key={item.msg.id}
+                messageId={item.msg.id}
+                scrollAnchor={item.msg.role === "user"}
+              >
+                <MessageBubble
+                  msg={item.msg}
+                  activeProvider={activeProvider}
+                  showReasoningOn={showReasoningOn}
+                  onToggleReasoning={toggleReasoning}
+                  showTab={multiTab}
+                  onRetry={
+                    // Only the newest error offers Retry, and only once the run has settled.
+                    item.msg.role === "error" &&
+                    item.msg.id === messages[messages.length - 1]?.id &&
+                    status !== "running" &&
+                    lastRun
+                      ? retry
+                      : undefined
+                  }
+                />
+              </MessageScrollerItem>
+            ),
+          )}
+          {reasoningText && (
+            <MessageScrollerItem>
+              <ReasoningBlock
+                text={reasoningText}
+                startedAt={reasoningStartedAt}
+                show={showReasoningOn}
+                onToggle={toggleReasoning}
               />
-            ))}
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
+            </MessageScrollerItem>
+          )}
+          {streamingText && (
+            <MessageScrollerItem>
+              <AssistantBubble content={streamingText} cursor={status === "running"} />
+            </MessageScrollerItem>
+          )}
+          {/* Dots cover the gaps only — a live tool row carries its own spinner. */}
+          {status === "running" && !streamingText && !reasoningText && !hasLiveStep && (
+            <MessageScrollerItem>
+              <Bubble
+                variant="muted"
+                role="status"
+                aria-label={t("chat.working")}
+                className="py-2.5"
+              >
+                <span className="flex items-center gap-1">
+                  {[0, 150, 300].map((d) => (
+                    <span
+                      key={d}
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-400 dark:bg-neutral-500"
+                      style={{ animationDelay: `${d}ms` }}
+                    />
+                  ))}
+                </span>
+              </Bubble>
+            </MessageScrollerItem>
+          )}
+        </MessageScrollerContent>
+      </MessageScrollerViewport>
       {!stuck && (
         <Button
           variant="ghost"
           size="sm"
-          onClick={jumpToLatest}
+          onClick={() => void scrollToEnd({ behavior: "smooth" })}
           className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-neutral-200 bg-white shadow-md hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
         >
           {t("chat.jumpToLatest")}
         </Button>
       )}
-    </div>
+    </MessageScroller>
   );
 }
