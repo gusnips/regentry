@@ -4,7 +4,6 @@ import { useConversationStore } from "./store";
 import { planGlyph } from "./plan";
 import { useNow } from "./hooks";
 import { formatDuration, formatTokens } from "@/lib/format";
-import type { DrivingPayload } from "@/shared/protocol";
 
 export function RunStatus() {
   const { t } = useTranslation();
@@ -15,7 +14,6 @@ export function RunStatus() {
   // Selecting only the plan message (reference-stable until rewritten) keeps
   // this bar from re-rendering on every unrelated message churn mid-run.
   const plan = useConversationStore((s) => s.messages.findLast((m) => m.role === "plan"));
-  const drivingTab = useConversationStore((s) => s.drivingTab);
 
   const [verbIdx, setVerbIdx] = useState(0);
 
@@ -84,48 +82,8 @@ export function RunStatus() {
           {tokenNote}
         </span>
       </div>
-      {drivingTab?.title && <DrivingTab tab={drivingTab} />}
       {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
     </div>
-  );
-}
-
-/**
- * Names the tab the run is driving — the panel is window-scoped and stays
- * open everywhere, so without this the run's target is invisible. Reads as a
- * continuation of the verb above ("Working… / on Gmail"); one click brings
- * that tab to the front.
- */
-function DrivingTab({ tab }: { tab: DrivingPayload }) {
-  const { t } = useTranslation();
-  const [iconOk, setIconOk] = useState(true);
-
-  const focusTab = async () => {
-    try {
-      await chrome.tabs.update(tab.tabId, { active: true });
-      await chrome.windows.update(tab.windowId, { focused: true });
-    } catch {
-      // Tab was closed mid-run — the run itself will surface that failure.
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={() => void focusTab()}
-      title={t("run.drivingTabTip")}
-      className="flex min-w-0 cursor-pointer items-center gap-1.5 pl-[1.125rem] text-left text-xs text-brand-800/80 hover:underline dark:text-brand-200/70"
-    >
-      {tab.favIconUrl && iconOk && (
-        <img
-          src={tab.favIconUrl}
-          alt=""
-          className="h-3.5 w-3.5 shrink-0 rounded-[3px]"
-          onError={() => setIconOk(false)}
-        />
-      )}
-      <span className="truncate">{t("run.drivingTab", { title: tab.title })}</span>
-    </button>
   );
 }
 

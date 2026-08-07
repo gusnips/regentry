@@ -3,6 +3,7 @@ import {
   MessageList,
   ChatInput,
   RunStatus,
+  DrivenTabChip,
   ConversationList,
   HistoryToggle,
   NewChatButton,
@@ -55,11 +56,13 @@ export default function App() {
             <NewChatButton open={historyOpen} onToggle={() => setHistoryOpen((v) => !v)} />
           )}
         </div>
-        {/* The chips belong to the chat — history browsing hides them. */}
+        {/* The chips belong to the chat — history browsing hides them. While a
+            run is live the row grows the driven-tab chip, quiet like the rest. */}
         {!needsProvider && !historyOpen && (
           <div className="flex items-center gap-1 overflow-hidden pb-1.5">
             <ProviderSelect />
             <ModelControls />
+            <DrivenTabChip />
           </div>
         )}
       </header>

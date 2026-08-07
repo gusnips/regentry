@@ -224,7 +224,6 @@
     ],
     "tokens": "{{count}} tokens",
     "finished": "Concluído",
-    "drivingTab": "em {{title}}",
     "drivingTabTip": "Mostrar a aba que o Regent está controlando"
   },
   "errors": {

@@ -224,7 +224,6 @@
     ],
     "tokens": "{{count}} tokens",
     "finished": "Done",
-    "drivingTab": "on {{title}}",
     "drivingTabTip": "Show the tab Regent is controlling"
   },
   "errors": {
