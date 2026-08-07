@@ -14,9 +14,6 @@ stats-*.json
 .wxt
 web-ext.config.ts
 
-# Reference material — proprietary, never distributed
-refs/
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

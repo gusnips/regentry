@@ -106,14 +106,6 @@ not the transcript; conversations are scrollback you can revisit and delete.
   for at provider-setup time (the key doesn't exist yet, so the list can't be fetched there).
   The "Auto" option renders the model it currently resolves to, tagged with an `Auto` chip.
 
-## Reference material
-
-Reference material lives **outside the repo**, in `../regent-refs/` — proprietary code (Claude
-extension, Kimi WebBridge) kept locally as read-only reference, plus nanobrowser (Apache-2.0) and
-claude-code-original. The project directory must stay zip-sharable, so none of it may ever be
-distributed or copied into the repo. Patterns may be studied; never copy a line from the
-proprietary ones.
-
 ## Conventions
 
 - TypeScript strict, `noUncheckedIndexedAccess`, `verbatimModuleSyntax` — `import type` for
