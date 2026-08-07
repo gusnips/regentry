@@ -1,8 +1,12 @@
 import type { BrowserDriver } from "@/modules/browser";
 import type { ChatProvider, ChatMessage, ToolCall, Delta } from "@/modules/providers/types";
 import { isRetryable } from "@/modules/providers/types";
+import { createLogger, truncate } from "@/lib/logger";
+import { i18n } from "@/i18n";
 import { executeTool } from "./tools";
 import { SYSTEM_PROMPT, buildUserPrompt, TOOL_DEFS } from "./prompt";
+
+const log = createLogger("agent");
 
 const MAX_STEPS = 50;
 /** Transient stream failures are retried in place this many times before surfacing. */
@@ -12,6 +16,8 @@ const MAX_BACKOFF_MS = 15_000;
 
 export interface LoopCallbacks {
   onToken?: (text: string) => void;
+  onReasoning?: (text: string) => void;
+  onStepStart?: (tool: string) => void;
   onStep?: (tool: string, summary: string, ok?: boolean) => void;
   onUsage?: (input: number, output: number) => void;
   onError?: (message: string) => void;
@@ -77,9 +83,14 @@ async function streamTurn(
       if (signal.aborted) throw e;
       const canRetry = !emitted && attempt < MAX_STREAM_ATTEMPTS && isRetryable(e);
       if (!canRetry) throw e;
+      const reason = e instanceof Error ? e.message : String(e);
+      log.warn(
+        `stream failed before any output — retrying (${attempt}/${MAX_STREAM_ATTEMPTS - 1}):`,
+        reason,
+      );
       callbacks.onStep?.(
         "retry",
-        `Connection hiccup — retrying (${attempt}/${MAX_STREAM_ATTEMPTS - 1})`,
+        i18n.t("errors.retrying", { attempt, max: MAX_STREAM_ATTEMPTS - 1 }),
       );
       await sleep(backoffMs(attempt));
     }
@@ -91,6 +102,7 @@ async function streamTurn(
  */
 export async function runAgentLoop(opts: LoopOptions): Promise<void> {
   const { provider, driver, task, signal, callbacks } = opts;
+  log.info("run started:", truncate(task, 120));
 
   // Auto-snapshot merged into the task message — Anthropic rejects consecutive user messages
   const initial = await driver.snapshot();
@@ -128,15 +140,19 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
         return;
       }
       const msg = e instanceof Error ? e.message : String(e);
-      callbacks.onError?.(`Provider error: ${msg}`);
+      log.error(`run failed at step ${step + 1}:`, msg);
+      callbacks.onError?.(i18n.t("errors.providerError", { message: msg }));
       return;
     }
 
+    log.debug(`step ${step + 1}`, {
+      tools: turn.toolCalls.map((t) => t.name),
+      textChars: turn.text.length,
+      truncated: turn.truncated,
+    });
+
     if (turn.truncated) {
-      callbacks.onStep?.(
-        "warn",
-        "Model hit its output limit mid-response — answer may be incomplete",
-      );
+      callbacks.onStep?.("warn", i18n.t("errors.outputLimit"));
     }
 
     messages.push({
@@ -165,17 +181,23 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
         return;
       }
 
+      callbacks.onStepStart?.(call.name);
       const result = await executeTool(call, driver);
+      if (!result.ok) log.warn(`tool ${call.name} failed:`, result.error);
 
       callbacks.onStep?.(
         call.name,
-        result.ok ? formatSuccessSummary(call.name, result.data) : `Failed: ${result.error}`,
+        result.ok
+          ? formatSuccessSummary(call.name, result.data)
+          : i18n.t("errors.failed", { error: result.error }),
         result.ok,
       );
 
       if (call.name === "done") {
         taskDone = true;
-        const summary = (result.data as { summary?: string })?.summary ?? "Task complete";
+        const summary =
+          (result.data as { summary?: string })?.summary ?? i18n.t("errors.taskComplete");
+        log.info(`run done after step ${step + 1}:`, truncate(summary, 120));
         callbacks.onDone?.(summary);
       } else {
         results.push({
@@ -196,7 +218,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
 
   // Unreachable in practice — the finalize nudge fires on the last step — but if the
   // model ignored it, close out gracefully instead of hanging.
-  callbacks.onDone?.("Step budget exhausted");
+  callbacks.onDone?.(i18n.t("errors.stepBudgetExhausted"));
 }
 
 function handleDelta(delta: Delta, callbacks: LoopCallbacks, toolCalls: ToolCall[]): string | null {
@@ -204,6 +226,10 @@ function handleDelta(delta: Delta, callbacks: LoopCallbacks, toolCalls: ToolCall
     case "text":
       callbacks.onToken?.(delta.text);
       return delta.text;
+    case "reasoning":
+      // Display-only — never joins the committed turn text.
+      callbacks.onReasoning?.(delta.text);
+      return null;
     case "tool_use":
       toolCalls.push({ id: delta.id, name: delta.name, args: delta.args });
       return null;
@@ -219,17 +245,17 @@ function formatSuccessSummary(tool: string, data: unknown): string {
   if (tool === "snapshot" && data && typeof data === "object") {
     const snap = data as { pageContent?: string };
     const lines = snap.pageContent?.split("\n").length ?? 0;
-    return `Captured ${lines} elements`;
+    return i18n.t("errors.capturedElements", { count: lines });
   }
   if (tool === "click" && data && typeof data === "object") {
     const pos = data as { x: number; y: number };
-    return `Clicked at (${pos.x}, ${pos.y})`;
+    return i18n.t("errors.clickedAt", { x: pos.x, y: pos.y });
   }
   if (tool === "press_key") {
-    return "Key pressed";
+    return i18n.t("errors.keyPressed");
   }
   if (tool === "navigate") {
-    return "Navigated successfully";
+    return i18n.t("errors.navigated");
   }
-  return `${tool} completed`;
+  return i18n.t("errors.toolCompleted", { tool });
 }

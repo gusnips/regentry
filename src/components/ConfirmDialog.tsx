@@ -1,5 +1,6 @@
 import { AlertDialog } from "@base-ui-components/react";
 import type { ReactElement } from "react";
+import { useTranslation } from "react-i18next";
 import { buttonClasses } from "./Button";
 
 /**
@@ -10,7 +11,7 @@ export function ConfirmDialog({
   trigger,
   title,
   description,
-  confirmLabel = "Remove",
+  confirmLabel,
   onConfirm,
 }: {
   trigger: ReactElement;
@@ -19,6 +20,7 @@ export function ConfirmDialog({
   confirmLabel?: string;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <AlertDialog.Root>
       <AlertDialog.Trigger render={trigger as ReactElement<Record<string, unknown>>} />
@@ -32,9 +34,11 @@ export function ConfirmDialog({
             {description}
           </AlertDialog.Description>
           <div className="mt-4 flex justify-end gap-2">
-            <AlertDialog.Close className={buttonClasses("ghost", "md")}>Cancel</AlertDialog.Close>
+            <AlertDialog.Close className={buttonClasses("ghost", "md")}>
+              {t("common.cancel")}
+            </AlertDialog.Close>
             <AlertDialog.Close className={buttonClasses("danger", "md")} onClick={onConfirm}>
-              {confirmLabel}
+              {confirmLabel ?? t("common.remove")}
             </AlertDialog.Close>
           </div>
         </AlertDialog.Popup>

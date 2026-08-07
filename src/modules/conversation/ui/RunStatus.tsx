@@ -1,24 +1,7 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
-
-/** Per-tool gerunds for the active-step verb, Claude Code spinner style. */
-const TOOL_VERBS: Record<string, string> = {
-  navigate: "Navigating",
-  snapshot: "Reading page",
-  click: "Clicking",
-  type: "Typing",
-  press_key: "Pressing keys",
-  scroll_down: "Scrolling",
-  scroll_up: "Scrolling",
-  screenshot: "Capturing",
-  done: "Wrapping up",
-  retry: "Retrying",
-  warn: "Working",
-  interrupted: "Stopped",
-};
-
-/** Generic verbs while the model streams between tool calls. */
-const IDLE_VERBS = ["Thinking", "Working", "Pondering", "Reasoning", "Contemplating"];
+import { toolVerbKey } from "./tool-labels";
 
 function formatElapsed(ms: number): string {
   const s = Math.floor(ms / 1000);
@@ -32,6 +15,7 @@ function formatTokens(n: number): string {
 }
 
 export function RunStatus() {
+  const { t } = useTranslation();
   const status = useConversationStore((s) => s.status);
   const runStartedAt = useConversationStore((s) => s.runStartedAt);
   const usage = useConversationStore((s) => s.usage);
@@ -55,9 +39,10 @@ export function RunStatus() {
   if (!running) return null;
 
   // Verb: from the latest step's tool, else rotate generic gerunds
+  const idleVerbs = t("run.idle", { returnObjects: true });
   const lastStep = [...messages].reverse().find((m) => m.role === "step");
-  const verb =
-    (lastStep?.tool && TOOL_VERBS[lastStep.tool]) ?? IDLE_VERBS[verbIdx % IDLE_VERBS.length];
+  const toolKey = toolVerbKey(lastStep?.tool);
+  const verb = toolKey ? t(toolKey) : (idleVerbs[verbIdx % idleVerbs.length] ?? idleVerbs[0] ?? "");
 
   const totalTokens = usage.input + usage.output;
 
@@ -67,7 +52,7 @@ export function RunStatus() {
       <span className="font-medium text-neutral-700 dark:text-neutral-200">{verb}…</span>
       <span className="text-neutral-400 dark:text-neutral-500">
         {formatElapsed(now - runStartedAt)}
-        {totalTokens > 0 && ` · ${formatTokens(totalTokens)} tokens`}
+        {totalTokens > 0 && ` · ${t("run.tokens", { count: formatTokens(totalTokens) })}`}
       </span>
     </div>
   );

@@ -15,14 +15,19 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "deadcode": "knip",
+    "i18n:check": "bun run scripts/check-i18n.ts",
     "deadcode:fix": "knip --fix --allow-remove-files",
     "icons": "bun run scripts/gen-icons.ts",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-rc.0",
+    "i18next": "^26.3.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-i18next": "^17.0.11",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

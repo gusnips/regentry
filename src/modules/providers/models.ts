@@ -1,6 +1,7 @@
 import type { ModelInfo, ProviderConfig, ResolvedProviderConfig } from "./types";
 import { ProviderError } from "./types";
 import { PRESETS } from "./presets";
+import { i18n } from "@/i18n";
 
 /**
  * Live model listing — the anti-staleness seam. Both wire shapes expose a
@@ -29,7 +30,7 @@ export async function listModels(
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new ProviderError(
-      `Model list error ${res.status}: ${text || res.statusText}`,
+      i18n.t("errors.modelListError", { status: res.status, detail: text || res.statusText }),
       res.status,
     );
   }
@@ -67,15 +68,12 @@ export async function resolveProviderModel(
   const presetFallback = PRESETS.find((p) => p.id === config.id)?.models[0];
   if (presetFallback) return { ...config, model: presetFallback };
 
-  throw new ProviderError(
-    `No model set for ${config.name} and the endpoint doesn't list any. Pick a model in Settings.`,
-    0,
-  );
+  throw new ProviderError(i18n.t("errors.noModel", { name: config.name }), 0);
 }
 
 function parseModelEntries(body: unknown): ModelInfo[] {
   const data = (body as { data?: unknown } | null)?.data;
-  if (!Array.isArray(data)) throw new ProviderError("Model list response had no data array.", 0);
+  if (!Array.isArray(data)) throw new ProviderError(i18n.t("errors.noModelData"), 0);
   const out: ModelInfo[] = [];
   for (const entry of data) {
     const id = (entry as { id?: unknown } | null)?.id;

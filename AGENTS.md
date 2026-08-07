@@ -81,7 +81,7 @@ never reach the service-worker bundle.
   filtered). `ProviderConfig.model` is optional — absent means auto, resolved at run start by
   `resolveProviderModel`: persisted choice → newest listed (by `created`) → preset's first →
   clear error. QwenCloud has no list route; that's why presets keep model ids at all. Model and
-  effort are per-task choices in the side-panel popover, persisted per provider — never asked
+  effort are per-task choices in the side-panel header selects, persisted per provider — never asked
   for at provider-setup time (the key doesn't exist yet, so the list can't be fetched there).
 
 ## Reference material
@@ -105,6 +105,11 @@ copy a line from the proprietary ones.
   item, default `"system"`; `initTheme()` runs once per entrypoint, before render).
 - Every error and empty state must orient and offer a way forward — Problem · Cause · Fix for
   errors; Purpose · Content · Action for empty states. Never a raw error or a bare "no results".
+  Raw JSON error bodies go behind a Details disclosure (`splitErrorDetail` in
+  `conversation/error-detail.ts`).
+- Log via scoped loggers (`createLogger("<scope>")` from `src/lib/logger.ts`) — never raw
+  `console.*`. Lifecycle at `info` (Chrome hides `debug` unless Verbose is on), chatter at
+  `debug`. Never log API keys or page content; bound long strings with `truncate()`.
 - Non-trivial logic leaves one runnable check behind (a small vitest file — no frameworks, no
   fixtures).
 - Brand assets are generated: edit `src/shared/logo.ts`, run `bun run icons`. Never hand-edit

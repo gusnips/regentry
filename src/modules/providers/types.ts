@@ -72,6 +72,9 @@ export interface JSONSchema {
 /** Streaming delta from the provider. */
 export type Delta =
   | { type: "text"; text: string }
+  /** Model reasoning (Anthropic thinking blocks, OpenAI-shape reasoning_content) — display only,
+   *  never committed to the outgoing conversation. */
+  | { type: "reasoning"; text: string }
   | { type: "tool_use"; id: string; name: string; args: Record<string, unknown> }
   | { type: "usage"; input: number; output: number }
   | { type: "finish"; reason: "stop" | "length" | "tool_use" | "unknown" }

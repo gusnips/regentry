@@ -13,6 +13,8 @@ const noReactOutsideUi = {
     "**/ui/**",
     "src/components/**",
     "**/entrypoints/**",
+    // React bindings for the shared i18next instance — only entrypoints import it.
+    "src/i18n/ui.ts",
     "**/__tests__/**",
     ".wxt/**",
     "dist/**",
@@ -26,6 +28,10 @@ const noReactOutsideUi = {
           { name: "react", message: "React is UI-only — import from within a ui/ folder." },
           { name: "react-dom", message: "React is UI-only — import from within a ui/ folder." },
           { name: "zustand", message: "zustand is UI-only — import from within a ui/ folder." },
+          {
+            name: "react-i18next",
+            message: "react-i18next is UI-only — import from within a ui/ folder.",
+          },
         ],
         patterns: [
           {

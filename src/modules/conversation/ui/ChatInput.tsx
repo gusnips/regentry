@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
 
 export function ChatInput() {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const status = useConversationStore((s) => s.status);
   const sendTask = useConversationStore((s) => s.sendTask);
@@ -42,9 +44,9 @@ export function ChatInput() {
         className="flex-1"
         rows={2}
         autoFocus
-        aria-label="Task description"
-        placeholder="Describe a task… (Enter to send, Shift+Enter for newline)"
-        title={running ? "A run is in flight — stop it to send a new task" : undefined}
+        aria-label={t("chat.inputAria")}
+        placeholder={t("chat.placeholder")}
+        title={running ? t("chat.runningTitle") : undefined}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={onKeyDown}
@@ -52,11 +54,11 @@ export function ChatInput() {
       />
       {running ? (
         <Button variant="danger" onClick={stop}>
-          Stop
+          {t("chat.stop")}
         </Button>
       ) : (
         <Button onClick={submit} disabled={!text.trim()}>
-          Send
+          {t("chat.send")}
         </Button>
       )}
     </div>

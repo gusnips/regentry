@@ -1,7 +1,35 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeAll } from "vitest";
 import { listModels, pickLatestModel, resolveProviderModel } from "../models";
 import { ProviderError } from "../types";
 import type { ProviderConfig } from "../types";
+import { i18n } from "@/i18n";
+import en from "@/i18n/locales/en.json";
+
+// @/i18n's locale item reads wxt storage at module scope — no chrome in tests,
+// so stub the storage driver.
+vi.mock("wxt/utils/storage", () => ({
+  storage: {
+    defineItem: (_key: string, opts?: { fallback?: unknown }) => {
+      let value: unknown = opts?.fallback ?? null;
+      return {
+        getValue: async () => value,
+        setValue: async (v: unknown) => void (value = v),
+        removeValue: async () => void (value = null),
+        watch: () => () => {},
+      };
+    },
+  },
+}));
+
+// The production initI18n reads wxt storage — tests load the en catalog directly.
+beforeAll(async () => {
+  await i18n.init({
+    resources: { en: { translation: en } },
+    lng: "en",
+    interpolation: { escapeValue: false },
+    returnEmptyString: false,
+  });
+});
 
 const anthropicConfig: ProviderConfig = {
   id: "kimi",

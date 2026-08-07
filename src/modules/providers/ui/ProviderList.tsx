@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { AddProviderDialog } from "./AddProviderDialog";
@@ -15,6 +16,7 @@ function hostOf(url: string): string | null {
 }
 
 export function ProviderList() {
+  const { t } = useTranslation();
   const { providers, activeId, loaded, load, remove, activate } = useProvidersStore();
 
   useEffect(() => {
@@ -27,16 +29,15 @@ export function ProviderList() {
     return (
       <div className="rounded-lg border border-dashed border-neutral-300 p-6 text-center dark:border-neutral-700">
         <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
-          No providers yet
+          {t("providerList.emptyTitle")}
         </div>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          A provider is the AI that drives your browser — pick a preset or point at any
-          OpenAI/Anthropic-compatible endpoint.
+          {t("providerList.emptyBody")}
         </p>
         <AddProviderDialog
           trigger={
             <Button size="sm" className="mt-3">
-              Add your first provider
+              {t("providerList.addFirst")}
             </Button>
           }
         />
@@ -75,34 +76,34 @@ export function ProviderList() {
                   <span className="truncate">{p.name}</span>
                   {isActive && (
                     <span className="shrink-0 rounded border border-brand-200 bg-white px-1.5 py-px text-[10px] font-medium text-brand-700 dark:border-brand-800 dark:bg-neutral-900 dark:text-brand-300">
-                      Active
+                      {t("providerList.active")}
                     </span>
                   )}
                 </div>
                 <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">
-                  {p.model ?? "auto"} · {p.shape}
+                  {p.model ?? t("providerList.auto")} · {p.shape}
                   {host ? ` · ${host}` : ""}
-                  {p.reasoningEffort ? ` · ${p.reasoningEffort} effort` : ""}
+                  {p.reasoningEffort
+                    ? ` · ${t("providerList.effort", { effort: p.reasoningEffort })}`
+                    : ""}
                 </div>
               </div>
             </div>
             <div className="ml-3 flex shrink-0 gap-2">
               {!isActive && (
                 <Button variant="ghost" size="sm" onClick={() => void activate(p.id)}>
-                  Set active
+                  {t("providerList.setActive")}
                 </Button>
               )}
               <ConfirmDialog
                 trigger={
                   <Button variant="ghost-danger" size="sm">
-                    Remove
+                    {t("common.remove")}
                   </Button>
                 }
-                title={`Remove ${p.name}?`}
+                title={t("providerList.removeTitle", { name: p.name })}
                 description={
-                  isActive
-                    ? "This is your active provider — the next one in the list becomes active. The stored API key will be deleted."
-                    : "The API key stored for this provider will be deleted. You can add it again at any time."
+                  isActive ? t("providerList.removeActiveBody") : t("providerList.removeBody")
                 }
                 onConfirm={() => void remove(p.id)}
               />

@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "Regent",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Provider-agnostic browser agent",
+    "description": "Extension description shown in chrome://extensions and the Web Store"
+  },
+  "actionTitle": {
+    "message": "Open Regent",
+    "description": "Toolbar action tooltip"
+  }
+}

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { PRESETS } from "../presets";
-import type { ProviderShape } from "../types";
+import type { ProviderConfig, ProviderShape } from "../types";
 import { Select } from "@/components/Select";
 import { TextField } from "@/components/TextField";
 import { PasswordField } from "@/components/PasswordField";
@@ -27,21 +28,37 @@ function isLocalUrl(url: string): boolean {
  *
  * Picking an already-configured preset is the edit path: the CTA becomes
  * "Update …", model/effort choices are preserved, and an empty key keeps
- * the saved one (key rotation = paste a new one).
+ * the saved one (key rotation = paste a new one). Pass `initialProvider` to
+ * open the form straight onto that provider's edit path — custom endpoints
+ * included (they update in place instead of adding a duplicate).
  */
-export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
+export function ProviderForm({
+  onSaved,
+  initialProvider,
+}: {
+  onSaved?: () => void;
+  initialProvider?: ProviderConfig;
+}) {
+  const { t } = useTranslation();
   const add = useProvidersStore((s) => s.add);
   const providers = useProvidersStore((s) => s.providers);
-  const [presetId, setPresetId] = useState(PRESETS[0]!.id);
-  const [name, setName] = useState("");
-  const [shape, setShape] = useState<ProviderShape>("openai");
-  const [baseUrl, setBaseUrl] = useState("");
+  const initialPreset = initialProvider
+    ? PRESETS.find((p) => p.id === initialProvider.id)
+    : undefined;
+  const [presetId, setPresetId] = useState(
+    initialProvider ? (initialPreset?.id ?? CUSTOM) : PRESETS[0]!.id,
+  );
+  const [name, setName] = useState(initialProvider && !initialPreset ? initialProvider.name : "");
+  const [shape, setShape] = useState<ProviderShape>(initialProvider?.shape ?? "openai");
+  const [baseUrl, setBaseUrl] = useState(
+    initialProvider && !initialPreset ? initialProvider.baseUrl : "",
+  );
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const preset = presetId === CUSTOM ? undefined : PRESETS.find((p) => p.id === presetId);
-  const existing = preset ? providers.find((p) => p.id === preset.id) : undefined;
+  const existing = providers.find((p) => p.id === (preset ? preset.id : initialProvider?.id));
 
   const fail = (message: string) => setError(message);
 
@@ -54,32 +71,31 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
     const key = apiKey.trim();
 
     if (!preset && !resolvedName) {
-      fail("Name is required — e.g. the service or gateway name.");
+      fail(t("providerForm.nameRequired"));
       return;
     }
     if (!preset && !resolvedUrl) {
-      fail("Base URL is required for a custom endpoint.");
+      fail(t("providerForm.baseUrlRequired"));
       return;
     }
     if (!preset) {
       try {
         new URL(resolvedUrl);
       } catch {
-        fail(
-          "Base URL isn't a valid URL — include https:// and any path, e.g. https://api.example.com/v1.",
-        );
+        fail(t("providerForm.baseUrlInvalid"));
         return;
       }
     }
     if (!key && !existing && !isLocalUrl(resolvedUrl)) {
-      fail("API key is required — paste it above. (Local endpoints like Ollama don't need one.)");
+      fail(t("providerForm.apiKeyRequired"));
       return;
     }
 
     setSaving(true);
     try {
       await add({
-        id: preset?.id, // custom → undefined → the store assigns custom-<ts>
+        // Unseeded custom → undefined → the store assigns custom-<ts>.
+        id: preset?.id ?? existing?.id,
         name: resolvedName,
         shape: preset ? preset.shape : shape,
         baseUrl: resolvedUrl,
@@ -100,9 +116,9 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
   };
 
   const keyHint = isLocalUrl(preset ? preset.baseUrl : baseUrl.trim()) ? (
-    "Optional for local endpoints."
+    t("providerForm.keyHintLocal")
   ) : existing ? (
-    "Leave empty to keep the saved key."
+    t("providerForm.keyHintKeep")
   ) : preset?.apiKeyUrl ? (
     <a
       className="text-brand-600 hover:underline dark:text-brand-400"
@@ -110,24 +126,28 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
       target="_blank"
       rel="noreferrer"
     >
-      Get an API key →
+      {t("providerForm.keyHintGet")}
     </a>
   ) : undefined;
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <div className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-neutral-700 dark:text-neutral-300">Provider</span>
+        <span className="font-medium text-neutral-700 dark:text-neutral-300">
+          {t("providerForm.provider")}
+        </span>
         <Select
           value={presetId}
           onChange={setPresetId}
           options={[
             ...PRESETS.map((p) => ({
               value: p.id,
-              label: providers.some((cp) => cp.id === p.id) ? `${p.name} · configured` : p.name,
+              label: providers.some((cp) => cp.id === p.id)
+                ? t("providerForm.configured", { name: p.name })
+                : p.name,
               icon: <ProviderIcon icon={p.icon} size={20} />,
             })),
-            { value: CUSTOM, label: "Custom endpoint…" },
+            { value: CUSTOM, label: t("providerForm.customEndpoint") },
           ]}
         />
         {preset && (
@@ -138,24 +158,26 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
       {!preset && (
         <>
           <TextField
-            label="Name"
+            label={t("providerForm.name")}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="My gateway"
+            placeholder={t("providerForm.namePlaceholder")}
           />
           <div className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-700 dark:text-neutral-300">API shape</span>
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">
+              {t("providerForm.apiShape")}
+            </span>
             <Select
               value={shape}
               onChange={(v) => setShape(v as ProviderShape)}
               options={[
-                { value: "openai", label: "OpenAI-compatible (/chat/completions)" },
-                { value: "anthropic", label: "Anthropic (/v1/messages)" },
+                { value: "openai", label: t("providerForm.shapeOpenai") },
+                { value: "anthropic", label: t("providerForm.shapeAnthropic") },
               ]}
             />
           </div>
           <TextField
-            label="Base URL"
+            label={t("providerForm.baseUrl")}
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
             placeholder="https://api.example.com/v1"
@@ -164,16 +186,18 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
       )}
 
       <PasswordField
-        label="API key"
+        label={t("providerForm.apiKey")}
         value={apiKey}
         onChange={(e) => setApiKey(e.target.value)}
-        placeholder={existing ? "Saved — leave empty to keep" : "sk-…"}
+        placeholder={
+          existing ? t("providerForm.apiKeyPlaceholderSaved") : t("providerForm.apiKeyPlaceholder")
+        }
         autoComplete="off"
         hint={keyHint}
       />
 
       <p className="text-xs text-neutral-400 dark:text-neutral-500">
-        Model and reasoning effort are picked per task in the side panel — newest model by default.
+        {t("providerForm.modelNote")}
       </p>
 
       {error && (
@@ -186,7 +210,11 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
       )}
 
       <Button type="submit" disabled={saving}>
-        {saving ? "Saving…" : existing ? `Update ${existing.name}` : "Add provider"}
+        {saving
+          ? t("providerForm.saving")
+          : existing
+            ? t("providerForm.update", { name: existing.name })
+            : t("providerForm.add")}
       </Button>
     </form>
   );

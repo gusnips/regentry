@@ -1,7 +1,23 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { toOpenAIMessages } from "../openai";
 import { toAnthropicMessage } from "../anthropic";
 import type { ChatMessage } from "../types";
+
+// The adapters import @/i18n, whose locale item reads wxt storage at module
+// scope — no chrome in tests, so stub the storage driver.
+vi.mock("wxt/utils/storage", () => ({
+  storage: {
+    defineItem: (_key: string, opts?: { fallback?: unknown }) => {
+      let value: unknown = opts?.fallback ?? null;
+      return {
+        getValue: async () => value,
+        setValue: async (v: unknown) => void (value = v),
+        removeValue: async () => void (value = null),
+        watch: () => () => {},
+      };
+    },
+  },
+}));
 
 const assistantWithTools: ChatMessage = {
   role: "assistant",

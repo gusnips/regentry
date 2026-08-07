@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Button as BaseButton, Field } from "@base-ui-components/react";
 
 function EyeIcon() {
@@ -50,6 +51,7 @@ export function PasswordField({
   ...props
 }: ComponentProps<typeof Field.Control> & { label?: string; hint?: ReactNode }) {
   const [show, setShow] = useState(false);
+  const { t } = useTranslation();
   return (
     <Field.Root className="flex flex-col gap-1 text-sm">
       {label && (
@@ -65,7 +67,7 @@ export function PasswordField({
         />
         <BaseButton
           type="button"
-          aria-label={show ? "Hide key" : "Show key"}
+          aria-label={show ? t("common.hideKey") : t("common.showKey")}
           aria-pressed={show}
           onClick={() => setShow((s) => !s)}
           className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r-lg text-neutral-400 hover:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-neutral-500 dark:hover:text-neutral-300"

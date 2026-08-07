@@ -1,12 +1,16 @@
+import { initI18n, i18n } from "@/i18n";
 import { runAgentLoop } from "@/modules/agent";
 import { createDriver } from "@/modules/browser";
 import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
 import { appendMessage } from "@/modules/conversation";
-import { log } from "@/lib/logger";
+import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
 
+const log = createLogger("bg");
+
 export default defineBackground(() => {
+  void initI18n();
   log.debug("background initialized");
 
   chrome.runtime.onConnect.addListener((port) => {
@@ -19,7 +23,7 @@ export default defineBackground(() => {
       switch (msg.type) {
         case "run": {
           if (abortController) {
-            send(port, { type: "error", message: "A task is already running. Stop it first." });
+            send(port, { type: "error", message: i18n.t("errors.alreadyRunning") });
             return;
           }
 
@@ -27,15 +31,14 @@ export default defineBackground(() => {
           if (!providerConfig) {
             send(port, {
               type: "error",
-              message:
-                "No active provider — pick one in the panel dropdown, or add one in Settings.",
+              message: i18n.t("errors.noActiveProvider"),
             });
             return;
           }
 
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           if (!tab?.id) {
-            send(port, { type: "error", message: "No active tab found." });
+            send(port, { type: "error", message: i18n.t("errors.noActiveTab") });
             return;
           }
 
@@ -45,9 +48,18 @@ export default defineBackground(() => {
           try {
             provider = createProvider(await resolveProviderModel(providerConfig));
           } catch (e) {
-            send(port, { type: "error", message: e instanceof Error ? e.message : String(e) });
+            const message = e instanceof Error ? e.message : String(e);
+            log.error("provider setup failed:", message);
+            send(port, { type: "error", message });
             return;
           }
+
+          log.info("run queued", {
+            provider: providerConfig.name,
+            model: providerConfig.model ?? "auto",
+            tabId: tab.id,
+            task: truncate(msg.task, 120),
+          });
 
           abortController = new AbortController();
           const driver = createDriver(tab.id);
@@ -60,6 +72,8 @@ export default defineBackground(() => {
               signal: abortController.signal,
               callbacks: {
                 onToken: (text) => send(port, { type: "token", text }),
+                onReasoning: (text) => send(port, { type: "reasoning", text }),
+                onStepStart: (tool) => send(port, { type: "step_start", tool }),
                 onStep: (tool, summary, ok) => send(port, { type: "step", tool, summary, ok }),
                 onUsage: (input, output) => send(port, { type: "usage", input, output }),
                 onError: (message) => send(port, { type: "error", message }),
@@ -68,6 +82,7 @@ export default defineBackground(() => {
             });
           } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
+            log.error("run crashed:", message);
             send(port, { type: "error", message });
           } finally {
             abortController = null;
@@ -76,11 +91,18 @@ export default defineBackground(() => {
         }
 
         case "stop": {
+          log.info("stop requested");
           abortController?.abort();
           abortController = null;
           // Flush the partial stream immediately — the loop's own done arrives
           // as it unwinds and is a harmless no-op in the panel.
           send(port, { type: "done" });
+          break;
+        }
+
+        case "ping": {
+          // Heartbeat from the panel — receiving it keeps the worker alive
+          // through long provider silences (reasoning models) and slow tools.
           break;
         }
       }
@@ -96,7 +118,7 @@ export default defineBackground(() => {
           id: `m${Date.now()}-bg`,
           role: "step",
           tool: "interrupted",
-          content: "Side panel closed — the run was stopped",
+          content: i18n.t("errors.panelClosed"),
           timestamp: Date.now(),
         });
       }

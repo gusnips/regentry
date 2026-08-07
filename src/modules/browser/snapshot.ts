@@ -1,6 +1,7 @@
 import { generateSnapshot } from "./snapshot-script";
 import type { SnapshotOptions, SnapshotResult } from "./snapshot-script";
 import type { TabId } from "@/shared/types";
+import { i18n } from "@/i18n";
 
 /**
  * Injects the snapshot function into the page and returns the result.
@@ -21,18 +22,13 @@ export async function captureSnapshot(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/chrome:\/\/|Cannot access|extensions gallery|Web Store/i.test(msg)) {
-      throw new Error(
-        "Regent can't read this page — Chrome blocks extensions on chrome:// and Web Store pages. Navigate the tab to a regular page and resend the task.",
-        { cause: e },
-      );
+      throw new Error(i18n.t("errors.restrictedPage"), { cause: e });
     }
     throw e;
   }
 
   if (!result?.result) {
-    throw new Error(
-      "Snapshot failed: the page may have navigated or be a restricted URL (chrome://, Web Store).",
-    );
+    throw new Error(i18n.t("errors.snapshotFailed"));
   }
 
   return result.result as SnapshotResult;
@@ -62,7 +58,7 @@ export async function resolveRefRect(
   });
 
   if (!result?.result) {
-    throw new Error(`Element ref "${ref}" not found. Run snapshot first to get fresh refs.`);
+    throw new Error(i18n.t("errors.refNotFound", { ref }));
   }
 
   return result.result;

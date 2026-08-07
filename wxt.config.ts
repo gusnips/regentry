@@ -6,8 +6,9 @@ export default defineConfig({
   srcDir: "src",
   outDir: "dist",
   manifest: {
-    name: "Regent",
-    description: "Provider-agnostic browser agent",
+    name: "__MSG_extName__",
+    description: "__MSG_extDescription__",
+    default_locale: "en",
     homepage_url: "https://github.com/gusnips/regent",
     icons: {
       16: "icon/16.png",
@@ -22,7 +23,7 @@ export default defineConfig({
       default_path: "/sidepanel.html",
     },
     action: {
-      default_title: "Open Regent",
+      default_title: "__MSG_actionTitle__",
     },
   },
   vite: () => ({

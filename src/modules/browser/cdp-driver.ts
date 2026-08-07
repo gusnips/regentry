@@ -1,4 +1,5 @@
 import type { TabId } from "@/shared/types";
+import { i18n } from "@/i18n";
 
 /**
  * CDP driver — manages chrome.debugger attach/detach and dispatches trusted input events.
@@ -65,7 +66,7 @@ async function attach(tabId: TabId): Promise<void> {
 }
 
 async function send(method: string, params?: Record<string, unknown>): Promise<unknown> {
-  if (activeTab === null) throw new Error("No tab attached. Call attach first.");
+  if (activeTab === null) throw new Error(i18n.t("errors.noTabAttached"));
   return chrome.debugger.sendCommand({ tabId: activeTab }, method, params);
 }
 
@@ -148,7 +149,9 @@ export async function pressKey(key: string): Promise<void> {
   const k = key.toLowerCase();
   const spec = KEY_MAP[k];
   if (!spec)
-    throw new Error(`Unsupported key: ${key}. Supported: ${Object.keys(KEY_MAP).join(", ")}`);
+    throw new Error(
+      i18n.t("errors.unsupportedKey", { key, supported: Object.keys(KEY_MAP).join(", ") }),
+    );
   const down: Record<string, unknown> = {
     type: "keyDown",
     key: spec.key,

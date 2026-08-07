@@ -1,5 +1,6 @@
 import type { BrowserDriver } from "@/modules/browser";
 import type { ToolCall } from "@/modules/providers/types";
+import { i18n } from "@/i18n";
 
 export interface ToolResult {
   ok: boolean;
@@ -52,7 +53,7 @@ export async function executeTool(call: ToolCall, driver: BrowserDriver): Promis
         return { ok: true, data: { summary: call.args.summary } };
 
       default:
-        return { ok: false, error: `Unknown tool: ${call.name}` };
+        return { ok: false, error: i18n.t("errors.unknownTool", { name: call.name }) };
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

@@ -1,5 +1,9 @@
 import type { ChatProvider, ChatMessage, ToolDef, Delta, ResolvedProviderConfig } from "./types";
 import { ProviderError } from "./types";
+import { createLogger, truncate } from "@/lib/logger";
+import { i18n } from "@/i18n";
+
+const log = createLogger("openai");
 
 /**
  * OpenAI-shape adapter — works with any OpenAI-compatible endpoint.
@@ -10,25 +14,40 @@ export function createOpenAIProvider(config: ResolvedProviderConfig): ChatProvid
     async *stream(messages, tools, signal): AsyncIterable<Delta> {
       const url = `${config.baseUrl.replace(/\/$/, "")}/chat/completions`;
 
+      const payload = JSON.stringify(buildOpenAIBody(config, messages, tools));
+      log.debug("request", {
+        url,
+        model: config.model,
+        messages: messages.length,
+        tools: tools.length,
+        effort: config.reasoningEffort ?? "default",
+        bytes: payload.length,
+      });
+
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${config.apiKey}`,
         },
-        body: JSON.stringify(buildOpenAIBody(config, messages, tools)),
+        body: payload,
         signal,
       });
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
+        log.error(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
         throw new ProviderError(
-          `OpenAI API error ${res.status}: ${text || res.statusText}`,
+          i18n.t("errors.apiError", {
+            provider: "OpenAI",
+            status: res.status,
+            detail: text || res.statusText,
+          }),
           res.status,
         );
       }
 
-      if (!res.body) throw new Error("No response body");
+      if (!res.body) throw new Error(i18n.t("errors.noResponseBody"));
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -94,6 +113,10 @@ export function createOpenAIProvider(config: ResolvedProviderConfig): ChatProvid
             const delta = choice.delta;
             if (!delta) continue;
 
+            if (delta.reasoning_content) {
+              yield { type: "reasoning", text: delta.reasoning_content };
+            }
+
             if (delta.content) {
               yield { type: "text", text: delta.content };
             }
@@ -154,6 +177,8 @@ interface OpenAIChunk {
     finish_reason?: string | null;
     delta?: {
       content?: string;
+      /** DeepSeek/Kimi/GLM-style reasoning stream — present on thinking models */
+      reasoning_content?: string;
       tool_calls?: {
         index?: number;
         id?: string;

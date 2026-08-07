@@ -58,7 +58,7 @@ export const PRESETS: ProviderPreset[] = [
   },
   {
     id: "kimi",
-    name: "Kimi (coding plan)",
+    name: "Kimi Coding",
     shape: "anthropic",
     baseUrl: "https://api.kimi.com/coding",
     models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],
@@ -68,7 +68,7 @@ export const PRESETS: ProviderPreset[] = [
   },
   {
     id: "zai",
-    name: "Z.ai GLM (coding plan)",
+    name: "Z.ai Coding",
     shape: "anthropic",
     baseUrl: "https://api.z.ai/api/anthropic",
     models: ["glm-5.2", "glm-4.7"],
@@ -78,7 +78,7 @@ export const PRESETS: ProviderPreset[] = [
   },
   {
     id: "qwen",
-    name: "QwenCloud (token plan)",
+    name: "Qwen",
     shape: "anthropic",
     baseUrl: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/apps/anthropic",
     models: ["qwen3.8-max", "qwen3.6-flash"],
@@ -98,7 +98,7 @@ export const PRESETS: ProviderPreset[] = [
   },
   {
     id: "gemini",
-    name: "Gemini (OpenAI-compatible)",
+    name: "Gemini",
     shape: "openai",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
     models: ["gemini-2.5-pro", "gemini-2.5-flash"],
@@ -138,7 +138,7 @@ export const PRESETS: ProviderPreset[] = [
   },
   {
     id: "xai",
-    name: "xAI (Grok)",
+    name: "xAI",
     shape: "openai",
     baseUrl: "https://api.x.ai/v1",
     models: ["grok-4", "grok-4-fast"],
@@ -148,7 +148,7 @@ export const PRESETS: ProviderPreset[] = [
   },
   {
     id: "ollama",
-    name: "Ollama (local)",
+    name: "Ollama",
     shape: "openai",
     baseUrl: "http://localhost:11434/v1",
     models: [],

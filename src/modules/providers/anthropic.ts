@@ -1,5 +1,9 @@
 import type { ChatProvider, ChatMessage, Delta, ResolvedProviderConfig, ToolDef } from "./types";
 import { ProviderError } from "./types";
+import { createLogger, truncate } from "@/lib/logger";
+import { i18n } from "@/i18n";
+
+const log = createLogger("anthropic");
 
 /**
  * Anthropic-shape adapter.
@@ -15,6 +19,16 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
       const url = `${config.baseUrl.replace(/\/$/, "")}/v1/messages`;
       let toolCallBuffer: { id: string; name: string; args: string } | null = null;
 
+      const payload = JSON.stringify(buildAnthropicBody(config, messages, tools));
+      log.debug("request", {
+        url,
+        model: config.model,
+        messages: messages.length,
+        tools: tools.length,
+        effort: config.reasoningEffort ?? "default",
+        bytes: payload.length,
+      });
+
       const res = await fetch(url, {
         method: "POST",
         headers: {
@@ -26,19 +40,24 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
-        body: JSON.stringify(buildAnthropicBody(config, messages, tools)),
+        body: payload,
         signal,
       });
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
+        log.error(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
         throw new ProviderError(
-          `Anthropic API error ${res.status}: ${text || res.statusText}`,
+          i18n.t("errors.apiError", {
+            provider: "Anthropic",
+            status: res.status,
+            detail: text || res.statusText,
+          }),
           res.status,
         );
       }
 
-      if (!res.body) throw new Error("No response body");
+      if (!res.body) throw new Error(i18n.t("errors.noResponseBody"));
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -97,6 +116,9 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
                 const delta = event.delta;
                 if (delta?.type === "text_delta") {
                   yield { type: "text", text: delta.text ?? "" };
+                }
+                if (delta?.type === "thinking_delta") {
+                  yield { type: "reasoning", text: delta.thinking ?? "" };
                 }
                 if (delta?.type === "input_json_delta" && toolCallBuffer) {
                   toolCallBuffer.args += delta.partial_json ?? "";
@@ -186,6 +208,7 @@ interface AnthropicSSE {
   delta?: {
     type: string;
     text?: string;
+    thinking?: string;
     partial_json?: string;
     stop_reason?: string;
   };
