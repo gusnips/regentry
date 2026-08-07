@@ -29,17 +29,15 @@ export interface LoopOptions {
 export async function runAgentLoop(opts: LoopOptions): Promise<void> {
   const { provider, driver, task, signal, callbacks } = opts;
 
+  // Auto-snapshot merged into the task message — Anthropic rejects consecutive user messages
+  const initial = await driver.snapshot();
   const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: buildUserPrompt(task) },
+    {
+      role: "user",
+      content: `${buildUserPrompt(task)}\n\nCurrent page:\n${initial.pageContent}`,
+    },
   ];
-
-  // Auto-snapshot so the agent sees the starting page
-  const initial = await driver.snapshot();
-  messages.push({
-    role: "user",
-    content: `Current page:\n${initial.pageContent}`,
-  });
 
   for (let step = 0; step < MAX_STEPS; step++) {
     if (signal.aborted) {
@@ -88,6 +86,8 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
 
     // Execute each tool call
     let taskDone = false;
+    const results: { id: string; content: string }[] = [];
+
     for (const call of toolCalls) {
       if (signal.aborted) {
         callbacks.onError?.("Task aborted by user");
@@ -106,18 +106,22 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
           : `Failed: ${result.error}`,
       );
 
-      // Feed result back to model
       if (call.name === "done") {
         taskDone = true;
         const summary = (result.data as { summary?: string })?.summary ?? "Task complete";
         callbacks.onDone?.(summary);
       } else {
-        messages.push({
-          role: "tool",
-          toolCallId: call.id,
+        results.push({
+          id: call.id,
           content: JSON.stringify(result.ok ? result.data : { error: result.error }),
         });
       }
+    }
+
+    // Feed results back as ONE message — Anthropic requires all tool_results
+    // for a turn in a single user message; OpenAI adapter expands to N messages.
+    if (results.length > 0) {
+      messages.push({ role: "tool_results", content: "", toolResults: results });
     }
 
     if (taskDone) return;

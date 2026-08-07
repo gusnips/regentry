@@ -146,7 +146,7 @@ interface AnthropicSSE {
   };
 }
 
-function toAnthropicMessage(msg: ChatMessage) {
+export function toAnthropicMessage(msg: ChatMessage) {
   if (msg.role === "assistant" && msg.toolCalls) {
     return {
       role: "assistant" as const,
@@ -161,17 +161,16 @@ function toAnthropicMessage(msg: ChatMessage) {
       ],
     };
   }
-  if (msg.role === "tool" && msg.toolCallId) {
+  if (msg.role === "tool_results") {
+    // Anthropic: all results collapse into ONE user message of tool_result blocks
     return {
       role: "user" as const,
-      content: [
-        {
-          type: "tool_result" as const,
-          tool_use_id: msg.toolCallId,
-          content: msg.content,
-        },
-      ],
+      content: (msg.toolResults ?? []).map((r) => ({
+        type: "tool_result" as const,
+        tool_use_id: r.id,
+        content: r.content,
+      })),
     };
   }
-  return { role: msg.role, content: msg.content };
+  return { role: msg.role as "user" | "assistant", content: msg.content };
 }

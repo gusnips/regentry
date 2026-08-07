@@ -14,10 +14,18 @@ export interface ProviderConfig {
 
 /** Chat message in provider-agnostic format. */
 export interface ChatMessage {
-  role: "system" | "user" | "assistant" | "tool";
+  role: "system" | "user" | "assistant" | "tool_results";
   content: string;
-  toolCallId?: string;
   toolCalls?: ToolCall[];
+  /** Results of tool calls from the previous assistant turn. Adapters serialize
+   *  differently: OpenAI expands to N role:tool messages, Anthropic collapses
+   *  to one user message with N tool_result blocks. */
+  toolResults?: ToolResult[];
+}
+
+export interface ToolResult {
+  id: string;
+  content: string;
 }
 
 export interface ToolCall {

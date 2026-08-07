@@ -95,11 +95,22 @@ export async function clickAt(x: number, y: number): Promise<void> {
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
 }
 
+// CDP modifier bitmask: Alt=1, Ctrl=2, Meta/Cmd=4, Shift=8
+let selectAllModifier: number | null = null;
+
+async function getSelectAllModifier(): Promise<number> {
+  if (selectAllModifier === null) {
+    const info = await chrome.runtime.getPlatformInfo();
+    selectAllModifier = info.os === "mac" ? 4 : 2;
+  }
+  return selectAllModifier;
+}
+
 /** Type text via CDP insertText (trusted input). Clears existing field first. */
 export async function typeText(text: string): Promise<void> {
-  // Select all then replace
-  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: 2 });
-  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: 2 });
+  const mod = await getSelectAllModifier();
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: mod });
+  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: mod });
   await send("Input.insertText", { text });
 }
 

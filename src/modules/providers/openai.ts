@@ -11,7 +11,7 @@ export function createOpenAIProvider(config: ProviderConfig): ChatProvider {
 
       const body: Record<string, unknown> = {
         model: config.model,
-        messages: messages.map(toOpenAIMessage),
+        messages: messages.flatMap(toOpenAIMessages),
         stream: true,
       };
 
@@ -126,22 +126,36 @@ interface OpenAIChunk {
   }[];
 }
 
-function toOpenAIMessage(msg: ChatMessage) {
-  if (msg.role === "tool" && msg.toolCallId) {
-    return { role: "tool" as const, content: msg.content, tool_call_id: msg.toolCallId };
+interface OpenAIMessage {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string | null;
+  tool_call_id?: string;
+  tool_calls?: OpenAIToolCall[];
+}
+
+export function toOpenAIMessages(msg: ChatMessage): OpenAIMessage[] {
+  if (msg.role === "tool_results") {
+    // OpenAI: one role:tool message per result
+    return (msg.toolResults ?? []).map((r) => ({
+      role: "tool" as const,
+      content: r.content,
+      tool_call_id: r.id,
+    }));
   }
   if (msg.role === "assistant" && msg.toolCalls) {
-    return {
-      role: "assistant" as const,
-      content: msg.content || null,
-      tool_calls: msg.toolCalls.map((tc): OpenAIToolCall => ({
-        id: tc.id,
-        type: "function",
-        function: { name: tc.name, arguments: JSON.stringify(tc.args) },
-      })),
-    };
+    return [
+      {
+        role: "assistant" as const,
+        content: msg.content || null,
+        tool_calls: msg.toolCalls.map((tc): OpenAIToolCall => ({
+          id: tc.id,
+          type: "function",
+          function: { name: tc.name, arguments: JSON.stringify(tc.args) },
+        })),
+      },
+    ];
   }
-  return { role: msg.role, content: msg.content };
+  return [{ role: msg.role, content: msg.content }];
 }
 
 interface OpenAIToolCall {
