@@ -1,3 +1,5 @@
+import { truncateTo } from "@/lib/format";
+
 /**
  * Tool → i18n key for the human label ("Reading page"). Shared by the live
  * step rows, the persisted trace, and the RunStatus verb so one tool never
@@ -29,7 +31,7 @@ export function toolVerbKey(tool: string | undefined): ToolVerbKey | undefined {
 
 function text(value: unknown, max = 48): string | undefined {
   if (typeof value !== "string" || !value.trim()) return undefined;
-  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+  return truncateTo(value, max);
 }
 
 /** Host only — the full URL is in the drill-down, and it never fits on one line. */

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { Markdown } from "./Markdown";
+import { planGlyph } from "./plan";
+import { useNow } from "./hooks";
 import { toolVerbKey, toolHint } from "./tool-labels";
 import type { Message } from "../types";
 import { splitErrorDetail } from "../error-detail";
@@ -11,6 +13,7 @@ import { AddProviderDialog, useProvidersStore } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { Button } from "@/components/Button";
 import { ZoomableImage } from "@/components/ZoomableImage";
+import { useStoredItem } from "@/components/useStoredItem";
 
 type HintKey = "badKey" | "quota" | "rateLimited" | "rejected" | "network" | "noProvider";
 type CtaKey = "updateKey" | "checkUrl" | "addProvider";
@@ -165,7 +168,7 @@ function PlanCard({ steps, current }: { steps: string[]; current: number }) {
             }
           >
             <span aria-hidden className="shrink-0">
-              {i < current ? "✓" : i === current ? "▪" : "○"}
+              {planGlyph(i, current)}
             </span>
             <span>{step}</span>
           </li>
@@ -175,42 +178,30 @@ function PlanCard({ steps, current }: { steps: string[]; current: number }) {
   );
 }
 
-/** The stored preference applies to every block; clicking a block toggles it. */
-function useShowReasoning(): [boolean, (v: boolean) => void] {
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    void showReasoning.get().then(setShow);
-    return showReasoning.watch(setShow);
-  }, []);
-  return [show, (v) => void showReasoning.set(v)];
-}
-
 /**
  * Reasoning collapses to a one-line summary by default — a wall of tokens is
  * noise for most runs, and "Thought for 3m 48s" says everything that matters.
- * Clicking toggles the stored show-reasoning preference for all blocks.
+ * The show/toggle preference is one stored value for ALL blocks, so it is read
+ * and watched once in MessageList and handed down.
  */
 function ReasoningBlock({
   text,
   startedAt,
   elapsed,
+  show,
+  onToggle,
 }: {
   text: string;
   /** Present while the segment is still streaming. */
   startedAt?: number | null;
   /** Recorded duration once persisted. */
   elapsed?: number;
+  show: boolean;
+  onToggle: () => void;
 }) {
   const { t } = useTranslation();
-  const [show, setShow] = useShowReasoning();
-  const [now, setNow] = useState(() => Date.now());
   const live = startedAt != null;
-
-  useEffect(() => {
-    if (!live) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [live]);
+  const now = useNow(live);
 
   const duration = formatDuration(live ? now - (startedAt ?? now) : (elapsed ?? 0));
 
@@ -219,7 +210,7 @@ function ReasoningBlock({
       <button
         type="button"
         aria-expanded={show}
-        onClick={() => setShow(!show)}
+        onClick={onToggle}
         title={t("chat.reasoningToggle")}
         className="flex w-full items-center gap-1.5 rounded select-none hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:hover:text-neutral-300"
       >
@@ -243,15 +234,33 @@ function ReasoningBlock({
   );
 }
 
+/** The assistant bubble — rendered for stored messages and the live stream alike. */
+function AssistantBubble({ content, cursor }: { content: string; cursor?: boolean }) {
+  return (
+    <div className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
+      <Markdown>{content}</Markdown>
+      {cursor && <span className="animate-pulse">▊</span>}
+    </div>
+  );
+}
+
+/** Ghost-button override for actions inside the red error bubble. */
+const ERROR_ACTION_CLASSES =
+  "text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900";
+
 function MessageBubble({
   msg,
   activeProvider,
   onRetry,
+  showReasoningOn,
+  onToggleReasoning,
 }: {
   msg: Message;
   activeProvider?: ProviderConfig;
   /** Present only on the newest error while idle — retry re-sends the same task. */
   onRetry?: () => void;
+  showReasoningOn: boolean;
+  onToggleReasoning: () => void;
 }) {
   const { t } = useTranslation();
   switch (msg.role) {
@@ -270,13 +279,16 @@ function MessageBubble({
         </div>
       );
     case "assistant":
-      return (
-        <div className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
-          <Markdown>{msg.content}</Markdown>
-        </div>
-      );
+      return <AssistantBubble content={msg.content} />;
     case "reasoning":
-      return <ReasoningBlock text={msg.content} elapsed={msg.elapsed} />;
+      return (
+        <ReasoningBlock
+          text={msg.content}
+          elapsed={msg.elapsed}
+          show={showReasoningOn}
+          onToggle={onToggleReasoning}
+        />
+      );
     case "step":
       return <StepRow msg={msg} />;
     case "plan":
@@ -307,12 +319,7 @@ function MessageBubble({
           )}
           <div className="mt-1 -ml-2 flex flex-wrap items-center gap-1">
             {onRetry && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onRetry}
-                className="text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900"
-              >
+              <Button variant="ghost" size="sm" onClick={onRetry} className={ERROR_ACTION_CLASSES}>
                 {t("chat.retry")}
               </Button>
             )}
@@ -320,11 +327,7 @@ function MessageBubble({
               <AddProviderDialog
                 initialProvider={activeProvider}
                 trigger={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900"
-                  >
+                  <Button variant="ghost" size="sm" className={ERROR_ACTION_CLASSES}>
                     {t(CTA_KEYS[hint.cta])}
                   </Button>
                 }
@@ -347,6 +350,9 @@ export function MessageList() {
   const lastRun = useConversationStore((s) => s.lastRun);
   const retry = useConversationStore((s) => s.retry);
   const activeProvider = useProvidersStore((s) => s.providers.find((p) => p.id === s.activeId));
+  // One global preference, read and watched once here — never per reasoning block.
+  const showReasoningOn = useStoredItem(showReasoning);
+  const toggleReasoning = () => void showReasoning.set(!showReasoningOn);
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   /**
@@ -407,6 +413,8 @@ export function MessageList() {
             key={m.id}
             msg={m}
             activeProvider={activeProvider}
+            showReasoningOn={showReasoningOn}
+            onToggleReasoning={toggleReasoning}
             onRetry={
               // Only the newest error offers Retry, and only once the run has settled.
               m.role === "error" && i === messages.length - 1 && status !== "running" && lastRun
@@ -415,13 +423,15 @@ export function MessageList() {
             }
           />
         ))}
-        {reasoningText && <ReasoningBlock text={reasoningText} startedAt={reasoningStartedAt} />}
-        {streamingText && (
-          <div className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
-            <Markdown>{streamingText}</Markdown>
-            {status === "running" && <span className="animate-pulse">▊</span>}
-          </div>
+        {reasoningText && (
+          <ReasoningBlock
+            text={reasoningText}
+            startedAt={reasoningStartedAt}
+            show={showReasoningOn}
+            onToggle={toggleReasoning}
+          />
         )}
+        {streamingText && <AssistantBubble content={streamingText} cursor={status === "running"} />}
         {/* Dots cover the gaps only — a live tool row carries its own spinner. */}
         {status === "running" && !streamingText && !reasoningText && !hasLiveStep && (
           <div

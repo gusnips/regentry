@@ -58,13 +58,14 @@ export function ChatInput() {
     }
     setAttachError(null);
     try {
-      const added: Attachment[] = [];
-      for (const file of files) {
-        added.push({
+      // Tokens number in paste order (assigned before the first await); the
+      // downscale/encode work itself races — an N-image paste is not N× slower.
+      const added = await Promise.all(
+        files.map(async (file) => ({
           token: `[Image #${++imageCount.current}]`,
           dataUrl: await toAttachment(file),
-        });
-      }
+        })),
+      );
       setAttachments((prev) => [...prev, ...added]);
       setText([text.trimEnd(), ...added.map((a) => a.token)].filter(Boolean).join(" "));
     } catch {

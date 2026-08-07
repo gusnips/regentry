@@ -24,22 +24,11 @@ function placeholders(s: string): string[] {
   return [...s.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]!).sort();
 }
 
+// Key-set parity and empty values are gated by `bun run i18n:check`
+// (scripts/check-i18n.ts) — this test covers only what the script can't:
+// placeholder agreement between translations.
 describe("locale catalogs", () => {
   const flat = Object.fromEntries(Object.entries(LOCALES).map(([l, c]) => [l, flatten(c)]));
-
-  it("have identical key sets", () => {
-    const union = new Set(Object.values(flat).flatMap((m) => [...m.keys()]));
-    for (const [loc, m] of Object.entries(flat)) {
-      const missing = [...union].filter((k) => !m.has(k));
-      expect(missing, `${loc} is missing keys`).toEqual([]);
-    }
-  });
-
-  it("have no empty values", () => {
-    for (const [loc, m] of Object.entries(flat)) {
-      for (const [k, v] of m) expect(v.trim(), `${loc}:${k} is empty`).not.toBe("");
-    }
-  });
 
   it("use the same {{placeholders}} per key", () => {
     for (const [k, enValue] of flat.en!) {

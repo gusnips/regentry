@@ -1,5 +1,6 @@
 import { Field } from "@base-ui-components/react";
 import type { ComponentProps, ReactNode } from "react";
+import { FieldShell, inputChrome } from "./FieldShell";
 
 /** Matches Select's scale: sm = panel-header density, md = forms. */
 const SIZES = {
@@ -19,28 +20,18 @@ export function TextField({
   size = "md",
   className = "",
   ...props
-}: /* the DOM `size` attribute (a character count) is not something we use */
-Omit<ComponentProps<typeof Field.Control>, "size"> & {
+}: /* the DOM `size` attribute (a character count) is not something we use;
+     className is layout-only — Base UI's state-callback form doesn't survive
+     the shell's string interpolation */
+Omit<ComponentProps<typeof Field.Control>, "size" | "className"> & {
   label?: string;
   hint?: ReactNode;
   size?: keyof typeof SIZES;
+  className?: string;
 }) {
   return (
-    <Field.Root className={`flex flex-col gap-1 text-sm ${className}`}>
-      {label && (
-        <Field.Label className="font-medium text-neutral-700 dark:text-neutral-300">
-          {label}
-        </Field.Label>
-      )}
-      <Field.Control
-        className={`rounded-lg border border-neutral-300 placeholder:text-neutral-400 focus:border-brand-500 focus:outline-none dark:border-neutral-600 dark:placeholder:text-neutral-500 ${SIZES[size]}`}
-        {...props}
-      />
-      {hint && (
-        <Field.Description className="text-xs text-neutral-400 dark:text-neutral-500">
-          {hint}
-        </Field.Description>
-      )}
-    </Field.Root>
+    <FieldShell label={label} hint={hint} className={className}>
+      <Field.Control className={`${inputChrome} ${SIZES[size]}`} {...props} />
+    </FieldShell>
   );
 }

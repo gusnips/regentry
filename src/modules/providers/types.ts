@@ -7,8 +7,12 @@ export type ProviderShape = "openai" | "anthropic";
  * OpenAI-shape (`reasoning_effort`); mapped to adaptive thinking +
  * `output_config.effort` on Anthropic-shape. Support varies per model —
  * an unsupported level comes back as a clean provider 400, surfaced in chat.
+ *
+ * Ordered least → most; the type derives from the array so a runtime guard
+ * and the union can never drift apart.
  */
-export type ReasoningEffort = "none" | "low" | "medium" | "high" | "max";
+export const REASONING_EFFORTS = ["none", "low", "medium", "high", "max"] as const;
+export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
 /** A configured provider instance (stored in chrome.storage). */
 export interface ProviderConfig {
@@ -97,8 +101,7 @@ export type Delta =
   | { type: "tool_use"; id: string; name: string; args: Record<string, unknown> }
   | { type: "usage"; input: number; output: number }
   | { type: "finish"; reason: "stop" | "length" | "tool_use" | "unknown" }
-  | { type: "done" }
-  | { type: "error"; message: string };
+  | { type: "done" };
 
 /** Provider error with HTTP status so the loop can classify retryability. */
 export class ProviderError extends Error {

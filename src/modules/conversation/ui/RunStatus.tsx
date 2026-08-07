@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useConversationStore, type DrivingTabInfo } from "./store";
+import { useConversationStore } from "./store";
+import { planGlyph } from "./plan";
+import { useNow } from "./hooks";
 import { formatDuration, formatTokens } from "@/lib/format";
+import type { DrivingPayload } from "@/shared/protocol";
 
 export function RunStatus() {
   const { t } = useTranslation();
@@ -9,17 +12,18 @@ export function RunStatus() {
   const runStartedAt = useConversationStore((s) => s.runStartedAt);
   const runEndedAt = useConversationStore((s) => s.runEndedAt);
   const usage = useConversationStore((s) => s.usage);
-  const messages = useConversationStore((s) => s.messages);
+  // Selecting only the plan message (reference-stable until rewritten) keeps
+  // this bar from re-rendering on every unrelated message churn mid-run.
+  const plan = useConversationStore((s) => s.messages.findLast((m) => m.role === "plan"));
   const drivingTab = useConversationStore((s) => s.drivingTab);
 
-  const [now, setNow] = useState(() => Date.now());
   const [verbIdx, setVerbIdx] = useState(0);
 
   const running = status === "running" && runStartedAt !== null;
+  const now = useNow(running);
 
   useEffect(() => {
     if (!running) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
     let rotate: ReturnType<typeof setTimeout>;
     const schedule = () => {
       // Random 1–2 min. Tools churn in under a second, so a verb that tracked
@@ -35,13 +39,12 @@ export function RunStatus() {
       );
     };
     schedule();
-    return () => {
-      clearInterval(timer);
-      clearTimeout(rotate);
-    };
+    return () => clearTimeout(rotate);
   }, [running]);
 
   const totalTokens = usage.input + usage.output;
+  const tokenNote =
+    totalTokens > 0 ? ` · ${t("run.tokens", { count: formatTokens(totalTokens) })}` : "";
 
   // What the last run cost, kept up after it ends: while it streams the numbers
   // move too fast to read, and they are gone by the time you look.
@@ -52,7 +55,7 @@ export function RunStatus() {
         <span>{t("run.finished")}</span>
         <span>
           {formatDuration(runEndedAt - runStartedAt)}
-          {totalTokens > 0 && ` · ${t("run.tokens", { count: formatTokens(totalTokens) })}`}
+          {tokenNote}
         </span>
       </div>
     );
@@ -60,7 +63,6 @@ export function RunStatus() {
 
   const idleVerbs = t("run.idle", { returnObjects: true });
   const verb = idleVerbs[verbIdx % idleVerbs.length] ?? idleVerbs[0] ?? "";
-  const plan = [...messages].reverse().find((m) => m.role === "plan");
 
   /**
    * Loud on purpose. Something is clicking and typing in your browser right now,
@@ -79,7 +81,7 @@ export function RunStatus() {
         <span className="shimmer-text font-semibold">{verb}…</span>
         <span className="ml-auto shrink-0 font-mono text-xs text-brand-700/70 dark:text-brand-300/70">
           {formatDuration(now - runStartedAt)}
-          {totalTokens > 0 && ` · ${t("run.tokens", { count: formatTokens(totalTokens) })}`}
+          {tokenNote}
         </span>
       </div>
       {drivingTab?.title && <DrivingTab tab={drivingTab} />}
@@ -94,7 +96,7 @@ export function RunStatus() {
  * continuation of the verb above ("Working… / on Gmail"); one click brings
  * that tab to the front.
  */
-function DrivingTab({ tab }: { tab: DrivingTabInfo }) {
+function DrivingTab({ tab }: { tab: DrivingPayload }) {
   const { t } = useTranslation();
   const [iconOk, setIconOk] = useState(true);
 
@@ -150,7 +152,7 @@ function PlanPeek({ steps, current }: { steps: string[]; current: number }) {
         return (
           <div key={i} className={i === current ? "flex gap-1.5 font-medium" : "flex gap-1.5"}>
             <span aria-hidden className="shrink-0 opacity-70">
-              {i < current ? "✓" : i === current ? "▪" : "○"}
+              {planGlyph(i, current)}
             </span>
             <span className="truncate">{step}</span>
           </div>

@@ -3,76 +3,38 @@ import { useConversationStore } from "./store";
 import type { ConversationMeta } from "../conversations";
 import { Button } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Icon } from "@/components/Icon";
 
 function BackIcon() {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <Icon>
       <path d="M19 12H5m7-7-7 7 7 7" />
-    </svg>
+    </Icon>
   );
 }
 
 function PlusIcon() {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden
-    >
+    <Icon>
       <path d="M12 5v14M5 12h14" />
-    </svg>
+    </Icon>
   );
 }
 
 function TrashIcon() {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <Icon>
       <path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14" />
-    </svg>
+    </Icon>
   );
 }
 
 function HistoryIcon() {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <Icon>
       <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
       <path d="M3 3v5h5M12 7v5l3.5 2" />
-    </svg>
+    </Icon>
   );
 }
 
@@ -107,7 +69,8 @@ export function NewChatButton({ open, onToggle }: { open: boolean; onToggle: () 
   const { t } = useTranslation();
   const running = useConversationStore((s) => s.status === "running");
   const newConversation = useConversationStore((s) => s.newConversation);
-  const messages = useConversationStore((s) => s.messages);
+  // Only emptiness matters here — select the boolean, not the whole array.
+  const empty = useConversationStore((s) => s.messages.length === 0);
   const busyTitle = running ? t("sidepanel.busyRunning") : undefined;
 
   return (
@@ -115,7 +78,7 @@ export function NewChatButton({ open, onToggle }: { open: boolean; onToggle: () 
       variant="outline"
       size="sm"
       className="ml-1 flex shrink-0 items-center gap-1"
-      disabled={running || (messages.length === 0 && !open)}
+      disabled={running || (empty && !open)}
       title={busyTitle ?? t("history.newChat")}
       onClick={() => {
         newConversation();

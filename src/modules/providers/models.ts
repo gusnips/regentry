@@ -1,6 +1,7 @@
 import type { ModelInfo, ProviderConfig, ResolvedProviderConfig } from "./types";
 import { ProviderError } from "./types";
 import { PRESETS } from "./presets";
+import { anthropicHeaders, apiUrl } from "./http";
 import { i18n } from "@/i18n";
 
 /**
@@ -11,19 +12,10 @@ import { i18n } from "@/i18n";
 export async function listModels(
   config: Pick<ProviderConfig, "shape" | "baseUrl" | "apiKey">,
 ): Promise<ModelInfo[]> {
-  const base = config.baseUrl.replace(/\/$/, "");
-  const url = config.shape === "anthropic" ? `${base}/v1/models` : `${base}/models`;
-
+  const url = apiUrl(config.baseUrl, config.shape === "anthropic" ? "/v1/models" : "/models");
   const headers: Record<string, string> =
     config.shape === "anthropic"
-      ? {
-          // Same dual-auth as the adapter: Anthropic reads x-api-key,
-          // coding-plan proxies read Bearer.
-          "x-api-key": config.apiKey,
-          Authorization: `Bearer ${config.apiKey}`,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        }
+      ? anthropicHeaders(config.apiKey)
       : { Authorization: `Bearer ${config.apiKey}` };
 
   const res = await fetch(url, { headers });

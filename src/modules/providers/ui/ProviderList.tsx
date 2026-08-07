@@ -20,8 +20,8 @@ export function ProviderList() {
   const { providers, activeId, loaded, load, remove, activate } = useProvidersStore();
 
   useEffect(() => {
-    if (!loaded) void load();
-  }, [loaded, load]);
+    void load(); // idempotent — the store dedupes concurrent mounts
+  }, [load]);
 
   if (!loaded) return null;
 

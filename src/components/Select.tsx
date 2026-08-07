@@ -48,7 +48,6 @@ export function Select({
   value,
   onChange,
   options,
-  placeholder,
   className = "",
   size = "md",
   variant = "boxed",
@@ -58,7 +57,6 @@ export function Select({
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
-  placeholder?: string;
   className?: string;
   size?: Size;
   variant?: Variant;
@@ -83,7 +81,7 @@ export function Select({
             if (!opt)
               return (
                 <span className="text-neutral-400 dark:text-neutral-500">
-                  {placeholder ?? t("common.selectPlaceholder")}
+                  {t("common.selectPlaceholder")}
                 </span>
               );
             return (

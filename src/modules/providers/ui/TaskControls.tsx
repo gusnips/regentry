@@ -5,6 +5,7 @@ import { ProviderIcon } from "./ProviderIcon";
 import { AddProviderDialog } from "./AddProviderDialog";
 import { listModels, pickLatestModel } from "../models";
 import { PRESETS, providerDisplayName } from "../presets";
+import { REASONING_EFFORTS } from "../types";
 import type { ModelInfo, ProviderShape, ReasoningEffort } from "../types";
 import { Select } from "@/components/Select";
 import type { SelectOption } from "@/components/Select";
@@ -13,11 +14,18 @@ import { TextField } from "@/components/TextField";
 /** Sentinel option value — opens the add-provider dialog instead of switching. */
 const ADD_NEW = "__add__";
 
-/** Ordered least→most. The extra "default" option means "don't send the knob at all". */
-const EFFORTS: readonly string[] = ["none", "low", "medium", "high", "max"];
+/** i18n keys for the effort levels — a Record keyed by the union, so a new
+ *  level is a compile error here instead of a silently missing option. */
+const EFFORT_LABEL_KEYS = {
+  none: "modelPicker.effort.none",
+  low: "modelPicker.effort.low",
+  medium: "modelPicker.effort.medium",
+  high: "modelPicker.effort.high",
+  max: "modelPicker.effort.max",
+} as const satisfies Record<ReasoningEffort, string>;
 
 function isEffort(value: string): value is ReasoningEffort {
-  return EFFORTS.includes(value);
+  return REASONING_EFFORTS.some((effort) => effort === value);
 }
 
 interface ModelsTarget {
@@ -26,24 +34,38 @@ interface ModelsTarget {
   apiKey: string;
 }
 
+/**
+ * Successful listings, cached per connection.
+ * ponytail: session-long cache with no expiry — the chip row remounts every
+ * time the history view opens and must not refetch identical params. The
+ * ceiling is a stale list if the endpoint's models change mid-session;
+ * upgrade path is a TTL or revalidating on focus.
+ */
+const modelsCache = new Map<string, ModelInfo[]>();
+
+interface ModelsResult {
+  key: string;
+  models: ModelInfo[];
+  error: string | null;
+}
+
 /** Fetches the endpoint's live model list; identity-keyed on the target. */
 function useModels(target: ModelsTarget | null) {
   const key = target ? JSON.stringify(target) : null;
-  const [result, setResult] = useState<{
-    key: string;
-    models: ModelInfo[];
-    error: string | null;
-  } | null>(null);
+  const [fetched, setFetched] = useState<ModelsResult | null>(null);
 
   useEffect(() => {
-    if (!key || !target) return;
+    if (!key || !target || modelsCache.has(key)) return;
     let cancelled = false;
     listModels(target)
-      .then((models) => !cancelled && setResult({ key, models, error: null }))
+      .then((models) => {
+        modelsCache.set(key, models);
+        if (!cancelled) setFetched({ key, models, error: null });
+      })
       .catch(
         (e: unknown) =>
           !cancelled &&
-          setResult({ key, models: [], error: e instanceof Error ? e.message : String(e) }),
+          setFetched({ key, models: [], error: e instanceof Error ? e.message : String(e) }),
       );
     return () => {
       cancelled = true;
@@ -52,7 +74,16 @@ function useModels(target: ModelsTarget | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  const current = key && result?.key === key ? result : null;
+  // Cache hits resolve during render (a remounted or switched picker never
+  // waits on a fetch it already paid for); errors are never cached, so a
+  // failed listing retries on the next mount.
+  const cached = key ? modelsCache.get(key) : undefined;
+  const current: ModelsResult | null =
+    key && fetched?.key === key
+      ? fetched
+      : key && cached
+        ? { key, models: cached, error: null }
+        : null;
   return {
     models: current?.models ?? [],
     loading: key !== null && current === null,
@@ -60,12 +91,12 @@ function useModels(target: ModelsTarget | null) {
   };
 }
 
-/** The active provider, with the store loaded on first mount. */
+/** The active provider; the store's load is idempotent, so no guard here. */
 function useActiveProvider() {
-  const { providers, activeId, loaded, load } = useProvidersStore();
+  const { providers, activeId, load } = useProvidersStore();
   useEffect(() => {
-    if (!loaded) void load();
-  }, [loaded, load]);
+    void load();
+  }, [load]);
   return providers.find((p) => p.id === activeId) ?? providers[0];
 }
 
@@ -125,13 +156,10 @@ export function ModelControls() {
     active ? { shape: active.shape, baseUrl: active.baseUrl, apiKey: active.apiKey } : null,
   );
 
+  // The extra "default" option means "don't send the knob at all".
   const effortOptions = [
     { value: "default", label: t("modelPicker.effort.default") },
-    { value: "none", label: t("modelPicker.effort.none") },
-    { value: "low", label: t("modelPicker.effort.low") },
-    { value: "medium", label: t("modelPicker.effort.medium") },
-    { value: "high", label: t("modelPicker.effort.high") },
-    { value: "max", label: t("modelPicker.effort.max") },
+    ...REASONING_EFFORTS.map((effort) => ({ value: effort, label: t(EFFORT_LABEL_KEYS[effort]) })),
   ];
 
   if (!active) return null;

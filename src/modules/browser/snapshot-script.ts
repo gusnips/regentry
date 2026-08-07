@@ -215,20 +215,6 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
     );
   }
 
-  function shouldInclude(el: HTMLElement): boolean {
-    const tag = el.tagName.toLowerCase();
-    if (SKIP_TAGS.has(tag)) return false;
-    if (el.getAttribute("aria-hidden") === "true") return false;
-    if (!isVisible(el)) return false;
-    if (filter === "interactive") return isInteractive(el);
-    return (
-      isInteractive(el) ||
-      isStructural(el) ||
-      resolveName(el).length > 0 ||
-      resolveRole(el) !== "generic"
-    );
-  }
-
   // Ref management on window — persists across calls
   const w = window as unknown as {
     __regentRefs?: Map<string, WeakRef<HTMLElement>>;
@@ -286,12 +272,18 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
     if (el.getAttribute("aria-hidden") === "true") return;
     if (!isVisible(el)) return;
 
-    const included = shouldInclude(el);
+    // Role/name resolve once per element and serve both the inclusion decision
+    // and the output line — getComputedStyle and the name walk never run twice.
+    const role = resolveRole(el);
+    const name = resolveName(el);
+    const interactive = isInteractive(el);
+    const included =
+      filter === "interactive"
+        ? interactive
+        : interactive || isStructural(el) || name.length > 0 || role !== "generic";
 
     if (included) {
-      const role = resolveRole(el);
-      const name = resolveName(el);
-      const ref = INTERACTIVE_ROLES.has(role) || isInteractive(el) ? getOrCreateRef(el) : undefined;
+      const ref = INTERACTIVE_ROLES.has(role) || interactive ? getOrCreateRef(el) : undefined;
       lines.push(formatLine(depth, role, name, ref, el));
       count++;
 

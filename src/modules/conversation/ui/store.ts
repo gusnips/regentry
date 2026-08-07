@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { i18n } from "@/i18n";
-import type { Command, Event } from "@/shared/protocol";
+import type { Command, DrivingPayload, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
 import type { Message, AgentStatus } from "../types";
 import type { ConversationMeta } from "../conversations";
@@ -15,14 +15,6 @@ import {
   watchConversations,
 } from "../conversations";
 import { toolVerbKey } from "./tool-labels";
-
-/** The tab the in-flight run is driving — the chip that orients and jumps to it. */
-export interface DrivingTabInfo {
-  tabId: number;
-  windowId: number;
-  title: string;
-  favIconUrl?: string;
-}
 
 interface ConversationState {
   messages: Message[];
@@ -53,7 +45,7 @@ interface ConversationState {
   /** The composer's text, so a recalled queue or an ending run can hand text back to it. */
   draft: string;
   /** The tab the current run is driving; null when idle. */
-  drivingTab: DrivingTabInfo | null;
+  drivingTab: DrivingPayload | null;
 
   connect: () => void;
   disconnect: () => void;
@@ -72,7 +64,6 @@ interface ConversationState {
 }
 
 let port: chrome.runtime.Port | null = null;
-let msgCounter = 0;
 /** Distinguishes "panel closed on purpose" from the worker dropping the port. */
 let intentionalDisconnect = false;
 /** Panel → worker heartbeat: any port traffic resets the MV3 worker's idle timer,
@@ -83,12 +74,8 @@ let unwatchConversations: (() => void) | null = null;
 /** Did this run stream any prose? If not, the done summary is the only answer. */
 let sawAssistantText = false;
 
-function nextId(): string {
-  return `m${Date.now()}-${++msgCounter}`;
-}
-
 function makeMsg(role: Message["role"], content: string, extra?: Partial<Message>): Message {
-  return { id: nextId(), role, content, timestamp: Date.now(), ...extra };
+  return { id: crypto.randomUUID(), role, content, timestamp: Date.now(), ...extra };
 }
 
 export const useConversationStore = create<ConversationState>((set, get) => {
@@ -130,7 +117,13 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     const reasoning = get().reasoningText.trim();
     const startedAt = get().reasoningStartedAt;
     if (reasoning) {
-      pushMsg(makeMsg("reasoning", reasoning, startedAt ? { elapsed: Date.now() - startedAt } : undefined));
+      pushMsg(
+        makeMsg(
+          "reasoning",
+          reasoning,
+          startedAt ? { elapsed: Date.now() - startedAt } : undefined,
+        ),
+      );
     }
     set({ reasoningText: "", reasoningStartedAt: null });
   };
@@ -146,6 +139,22 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
   /** A run that ends with a tool in flight must not leave its row spinning. */
   const settleLive = (msgs: Message[]) => msgs.map((m) => (m.live ? { ...m, live: false } : m));
+
+  /**
+   * The one run-end transition — error, done, and a lost port all land here.
+   * runStartedAt survives so the summary line can still say how long it went.
+   */
+  const settleRun = (status: AgentStatus) =>
+    set((st) => ({
+      messages: settleLive(st.messages),
+      streamingText: "",
+      reasoningText: "",
+      reasoningStartedAt: null,
+      status,
+      runEndedAt: Date.now(),
+      pendingStepId: null,
+      drivingTab: null,
+    }));
 
   /** Unconsumed queue returns to the composer — an ending run must not eat typed text. */
   const recallQueue = () => {
@@ -180,14 +189,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     const s = get();
     switch (event.type) {
       case "driving":
-        set({
-          drivingTab: {
-            tabId: event.tabId,
-            windowId: event.windowId,
-            title: event.title,
-            favIconUrl: event.favIconUrl,
-          },
-        });
+        // The event payload IS the chip's data — see DrivingPayload in protocol.
+        set({ drivingTab: event });
         break;
 
       case "token":
@@ -279,16 +282,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         flushStreaming();
         recallQueue();
         pushMsg(makeMsg("error", event.message));
-        set((st) => ({
-          messages: settleLive(st.messages),
-          streamingText: "",
-          status: "error",
-          // runStartedAt survives the run so the summary line can still show
-          // how long it went before it failed.
-          runEndedAt: Date.now(),
-          pendingStepId: null,
-          drivingTab: null,
-        }));
+        settleRun("error");
         break;
       }
 
@@ -299,16 +293,18 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         // done summary IS the answer, not a duplicate of something above.
         if (!sawAssistantText && event.summary) pushMsg(makeMsg("assistant", event.summary));
         recallQueue();
-        set((st) => ({
-          messages: settleLive(st.messages),
-          streamingText: "",
-          status: "idle",
-          runEndedAt: Date.now(),
-          pendingStepId: null,
-          drivingTab: null,
-        }));
+        settleRun("idle");
         break;
       }
+    }
+  };
+
+  /** Send if the port lives, swallow if it died — onDisconnect does the cleanup. */
+  const post = (cmd: Command) => {
+    try {
+      port?.postMessage(cmd);
+    } catch {
+      // Port already gone.
     }
   };
 
@@ -333,24 +329,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         pushMsg(makeMsg("error", i18n.t("chat.portLost")));
       }
       recallQueue();
-      set((st) => ({
-        messages: settleLive(st.messages),
-        streamingText: "",
-        reasoningText: "",
-        reasoningStartedAt: null,
-        status: "idle",
-        runEndedAt: Date.now(),
-        pendingStepId: null,
-        drivingTab: null,
-      }));
+      settleRun("idle");
     });
-    pingTimer ??= setInterval(() => {
-      try {
-        port?.postMessage({ type: "ping" } satisfies Command);
-      } catch {
-        // Port already gone — onDisconnect clears the timer.
-      }
-    }, 25_000);
+    pingTimer ??= setInterval(() => post({ type: "ping" }), 25_000);
     return p;
   };
 
@@ -410,22 +391,15 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     },
 
     queueMessage: (text) => {
-      const item = { id: nextId(), text };
+      const item = { id: crypto.randomUUID(), text };
       set({ queued: [...get().queued, item] });
-      try {
-        port?.postMessage({ type: "inject", ...item } satisfies Command);
-      } catch {
-        // Port gone — onDisconnect recalls the queue to the composer.
-      }
+      // Port gone mid-run: onDisconnect recalls the queue to the composer.
+      post({ type: "inject", ...item });
     },
 
     unqueueMessage: (id) => {
       set({ queued: get().queued.filter((q) => q.id !== id) });
-      try {
-        port?.postMessage({ type: "unqueue", id } satisfies Command);
-      } catch {
-        // Port gone — nothing to unqueue on the worker side.
-      }
+      post({ type: "unqueue", id });
     },
 
     recallQueued: () => {
@@ -433,11 +407,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       const last = queued[queued.length - 1];
       if (!last) return;
       set({ queued: queued.slice(0, -1), draft: last.text });
-      try {
-        port?.postMessage({ type: "unqueue", id: last.id } satisfies Command);
-      } catch {
-        // Port gone.
-      }
+      post({ type: "unqueue", id: last.id });
     },
 
     setDraft: (text) => set({ draft: text }),
@@ -457,7 +427,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     },
 
     stop: () => {
-      port?.postMessage({ type: "stop" } satisfies Command);
+      post({ type: "stop" });
+      // Deliberately NOT settleRun: the loop's done event arrives as the worker
+      // unwinds and flushes any partial stream into the transcript first.
       set((st) => ({
         messages: settleLive(st.messages),
         status: "idle",

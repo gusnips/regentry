@@ -27,21 +27,31 @@ interface ProvidersState {
 }
 
 let watchersStarted = false;
+/** Shared in-flight promise — App and the header chips mount together and must fetch once. */
+let loadPromise: Promise<void> | null = null;
 
 export const useProvidersStore = create<ProvidersState>((set, get) => ({
   providers: [],
   activeId: null,
   loaded: false,
 
-  load: async () => {
-    const [providers, activeId] = await Promise.all([getProviders(), getActiveProviderId()]);
-    set({ providers, activeId, loaded: true });
+  load: () => {
+    if (get().loaded) return Promise.resolve();
+    return (loadPromise ??= (async () => {
+      try {
+        const [providers, activeId] = await Promise.all([getProviders(), getActiveProviderId()]);
+        set({ providers, activeId, loaded: true });
 
-    if (!watchersStarted) {
-      watchersStarted = true;
-      watchProviders((providers) => set({ providers }));
-      watchActiveProvider((activeId) => set({ activeId }));
-    }
+        if (!watchersStarted) {
+          watchersStarted = true;
+          watchProviders((providers) => set({ providers }));
+          watchActiveProvider((activeId) => set({ activeId }));
+        }
+      } finally {
+        // A failed load stays retryable; a successful one is guarded by `loaded`.
+        loadPromise = null;
+      }
+    })());
   },
 
   add: async (input) => {

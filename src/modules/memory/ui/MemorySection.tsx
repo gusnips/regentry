@@ -5,6 +5,7 @@ import { Switch } from "@/components/Switch";
 import { TextArea } from "@/components/TextArea";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useStoredItem } from "@/components/useStoredItem";
 import { DOC_NAMES, getDoc, setDoc, watchDoc, memoryEnabled } from "../documents";
 import type { DocName } from "../documents";
 
@@ -140,12 +141,7 @@ function DocEditor({ name, inert }: { name: DocName; inert: boolean }) {
 export function MemorySection() {
   const { t } = useTranslation();
   const [active, setActive] = useState<DocName>("AGENTS.md");
-  const [enabled, setEnabled] = useState(true);
-
-  useEffect(() => {
-    void memoryEnabled.get().then(setEnabled);
-    return memoryEnabled.watch(setEnabled);
-  }, []);
+  const enabled = useStoredItem(memoryEnabled);
 
   const inert = active === "MEMORY.md" && !enabled;
 
@@ -164,10 +160,7 @@ export function MemorySection() {
           {t("memory.enable")}
           <Switch
             checked={enabled}
-            onChange={(v) => {
-              setEnabled(v);
-              void memoryEnabled.set(v);
-            }}
+            onChange={(v) => void memoryEnabled.set(v)}
             ariaLabel={t("memory.enable")}
           />
         </label>

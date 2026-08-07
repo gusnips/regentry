@@ -1,9 +1,5 @@
 import type { ChatProvider, ChatMessage, ToolDef, Delta, ResolvedProviderConfig } from "./types";
-import { ProviderError } from "./types";
-import { createLogger, truncate } from "@/lib/logger";
-import { i18n } from "@/i18n";
-
-const log = createLogger("openai");
+import { apiUrl, parseToolArgs, streamSse } from "./http";
 
 /**
  * OpenAI-shape adapter — works with any OpenAI-compatible endpoint.
@@ -12,134 +8,87 @@ const log = createLogger("openai");
 export function createOpenAIProvider(config: ResolvedProviderConfig): ChatProvider {
   return {
     async *stream(messages, tools, signal): AsyncIterable<Delta> {
-      const url = `${config.baseUrl.replace(/\/$/, "")}/chat/completions`;
-
-      const payload = JSON.stringify(buildOpenAIBody(config, messages, tools));
-      log.debug("request", {
-        url,
-        model: config.model,
-        messages: messages.length,
-        tools: tools.length,
-        effort: config.reasoningEffort ?? "default",
-        bytes: payload.length,
-      });
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${config.apiKey}`,
-        },
-        body: payload,
-        signal,
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        log.error(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
-        throw new ProviderError(
-          i18n.t("errors.apiError", {
-            provider: "OpenAI",
-            status: res.status,
-            detail: text || res.statusText,
-          }),
-          res.status,
-        );
-      }
-
-      if (!res.body) throw new Error(i18n.t("errors.noResponseBody"));
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
       // Accumulate tool call args across chunks (OpenAI streams them in pieces)
       const toolCallAccumulators = new Map<number, { id: string; name: string; args: string }>();
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      const stream = streamSse({
+        url: apiUrl(config.baseUrl, "/chat/completions"),
+        headers: { Authorization: `Bearer ${config.apiKey}` },
+        body: JSON.stringify(buildOpenAIBody(config, messages, tools)),
+        label: "OpenAI",
+        signal,
+        meta: {
+          model: config.model,
+          messages: messages.length,
+          tools: tools.length,
+          effort: config.reasoningEffort ?? "default",
+        },
+      });
 
-          buffer += decoder.decode(value, { stream: true });
+      for await (const data of stream) {
+        if (data === "[DONE]") {
+          for (const acc of toolCallAccumulators.values()) {
+            yield {
+              type: "tool_use",
+              id: acc.id,
+              name: acc.name,
+              args: parseToolArgs(acc.args),
+            };
+          }
+          yield { type: "done" };
+          return;
+        }
 
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
+        let chunk: OpenAIChunk;
+        try {
+          chunk = JSON.parse(data);
+        } catch {
+          continue;
+        }
 
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith("data:")) continue;
+        // Final usage chunk (stream_options.include_usage) — choices is empty
+        if (chunk.usage) {
+          yield {
+            type: "usage",
+            input: chunk.usage.prompt_tokens ?? 0,
+            output: chunk.usage.completion_tokens ?? 0,
+          };
+          continue;
+        }
 
-            const data = trimmed.slice(5).trim();
-            if (data === "[DONE]") {
-              // Emit accumulated tool calls
-              for (const acc of toolCallAccumulators.values()) {
-                let parsed: Record<string, unknown> = {};
-                try {
-                  parsed = acc.args ? JSON.parse(acc.args) : {};
-                } catch {
-                  // Partial JSON — skip, the model didn't finish
-                }
-                yield { type: "tool_use", id: acc.id, name: acc.name, args: parsed };
-              }
-              yield { type: "done" };
-              return;
-            }
+        const choice = chunk.choices?.[0];
+        if (!choice) continue;
 
-            let chunk: OpenAIChunk;
-            try {
-              chunk = JSON.parse(data);
-            } catch {
-              continue;
-            }
+        if (choice.finish_reason) {
+          yield { type: "finish", reason: mapFinishReason(choice.finish_reason) };
+        }
 
-            // Final usage chunk (stream_options.include_usage) — choices is empty
-            if (chunk.usage) {
-              yield {
-                type: "usage",
-                input: chunk.usage.prompt_tokens ?? 0,
-                output: chunk.usage.completion_tokens ?? 0,
-              };
-              continue;
-            }
+        const delta = choice.delta;
+        if (!delta) continue;
 
-            const choice = chunk.choices?.[0];
-            if (!choice) continue;
+        if (delta.reasoning_content) {
+          yield { type: "reasoning", text: delta.reasoning_content };
+        }
 
-            if (choice.finish_reason) {
-              yield { type: "finish", reason: mapFinishReason(choice.finish_reason) };
-            }
+        if (delta.content) {
+          yield { type: "text", text: delta.content };
+        }
 
-            const delta = choice.delta;
-            if (!delta) continue;
-
-            if (delta.reasoning_content) {
-              yield { type: "reasoning", text: delta.reasoning_content };
-            }
-
-            if (delta.content) {
-              yield { type: "text", text: delta.content };
-            }
-
-            if (delta.tool_calls) {
-              for (const tc of delta.tool_calls) {
-                const idx = tc.index ?? 0;
-                const acc = toolCallAccumulators.get(idx);
-                if (acc) {
-                  if (tc.function?.arguments) acc.args += tc.function.arguments;
-                } else {
-                  toolCallAccumulators.set(idx, {
-                    id: tc.id ?? `call_${idx}`,
-                    name: tc.function?.name ?? "",
-                    args: tc.function?.arguments ?? "",
-                  });
-                }
-              }
+        if (delta.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const idx = tc.index ?? 0;
+            const acc = toolCallAccumulators.get(idx);
+            if (acc) {
+              if (tc.function?.arguments) acc.args += tc.function.arguments;
+            } else {
+              toolCallAccumulators.set(idx, {
+                id: tc.id ?? `call_${idx}`,
+                name: tc.function?.name ?? "",
+                args: tc.function?.arguments ?? "",
+              });
             }
           }
         }
-      } finally {
-        reader.releaseLock();
       }
 
       yield { type: "done" };

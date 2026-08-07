@@ -1,32 +1,8 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { executeTool } from "../tools";
 import type { BrowserDriver } from "@/modules/browser";
-import { i18n } from "@/i18n";
-import en from "@/i18n/locales/en.json";
 
-// @/i18n's locale item reads wxt storage at module scope — no chrome in tests.
-vi.mock("wxt/utils/storage", () => ({
-  storage: {
-    defineItem: (_key: string, opts?: { fallback?: unknown }) => {
-      let value: unknown = opts?.fallback ?? null;
-      return {
-        getValue: async () => value,
-        setValue: async (v: unknown) => void (value = v),
-        removeValue: async () => void (value = null),
-        watch: () => () => {},
-      };
-    },
-  },
-}));
-
-beforeAll(async () => {
-  await i18n.init({
-    resources: { en: { translation: en } },
-    lng: "en",
-    interpolation: { escapeValue: false },
-    returnEmptyString: false,
-  });
-});
+// Storage stand-in and i18n come from src/test-setup.ts (vitest setupFiles).
 
 // `plan` is pure bookkeeping — it never reaches the driver, so an empty stub is
 // enough and a real one would only hide that fact.

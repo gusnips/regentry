@@ -1,26 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 
-// In-memory stand-in for chrome.storage.local — one entry per defineItem key,
-// which is what makes the per-conversation key scheme observable here.
-vi.mock("wxt/utils/storage", () => {
-  const values = new Map<string, unknown>();
-  return {
-    storage: {
-      defineItem: <T>(key: string, opts: { fallback: T }) => ({
-        getValue: () => Promise.resolve(values.has(key) ? (values.get(key) as T) : opts.fallback),
-        setValue: (v: T) => {
-          values.set(key, v);
-          return Promise.resolve();
-        },
-        removeValue: () => {
-          values.delete(key);
-          return Promise.resolve();
-        },
-        watch: () => () => {},
-      }),
-    },
-  };
-});
+// Storage stand-in and i18n come from src/test-setup.ts (vitest setupFiles).
 
 import {
   appendMessage,

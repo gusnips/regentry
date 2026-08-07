@@ -1,16 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 
-// The storage item is created at module load; jsdom has no browser.runtime.
-vi.mock("wxt/utils/storage", () => ({
-  storage: {
-    defineItem: <T>(_key: string, opts: { fallback: T }) => ({
-      getValue: () => Promise.resolve(opts.fallback),
-      setValue: () => Promise.resolve(),
-      removeValue: () => Promise.resolve(),
-      watch: () => () => {},
-    }),
-  },
-}));
+// Storage stand-in comes from src/test-setup.ts (vitest setupFiles).
 
 import { resolveDark } from "../theme";
 

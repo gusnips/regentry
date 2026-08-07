@@ -1,4 +1,5 @@
 import { defineItem } from "@/lib/storage";
+import { truncateTo } from "@/lib/format";
 import type { Message } from "./types";
 
 /** List-view metadata — the list reads only this, never the message arrays. */
@@ -50,7 +51,7 @@ export function setActiveConversation(id: string | null): Promise<void> {
 /** First line of the task, trimmed to fit a list row. */
 export function conversationTitle(text: string): string {
   const line = (text.trim().split("\n", 1)[0] ?? "").trim();
-  return line.length > TITLE_LENGTH ? `${line.slice(0, TITLE_LENGTH - 1)}…` : line;
+  return truncateTo(line, TITLE_LENGTH);
 }
 
 /**

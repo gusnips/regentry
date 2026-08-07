@@ -1,157 +1,92 @@
 import type { ChatProvider, ChatMessage, Delta, ResolvedProviderConfig, ToolDef } from "./types";
-import { ProviderError } from "./types";
-import { createLogger, truncate } from "@/lib/logger";
-import { i18n } from "@/i18n";
+import { anthropicHeaders, apiUrl, parseToolArgs, streamSse } from "./http";
 
-const log = createLogger("anthropic");
-
-/**
- * Anthropic-shape adapter.
- * Streams SSE from POST /v1/messages.
- *
- * ponytail: MV3 service worker with host_permissions should bypass CORS.
- * If a direct browser-access error occurs, the user may need to add the
- * 'anthropic-dangerous-direct-browser-access' header. We set it proactively.
- */
+/** Anthropic-shape adapter — streams SSE from POST /v1/messages. */
 export function createAnthropicProvider(config: ResolvedProviderConfig): ChatProvider {
   return {
     async *stream(messages, tools, signal): AsyncIterable<Delta> {
-      const url = `${config.baseUrl.replace(/\/$/, "")}/v1/messages`;
       let toolCallBuffer: { id: string; name: string; args: string } | null = null;
-
-      const payload = JSON.stringify(buildAnthropicBody(config, messages, tools));
-      log.debug("request", {
-        url,
-        model: config.model,
-        messages: messages.length,
-        tools: tools.length,
-        effort: config.reasoningEffort ?? "default",
-        bytes: payload.length,
-      });
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // Anthropic reads x-api-key; coding-plan proxies (Kimi, Z.ai, QwenCloud)
-          // read Authorization: Bearer. Send both — each server picks its own.
-          "x-api-key": config.apiKey,
-          Authorization: `Bearer ${config.apiKey}`,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
-        body: payload,
-        signal,
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        log.error(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
-        throw new ProviderError(
-          i18n.t("errors.apiError", {
-            provider: "Anthropic",
-            status: res.status,
-            detail: text || res.statusText,
-          }),
-          res.status,
-        );
-      }
-
-      if (!res.body) throw new Error(i18n.t("errors.noResponseBody"));
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
       let inputTokens = 0;
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      const stream = streamSse({
+        url: apiUrl(config.baseUrl, "/v1/messages"),
+        headers: anthropicHeaders(config.apiKey),
+        body: JSON.stringify(buildAnthropicBody(config, messages, tools)),
+        label: "Anthropic",
+        signal,
+        meta: {
+          model: config.model,
+          messages: messages.length,
+          tools: tools.length,
+          effort: config.reasoningEffort ?? "default",
+        },
+      });
 
-          buffer += decoder.decode(value, { stream: true });
+      for await (const data of stream) {
+        let event: AnthropicSSE;
+        try {
+          event = JSON.parse(data);
+        } catch {
+          continue;
+        }
 
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith("data:")) continue;
-
-            let event: AnthropicSSE;
-            try {
-              event = JSON.parse(trimmed.slice(5).trim());
-            } catch {
-              continue;
+        switch (event.type) {
+          case "message_start": {
+            inputTokens = event.message?.usage?.input_tokens ?? 0;
+            break;
+          }
+          case "message_delta": {
+            // Carries stop_reason and cumulative output usage
+            if (event.delta?.stop_reason) {
+              yield { type: "finish", reason: mapStopReason(event.delta.stop_reason) };
             }
-
-            switch (event.type) {
-              case "message_start": {
-                inputTokens = event.message?.usage?.input_tokens ?? 0;
-                break;
-              }
-              case "message_delta": {
-                // Carries stop_reason and cumulative output usage
-                if (event.delta?.stop_reason) {
-                  yield { type: "finish", reason: mapStopReason(event.delta.stop_reason) };
-                }
-                yield {
-                  type: "usage",
-                  input: inputTokens,
-                  output: event.usage?.output_tokens ?? 0,
-                };
-                break;
-              }
-              case "content_block_start": {
-                if (event.content_block?.type === "tool_use") {
-                  toolCallBuffer = {
-                    id: event.content_block.id ?? "",
-                    name: event.content_block.name ?? "",
-                    args: "",
-                  };
-                }
-                break;
-              }
-              case "content_block_delta": {
-                const delta = event.delta;
-                if (delta?.type === "text_delta") {
-                  yield { type: "text", text: delta.text ?? "" };
-                }
-                if (delta?.type === "thinking_delta") {
-                  yield { type: "reasoning", text: delta.thinking ?? "" };
-                }
-                if (delta?.type === "input_json_delta" && toolCallBuffer) {
-                  toolCallBuffer.args += delta.partial_json ?? "";
-                }
-                break;
-              }
-              case "content_block_stop": {
-                if (toolCallBuffer) {
-                  let parsed: Record<string, unknown> = {};
-                  try {
-                    parsed = toolCallBuffer.args ? JSON.parse(toolCallBuffer.args) : {};
-                  } catch {
-                    // Partial JSON
-                  }
-                  yield {
-                    type: "tool_use",
-                    id: toolCallBuffer.id,
-                    name: toolCallBuffer.name,
-                    args: parsed,
-                  };
-                  toolCallBuffer = null;
-                }
-                break;
-              }
-              case "message_stop": {
-                yield { type: "done" };
-                return;
-              }
+            yield {
+              type: "usage",
+              input: inputTokens,
+              output: event.usage?.output_tokens ?? 0,
+            };
+            break;
+          }
+          case "content_block_start": {
+            if (event.content_block?.type === "tool_use") {
+              toolCallBuffer = {
+                id: event.content_block.id ?? "",
+                name: event.content_block.name ?? "",
+                args: "",
+              };
             }
+            break;
+          }
+          case "content_block_delta": {
+            const delta = event.delta;
+            if (delta?.type === "text_delta") {
+              yield { type: "text", text: delta.text ?? "" };
+            }
+            if (delta?.type === "thinking_delta") {
+              yield { type: "reasoning", text: delta.thinking ?? "" };
+            }
+            if (delta?.type === "input_json_delta" && toolCallBuffer) {
+              toolCallBuffer.args += delta.partial_json ?? "";
+            }
+            break;
+          }
+          case "content_block_stop": {
+            if (toolCallBuffer) {
+              yield {
+                type: "tool_use",
+                id: toolCallBuffer.id,
+                name: toolCallBuffer.name,
+                args: parseToolArgs(toolCallBuffer.args),
+              };
+              toolCallBuffer = null;
+            }
+            break;
+          }
+          case "message_stop": {
+            yield { type: "done" };
+            return;
           }
         }
-      } finally {
-        reader.releaseLock();
       }
 
       yield { type: "done" };
@@ -259,8 +194,8 @@ function asBlocks(
   return typeof content === "string" ? [{ type: "text", text: content }] : content;
 }
 
-/** Exported for tests — see buildAnthropicBody for why the merge exists. */
-export function mergeConsecutiveUsers(messages: AnthropicMessage[]): AnthropicMessage[] {
+/** See buildAnthropicBody for why the merge exists. */
+function mergeConsecutiveUsers(messages: AnthropicMessage[]): AnthropicMessage[] {
   const merged: AnthropicMessage[] = [];
   for (const msg of messages) {
     const prev = merged[merged.length - 1];

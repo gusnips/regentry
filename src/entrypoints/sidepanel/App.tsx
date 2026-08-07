@@ -30,8 +30,8 @@ export default function App() {
   }, [connect, disconnect]);
 
   useEffect(() => {
-    if (!loaded) void load();
-  }, [loaded, load]);
+    void load(); // idempotent — the store dedupes concurrent mounts
+  }, [load]);
 
   const needsProvider = loaded && providers.length === 0;
 

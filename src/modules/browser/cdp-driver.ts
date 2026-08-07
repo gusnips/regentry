@@ -146,13 +146,15 @@ const KEY_MAP: Record<string, { key: string; code: string; vkc: number; text?: s
   space: { key: " ", code: "Space", vkc: 32, text: " " },
 };
 
+/** The supported key names. The model-facing press_key enum is built from this
+ *  list, so the schema the model sees and what the driver accepts can't drift. */
+export const SUPPORTED_KEYS = Object.keys(KEY_MAP);
+
 export async function pressKey(key: string): Promise<void> {
   const k = key.toLowerCase();
   const spec = KEY_MAP[k];
   if (!spec)
-    throw new Error(
-      i18n.t("errors.unsupportedKey", { key, supported: Object.keys(KEY_MAP).join(", ") }),
-    );
+    throw new Error(i18n.t("errors.unsupportedKey", { key, supported: SUPPORTED_KEYS.join(", ") }));
   const down: Record<string, unknown> = {
     type: "keyDown",
     key: spec.key,

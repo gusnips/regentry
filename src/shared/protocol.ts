@@ -23,31 +23,51 @@ export type Command =
 
 // ── Events (background → side panel) ────────────────────────────────
 
+/**
+ * Payload shapes named once here — the agent loop and the panel store import
+ * them instead of maintaining their own field-for-field copies.
+ */
+
+/** One finished tool call, as the panel renders it. */
+export interface StepPayload {
+  tool: string;
+  summary: string;
+  /** true = tool succeeded, false = tool failed, absent = neutral note (retry, warn) */
+  ok?: boolean;
+  /** Model-supplied arguments — the row's hint line and drill-down */
+  args?: Record<string, unknown>;
+  /** Result payload, truncated at the source. Behind a disclosure, never inline. */
+  detail?: string;
+  /** Screenshot data URLs — shown in the drill-down, dropped before storage */
+  images?: string[];
+}
+
+/**
+ * Which tab this run is driving — the panel is window-scoped and stays open
+ * on every tab, so the run names its target instead of leaving it a mystery.
+ */
+export interface DrivingPayload {
+  tabId: TabId;
+  windowId: number;
+  title: string;
+  favIconUrl?: string;
+}
+
+/** The agent's checklist — replaces the previous one rather than appending. */
+export interface PlanPayload {
+  steps: string[];
+  /** 0-based; equals steps.length once every step is finished. */
+  current: number;
+}
+
 export type Event =
-  /**
-   * Which tab this run is driving — the panel is window-scoped and stays open
-   * on every tab, so the run names its target instead of leaving it a mystery.
-   */
-  | { type: "driving"; tabId: TabId; windowId: number; title: string; favIconUrl?: string }
+  | ({ type: "driving" } & DrivingPayload)
   | { type: "token"; text: string }
   | { type: "reasoning"; text: string }
   /** A tool call is about to execute — the panel shows it as a live (spinning) row */
   | { type: "step_start"; tool: string; args?: Record<string, unknown> }
-  /** ok: true = tool succeeded, false = tool failed, absent = neutral note (retry, warn) */
-  | {
-      type: "step";
-      tool: string;
-      summary: string;
-      ok?: boolean;
-      /** Model-supplied arguments — the row's hint line and drill-down */
-      args?: Record<string, unknown>;
-      /** Result payload, truncated at the source. Behind a disclosure, never inline. */
-      detail?: string;
-      /** Screenshot data URLs — shown in the drill-down, dropped before storage */
-      images?: string[];
-    }
-  /** The agent's checklist — replaces the previous one rather than appending */
-  | { type: "plan"; steps: string[]; current: number }
+  | ({ type: "step" } & StepPayload)
+  | ({ type: "plan" } & PlanPayload)
   /** A queued message was inserted into the conversation at a tool boundary */
   | { type: "injected"; id: string; text: string }
   | { type: "usage"; input: number; output: number }

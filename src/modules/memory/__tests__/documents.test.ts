@@ -1,28 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 
-// In-memory stand-in for chrome.storage.local — one entry per defineItem key.
-const values = new Map<string, unknown>();
-vi.mock("wxt/utils/storage", () => ({
-  storage: {
-    defineItem: <T>(key: string, opts: { fallback: T }) => ({
-      getValue: () => Promise.resolve(values.has(key) ? (values.get(key) as T) : opts.fallback),
-      setValue: (v: T) => {
-        values.set(key, v);
-        return Promise.resolve();
-      },
-      removeValue: () => {
-        values.delete(key);
-        return Promise.resolve();
-      },
-      watch: () => () => {},
-    }),
-  },
-}));
+// Storage stand-in (reset between tests) and i18n come from src/test-setup.ts.
 
 import { remember, getDoc, setDoc, memoryEnabled, loadAgentContext } from "../documents";
 import { buildSystemPrompt, buildToolDefs } from "@/modules/agent/prompt";
-
-beforeEach(() => values.clear());
 
 describe("remember", () => {
   it("appends one bullet per fact", async () => {

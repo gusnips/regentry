@@ -1,23 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { buildOpenAIBody } from "../openai";
 import { buildAnthropicBody } from "../anthropic";
 import type { ChatMessage, ResolvedProviderConfig } from "../types";
 
-// The adapters import @/i18n, whose locale item reads wxt storage at module
-// scope — no chrome in tests, so stub the storage driver.
-vi.mock("wxt/utils/storage", () => ({
-  storage: {
-    defineItem: (_key: string, opts?: { fallback?: unknown }) => {
-      let value: unknown = opts?.fallback ?? null;
-      return {
-        getValue: async () => value,
-        setValue: async (v: unknown) => void (value = v),
-        removeValue: async () => void (value = null),
-        watch: () => () => {},
-      };
-    },
-  },
-}));
+// Storage stand-in comes from src/test-setup.ts (vitest setupFiles).
 
 const base: ResolvedProviderConfig = {
   id: "test",
@@ -77,5 +63,31 @@ describe("buildAnthropicBody", () => {
     const body = buildAnthropicBody({ ...anthropicBase, reasoningEffort: "none" }, messages, []);
     expect(body.thinking).toEqual({ type: "adaptive" });
     expect(body).not.toHaveProperty("output_config");
+  });
+
+  it("merges back-to-back user messages (tool_results + injected mid-run note)", () => {
+    // Anthropic rejects consecutive same-role messages; an injected user note
+    // lands right after the tool_results user message and must merge into it.
+    const body = buildAnthropicBody(
+      anthropicBase,
+      [
+        { role: "user", content: "Do the thing." },
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [{ id: "c1", name: "snapshot", args: {} }],
+        },
+        { role: "tool_results", content: "", toolResults: [{ id: "c1", content: "{}" }] },
+        { role: "user", content: "also check the footer" },
+      ],
+      [],
+    );
+    const msgs = body.messages as { role: string; content: unknown }[];
+    expect(msgs).toHaveLength(3);
+    expect(msgs[2]?.role).toBe("user");
+    expect(msgs[2]?.content).toEqual([
+      { type: "tool_result", tool_use_id: "c1", content: "{}" },
+      { type: "text", text: "also check the footer" },
+    ]);
   });
 });

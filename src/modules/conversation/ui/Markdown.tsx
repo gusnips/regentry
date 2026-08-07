@@ -1,3 +1,4 @@
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
@@ -65,11 +66,15 @@ const COMPONENTS: Components = {
  * Safe markdown for model output. react-markdown renders a React tree — raw
  * HTML in the text is escaped, never injected. That matters here: page content
  * flows through the model, so assistant text is not trusted input.
+ *
+ * Memoized: a re-parse is a full markdown AST walk, and the message list
+ * re-renders on every streamed token — without this, each tick would re-parse
+ * EVERY assistant bubble in the transcript, not just the one streaming.
  */
-export function Markdown({ children }: { children: string }) {
+export const Markdown = memo(function Markdown({ children }: { children: string }) {
   return (
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
       {children}
     </ReactMarkdown>
   );
-}
+});
