@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
+import { DrivenTabChip } from "./DrivenTabChip";
 import { planGlyph } from "./plan";
 import { useNow } from "./hooks";
 import { formatDuration, formatTokens } from "@/lib/format";
@@ -76,7 +77,9 @@ export function RunStatus() {
       <div className="flex items-center gap-2 text-sm">
         {/* One motion only — the shimmering verb is the live signal, so the dot stays still. */}
         <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500" />
-        <span className="shimmer-text font-semibold">{verb}…</span>
+        <span className="shimmer-text shrink-0 font-semibold">{verb}…</span>
+        {/* The run's target names itself here, where the run is narrated. */}
+        <DrivenTabChip />
         <span className="ml-auto shrink-0 font-mono text-xs text-brand-700/70 dark:text-brand-300/70">
           {formatDuration(now - runStartedAt)}
           {tokenNote}

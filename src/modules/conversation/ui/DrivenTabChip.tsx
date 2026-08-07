@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 
 /**
- * Header chip naming the tab the live run is driving — the panel is
- * window-scoped and stays open everywhere, so without this the run's target
- * is invisible. Lives in the header chip row, not the run card, so it never
- * hides among the plan rows; quiet on purpose, it appears when a run starts
- * and one click brings that tab to the front.
+ * Chip naming the tab the live run is driving — the panel is window-scoped
+ * and stays open everywhere, so without this the run's target is invisible.
+ * Lives on the live band's top line (run context, same lifecycle as the
+ * band), not the header: four variable-width items never fit that row, and
+ * the band already narrates the run. No dot of its own — the band's is the
+ * live signal. One click brings the tab to the front.
  */
 export function DrivenTabChip() {
   const { t } = useTranslation();
@@ -33,10 +34,8 @@ export function DrivenTabChip() {
       onClick={() => void focusTab()}
       title={t("run.drivingTabTip")}
       aria-label={t("run.drivingTabTip")}
-      className="flex min-w-0 max-w-[45%] cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+      className="flex min-w-0 max-w-[45%] cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs text-brand-800/90 hover:bg-brand-100 hover:text-brand-950 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-brand-200/90 dark:hover:bg-brand-900 dark:hover:text-brand-50"
     >
-      {/* The run card's live dot, smaller — ties the chip to the run without a loud band. */}
-      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
       {drivingTab.favIconUrl && drivingTab.favIconUrl !== failedIconUrl && (
         <img
           src={drivingTab.favIconUrl}
