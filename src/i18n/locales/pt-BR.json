@@ -201,7 +201,9 @@
       "Contemplando"
     ],
     "tokens": "{{count}} tokens",
-    "finished": "Concluído"
+    "finished": "Concluído",
+    "drivingTab": "em {{title}}",
+    "drivingTabTip": "Mostrar a aba que o Regent está controlando"
   },
   "errors": {
     "alreadyRunning": "Uma tarefa já está em execução. Pare-a primeiro.",

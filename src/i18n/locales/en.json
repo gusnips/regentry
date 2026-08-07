@@ -201,7 +201,9 @@
       "Contemplating"
     ],
     "tokens": "{{count}} tokens",
-    "finished": "Done"
+    "finished": "Done",
+    "drivingTab": "on {{title}}",
+    "drivingTabTip": "Show the tab Regent is controlling"
   },
   "errors": {
     "alreadyRunning": "A task is already running. Stop it first.",

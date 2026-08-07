@@ -201,7 +201,9 @@
       "Contemplando"
     ],
     "tokens": "{{count}} tokens",
-    "finished": "Listo"
+    "finished": "Listo",
+    "drivingTab": "en {{title}}",
+    "drivingTabTip": "Mostrar la pestaña que Regent está controlando"
   },
   "errors": {
     "alreadyRunning": "Ya hay una tarea en ejecución. Deténla primero.",
