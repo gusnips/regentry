@@ -7,11 +7,11 @@ import {
   conversationTitle,
   deleteConversation,
   getActiveId,
-  getLastTab,
+  getConversationTabs,
   getMessages,
   listConversations,
+  recordDrivenTab,
   setActiveConversation,
-  setLastTab,
 } from "../conversations";
 import type { Message } from "../types";
 
@@ -76,27 +76,48 @@ describe("conversations", () => {
     expect(await getMessages(id)).toHaveLength(1);
   });
 
-  it("remembers the last driven tab per conversation", async () => {
-    expect(await getLastTab()).toBeNull(); // fresh chat — no run yet
+  it("remembers the tabs a conversation's runs drove, newest first", async () => {
+    expect(await getConversationTabs()).toEqual([]); // fresh chat — no run yet
 
     const first = await appendMessage(msg("user", "check gmail"));
-    await setLastTab({ url: "https://mail.google.com/", title: "Inbox", tabId: 7 });
-    expect(await getLastTab()).toEqual({
-      url: "https://mail.google.com/",
-      title: "Inbox",
-      tabId: 7,
-    });
+    await recordDrivenTab({ url: "https://mail.google.com/", title: "Inbox", tabId: 7 });
+    await recordDrivenTab({ url: "https://docs.google.com/d/1", title: "Q3 Invoice", tabId: 9 });
+    expect((await getConversationTabs()).map((t) => t.url)).toEqual([
+      "https://docs.google.com/d/1",
+      "https://mail.google.com/",
+    ]);
 
-    // Later appends rewrite the index row without dropping the field.
+    // Re-driving a tab moves it back to the front instead of duplicating it.
+    await recordDrivenTab({ url: "https://mail.google.com/", title: "Inbox", tabId: 7 });
+    expect((await getConversationTabs()).map((t) => t.url)).toEqual([
+      "https://mail.google.com/",
+      "https://docs.google.com/d/1",
+    ]);
+
+    // Later appends rewrite the index row without dropping the list.
     await appendMessage(msg("assistant", "done"));
-    expect(await getLastTab()).toMatchObject({ url: "https://mail.google.com/" });
+    expect(await getConversationTabs()).toHaveLength(2);
 
     // Another conversation starts with no history of its own.
     await setActiveConversation(null);
     await appendMessage(msg("user", "unrelated task"));
-    expect(await getLastTab()).toBeNull();
+    expect(await getConversationTabs()).toEqual([]);
 
     await setActiveConversation(first);
-    expect(await getLastTab()).toMatchObject({ url: "https://mail.google.com/" });
+    expect((await getConversationTabs()).map((t) => t.url)).toEqual([
+      "https://mail.google.com/",
+      "https://docs.google.com/d/1",
+    ]);
+  });
+
+  it("caps the tab list so a long multi-tab session stays bounded", async () => {
+    await appendMessage(msg("user", "many tabs"));
+    for (let i = 0; i < 8; i++) {
+      await recordDrivenTab({ url: `https://site${i}.com/`, title: `Site ${i}` });
+    }
+    const tabs = await getConversationTabs();
+    expect(tabs).toHaveLength(5);
+    expect(tabs[0]?.url).toBe("https://site7.com/"); // newest work first
+    expect(tabs.map((t) => t.url)).not.toContain("https://site2.com/"); // oldest evicted
   });
 });

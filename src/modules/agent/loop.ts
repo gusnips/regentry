@@ -57,10 +57,10 @@ export interface LoopOptions {
   /** Data-URL images the user attached to the task, referenced in the text as "[Image #1]". */
   images?: string[];
   /**
-   * Where the conversation's previous run drove — set only when it differs from
-   * this run's tab, so a continuation typed elsewhere can still find its way back.
+   * The tabs the conversation's earlier runs drove — set only for ones this run
+   * is not on, so a continuation typed elsewhere can still find its way back.
    */
-  previousTab?: PreviousTab;
+  previousTabs?: PreviousTab[];
   /**
    * Messages the user typed mid-run, drained at each tool boundary. Inserting
    * them between tool batches (not mid-stream) keeps every provider wire valid
@@ -83,6 +83,7 @@ function backoffMs(attempt: number): number {
 
 interface TurnResult {
   text: string;
+  reasoning: string;
   toolCalls: ToolCall[];
   truncated: boolean;
 }
@@ -102,6 +103,7 @@ async function streamTurn(
 ): Promise<TurnResult> {
   for (let attempt = 1; ; attempt++) {
     let text = "";
+    let reasoning = "";
     const toolCalls: ToolCall[] = [];
     let emitted = false;
     let truncated = false;
@@ -113,11 +115,13 @@ async function streamTurn(
           text += handled;
           emitted = true;
         }
+        // Committed for provider echo (ChatMessage.reasoning) — display happens in handleDelta.
+        if (delta.type === "reasoning") reasoning += delta.text;
         if (delta.type === "tool_use") emitted = true;
         if (delta.type === "usage") callbacks.onUsage?.(delta.input, delta.output);
         if (delta.type === "finish" && delta.reason === "length") truncated = true;
       }
-      return { text, toolCalls, truncated };
+      return { text, reasoning, toolCalls, truncated };
     } catch (e) {
       if (signal.aborted) throw e;
       const canRetry = !emitted && attempt < MAX_STREAM_ATTEMPTS && isRetryable(e);
@@ -141,7 +145,7 @@ async function streamTurn(
  * Agent loop: snapshot → prompt → stream → execute tools → repeat until done or max steps.
  */
 export async function runAgentLoop(opts: LoopOptions): Promise<void> {
-  const { provider, driver, task, images, previousTab, drainInjected, signal, callbacks } = opts;
+  const { provider, driver, task, images, previousTabs, drainInjected, signal, callbacks } = opts;
   log.info("run started:", truncate(task, 120));
 
   // AGENTS.md / MEMORY.md are read once, here: a run keeps the context it started
@@ -155,7 +159,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
     { role: "system", content: buildSystemPrompt(context, currentLanguageName()) },
     {
       role: "user",
-      content: buildTaskMessage(task, initial.pageContent, previousTab),
+      content: buildTaskMessage(task, initial.pageContent, previousTabs),
       // The user's own attachments are the subject of the task — unlike screenshots
       // they are never pruned, or a long run would forget what it was asked about.
       ...(images?.length ? { images } : {}),
@@ -206,6 +210,8 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
     messages.push({
       role: "assistant",
       content: turn.text,
+      // Echoed back on later turns — DeepSeek's thinking mode 400s without it.
+      ...(turn.reasoning ? { reasoning: turn.reasoning } : {}),
       toolCalls: turn.toolCalls.length > 0 ? turn.toolCalls : undefined,
     });
 

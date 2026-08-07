@@ -2,7 +2,7 @@ import { defineItem } from "@/lib/storage";
 import { truncateTo } from "@/lib/format";
 import type { Message } from "./types";
 
-/** The tab the conversation's last run drove — lets the next run spot a tab change. */
+/** A tab the conversation's runs drove — lets the next run spot a tab change. */
 export interface LastTab {
   /** The comparison key: tab ids die with their tabs, urls survive them. */
   url: string;
@@ -19,7 +19,8 @@ export interface ConversationMeta {
   createdAt: number;
   updatedAt: number;
   messageCount: number;
-  lastTab?: LastTab;
+  /** Tabs this conversation's runs drove, most recently worked first. */
+  tabs?: LastTab[];
 }
 
 // ponytail: fixed caps keep chrome.storage.local under quota — unbounded
@@ -58,21 +59,34 @@ export function setActiveConversation(id: string | null): Promise<void> {
   return activeItem.set(id);
 }
 
-/** The tab the active conversation's last run drove, if any. */
-export async function getLastTab(): Promise<LastTab | null> {
+/**
+ * A conversation spans the tabs its runs drove — one run per message, and the
+ * user moves between messages. The list is the run-start note's source, so it
+ * stays short: deduped by url, newest work first, capped.
+ */
+const MAX_CONVERSATION_TABS = 5;
+
+/** The tabs the active conversation's runs drove, most recently worked first. */
+export async function getConversationTabs(): Promise<LastTab[]> {
   const activeId = await activeItem.get();
-  if (!activeId) return null;
+  if (!activeId) return [];
   const row = (await indexItem.get()).find((c) => c.id === activeId);
-  return row?.lastTab ?? null;
+  return row?.tabs ?? [];
 }
 
-/** Records where this run drove, so the next run can tell the model if it moved. */
-export async function setLastTab(tab: LastTab): Promise<void> {
+/** Records where this run drove — re-driving a tab moves it back to the front. */
+export async function recordDrivenTab(tab: LastTab): Promise<void> {
   const activeId = await activeItem.get();
   if (!activeId) return;
   const list = await indexItem.get();
   if (!list.some((c) => c.id === activeId)) return;
-  await indexItem.set(list.map((c) => (c.id === activeId ? { ...c, lastTab: tab } : c)));
+  await indexItem.set(
+    list.map((c) =>
+      c.id === activeId
+        ? { ...c, tabs: [tab, ...(c.tabs ?? []).filter((t) => t.url !== tab.url)].slice(0, MAX_CONVERSATION_TABS) }
+        : c,
+    ),
+  );
 }
 
 /** First line of the task, trimmed to fit a list row. */

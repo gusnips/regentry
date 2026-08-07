@@ -45,6 +45,15 @@ export interface ModelInfo {
 export interface ChatMessage {
   role: "system" | "user" | "assistant" | "tool_results";
   content: string;
+  /**
+   * The model's reasoning on an assistant turn. Thinking-mode providers demand
+   * it echoed verbatim (DeepSeek 400s on tool-call turns without it), so the
+   * loop commits it even though the panel treats reasoning as display-only.
+   * OpenAI-shape serializes it as `reasoning_content`; Anthropic-shape drops
+   * it — its thinking blocks carry signatures we never capture. Loop-local:
+   * transcripts persist the panel's own rows, never the wire conversation.
+   */
+  reasoning?: string;
   toolCalls?: ToolCall[];
   /** Results of tool calls from the previous assistant turn. Adapters serialize
    *  differently: OpenAI expands to N role:tool messages, Anthropic collapses
@@ -95,8 +104,9 @@ export interface JSONSchemaProperty {
 /** Streaming delta from the provider. */
 export type Delta =
   | { type: "text"; text: string }
-  /** Model reasoning (Anthropic thinking blocks, OpenAI-shape reasoning_content) — display only,
-   *  never committed to the outgoing conversation. */
+  /** Model reasoning (Anthropic thinking blocks, OpenAI-shape reasoning_content) — the panel
+   *  displays it live; the loop also commits it on the assistant turn for providers that
+   *  demand it echoed (see ChatMessage.reasoning). */
   | { type: "reasoning"; text: string }
   | { type: "tool_use"; id: string; name: string; args: Record<string, unknown> }
   | { type: "usage"; input: number; output: number }

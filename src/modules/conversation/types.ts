@@ -20,6 +20,13 @@ export interface Message {
    * see `stripTransient` in conversations.ts for why.
    */
   images?: string[];
+  /**
+   * For user messages: the tab they were sent from — a message is anchored to
+   * the page it meant, and a conversation can span several tabs. Only the
+   * message that starts a run is stamped; mid-run injections belong to the
+   * run's own tab and carry none.
+   */
+  tab?: { title: string; url: string; favIconUrl?: string };
   /** For plan messages: the checklist, rewritten in place on every update */
   steps?: string[];
   /** For plan messages: 0-based index of the step in progress */

@@ -153,7 +153,9 @@ type OpenAIPart =
 
 interface OpenAIMessage {
   role: "system" | "user" | "assistant" | "tool";
-  content: string | null | OpenAIPart[];
+  content: string | OpenAIPart[];
+  /** Thinking-mode reasoning echoed back — DeepSeek 400s without it; others ignore it. */
+  reasoning_content?: string;
   tool_call_id?: string;
   tool_calls?: OpenAIToolCall[];
 }
@@ -190,18 +192,18 @@ export function toOpenAIMessages(msg: ChatMessage): OpenAIMessage[] {
       { role: "user", content: [{ type: "text", text: msg.content }, ...imageParts(msg.images)] },
     ];
   }
-  if (msg.role === "assistant" && msg.toolCalls) {
-    return [
-      {
-        role: "assistant" as const,
-        content: msg.content || null,
-        tool_calls: msg.toolCalls.map((tc): OpenAIToolCall => ({
-          id: tc.id,
-          type: "function",
-          function: { name: tc.name, arguments: JSON.stringify(tc.args) },
-        })),
-      },
-    ];
+  if (msg.role === "assistant") {
+    // Never null — DeepSeek's strict deserializer reads it as a missing field.
+    const out: OpenAIMessage = { role: "assistant", content: msg.content || "" };
+    if (msg.reasoning) out.reasoning_content = msg.reasoning;
+    if (msg.toolCalls) {
+      out.tool_calls = msg.toolCalls.map((tc): OpenAIToolCall => ({
+        id: tc.id,
+        type: "function",
+        function: { name: tc.name, arguments: JSON.stringify(tc.args) },
+      }));
+    }
+    return [out];
   }
   return [{ role: msg.role, content: msg.content }];
 }

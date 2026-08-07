@@ -410,7 +410,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       }
     },
 
-    sendTask: (task, images) => {
+    sendTask: async (task, images) => {
       if (get().status === "running") return;
       // The port dies with the worker — reconnect lazily instead of eating the task.
       let p: chrome.runtime.Port;
@@ -420,7 +420,23 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         pushMsg(makeMsg("error", i18n.t("chat.reloaded")));
         return;
       }
-      pushMsg(makeMsg("user", task, images?.length ? { images } : undefined));
+      // The message is anchored to the tab it was sent from. The panel queries
+      // its own window here — the send-time fact — while the background's own
+      // query stays the authority on what the run drives.
+      let tab: Message["tab"];
+      try {
+        const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (active?.url) {
+          tab = {
+            title: active.title ?? "",
+            url: active.url,
+            ...(active.favIconUrl ? { favIconUrl: active.favIconUrl } : {}),
+          };
+        }
+      } catch {
+        // No stamp — the run still gets its tab from the background.
+      }
+      pushMsg(makeMsg("user", task, { ...(images?.length ? { images } : {}), ...(tab ? { tab } : {}) }));
       startRun(p, task, images);
     },
 

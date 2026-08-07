@@ -2,7 +2,7 @@ import { initI18n, i18n } from "@/i18n";
 import { runAgentLoop } from "@/modules/agent";
 import { createDriver, showAgentIndicator, hideAgentIndicator } from "@/modules/browser";
 import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
-import { appendMessage, getLastTab, setLastTab } from "@/modules/conversation";
+import { appendMessage, getConversationTabs, recordDrivenTab } from "@/modules/conversation";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
@@ -59,14 +59,13 @@ export default defineBackground(() => {
             return;
           }
 
-          // The user submitted from this window's active tab — but the conversation's
-          // previous run may have worked somewhere else. Name that tab so references
-          // like "now archive that email" can find their way back (rule 6 does the rest).
-          const lastTab = await getLastTab();
-          const previousTab =
-            lastTab && tab.url && lastTab.url !== tab.url
-              ? { title: lastTab.title, url: lastTab.url }
-              : undefined;
+          // The user submitted from this window's active tab — but the conversation
+          // may have worked elsewhere (one run per message, and users move between
+          // messages). Name those tabs so references like "that email" or "the doc"
+          // can find their way back (rule 6 does the rest).
+          const previousTabs = tab.url
+            ? (await getConversationTabs()).filter((t) => t.url !== tab.url)
+            : [];
 
           log.info("run queued", {
             provider: providerConfig.name,
@@ -127,7 +126,7 @@ export default defineBackground(() => {
               driver,
               task: msg.task,
               images: msg.images,
-              previousTab,
+              previousTabs: previousTabs.length > 0 ? previousTabs : undefined,
               drainInjected: () => injectedQueue.splice(0, injectedQueue.length),
               signal: abortController.signal,
               callbacks: {
@@ -231,7 +230,7 @@ async function persistDrivenTab(tabId: number): Promise<void> {
   try {
     const tab = await chrome.tabs.get(tabId);
     if (!tab.url) return;
-    await setLastTab({ url: tab.url, title: tab.title ?? "", tabId });
+    await recordDrivenTab({ url: tab.url, title: tab.title ?? "", tabId });
   } catch {
     // The tab died during the run — nothing left to remember.
   }

@@ -30,6 +30,38 @@ describe("buildOpenAIBody", () => {
     const body = buildOpenAIBody({ ...base, reasoningEffort: "max" }, messages, []);
     expect(body.reasoning_effort).toBe("max");
   });
+
+  it("serializes tool-call assistant turns with string content and echoed reasoning", () => {
+    // DeepSeek's strict deserializer reads null/absent content as a missing field,
+    // and its thinking mode 400s unless reasoning_content is passed back verbatim.
+    const body = buildOpenAIBody(
+      base,
+      [
+        { role: "user", content: "Do the thing." },
+        {
+          role: "assistant",
+          content: "",
+          reasoning: "let me look at the page",
+          toolCalls: [{ id: "c1", name: "snapshot", args: {} }],
+        },
+        { role: "tool_results", content: "", toolResults: [{ id: "c1", content: "{}" }] },
+      ],
+      [],
+    );
+    const msgs = body.messages as Record<string, unknown>[];
+    expect(msgs[1]).toMatchObject({
+      role: "assistant",
+      content: "",
+      reasoning_content: "let me look at the page",
+    });
+    expect(msgs[1]?.tool_calls).toHaveLength(1);
+  });
+
+  it("omits reasoning_content when the turn had no reasoning", () => {
+    const body = buildOpenAIBody(base, [{ role: "assistant", content: "done" }], []);
+    const msgs = body.messages as Record<string, unknown>[];
+    expect(msgs[0]).not.toHaveProperty("reasoning_content");
+  });
 });
 
 describe("buildAnthropicBody", () => {

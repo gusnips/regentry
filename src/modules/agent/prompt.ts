@@ -75,7 +75,7 @@ export function buildSystemPrompt(ctx: AgentContext, language: string): string {
   return sections.join("\n\n");
 }
 
-/** Where the previous run in this conversation drove, when it is not this run's tab. */
+/** A tab earlier runs in this conversation drove, when it is not this run's tab. */
 export interface PreviousTab {
   title: string;
   url: string;
@@ -83,20 +83,24 @@ export interface PreviousTab {
 
 /**
  * The first user message: the task plus the runtime context the model starts with.
- * The previous-tab pointer only appears when the user submitted from somewhere
- * else than the last run's tab, so "now archive that email" can still find Gmail
- * even though the run started on Docs. Runs stay stateless — this names WHERE the
- * prior work lives, never what it did.
+ * The previous-tab pointer only appears when the conversation has worked somewhere
+ * the user is not, so "now archive that email" can still find Gmail even though
+ * the run started on Docs. Runs stay stateless — this names WHERE the prior work
+ * lives, never what it did.
  */
 export function buildTaskMessage(
   task: string,
   pageContent: string,
-  previousTab?: PreviousTab,
+  previousTabs?: PreviousTab[],
 ): string {
   const parts = [`Task: ${task}`, `Current page:\n${pageContent}`];
-  if (previousTab) {
+  const count = previousTabs?.length ?? 0;
+  if (count > 0 && previousTabs) {
+    const list = previousTabs.map((t) => `"${t.title}" (${t.url})`).join("; ");
     parts.push(
-      `The previous work in this conversation happened on another tab: "${previousTab.title}" (${previousTab.url}). If this task refers back to it, return there with list_tabs and switch_tab — or navigate to that url if the tab is gone.`,
+      count === 1
+        ? `The previous work in this conversation happened on another tab: ${list}. If this task refers back to it, return there with list_tabs and switch_tab — or navigate to the url if the tab is gone.`
+        : `Earlier work in this conversation happened on other tabs: ${list}. If this task refers back to any of them, return there with list_tabs and switch_tab — or navigate to its url if a tab is gone.`,
     );
   }
   return parts.join("\n\n");
