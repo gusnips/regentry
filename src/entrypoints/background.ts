@@ -1,6 +1,7 @@
 import { runAgentLoop } from "@/modules/agent";
 import { createDriver } from "@/modules/browser";
 import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
+import { appendMessage } from "@/modules/conversation";
 import { log } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
@@ -26,7 +27,8 @@ export default defineBackground(() => {
           if (!providerConfig) {
             send(port, {
               type: "error",
-              message: "No provider configured. Add one in Settings.",
+              message:
+                "No active provider — pick one in the panel dropdown, or add one in Settings.",
             });
             return;
           }
@@ -37,7 +39,6 @@ export default defineBackground(() => {
             return;
           }
 
-          abortController = new AbortController();
           // Resolve "auto" model to a concrete id at run start — mid-task
           // changes to the stored config never affect a run in flight.
           let provider;
@@ -47,9 +48,9 @@ export default defineBackground(() => {
             send(port, { type: "error", message: e instanceof Error ? e.message : String(e) });
             return;
           }
-          const driver = createDriver(tab.id);
 
-          send(port, { type: "token", text: `Starting: ${msg.task}\n\n` });
+          abortController = new AbortController();
+          const driver = createDriver(tab.id);
 
           try {
             await runAgentLoop({
@@ -59,13 +60,10 @@ export default defineBackground(() => {
               signal: abortController.signal,
               callbacks: {
                 onToken: (text) => send(port, { type: "token", text }),
-                onStep: (tool, summary) => send(port, { type: "step", tool, summary }),
-                onToolCall: (tool, args) => send(port, { type: "tool_call", tool, args }),
-                onToolResult: (tool, ok, detail) =>
-                  send(port, { type: "tool_result", tool, ok, detail }),
+                onStep: (tool, summary, ok) => send(port, { type: "step", tool, summary, ok }),
                 onUsage: (input, output) => send(port, { type: "usage", input, output }),
                 onError: (message) => send(port, { type: "error", message }),
-                onDone: () => send(port, { type: "done" }),
+                onDone: (summary) => send(port, { type: "done", summary }),
               },
             });
           } catch (e) {
@@ -80,22 +78,28 @@ export default defineBackground(() => {
         case "stop": {
           abortController?.abort();
           abortController = null;
+          // Flush the partial stream immediately — the loop's own done arrives
+          // as it unwinds and is a harmless no-op in the panel.
           send(port, { type: "done" });
-          break;
-        }
-
-        case "pause": {
-          // ponytail: pause not implemented in v1 — abort acts as stop.
-          // Upgrade: track promise, resume by re-streaming with stored messages.
-          log.debug("pause received — not yet implemented, use stop");
           break;
         }
       }
     });
 
     port.onDisconnect.addListener(() => {
-      abortController?.abort();
-      abortController = null;
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
+        // Best-effort breadcrumb so a reopened panel doesn't read as if the
+        // agent simply never replied — the worker may die before this lands.
+        void appendMessage({
+          id: `m${Date.now()}-bg`,
+          role: "step",
+          tool: "interrupted",
+          content: "Side panel closed — the run was stopped",
+          timestamp: Date.now(),
+        });
+      }
       log.debug("side panel disconnected");
     });
   });

@@ -6,6 +6,8 @@ export interface Message {
   content: string;
   /** For step messages: which tool ran */
   tool?: string;
+  /** For step messages: whether the tool call succeeded (absent = neutral note) */
+  ok?: boolean;
   timestamp: number;
 }
 

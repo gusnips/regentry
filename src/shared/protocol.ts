@@ -5,18 +5,18 @@
 
 // ── Commands (side panel → background) ──────────────────────────────
 
-export type Command = { type: "run"; task: string } | { type: "stop" } | { type: "pause" };
+export type Command = { type: "run"; task: string } | { type: "stop" };
 
 // ── Events (background → side panel) ────────────────────────────────
 
 export type Event =
   | { type: "token"; text: string }
-  | { type: "step"; tool: string; summary: string }
-  | { type: "tool_call"; tool: string; args: Record<string, unknown> }
-  | { type: "tool_result"; tool: string; ok: boolean; detail?: string }
+  /** ok: true = tool succeeded, false = tool failed, absent = neutral note (retry, warn) */
+  | { type: "step"; tool: string; summary: string; ok?: boolean }
   | { type: "usage"; input: number; output: number }
   | { type: "error"; message: string }
-  | { type: "done" };
+  /** summary is the done tool's final answer — present when the model ends on a tool-only turn */
+  | { type: "done"; summary?: string };
 
 // ── Port name ────────────────────────────────────────────────────────
 

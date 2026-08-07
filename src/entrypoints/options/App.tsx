@@ -1,4 +1,5 @@
-import { ProviderForm, ProviderList } from "@/modules/providers/ui";
+import { AddProviderDialog, ProviderList } from "@/modules/providers/ui";
+import { Button } from "@/components/Button";
 
 export default function App() {
   return (
@@ -8,12 +9,13 @@ export default function App() {
         Regent settings
       </h1>
 
-      <ProviderList />
-
       <section className="mt-6">
-        <h2 className="text-sm font-medium text-neutral-700">Add provider</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-neutral-900">Providers</h2>
+          <AddProviderDialog trigger={<Button size="sm">Add provider</Button>} />
+        </div>
         <div className="mt-3">
-          <ProviderForm />
+          <ProviderList />
         </div>
       </section>
     </div>

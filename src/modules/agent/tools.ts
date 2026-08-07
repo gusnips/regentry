@@ -29,6 +29,10 @@ export async function executeTool(call: ToolCall, driver: BrowserDriver): Promis
         await driver.type(call.args.text as string);
         return { ok: true };
 
+      case "press_key":
+        await driver.key(call.args.key as string);
+        return { ok: true };
+
       case "scroll_down":
         await driver.scrollDown(call.args.amount as number | undefined);
         return { ok: true };

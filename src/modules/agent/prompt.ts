@@ -7,6 +7,7 @@ Your capabilities:
 - Take accessibility-tree snapshots of the current page
 - Click elements (by ref id from snapshot)
 - Type text into fields
+- Press special keys (Enter to submit a form, Tab, Escape, arrows)
 - Scroll the page
 - Take screenshots
 - Signal task completion
@@ -70,6 +71,33 @@ export const TOOL_DEFS: ToolDef[] = [
         text: { type: "string", description: "Text to type" },
       },
       required: ["text"],
+    },
+  },
+  {
+    name: "press_key",
+    description:
+      "Press a special key on the focused element — e.g. Enter to submit a form after typing, Escape to dismiss a menu or dialog.",
+    params: {
+      type: "object",
+      properties: {
+        key: {
+          type: "string",
+          description: "The key to press",
+          enum: [
+            "enter",
+            "tab",
+            "escape",
+            "backspace",
+            "delete",
+            "arrowup",
+            "arrowdown",
+            "arrowleft",
+            "arrowright",
+            "space",
+          ],
+        },
+      },
+      required: ["key"],
     },
   },
   {

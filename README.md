@@ -36,6 +36,8 @@ your provider.
   Claude Code-style.
 - **Reasoning effort control** — optional per-provider effort (`none` → `max`), mapped to each
   wire format; omitted entirely when you want provider defaults.
+- **Auto model resolution** — leave the model on Auto and Regent runs the newest model the
+  endpoint lists; pin a model and effort per task from the panel header.
 - **Your data stays local** — provider configs and history live in `chrome.storage`. There is no
   Regent server.
 

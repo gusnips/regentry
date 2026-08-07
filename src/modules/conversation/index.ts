@@ -1,0 +1,1 @@
+export { appendMessage } from "./history";

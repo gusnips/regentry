@@ -40,19 +40,21 @@ never reach the service-worker bundle.
   Background-only.
 - `browser/` — accessibility-tree snapshot (injected script), CDP driver (trusted input),
   unified driver seam. Background-only.
-- `providers/` — OpenAI/Anthropic adapters, presets, storage, config UI. Adding a provider is a
-  data change in `presets.ts` — never a code change elsewhere.
+- `providers/` — OpenAI/Anthropic adapters, presets, storage, config UI (add/edit dialog,
+  list, per-task header picker, first-run onboarding). Adding a provider is a data change in
+  `presets.ts` — never a code change elsewhere.
 - `conversation/` — history, message types, chat UI (MessageList, ChatInput, RunStatus).
 - `shared/` — Port protocol, shared types, brand mark (`logo.ts`).
-- `src/components/` — cross-domain Base UI primitives: Button, Select, TextField, ConfirmDialog.
+- `src/components/` — cross-domain Base UI primitives: Button, Select, TextField, PasswordField,
+  TextArea, ConfirmDialog.
 - `src/lib/` — storage helpers, logger, Tailwind theme tokens (`brand-*` purple scale).
 
 ### Data flow
 
-| Channel                        | What                                         | Why                                                |
-| ------------------------------ | -------------------------------------------- | -------------------------------------------------- |
-| `@wxt-dev/storage` + `watch()` | Settings, provider configs, history          | Cross-context pub/sub, zero messaging code         |
-| Port (`runtime.connect`)       | Token deltas, step events, run/stop commands | Streaming; an open Port keeps the MV3 worker alive |
+| Channel                         | What                                         | Why                                                |
+| ------------------------------- | -------------------------------------------- | -------------------------------------------------- |
+| `wxt/utils/storage` + `watch()` | Settings, provider configs, history          | Cross-context pub/sub, zero messaging code         |
+| Port (`runtime.connect`)        | Token deltas, step events, run/stop commands | Streaming; an open Port keeps the MV3 worker alive |
 
 ## Provider wire contracts (the load-bearing details)
 
@@ -71,6 +73,9 @@ never reach the service-worker bundle.
   come back as a clean provider 400, surfaced in chat — we never sniff model names.
 - **Stream retry** happens in place (agent loop) with full-jitter backoff, only while nothing
   has been emitted yet — the UI never sees replayed tokens.
+- **Stop is not an error.** User abort is normal control flow: the loop ends with `done`, never
+  a red bubble. The `done` event carries the model's final summary — on tool-only final turns it
+  IS the answer, so the panel renders it when no text was streamed.
 - **Model lists are live, presets are fallback.** `listModels` (`models.ts`) reads
   `GET {base}/v1/models` (Anthropic-shape) or `GET {base}/models` (OpenAI-shape, non-chat ids
   filtered). `ProviderConfig.model` is optional — absent means auto, resolved at run start by

@@ -8,7 +8,6 @@ interface ConversationState {
   messages: Message[];
   status: AgentStatus;
   streamingText: string;
-  error: string | null;
   /** Cumulative token usage for the current/last run */
   usage: { input: number; output: number };
   /** Epoch ms when the current run started (drives the elapsed display) */
@@ -23,138 +22,145 @@ interface ConversationState {
 
 let port: chrome.runtime.Port | null = null;
 let msgCounter = 0;
+/** Distinguishes "panel closed on purpose" from the worker dropping the port. */
+let intentionalDisconnect = false;
 
 function nextId(): string {
   return `m${Date.now()}-${++msgCounter}`;
 }
 
-export const useConversationStore = create<ConversationState>((set, get) => ({
-  messages: [],
-  status: "idle",
-  streamingText: "",
-  error: null,
-  usage: { input: 0, output: 0 },
-  runStartedAt: null,
+function makeMsg(role: Message["role"], content: string, extra?: Partial<Message>): Message {
+  return { id: nextId(), role, content, timestamp: Date.now(), ...extra };
+}
 
-  connect: () => {
-    if (port) return;
+export const useConversationStore = create<ConversationState>((set, get) => {
+  const pushMsg = (msg: Message) => {
+    set({ messages: [...get().messages, msg] });
+    void appendMessage(msg);
+  };
 
-    // Load persisted history
-    void getHistory().then((messages) => set({ messages }));
+  const handleEvent = (event: Event) => {
+    const s = get();
+    switch (event.type) {
+      case "token":
+        set({ streamingText: s.streamingText + event.text });
+        break;
 
-    port = chrome.runtime.connect({ name: PORT_NAME });
+      case "step":
+        pushMsg(makeMsg("step", event.summary, { tool: event.tool, ok: event.ok }));
+        break;
 
-    port.onMessage.addListener((event: Event) => {
-      const s = get();
-      switch (event.type) {
-        case "token":
-          set({ streamingText: s.streamingText + event.text });
-          break;
+      case "usage":
+        set({
+          usage: { input: s.usage.input + event.input, output: s.usage.output + event.output },
+        });
+        break;
 
-        case "step": {
-          const msg: Message = {
-            id: nextId(),
-            role: "step",
-            content: event.summary,
-            tool: event.tool,
-            timestamp: Date.now(),
-          };
-          set({ messages: [...s.messages, msg] });
-          void appendMessage(msg);
-          break;
-        }
-
-        case "usage":
-          set({
-            usage: {
-              input: s.usage.input + event.input,
-              output: s.usage.output + event.output,
-            },
-          });
-          break;
-
-        case "error": {
-          const msg: Message = {
-            id: nextId(),
-            role: "error",
-            content: event.message,
-            timestamp: Date.now(),
-          };
-          set({
-            messages: [...s.messages, msg],
-            status: "error",
-            error: event.message,
-            runStartedAt: null,
-          });
-          void appendMessage(msg);
-          break;
-        }
-
-        case "done": {
-          // Flush streaming text into a message
-          const text = s.streamingText.trim();
-          const msgs = [...s.messages];
-          if (text) {
-            const msg: Message = {
-              id: nextId(),
-              role: "assistant",
-              content: text,
-              timestamp: Date.now(),
-            };
-            msgs.push(msg);
-            void appendMessage(msg);
-          }
-          set({ messages: msgs, streamingText: "", status: "idle", runStartedAt: null });
-          break;
-        }
-
-        case "tool_call":
-        case "tool_result":
-          // Folded into step events — no separate handling needed
-          break;
+      case "error": {
+        // Flush any partial stream first — it must not dangle as a ghost bubble.
+        const partial = s.streamingText.trim();
+        if (partial) pushMsg(makeMsg("assistant", partial));
+        pushMsg(makeMsg("error", event.message));
+        set({ streamingText: "", status: "error", runStartedAt: null });
+        break;
       }
-    });
 
-    port.onDisconnect.addListener(() => {
+      case "done": {
+        const text = s.streamingText.trim();
+        if (text) {
+          pushMsg(makeMsg("assistant", text));
+        } else if (event.summary) {
+          // Tool-only final turn — the done summary IS the answer.
+          pushMsg(makeMsg("assistant", event.summary));
+        }
+        set({ streamingText: "", status: "idle", runStartedAt: null });
+        break;
+      }
+    }
+  };
+
+  const attach = (): chrome.runtime.Port => {
+    if (port) return port;
+    intentionalDisconnect = false;
+    const p = chrome.runtime.connect({ name: PORT_NAME });
+    port = p;
+    p.onMessage.addListener(handleEvent);
+    p.onDisconnect.addListener(() => {
       port = null;
+      if (intentionalDisconnect) {
+        intentionalDisconnect = false;
+        return;
+      }
+      // The worker dropped us (dev hot-reload, update, crash) — never silent.
+      if (get().status === "running") {
+        pushMsg(
+          makeMsg(
+            "error",
+            "Connection to the agent was lost — the run stopped. Send the task again to retry.",
+          ),
+        );
+      }
       set({ streamingText: "", status: "idle", runStartedAt: null });
     });
-  },
+    return p;
+  };
 
-  disconnect: () => {
-    port?.disconnect();
-    port = null;
-  },
+  return {
+    messages: [],
+    status: "idle",
+    streamingText: "",
+    usage: { input: 0, output: 0 },
+    runStartedAt: null,
 
-  sendTask: (task: string) => {
-    if (!port || get().status === "running") return;
-    const msg: Message = { id: nextId(), role: "user", content: task, timestamp: Date.now() };
-    set((s) => ({
-      messages: [...s.messages, msg],
-      status: "running",
-      error: null,
-      streamingText: "",
-      usage: { input: 0, output: 0 },
-      runStartedAt: Date.now(),
-    }));
-    void appendMessage(msg);
-    port.postMessage({ type: "run", task } satisfies Command);
-  },
+    connect: () => {
+      if (port) return;
+      void getHistory().then((messages) => set({ messages }));
+      attach();
+    },
 
-  stop: () => {
-    port?.postMessage({ type: "stop" } satisfies Command);
-    set({ status: "idle", runStartedAt: null });
-  },
+    disconnect: () => {
+      if (!port) return;
+      intentionalDisconnect = true;
+      port.disconnect();
+      port = null;
+    },
 
-  clear: () => {
-    void clearHistory();
-    set({
-      messages: [],
-      streamingText: "",
-      error: null,
-      status: "idle",
-      usage: { input: 0, output: 0 },
-      runStartedAt: null,
-    });
-  },
-}));
+    sendTask: (task) => {
+      if (get().status === "running") return;
+      // The port dies with the worker — reconnect lazily instead of eating the task.
+      let p: chrome.runtime.Port;
+      try {
+        p = attach();
+      } catch {
+        pushMsg(
+          makeMsg("error", "Regent was reloaded — close and reopen this panel to keep going."),
+        );
+        return;
+      }
+      pushMsg(makeMsg("user", task));
+      set({
+        status: "running",
+        streamingText: "",
+        usage: { input: 0, output: 0 },
+        runStartedAt: Date.now(),
+      });
+      p.postMessage({ type: "run", task } satisfies Command);
+    },
+
+    stop: () => {
+      port?.postMessage({ type: "stop" } satisfies Command);
+      set({ status: "idle", runStartedAt: null });
+    },
+
+    clear: () => {
+      void clearHistory();
+      set({
+        messages: [],
+        streamingText: "",
+        status: "idle",
+        usage: { input: 0, output: 0 },
+        runStartedAt: null,
+      });
+    },
+  };
+});

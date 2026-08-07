@@ -76,17 +76,7 @@ export function ModelPicker() {
     active ? { shape: active.shape, baseUrl: active.baseUrl, apiKey: active.apiKey } : null,
   );
 
-  if (providers.length === 0) {
-    return (
-      <button
-        className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-800"
-        onClick={() => chrome.runtime.openOptionsPage()}
-        title="No providers configured"
-      >
-        Set up a provider →
-      </button>
-    );
-  }
+  // With zero providers the side panel shows Onboarding instead of this picker.
   if (!active) return null;
 
   const preset = PRESETS.find((pr) => pr.id === active.id);
@@ -112,7 +102,7 @@ export function ModelPicker() {
   return (
     <Popover.Root>
       <Popover.Trigger
-        className="flex max-w-[220px] items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs text-neutral-900 hover:border-neutral-400 data-[popup-open]:border-brand-500"
+        className="flex max-w-[160px] items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs text-neutral-900 hover:border-neutral-400 data-[popup-open]:border-brand-500"
         title="Provider, model, and reasoning effort for the next task"
       >
         {preset && <ProviderIcon icon={preset.icon} size={16} />}

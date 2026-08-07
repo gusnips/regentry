@@ -12,12 +12,10 @@ const MAX_BACKOFF_MS = 15_000;
 
 export interface LoopCallbacks {
   onToken?: (text: string) => void;
-  onStep?: (tool: string, summary: string) => void;
-  onToolCall?: (tool: string, args: Record<string, unknown>) => void;
-  onToolResult?: (tool: string, ok: boolean, detail?: string) => void;
+  onStep?: (tool: string, summary: string, ok?: boolean) => void;
   onUsage?: (input: number, output: number) => void;
   onError?: (message: string) => void;
-  onDone?: (summary: string) => void;
+  onDone?: (summary?: string) => void;
 }
 
 export interface LoopOptions {
@@ -106,7 +104,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
 
   for (let step = 0; step < MAX_STEPS; step++) {
     if (signal.aborted) {
-      callbacks.onError?.("Task aborted by user");
+      callbacks.onDone?.();
       return;
     }
 
@@ -126,7 +124,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
       turn = await streamTurn(provider, messages, signal, callbacks);
     } catch (e) {
       if (signal.aborted) {
-        callbacks.onError?.("Task aborted by user");
+        callbacks.onDone?.();
         return;
       }
       const msg = e instanceof Error ? e.message : String(e);
@@ -163,18 +161,16 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
 
     for (const call of turn.toolCalls) {
       if (signal.aborted) {
-        callbacks.onError?.("Task aborted by user");
+        callbacks.onDone?.();
         return;
       }
 
-      callbacks.onToolCall?.(call.name, call.args);
-
       const result = await executeTool(call, driver);
-      callbacks.onToolResult?.(call.name, result.ok, result.error);
 
       callbacks.onStep?.(
         call.name,
         result.ok ? formatSuccessSummary(call.name, result.data) : `Failed: ${result.error}`,
+        result.ok,
       );
 
       if (call.name === "done") {
@@ -228,6 +224,9 @@ function formatSuccessSummary(tool: string, data: unknown): string {
   if (tool === "click" && data && typeof data === "object") {
     const pos = data as { x: number; y: number };
     return `Clicked at (${pos.x}, ${pos.y})`;
+  }
+  if (tool === "press_key") {
+    return "Key pressed";
   }
   if (tool === "navigate") {
     return "Navigated successfully";

@@ -1,14 +1,15 @@
 import { Field } from "@base-ui-components/react";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 /**
  * Labeled text input — Base UI Field wires label ↔ control (htmlFor/id) and
- * gives us validation state hooks for free. Use for every text input.
+ * description ↔ control (aria-describedby). Use for every text input.
  */
 export function TextField({
   label,
+  hint,
   ...props
-}: ComponentProps<typeof Field.Control> & { label?: string }) {
+}: ComponentProps<typeof Field.Control> & { label?: string; hint?: ReactNode }) {
   return (
     <Field.Root className="flex flex-col gap-1 text-sm">
       {label && <Field.Label className="font-medium text-neutral-700">{label}</Field.Label>}
@@ -16,6 +17,7 @@ export function TextField({
         className="rounded-lg border border-neutral-300 px-3 py-2 focus:border-brand-500 focus:outline-none"
         {...props}
       />
+      {hint && <Field.Description className="text-xs text-neutral-400">{hint}</Field.Description>}
     </Field.Root>
   );
 }

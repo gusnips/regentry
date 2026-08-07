@@ -7,7 +7,6 @@ import {
   setActiveProvider,
   watchProviders,
   watchActiveProvider,
-  PRESETS,
 } from "../index";
 import type { ProviderConfig } from "../types";
 
@@ -75,5 +74,3 @@ export const useProvidersStore = create<ProvidersState>((set, get) => ({
     await saveProvider(next);
   },
 }));
-
-export { PRESETS };

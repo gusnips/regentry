@@ -7,11 +7,14 @@ const TOOL_VERBS: Record<string, string> = {
   snapshot: "Reading page",
   click: "Clicking",
   type: "Typing",
+  press_key: "Pressing keys",
   scroll_down: "Scrolling",
   scroll_up: "Scrolling",
   screenshot: "Capturing",
   done: "Wrapping up",
   retry: "Retrying",
+  warn: "Working",
+  interrupted: "Stopped",
 };
 
 /** Generic verbs while the model streams between tool calls. */
@@ -64,7 +67,7 @@ export function RunStatus() {
       <span className="font-medium text-neutral-700">{verb}…</span>
       <span className="text-neutral-400">
         {formatElapsed(now - runStartedAt)}
-        {totalTokens > 0 && ` · ↓ ${formatTokens(totalTokens)} tokens`}
+        {totalTokens > 0 && ` · ${formatTokens(totalTokens)} tokens`}
       </span>
     </div>
   );

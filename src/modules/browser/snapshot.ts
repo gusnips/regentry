@@ -10,12 +10,24 @@ export async function captureSnapshot(
   tabId: TabId,
   opts?: SnapshotOptions,
 ): Promise<SnapshotResult> {
-  const [result] = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: generateSnapshot,
-    args: [opts ?? {}],
-    world: "MAIN",
-  });
+  let result;
+  try {
+    [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: generateSnapshot,
+      args: [opts ?? {}],
+      world: "MAIN",
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/chrome:\/\/|Cannot access|extensions gallery|Web Store/i.test(msg)) {
+      throw new Error(
+        "Regent can't read this page — Chrome blocks extensions on chrome:// and Web Store pages. Navigate the tab to a regular page and resend the task.",
+        { cause: e },
+      );
+    }
+    throw e;
+  }
 
   if (!result?.result) {
     throw new Error(

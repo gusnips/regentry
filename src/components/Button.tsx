@@ -19,7 +19,7 @@ const SIZES: Record<Size, string> = {
 /** Class helper for places that render a button through another Base UI part
  *  (e.g. AlertDialog.Close) and can't use the Button component itself. */
 export function buttonClasses(variant: Variant = "primary", size: Size = "md"): string {
-  return `rounded-lg font-medium transition-colors cursor-pointer ${VARIANTS[variant]} ${SIZES[size]}`;
+  return `rounded-lg font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 ${VARIANTS[variant]} ${SIZES[size]}`;
 }
 
 export function Button({

@@ -26,7 +26,12 @@ export async function saveProvider(provider: ProviderConfig): Promise<void> {
 
 export async function removeProvider(id: string): Promise<void> {
   const list = await providersItem.get();
-  await providersItem.set(list.filter((p) => p.id !== id));
+  const remaining = list.filter((p) => p.id !== id);
+  await providersItem.set(remaining);
+  // Never leave activeId dangling — fall back to the next provider, or none.
+  if ((await activeIdItem.get()) === id) {
+    await activeIdItem.set(remaining[0]?.id ?? null);
+  }
 }
 
 export async function getActiveProviderId(): Promise<string | null> {
