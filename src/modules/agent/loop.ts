@@ -7,12 +7,13 @@ import type {
   ToolResult as ProviderToolResult,
 } from "@/modules/providers/types";
 import { isRetryable } from "@/modules/providers/types";
+import type { StepPayload, PlanPayload } from "@/shared/protocol";
 import { createLogger, truncate } from "@/lib/logger";
-import { i18n } from "@/i18n";
+import { i18n, currentLanguageName } from "@/i18n";
 import { loadAgentContext } from "@/modules/memory";
 import type { ToolDef } from "@/modules/providers/types";
 import { executeTool } from "./tools";
-import type { ToolResult, PlanState } from "./tools";
+import type { ToolResult } from "./tools";
 import { buildSystemPrompt, buildUserPrompt, buildToolDefs } from "./prompt";
 
 const log = createLogger("agent");
@@ -35,23 +36,13 @@ const MAX_DETAIL = 2000;
  */
 const MAX_ATTACHED_IMAGES = 2;
 
-/** Everything the panel needs to render one finished step. */
-export interface StepInfo {
-  tool: string;
-  summary: string;
-  /** true = succeeded, false = failed, absent = neutral note (retry, warn) */
-  ok?: boolean;
-  args?: Record<string, unknown>;
-  detail?: string;
-  images?: string[];
-}
-
 export interface LoopCallbacks {
   onToken?: (text: string) => void;
   onReasoning?: (text: string) => void;
   onStepStart?: (tool: string, args: Record<string, unknown>) => void;
-  onStep?: (step: StepInfo) => void;
-  onPlan?: (plan: PlanState) => void;
+  /** Wire shape lives in shared/protocol — producer and panel share one definition. */
+  onStep?: (step: StepPayload) => void;
+  onPlan?: (plan: PlanPayload) => void;
   /** A queued mid-run message was consumed — the panel turns its pending line into a real one. */
   onInjected?: (id: string, text: string) => void;
   onUsage?: (input: number, output: number) => void;
@@ -112,7 +103,6 @@ async function streamTurn(
 
     try {
       for await (const delta of provider.stream(messages, tools, signal)) {
-        if (delta.type === "error") throw new Error(delta.message);
         const handled = handleDelta(delta, callbacks, toolCalls);
         if (handled) {
           text += handled;
@@ -151,13 +141,13 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
 
   // AGENTS.md / MEMORY.md are read once, here: a run keeps the context it started
   // with, so editing a doc mid-run never rewrites the instructions under the model.
-  const context = await loadAgentContext();
+  // The snapshot is independent of the docs — both run concurrently.
+  const [context, initial] = await Promise.all([loadAgentContext(), driver.snapshot()]);
   const tools = buildToolDefs(context.memoryOn);
 
   // Auto-snapshot merged into the task message — Anthropic rejects consecutive user messages
-  const initial = await driver.snapshot();
   const messages: ChatMessage[] = [
-    { role: "system", content: buildSystemPrompt(context) },
+    { role: "system", content: buildSystemPrompt(context, currentLanguageName()) },
     {
       role: "user",
       content: `${buildUserPrompt(task)}\n\nCurrent page:\n${initial.pageContent}`,
@@ -242,7 +232,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
       if (!result.ok) log.warn(`tool ${call.name} failed:`, result.error);
 
       if (bookkeeping && result.ok) {
-        callbacks.onPlan?.(result.data as PlanState);
+        callbacks.onPlan?.(result.data as PlanPayload);
       } else {
         callbacks.onStep?.({
           tool: call.name,
@@ -309,7 +299,6 @@ function handleDelta(delta: Delta, callbacks: LoopCallbacks, toolCalls: ToolCall
     case "done":
     case "usage":
     case "finish":
-    case "error":
       return null;
   }
 }
@@ -356,6 +345,13 @@ function formatSuccessSummary(tool: string, data: unknown): string {
   }
   if (tool === "navigate") {
     return i18n.t("errors.navigated");
+  }
+  if (tool === "switch_tab" && data && typeof data === "object") {
+    return i18n.t("errors.switchedTo", { title: (data as { title?: string }).title ?? "" });
+  }
+  if (tool === "list_tabs" && data && typeof data === "object") {
+    const tabs = (data as { tabs?: unknown[] }).tabs;
+    return i18n.t("errors.tabsListed", { count: Array.isArray(tabs) ? tabs.length : 0 });
   }
   if (tool === "screenshot") {
     return i18n.t("errors.screenshotCaptured");

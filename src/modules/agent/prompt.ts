@@ -1,10 +1,12 @@
 import type { ToolDef } from "@/modules/providers/types";
 import type { AgentContext } from "@/modules/memory";
+import { SUPPORTED_KEYS } from "@/modules/browser";
 
 const BASE_PROMPT = `You are Regent, a browser automation agent. You control the user's real browser via tools.
 
 Your capabilities:
 - Navigate to URLs
+- List the browser's open tabs and switch which one you drive
 - Take accessibility-tree snapshots of the current page
 - Click elements (by ref id from snapshot)
 - Type text into fields
@@ -20,7 +22,8 @@ Rules:
 3. After performing actions, call snapshot again to verify the result.
 4. Be precise — click exactly what you mean, no guessing.
 5. If something fails, try an alternative approach.
-6. When the task is complete, call the "done" tool with a summary.
+6. If the task needs a page that is already open in another tab, switch to it (list_tabs, then switch_tab) instead of navigating to it fresh — the user's logged-in session lives there.
+7. When the task is complete, call the "done" tool with a summary.
 
 You see the page as an accessibility tree — a text representation of the page's structure:
 - Interactive elements have [ref=eN] identifiers
@@ -40,6 +43,17 @@ ${instructions}`;
 }
 
 /**
+ * Plan steps and the done summary land in the panel verbatim — the one
+ * user-visible surface Regent cannot localize itself, so the language is named
+ * outright. "Mirror the task's language" guesses wrong on short or English tasks.
+ * The second sentence matters: without it the model translates what it types
+ * into search boxes and forms too.
+ */
+function languageSection(language: string): string {
+  return `Write everything the user reads — the plan steps and the final "done" summary — in ${language}. Typing into the page is not writing to the user: form inputs and searches get exactly what the task needs, in whatever language that is.`;
+}
+
+/**
  * Memory is presented as a file the agent owns, empty or not: a model that is
  * never shown MEMORY.md has no reason to call "remember".
  */
@@ -53,8 +67,8 @@ ${memory || "(empty — nothing remembered yet)"}
 Call "remember" when a run teaches you something that will still be true next time: a stable fact about the user, or a site quirk you had to discover the hard way ("the real login on this site is the email link, not the SSO button"). Do NOT remember one-off task details, anything already written above, or — ever — passwords, API keys, card numbers, or other secrets. This file is sent to the model provider on every run.`;
 }
 
-export function buildSystemPrompt(ctx: AgentContext): string {
-  const sections = [BASE_PROMPT];
+export function buildSystemPrompt(ctx: AgentContext, language: string): string {
+  const sections = [BASE_PROMPT, languageSection(language)];
   if (ctx.instructions) sections.push(instructionsSection(ctx.instructions));
   if (ctx.memoryOn) sections.push(memorySection(ctx.memory));
   return sections.join("\n\n");
@@ -74,6 +88,27 @@ const TOOL_DEFS: ToolDef[] = [
         url: { type: "string", description: "The URL to navigate to" },
       },
       required: ["url"],
+    },
+  },
+  {
+    name: "list_tabs",
+    description:
+      "List the browser's open tabs — id, title, url, and which one is active. Use it when the task may involve a page that is already open.",
+    params: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "switch_tab",
+    description:
+      "Make another open tab the one you drive: every later snapshot, click, type and screenshot acts on it, and it is brought to the front. Get the tab id from list_tabs.",
+    params: {
+      type: "object",
+      properties: {
+        tab_id: { type: "number", description: "The tab id from list_tabs" },
+      },
+      required: ["tab_id"],
     },
   },
   {
@@ -118,18 +153,8 @@ const TOOL_DEFS: ToolDef[] = [
         key: {
           type: "string",
           description: "The key to press",
-          enum: [
-            "enter",
-            "tab",
-            "escape",
-            "backspace",
-            "delete",
-            "arrowup",
-            "arrowdown",
-            "arrowleft",
-            "arrowright",
-            "space",
-          ],
+          // Built from the driver's KEY_MAP — the schema and the driver share one list.
+          enum: SUPPORTED_KEYS,
         },
       },
       required: ["key"],

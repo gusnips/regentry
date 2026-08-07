@@ -6,13 +6,6 @@ import { i18n } from "@/i18n";
 /** Longer than this and the plan card stops being scannable in a side panel. */
 const MAX_PLAN_STEPS = 20;
 
-/** The agent's checklist: every step in order, plus the index it is working on. */
-export interface PlanState {
-  steps: string[];
-  /** 0-based; equals steps.length once every step is finished. */
-  current: number;
-}
-
 export interface ToolResult {
   ok: boolean;
   data?: unknown;
@@ -28,6 +21,16 @@ export async function executeTool(call: ToolCall, driver: BrowserDriver): Promis
       case "navigate":
         await driver.navigate(call.args.url as string);
         return { ok: true, data: { url: call.args.url } };
+
+      case "list_tabs": {
+        const tabs = await driver.listTabs();
+        return { ok: true, data: { tabs } };
+      }
+
+      case "switch_tab": {
+        const tab = await driver.switchTab(call.args.tab_id as number);
+        return { ok: true, data: tab };
+      }
 
       case "snapshot": {
         const result = await driver.snapshot();

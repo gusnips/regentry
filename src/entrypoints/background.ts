@@ -29,7 +29,11 @@ export default defineBackground(() => {
             return;
           }
 
-          const providerConfig = await getActiveProvider();
+          // Independent lookups — run them together; error precedence stays provider-first.
+          const [providerConfig, [tab]] = await Promise.all([
+            getActiveProvider(),
+            chrome.tabs.query({ active: true, currentWindow: true }),
+          ]);
           if (!providerConfig) {
             send(port, {
               type: "error",
@@ -38,7 +42,6 @@ export default defineBackground(() => {
             return;
           }
 
-          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           if (!tab?.id) {
             send(port, { type: "error", message: i18n.t("errors.noActiveTab") });
             return;
@@ -65,33 +68,49 @@ export default defineBackground(() => {
 
           abortController = new AbortController();
           injectedQueue.length = 0;
-          const driver = createDriver(tab.id);
-          const tabId = tab.id;
+          // A moving target: the run starts on the submit-time tab but the
+          // agent may re-target itself with switch_tab — badge, panel chip and
+          // fail-fast all follow.
+          let drivenTabId = tab.id;
+          let drivenTitle = tabLabel(tab);
+          const driver = createDriver(tab.id, (info) => {
+            void hideAgentIndicator(drivenTabId);
+            drivenTabId = info.id;
+            drivenTitle = info.title;
+            send(port, {
+              type: "driving",
+              tabId: info.id,
+              windowId: info.windowId,
+              title: info.title,
+              favIconUrl: info.favIconUrl,
+            });
+            void showAgentIndicator(info.id, i18n.t("indicator.driving"));
+          });
           // The panel is window-scoped and stays open on every tab — name the
           // tab this run actually drives, so the user can find their way to it.
           send(port, {
             type: "driving",
-            tabId,
+            tabId: drivenTabId,
             windowId: tab.windowId,
-            title: tabLabel(tab),
+            title: drivenTitle,
             favIconUrl: tab.favIconUrl || undefined,
           });
           // The driven tab going away is fatal, not transient: every later tool
           // call would fail the same way. End the run with a clear error instead
           // of letting the model burn turns retrying a dead tab id.
           const onTabGone = (removedId: number) => {
-            if (removedId !== tabId) return;
-            log.info("driven tab closed mid-run", { tabId });
+            if (removedId !== drivenTabId) return;
+            log.info("driven tab closed mid-run", { tabId: drivenTabId });
             send(port, {
               type: "error",
-              message: i18n.t("errors.tabClosed", { title: tabLabel(tab) }),
+              message: i18n.t("errors.tabClosed", { title: drivenTitle }),
             });
             abortController?.abort();
           };
           chrome.tabs.onRemoved.addListener(onTabGone);
           // Tell the page itself it is being driven — the side panel may be
           // scrolled away or on another window.
-          void showAgentIndicator(tabId, i18n.t("indicator.driving"));
+          void showAgentIndicator(drivenTabId, i18n.t("indicator.driving"));
 
           try {
             await runAgentLoop({
@@ -120,7 +139,7 @@ export default defineBackground(() => {
           } finally {
             chrome.tabs.onRemoved.removeListener(onTabGone);
             abortController = null;
-            void hideAgentIndicator(tabId);
+            void hideAgentIndicator(drivenTabId);
           }
           break;
         }
@@ -164,7 +183,7 @@ export default defineBackground(() => {
         // Best-effort breadcrumb so a reopened panel doesn't read as if the
         // agent simply never replied — the worker may die before this lands.
         void appendMessage({
-          id: `m${Date.now()}-bg`,
+          id: crypto.randomUUID(),
           role: "step",
           tool: "interrupted",
           content: i18n.t("errors.panelClosed"),
