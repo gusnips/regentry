@@ -1,17 +1,16 @@
 import { runAgentLoop } from "@/modules/agent";
 import { createDriver } from "@/modules/browser";
 import { createProvider, getActiveProvider } from "@/modules/providers";
+import { log } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
 
 export default defineBackground(() => {
-  const log = (...args: unknown[]) => console.debug("[regent]", ...args);
-
-  log("background initialized");
+  log.debug("background initialized");
 
   chrome.runtime.onConnect.addListener((port) => {
     if (port.name !== PORT_NAME) return;
-    log("side panel connected");
+    log.debug("side panel connected");
 
     let abortController: AbortController | null = null;
 
@@ -55,6 +54,7 @@ export default defineBackground(() => {
                 onStep: (tool, summary) => send(port, { type: "step", tool, summary }),
                 onToolCall: (tool, args) => send(port, { type: "tool_call", tool, args }),
                 onToolResult: (tool, ok, detail) => send(port, { type: "tool_result", tool, ok, detail }),
+                onUsage: (input, output) => send(port, { type: "usage", input, output }),
                 onError: (message) => send(port, { type: "error", message }),
                 onDone: () => send(port, { type: "done" }),
               },
@@ -78,7 +78,7 @@ export default defineBackground(() => {
         case "pause": {
           // ponytail: pause not implemented in v1 — abort acts as stop.
           // Upgrade: track promise, resume by re-streaming with stored messages.
-          log("pause received — not yet implemented, use stop");
+          log.debug("pause received — not yet implemented, use stop");
           break;
         }
       }
@@ -87,7 +87,7 @@ export default defineBackground(() => {
     port.onDisconnect.addListener(() => {
       abortController?.abort();
       abortController = null;
-      log("side panel disconnected");
+      log.debug("side panel disconnected");
     });
   });
 

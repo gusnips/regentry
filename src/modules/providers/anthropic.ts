@@ -1,4 +1,5 @@
 import type { ChatProvider, ChatMessage, Delta, ProviderConfig } from "./types";
+import { ProviderError } from "./types";
 
 /**
  * Anthropic-shape adapter.
@@ -41,7 +42,10 @@ export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          // Anthropic reads x-api-key; coding-plan proxies (Kimi, Z.ai, QwenCloud)
+          // read Authorization: Bearer. Send both — each server picks its own.
           "x-api-key": config.apiKey,
+          Authorization: `Bearer ${config.apiKey}`,
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
@@ -51,7 +55,7 @@ export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new Error(`Anthropic API error ${res.status}: ${text || res.statusText}`);
+        throw new ProviderError(`Anthropic API error ${res.status}: ${text || res.statusText}`, res.status);
       }
 
       if (!res.body) throw new Error("No response body");
@@ -59,6 +63,7 @@ export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let inputTokens = 0;
 
       try {
         while (true) {
@@ -82,6 +87,18 @@ export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
             }
 
             switch (event.type) {
+              case "message_start": {
+                inputTokens = event.message?.usage?.input_tokens ?? 0;
+                break;
+              }
+              case "message_delta": {
+                // Carries stop_reason and cumulative output usage
+                if (event.delta?.stop_reason) {
+                  yield { type: "finish", reason: mapStopReason(event.delta.stop_reason) };
+                }
+                yield { type: "usage", input: inputTokens, output: event.usage?.output_tokens ?? 0 };
+                break;
+              }
               case "content_block_start": {
                 if (event.content_block?.type === "tool_use") {
                   toolCallBuffer = {
@@ -139,11 +156,21 @@ export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
 interface AnthropicSSE {
   type: string;
   content_block?: { type: string; id?: string; name?: string };
+  message?: { usage?: { input_tokens?: number } };
+  usage?: { output_tokens?: number };
   delta?: {
     type: string;
     text?: string;
     partial_json?: string;
+    stop_reason?: string;
   };
+}
+
+function mapStopReason(reason: string): "stop" | "length" | "tool_use" | "unknown" {
+  if (reason === "end_turn") return "stop";
+  if (reason === "max_tokens") return "length";
+  if (reason === "tool_use") return "tool_use";
+  return "unknown";
 }
 
 export function toAnthropicMessage(msg: ChatMessage) {

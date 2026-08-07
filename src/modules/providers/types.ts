@@ -51,8 +51,28 @@ export interface JSONSchema {
 export type Delta =
   | { type: "text"; text: string }
   | { type: "tool_use"; id: string; name: string; args: Record<string, unknown> }
+  | { type: "usage"; input: number; output: number }
+  | { type: "finish"; reason: "stop" | "length" | "tool_use" | "unknown" }
   | { type: "done" }
   | { type: "error"; message: string };
+
+/** Provider error with HTTP status so the loop can classify retryability. */
+export class ProviderError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "ProviderError";
+  }
+}
+
+/** 429 and 5xx are transient — retry in place. 4xx auth/request errors are not. */
+export function isRetryable(e: unknown): boolean {
+  if (e instanceof ProviderError) return e.status === 429 || e.status >= 500;
+  // Network-level failures (TypeError from fetch) have no status — retryable
+  return e instanceof TypeError;
+}
 
 /** Provider interface — both adapters implement this. */
 export interface ChatProvider {

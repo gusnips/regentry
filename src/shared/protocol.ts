@@ -17,6 +17,7 @@ export type Event =
   | { type: "step"; tool: string; summary: string }
   | { type: "tool_call"; tool: string; args: Record<string, unknown> }
   | { type: "tool_result"; tool: string; ok: boolean; detail?: string }
+  | { type: "usage"; input: number; output: number }
   | { type: "error"; message: string }
   | { type: "done" };
 

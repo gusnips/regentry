@@ -9,7 +9,15 @@ import globals from "globals";
  */
 const noReactOutsideUi = {
   files: ["**/*.{ts,tsx}"],
-  ignores: ["**/ui/**", "**/entrypoints/**", "**/__tests__/**", ".wxt/**", ".output/**", "refs/**"],
+  ignores: [
+    "**/ui/**",
+    "src/components/**",
+    "**/entrypoints/**",
+    "**/__tests__/**",
+    ".wxt/**",
+    ".output/**",
+    "refs/**",
+  ],
   rules: {
     "no-restricted-imports": [
       "error",

@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { useProvidersStore } from "./store";
+import { ProviderIcon } from "./ProviderIcon";
+import { PRESETS } from "../presets";
 
 export function ProviderList() {
   const { providers, activeId, loaded, load, remove, activate } = useProvidersStore();
@@ -24,37 +26,52 @@ export function ProviderList() {
 
   return (
     <ul className="flex flex-col gap-2">
-      {providers.map((p) => (
-        <li
-          key={p.id}
-          className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
-            p.id === activeId ? "border-blue-500 bg-blue-50" : "border-neutral-200"
-          }`}
-        >
-          <div className="min-w-0">
-            <div className="text-sm font-medium text-neutral-900 truncate">{p.name}</div>
-            <div className="text-xs text-neutral-500 truncate">
-              {p.model} · {p.shape} · {p.baseUrl}
+      {providers.map((p) => {
+        const preset = PRESETS.find((pr) => pr.id === p.id);
+        return (
+          <li
+            key={p.id}
+            className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
+              p.id === activeId ? "border-brand-500 bg-brand-50" : "border-neutral-200"
+            }`}
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              {preset ? (
+                <ProviderIcon icon={preset.icon} size={24} />
+              ) : (
+                <span
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-neutral-500 text-[10px] font-bold text-white"
+                  aria-hidden
+                >
+                  {p.shape === "anthropic" ? "A" : "O"}
+                </span>
+              )}
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-neutral-900 truncate">{p.name}</div>
+                <div className="text-xs text-neutral-500 truncate">
+                  {p.model} · {p.shape}
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex shrink-0 gap-2 ml-3">
-            {p.id !== activeId && (
+            <div className="flex shrink-0 gap-2 ml-3">
+              {p.id !== activeId && (
+                <button
+                  className="text-xs text-brand-600 hover:underline"
+                  onClick={() => void activate(p.id)}
+                >
+                  Set active
+                </button>
+              )}
               <button
-                className="text-xs text-blue-600 hover:underline"
-                onClick={() => void activate(p.id)}
+                className="text-xs text-red-600 hover:underline"
+                onClick={() => void remove(p.id)}
               >
-                Set active
+                Remove
               </button>
-            )}
-            <button
-              className="text-xs text-red-600 hover:underline"
-              onClick={() => void remove(p.id)}
-            >
-              Remove
-            </button>
-          </div>
-        </li>
-      ))}
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

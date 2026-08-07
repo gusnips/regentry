@@ -1,4 +1,5 @@
 import type { ChatProvider, ChatMessage, ToolDef, Delta, ProviderConfig } from "./types";
+import { ProviderError } from "./types";
 
 /**
  * OpenAI-shape adapter — works with any OpenAI-compatible endpoint.
@@ -13,6 +14,7 @@ export function createOpenAIProvider(config: ProviderConfig): ChatProvider {
         model: config.model,
         messages: messages.flatMap(toOpenAIMessages),
         stream: true,
+        stream_options: { include_usage: true },
       };
 
       if (tools.length > 0) {
@@ -31,7 +33,7 @@ export function createOpenAIProvider(config: ProviderConfig): ChatProvider {
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new Error(`OpenAI API error ${res.status}: ${text || res.statusText}`);
+        throw new ProviderError(`OpenAI API error ${res.status}: ${text || res.statusText}`, res.status);
       }
 
       if (!res.body) throw new Error("No response body");
@@ -80,7 +82,24 @@ export function createOpenAIProvider(config: ProviderConfig): ChatProvider {
               continue;
             }
 
-            const delta = chunk.choices?.[0]?.delta;
+            // Final usage chunk (stream_options.include_usage) — choices is empty
+            if (chunk.usage) {
+              yield {
+                type: "usage",
+                input: chunk.usage.prompt_tokens ?? 0,
+                output: chunk.usage.completion_tokens ?? 0,
+              };
+              continue;
+            }
+
+            const choice = chunk.choices?.[0];
+            if (!choice) continue;
+
+            if (choice.finish_reason) {
+              yield { type: "finish", reason: mapFinishReason(choice.finish_reason) };
+            }
+
+            const delta = choice.delta;
             if (!delta) continue;
 
             if (delta.content) {
@@ -115,6 +134,7 @@ export function createOpenAIProvider(config: ProviderConfig): ChatProvider {
 
 interface OpenAIChunk {
   choices?: {
+    finish_reason?: string | null;
     delta?: {
       content?: string;
       tool_calls?: {
@@ -124,6 +144,17 @@ interface OpenAIChunk {
       }[];
     };
   }[];
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+  };
+}
+
+function mapFinishReason(reason: string): "stop" | "length" | "tool_use" | "unknown" {
+  if (reason === "stop") return "stop";
+  if (reason === "length") return "length";
+  if (reason === "tool_calls" || reason === "function_call") return "tool_use";
+  return "unknown";
 }
 
 interface OpenAIMessage {

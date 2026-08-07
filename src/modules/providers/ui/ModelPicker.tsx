@@ -1,5 +1,8 @@
 import { useEffect } from "react";
 import { useProvidersStore } from "./store";
+import { ProviderIcon } from "./ProviderIcon";
+import { PRESETS } from "../presets";
+import { Select } from "@/components/Select";
 
 /** Dropdown of configured providers — used in the side panel header. */
 export function ModelPicker() {
@@ -22,17 +25,18 @@ export function ModelPicker() {
   }
 
   return (
-    <select
-      className="rounded-lg border border-neutral-300 px-2 py-1.5 text-xs max-w-[180px]"
-      value={activeId ?? ""}
-      onChange={(e) => void activate(e.target.value)}
-      title="Active provider"
-    >
-      {providers.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.name} · {p.model}
-        </option>
-      ))}
-    </select>
+    <Select
+      className="max-w-[200px] py-1.5 text-xs"
+      value={activeId ?? providers[0]!.id}
+      onChange={(id) => void activate(id)}
+      options={providers.map((p) => {
+        const preset = PRESETS.find((pr) => pr.id === p.id);
+        return {
+          value: p.id,
+          label: `${p.name} · ${p.model}`,
+          icon: preset ? <ProviderIcon icon={preset.icon} size={18} /> : undefined,
+        };
+      })}
+    />
   );
 }

@@ -9,6 +9,10 @@ interface ConversationState {
   status: AgentStatus;
   streamingText: string;
   error: string | null;
+  /** Cumulative token usage for the current/last run */
+  usage: { input: number; output: number };
+  /** Epoch ms when the current run started (drives the elapsed display) */
+  runStartedAt: number | null;
 
   connect: () => void;
   disconnect: () => void;
@@ -29,6 +33,8 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   status: "idle",
   streamingText: "",
   error: null,
+  usage: { input: 0, output: 0 },
+  runStartedAt: null,
 
   connect: () => {
     if (port) return;
@@ -58,6 +64,15 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
           break;
         }
 
+        case "usage":
+          set({
+            usage: {
+              input: s.usage.input + event.input,
+              output: s.usage.output + event.output,
+            },
+          });
+          break;
+
         case "error": {
           const msg: Message = {
             id: nextId(),
@@ -65,7 +80,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
             content: event.message,
             timestamp: Date.now(),
           };
-          set({ messages: [...s.messages, msg], status: "error", error: event.message });
+          set({ messages: [...s.messages, msg], status: "error", error: event.message, runStartedAt: null });
           void appendMessage(msg);
           break;
         }
@@ -84,7 +99,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
             msgs.push(msg);
             void appendMessage(msg);
           }
-          set({ messages: msgs, streamingText: "", status: "idle" });
+          set({ messages: msgs, streamingText: "", status: "idle", runStartedAt: null });
           break;
         }
 
@@ -97,7 +112,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
     port.onDisconnect.addListener(() => {
       port = null;
-      set({ streamingText: "", status: "idle" });
+      set({ streamingText: "", status: "idle", runStartedAt: null });
     });
   },
 
@@ -114,6 +129,8 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       status: "running",
       error: null,
       streamingText: "",
+      usage: { input: 0, output: 0 },
+      runStartedAt: Date.now(),
     }));
     void appendMessage(msg);
     port.postMessage({ type: "run", task } satisfies Command);
@@ -121,11 +138,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
   stop: () => {
     port?.postMessage({ type: "stop" } satisfies Command);
-    set({ status: "idle" });
+    set({ status: "idle", runStartedAt: null });
   },
 
   clear: () => {
     void clearHistory();
-    set({ messages: [], streamingText: "", error: null, status: "idle" });
+    set({ messages: [], streamingText: "", error: null, status: "idle", usage: { input: 0, output: 0 }, runStartedAt: null });
   },
 }));

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useProvidersStore, PRESETS } from "./store";
+import { ProviderIcon } from "./ProviderIcon";
+import { Select } from "@/components/Select";
 import type { ProviderShape } from "../types";
 
 export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
@@ -66,14 +68,14 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
       <div className="flex gap-2">
         <button
           type="button"
-          className={`flex-1 rounded-lg border px-3 py-2 text-sm ${!custom ? "border-blue-600 bg-blue-50 text-blue-800" : "border-neutral-300 text-neutral-600"}`}
+          className={`flex-1 rounded-lg border px-3 py-2 text-sm ${!custom ? "border-brand-600 bg-brand-50 text-brand-800" : "border-neutral-300 text-neutral-600"}`}
           onClick={() => setCustom(false)}
         >
           Preset
         </button>
         <button
           type="button"
-          className={`flex-1 rounded-lg border px-3 py-2 text-sm ${custom ? "border-blue-600 bg-blue-50 text-blue-800" : "border-neutral-300 text-neutral-600"}`}
+          className={`flex-1 rounded-lg border px-3 py-2 text-sm ${custom ? "border-brand-600 bg-brand-50 text-brand-800" : "border-neutral-300 text-neutral-600"}`}
           onClick={() => setCustom(true)}
         >
           Custom endpoint
@@ -81,20 +83,19 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
       </div>
 
       {!custom ? (
-        <label className="flex flex-col gap-1 text-sm">
+        <div className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-neutral-700">Provider</span>
-          <select
-            className="rounded-lg border border-neutral-300 px-3 py-2"
+          <Select
             value={presetId}
-            onChange={(e) => setPresetId(e.target.value)}
-          >
-            {PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.shape})
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={setPresetId}
+            options={PRESETS.map((p) => ({
+              value: p.id,
+              label: `${p.name} (${p.shape})`,
+              icon: <ProviderIcon icon={p.icon} size={20} />,
+            }))}
+          />
+          {preset && <span className="text-xs text-neutral-400">{preset.baseUrl}</span>}
+        </div>
       ) : (
         <>
           <label className="flex flex-col gap-1 text-sm">
@@ -106,17 +107,17 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
               placeholder="My provider"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <div className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-neutral-700">API shape</span>
-            <select
-              className="rounded-lg border border-neutral-300 px-3 py-2"
+            <Select
               value={shape}
-              onChange={(e) => setShape(e.target.value as ProviderShape)}
-            >
-              <option value="openai">OpenAI-compatible (/chat/completions)</option>
-              <option value="anthropic">Anthropic (/v1/messages)</option>
-            </select>
-          </label>
+              onChange={(v) => setShape(v as ProviderShape)}
+              options={[
+                { value: "openai", label: "OpenAI-compatible (/chat/completions)" },
+                { value: "anthropic", label: "Anthropic (/v1/messages)" },
+              ]}
+            />
+          </div>
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-neutral-700">Base URL</span>
             <input
@@ -141,21 +142,15 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
+      <div className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-neutral-700">Model</span>
         {preset && preset.models.length > 0 ? (
-          <select
-            className="rounded-lg border border-neutral-300 px-3 py-2"
+          <Select
             value={model}
-            onChange={(e) => setModel(e.target.value)}
-          >
-            <option value="">Select a model…</option>
-            {preset.models.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+            onChange={setModel}
+            placeholder="Select a model…"
+            options={preset.models.map((m) => ({ value: m, label: m }))}
+          />
         ) : (
           <input
             className="rounded-lg border border-neutral-300 px-3 py-2"
@@ -164,11 +159,11 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
             placeholder="e.g. gpt-4o, claude-sonnet-5, llama3.1"
           />
         )}
-      </label>
+      </div>
 
       {preset?.apiKeyUrl && !custom && (
         <a
-          className="text-xs text-blue-600 hover:underline"
+          className="text-xs text-brand-600 hover:underline"
           href={preset.apiKeyUrl}
           target="_blank"
           rel="noreferrer"
@@ -186,7 +181,7 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
       <button
         type="submit"
         disabled={saving}
-        className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+        className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
       >
         {saving ? "Saving…" : "Add provider"}
       </button>

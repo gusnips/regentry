@@ -17,6 +17,8 @@
     "format": "prettier --write .",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
+    "deadcode": "knip",
+    "deadcode:fix": "knip --fix --allow-remove-files",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
@@ -36,6 +38,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.9.0",
     "jsdom": "^30.0.1",
+    "knip": "^6",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",

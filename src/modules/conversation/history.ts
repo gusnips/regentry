@@ -16,6 +16,3 @@ export async function clearHistory(): Promise<void> {
   await historyItem.set([]);
 }
 
-export function watchHistory(cb: (messages: Message[]) => void) {
-  return historyItem.watch(cb);
-}

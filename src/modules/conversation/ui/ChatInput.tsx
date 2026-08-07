@@ -27,7 +27,7 @@ export function ChatInput() {
   return (
     <div className="flex items-end gap-2 border-t border-neutral-200 p-3">
       <textarea
-        className="flex-1 resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        className="flex-1 resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
         rows={2}
         placeholder="Describe a task… (Enter to send, Shift+Enter for newline)"
         value={text}
@@ -44,7 +44,7 @@ export function ChatInput() {
         </button>
       ) : (
         <button
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+          className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
           onClick={submit}
           disabled={!text.trim()}
         >

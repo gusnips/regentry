@@ -6,7 +6,7 @@ function MessageBubble({ msg }: { msg: Message }) {
   switch (msg.role) {
     case "user":
       return (
-        <div className="self-end max-w-[85%] rounded-lg bg-blue-600 px-3 py-2 text-sm text-white">
+        <div className="self-end max-w-[85%] rounded-lg bg-brand-600 px-3 py-2 text-sm text-white">
           {msg.content}
         </div>
       );
@@ -18,8 +18,10 @@ function MessageBubble({ msg }: { msg: Message }) {
       );
     case "step":
       return (
-        <div className="self-center rounded bg-neutral-50 px-2 py-1 text-xs text-neutral-500 border border-neutral-200">
-          ⚙ {msg.tool}: {msg.content}
+        <div className="flex items-center gap-1.5 self-start px-1 text-xs text-neutral-400">
+          <span className="text-emerald-500">✓</span>
+          <span className="font-medium text-neutral-500">{msg.tool}</span>
+          <span className="truncate">{msg.content}</span>
         </div>
       );
     case "error":

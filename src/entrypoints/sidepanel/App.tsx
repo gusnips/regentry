@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { MessageList, ChatInput, useConversationStore } from "@/modules/conversation/ui";
+import { MessageList, ChatInput, RunStatus, useConversationStore } from "@/modules/conversation/ui";
 import { ModelPicker } from "@/modules/providers/ui";
 
 export default function App() {
@@ -28,6 +28,7 @@ export default function App() {
         </div>
       </header>
       <MessageList />
+      <RunStatus />
       <ChatInput />
     </div>
   );

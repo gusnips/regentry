@@ -69,23 +69,8 @@ async function send(method: string, params?: Record<string, unknown>): Promise<u
   return chrome.debugger.sendCommand({ tabId: activeTab }, method, params);
 }
 
-export function getActiveTab(): TabId | null {
-  return activeTab;
-}
-
 export async function ensureAttached(tabId: TabId): Promise<void> {
   await attach(tabId);
-}
-
-export async function detach(tabId: TabId): Promise<void> {
-  if (!attachedTabs.has(tabId)) return;
-  try {
-    await chrome.debugger.detach({ tabId });
-  } catch {
-    // Already detached
-  }
-  attachedTabs.delete(tabId);
-  if (activeTab === tabId) activeTab = null;
 }
 
 /** Click at coordinates via trusted CDP mouse events. */
