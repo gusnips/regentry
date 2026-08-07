@@ -13,6 +13,7 @@ Your capabilities:
 - Press special keys (Enter to submit a form, Tab, Escape, arrows)
 - Scroll the page
 - Take screenshots
+- Ask the user a question and end the run — their answer arrives as the next message
 - Signal task completion
 
 Rules:
@@ -25,6 +26,7 @@ Rules:
 6. If the task needs a page that is already open in another tab, switch to it (list_tabs, then switch_tab) instead of navigating to it fresh — the user's logged-in session lives there.
 7. When the task is complete, call the "done" tool with a summary. That summary is your final message to the user — always give a real one, with the outcome, even when it seems obvious from the last step.
 8. Act, don't narrate: make progress with tool calls, not commentary. Never announce what you're about to do or restate the task. Keep any text between tool calls to one short sentence — your answer belongs in the done summary, not in text along the way.
+9. Consequential actions need explicit permission: paying or spending money, sending anything on the user's behalf (email, message, post, review), deleting data, submitting forms or applications. The task must name the action — a follow-up like "continue" or "handle it" is not permission. When permission is missing, call "ask_user" and end your turn.
 
 You see the page as an accessibility tree — a text representation of the page's structure:
 - Interactive elements have [ref=eN] identifiers
@@ -85,8 +87,8 @@ export interface PreviousTab {
  * The first user message: the task plus the runtime context the model starts with.
  * The previous-tab pointer only appears when the conversation has worked somewhere
  * the user is not, so "now archive that email" can still find Gmail even though
- * the run started on Docs. Runs stay stateless — this names WHERE the prior work
- * lives, never what it did.
+ * the run started on Docs. The replayed history (when any) says WHAT the prior
+ * work did; this names WHERE it lives.
  */
 export function buildTaskMessage(
   task: string,
@@ -236,6 +238,27 @@ const TOOL_DEFS: ToolDef[] = [
         },
       },
       required: ["steps", "current"],
+    },
+  },
+  {
+    name: "ask_user",
+    description:
+      "Ask the user a question and end this run — their answer arrives as the next message. Use it for decisions you cannot make alone, and for permission before consequential actions the task did not explicitly authorize (paying, sending, deleting, submitting).",
+    params: {
+      type: "object",
+      properties: {
+        question: {
+          type: "string",
+          description: "The question, written in the language the user reads",
+        },
+        choices: {
+          type: "array",
+          description:
+            "Short replies the user can tap instead of typing (2-4). Always include the safe option, e.g. \"Not now\".",
+          items: { type: "string" },
+        },
+      },
+      required: ["question"],
     },
   },
   {

@@ -62,6 +62,13 @@ export interface LoopOptions {
    */
   previousTabs?: PreviousTab[];
   /**
+   * The stored conversation as alternating user/assistant turns, replayed
+   * between the system prompt and the fresh task so a continuation lands on a
+   * model that has read the same exchange. The adapters serialize it with the
+   * same code path as this run's own turns.
+   */
+  history?: ChatMessage[];
+  /**
    * Messages the user typed mid-run, drained at each tool boundary. Inserting
    * them between tool batches (not mid-stream) keeps every provider wire valid
    * and lands them in the conversation exactly where the user meant them.
@@ -144,8 +151,9 @@ async function streamTurn(
 /**
  * Agent loop: snapshot → prompt → stream → execute tools → repeat until done or max steps.
  */
-export async function runAgentLoop(opts: LoopOptions): Promise<void> {
-  const { provider, driver, task, images, previousTabs, drainInjected, signal, callbacks } = opts;
+export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
+  const { provider, driver, task, images, previousTabs, history, drainInjected, signal, callbacks } =
+    opts;
   log.info("run started:", truncate(task, 120));
 
   // AGENTS.md / MEMORY.md are read once, here: a run keeps the context it started
@@ -157,6 +165,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
   // Auto-snapshot merged into the task message — Anthropic rejects consecutive user messages
   const messages: ChatMessage[] = [
     { role: "system", content: buildSystemPrompt(context, currentLanguageName()) },
+    ...(history ?? []),
     {
       role: "user",
       content: buildTaskMessage(task, initial.pageContent, previousTabs),
@@ -169,7 +178,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
   for (let step = 0; step < MAX_STEPS; step++) {
     if (signal.aborted) {
       callbacks.onDone?.();
-      return;
+      return messages;
     }
 
     // Step-budget finalize: on the last step, force a best-effort answer instead
@@ -189,12 +198,12 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
     } catch (e) {
       if (signal.aborted) {
         callbacks.onDone?.();
-        return;
+        return messages;
       }
       const msg = e instanceof Error ? e.message : String(e);
       log.error(`run failed at step ${step + 1}:`, msg);
       callbacks.onError?.(i18n.t("errors.providerError", { message: msg }));
-      return;
+      return messages;
     }
 
     log.debug(`step ${step + 1}`, {
@@ -232,7 +241,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
     for (const call of turn.toolCalls) {
       if (signal.aborted) {
         callbacks.onDone?.();
-        return;
+        return messages;
       }
 
       // The plan is bookkeeping, not an action on the page: it replaces a card
@@ -263,6 +272,12 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
           (result.data as { summary?: string })?.summary ?? i18n.t("errors.taskComplete");
         log.info(`run done after step ${step + 1}:`, truncate(summary, 120));
         callbacks.onDone?.(summary);
+      } else if (call.name === "ask_user") {
+        // The question closes the run: the panel renders it as a card and the
+        // answer arrives as the next message, with this run replayed as history.
+        taskDone = true;
+        log.info("run paused on ask_user after step", step + 1);
+        callbacks.onDone?.();
       } else {
         results.push({
           id: call.id,
@@ -287,12 +302,13 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
       callbacks.onInjected?.(item.id, item.text);
     }
 
-    if (taskDone) return;
+    if (taskDone) return messages;
   }
 
   // Unreachable in practice — the finalize nudge fires on the last step — but if the
   // model ignored it, close out gracefully instead of hanging.
   callbacks.onDone?.(i18n.t("errors.stepBudgetExhausted"));
+  return messages;
 }
 
 function handleDelta(delta: Delta, callbacks: LoopCallbacks, toolCalls: ToolCall[]): string | null {
@@ -371,6 +387,10 @@ function formatSuccessSummary(tool: string, data: unknown): string {
     // The fact itself is the summary — "Saved to memory" tells the user nothing
     // about what Regent now knows, which is the only interesting part.
     return (data as { fact: string }).fact;
+  }
+  if (tool === "ask_user" && data && typeof data === "object") {
+    // The question is the summary — the card renders it as the headline.
+    return (data as { question?: string }).question ?? "";
   }
   return i18n.t("errors.toolCompleted", { tool });
 }

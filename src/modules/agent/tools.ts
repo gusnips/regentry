@@ -91,6 +91,11 @@ export async function executeTool(call: ToolCall, driver: BrowserDriver): Promis
         return { ok: true, data: { fact: stored } };
       }
 
+      case "ask_user":
+        // No driver interaction — the loop ends the run on this call and the
+        // panel renders the question; the answer arrives as the next message.
+        return { ok: true, data: { question: call.args.question, choices: call.args.choices } };
+
       case "done":
         return { ok: true, data: { summary: call.args.summary } };
 

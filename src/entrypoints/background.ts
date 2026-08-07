@@ -1,8 +1,14 @@
 import { initI18n, i18n } from "@/i18n";
-import { runAgentLoop } from "@/modules/agent";
+import { runAgentLoop, buildConversationHistory } from "@/modules/agent";
 import { createDriver, showAgentIndicator, hideAgentIndicator } from "@/modules/browser";
 import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
-import { appendMessage, getConversationTabs, recordDrivenTab } from "@/modules/conversation";
+import {
+  appendMessage,
+  getActiveId,
+  getConversationTabs,
+  getMessages,
+  recordDrivenTab,
+} from "@/modules/conversation";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
@@ -30,9 +36,10 @@ export default defineBackground(() => {
           }
 
           // Independent lookups — run them together; error precedence stays provider-first.
-          const [providerConfig, [tab]] = await Promise.all([
+          const [providerConfig, [tab], transcript] = await Promise.all([
             getActiveProvider(),
             chrome.tabs.query({ active: true, currentWindow: true }),
+            getActiveId().then((id) => (id ? getMessages(id) : [])),
           ]);
           if (!providerConfig) {
             send(port, {
@@ -120,12 +127,17 @@ export default defineBackground(() => {
           // scrolled away or on another window.
           void showAgentIndicator(drivenTabId, i18n.t("indicator.driving"));
 
+          // The stored conversation as wire turns — "continue" lands on a model
+          // that has read the same exchange, not on a stranger.
+          const history = buildConversationHistory(transcript);
+
           try {
             await runAgentLoop({
               provider,
               driver,
               task: msg.task,
               images: msg.images,
+              history: history.length > 0 ? history : undefined,
               previousTabs: previousTabs.length > 0 ? previousTabs : undefined,
               drainInjected: () => injectedQueue.splice(0, injectedQueue.length),
               signal: abortController.signal,

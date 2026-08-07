@@ -1,1 +1,7 @@
-export { appendMessage, getConversationTabs, recordDrivenTab } from "./conversations";
+export {
+  appendMessage,
+  getActiveId,
+  getConversationTabs,
+  getMessages,
+  recordDrivenTab,
+} from "./conversations";

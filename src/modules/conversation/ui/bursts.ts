@@ -22,7 +22,10 @@ export interface Burst {
 
 export type RenderItem = { kind: "message"; msg: Message } | Burst;
 
-const BURST_ROLES = new Set<Message["role"]>(["reasoning", "step"]);
+/** An ask_user card is a pause for the user, not an action — it never folds into a burst. */
+function burstable(m: Message): boolean {
+  return m.role === "reasoning" || (m.role === "step" && m.tool !== "ask_user");
+}
 
 export function groupBursts(messages: Message[]): RenderItem[] {
   const out: RenderItem[] = [];
@@ -50,7 +53,7 @@ export function groupBursts(messages: Message[]): RenderItem[] {
   };
 
   for (const m of messages) {
-    if (BURST_ROLES.has(m.role)) run.push(m);
+    if (burstable(m)) run.push(m);
     else {
       flush(m.timestamp);
       out.push({ kind: "message", msg: m });

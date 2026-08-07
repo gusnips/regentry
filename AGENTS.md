@@ -38,7 +38,10 @@ never reach the service-worker bundle.
 ### Modules
 
 - `agent/` — agent loop (stream → tool calls → results → repeat), tools, system prompt.
-  Background-only.
+  The system prompt carries a consequential-action policy (paying, sending on the user's
+  behalf, deleting, submitting need explicit permission), enforced through the `ask_user`
+  tool: the run ends on a question the panel renders as a card with tappable choices, and
+  the answer arrives as the next message. Background-only.
 - `browser/` — accessibility-tree snapshot (injected script), CDP driver (trusted input),
   unified driver seam, on-page "Regent is controlling this tab" badge plus a purple dot over
   the driven tab's favicon so the strip shows where a run is working. Background-only.
@@ -69,8 +72,14 @@ never reach the service-worker bundle.
 rewrites a single transcript, never the whole store. The panel writes through `appendMessage`,
 which resolves the active id itself, so the background worker can append (e.g. the panel-closed
 breadcrumb) without knowing which conversation is open. A fresh conversation is created lazily by
-its first message, so "New chat" never leaves an empty row behind. Runs stay stateless — the model
-gets the task, not the transcript; conversations are scrollback you can revisit and delete.
+its first message, so "New chat" never leaves an empty row behind. The transcript doubles as the
+model's memory, strictly per conversation: at run start the background rebuilds *that*
+conversation's transcript as alternating user/assistant wire turns (`buildConversationHistory`
+in `agent/history.ts`) — entries capped, window bounded, the original task always kept — and
+replays it ahead of the new task message, so "continue" lands on a model that has read the same
+exchange. A new chat starts clean; the only context that crosses chats is AGENTS.md / MEMORY.md.
+Steps and reasoning stay out of it; outcomes live in the assistant's own words, ask_user
+questions included. Conversations remain scrollback you can revisit and delete.
 
 **Tabs belong to messages, not to the conversation.** One run per message, and the user moves
 between messages: each user message is stamped with the tab it was sent from (shown in the

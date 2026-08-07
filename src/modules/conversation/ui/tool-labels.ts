@@ -15,6 +15,7 @@ const TOOL_VERB_KEYS = {
   scroll_up: "run.tool.scroll",
   screenshot: "run.tool.screenshot",
   remember: "run.tool.remember",
+  ask_user: "run.tool.ask_user",
   done: "run.tool.done",
   retry: "run.tool.retry",
   warn: "run.tool.warn",

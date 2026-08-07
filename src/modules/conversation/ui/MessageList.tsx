@@ -137,6 +137,39 @@ function StepRow({ msg }: { msg: Message }) {
 }
 
 /**
+ * The agent paused for a decision — ask_user rendered as a card, not a step
+ * row: the question is the headline and the choices are tappable. An answer is
+ * just the next user message, so history replay reads it as a plain turn.
+ */
+function QuestionCard({ msg, onAnswer }: { msg: Message; onAnswer?: (text: string) => void }) {
+  const { t } = useTranslation();
+  const choices = Array.isArray(msg.args?.choices)
+    ? msg.args.choices.filter((c): c is string => typeof c === "string" && c.trim() !== "")
+    : [];
+  return (
+    <Bubble variant="muted" className="border border-brand-300 dark:border-brand-700">
+      <BubbleContent>
+        <Markdown>{msg.content}</Markdown>
+        {onAnswer && choices.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {choices.map((c) => (
+              <Button key={c} variant="outline" size="sm" onClick={() => onAnswer(c)}>
+                {c}
+              </Button>
+            ))}
+          </div>
+        )}
+        {onAnswer && (
+          <div className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+            {t("chat.askUserHint")}
+          </div>
+        )}
+      </BubbleContent>
+    </Bubble>
+  );
+}
+
+/**
  * The agent's checklist. Collapsed it shows only the step in flight, which is
  * the one thing you want while it works; expanded it shows the whole route so
  * you can tell early that the agent misread the task and stop it.
@@ -386,6 +419,7 @@ function MessageBubble({
   msg,
   activeProvider,
   onRetry,
+  onAnswer,
   showReasoningOn,
   onToggleReasoning,
   showTab,
@@ -394,6 +428,8 @@ function MessageBubble({
   activeProvider?: ProviderConfig;
   /** Present only on the newest error while idle — retry re-sends the same task. */
   onRetry?: () => void;
+  /** Present only on the newest ask_user while idle — the answer starts the next run. */
+  onAnswer?: (text: string) => void;
   showReasoningOn: boolean;
   onToggleReasoning: () => void;
   /** The conversation spans more than one tab, so user messages name theirs. */
@@ -430,7 +466,7 @@ function MessageBubble({
         />
       );
     case "step":
-      return <StepRow msg={msg} />;
+      return msg.tool === "ask_user" ? <QuestionCard msg={msg} onAnswer={onAnswer} /> : <StepRow msg={msg} />;
     case "plan":
       return msg.steps?.length ? <PlanCard steps={msg.steps} current={msg.current ?? 0} /> : null;
     case "error": {
@@ -525,6 +561,7 @@ function Transcript() {
   const status = useConversationStore((s) => s.status);
   const lastRun = useConversationStore((s) => s.lastRun);
   const retry = useConversationStore((s) => s.retry);
+  const sendTask = useConversationStore((s) => s.sendTask);
   const activeProvider = useProvidersStore((s) => s.providers.find((p) => p.id === s.activeId));
   // One global preference, read and watched once here — never per reasoning block.
   const showReasoningOn = useStoredItem(showReasoning);
@@ -570,6 +607,16 @@ function Transcript() {
                     status !== "running" &&
                     lastRun
                       ? retry
+                      : undefined
+                  }
+                  onAnswer={
+                    // Only the newest question stays tappable — an older one was
+                    // already answered by whatever message came after it.
+                    item.msg.role === "step" &&
+                    item.msg.tool === "ask_user" &&
+                    item.msg.id === messages[messages.length - 1]?.id &&
+                    status !== "running"
+                      ? (text) => void sendTask(text)
                       : undefined
                   }
                 />
