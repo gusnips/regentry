@@ -11,6 +11,8 @@ export interface SegmentedOption<T extends string> {
 /**
  * One-of-N picker for short, stable option sets (theme, language) where seeing
  * every choice at once beats hiding them behind a Select.
+ * Values must be non-empty: Base UI's Toggle drops "" out of group control,
+ * leaving that segment uncontrolled.
  */
 export function SegmentedControl<T extends string>({
   value,
