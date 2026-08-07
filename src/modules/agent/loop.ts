@@ -14,7 +14,7 @@ import { loadAgentContext } from "@/modules/memory";
 import type { ToolDef } from "@/modules/providers/types";
 import { executeTool } from "./tools";
 import type { ToolResult } from "./tools";
-import { buildSystemPrompt, buildUserPrompt, buildToolDefs } from "./prompt";
+import { buildSystemPrompt, buildTaskMessage, buildToolDefs, type PreviousTab } from "./prompt";
 
 const log = createLogger("agent");
 
@@ -56,6 +56,11 @@ export interface LoopOptions {
   task: string;
   /** Data-URL images the user attached to the task, referenced in the text as "[Image #1]". */
   images?: string[];
+  /**
+   * Where the conversation's previous run drove — set only when it differs from
+   * this run's tab, so a continuation typed elsewhere can still find its way back.
+   */
+  previousTab?: PreviousTab;
   /**
    * Messages the user typed mid-run, drained at each tool boundary. Inserting
    * them between tool batches (not mid-stream) keeps every provider wire valid
@@ -136,7 +141,7 @@ async function streamTurn(
  * Agent loop: snapshot → prompt → stream → execute tools → repeat until done or max steps.
  */
 export async function runAgentLoop(opts: LoopOptions): Promise<void> {
-  const { provider, driver, task, images, drainInjected, signal, callbacks } = opts;
+  const { provider, driver, task, images, previousTab, drainInjected, signal, callbacks } = opts;
   log.info("run started:", truncate(task, 120));
 
   // AGENTS.md / MEMORY.md are read once, here: a run keeps the context it started
@@ -150,7 +155,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
     { role: "system", content: buildSystemPrompt(context, currentLanguageName()) },
     {
       role: "user",
-      content: `${buildUserPrompt(task)}\n\nCurrent page:\n${initial.pageContent}`,
+      content: buildTaskMessage(task, initial.pageContent, previousTab),
       // The user's own attachments are the subject of the task — unlike screenshots
       // they are never pruned, or a long run would forget what it was asked about.
       ...(images?.length ? { images } : {}),

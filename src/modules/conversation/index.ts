@@ -1,1 +1,1 @@
-export { appendMessage } from "./conversations";
+export { appendMessage, getLastTab, setLastTab } from "./conversations";

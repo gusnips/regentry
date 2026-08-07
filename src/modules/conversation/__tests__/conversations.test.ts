@@ -7,9 +7,11 @@ import {
   conversationTitle,
   deleteConversation,
   getActiveId,
+  getLastTab,
   getMessages,
   listConversations,
   setActiveConversation,
+  setLastTab,
 } from "../conversations";
 import type { Message } from "../types";
 
@@ -72,5 +74,29 @@ describe("conversations", () => {
 
     expect((await listConversations()).some((c) => c.id === id)).toBe(true);
     expect(await getMessages(id)).toHaveLength(1);
+  });
+
+  it("remembers the last driven tab per conversation", async () => {
+    expect(await getLastTab()).toBeNull(); // fresh chat — no run yet
+
+    const first = await appendMessage(msg("user", "check gmail"));
+    await setLastTab({ url: "https://mail.google.com/", title: "Inbox", tabId: 7 });
+    expect(await getLastTab()).toEqual({
+      url: "https://mail.google.com/",
+      title: "Inbox",
+      tabId: 7,
+    });
+
+    // Later appends rewrite the index row without dropping the field.
+    await appendMessage(msg("assistant", "done"));
+    expect(await getLastTab()).toMatchObject({ url: "https://mail.google.com/" });
+
+    // Another conversation starts with no history of its own.
+    await setActiveConversation(null);
+    await appendMessage(msg("user", "unrelated task"));
+    expect(await getLastTab()).toBeNull();
+
+    await setActiveConversation(first);
+    expect(await getLastTab()).toMatchObject({ url: "https://mail.google.com/" });
   });
 });

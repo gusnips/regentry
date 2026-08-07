@@ -75,8 +75,31 @@ export function buildSystemPrompt(ctx: AgentContext, language: string): string {
   return sections.join("\n\n");
 }
 
-export function buildUserPrompt(task: string): string {
-  return `Task: ${task}`;
+/** Where the previous run in this conversation drove, when it is not this run's tab. */
+export interface PreviousTab {
+  title: string;
+  url: string;
+}
+
+/**
+ * The first user message: the task plus the runtime context the model starts with.
+ * The previous-tab pointer only appears when the user submitted from somewhere
+ * else than the last run's tab, so "now archive that email" can still find Gmail
+ * even though the run started on Docs. Runs stay stateless — this names WHERE the
+ * prior work lives, never what it did.
+ */
+export function buildTaskMessage(
+  task: string,
+  pageContent: string,
+  previousTab?: PreviousTab,
+): string {
+  const parts = [`Task: ${task}`, `Current page:\n${pageContent}`];
+  if (previousTab) {
+    parts.push(
+      `The previous work in this conversation happened on another tab: "${previousTab.title}" (${previousTab.url}). If this task refers back to it, return there with list_tabs and switch_tab — or navigate to that url if the tab is gone.`,
+    );
+  }
+  return parts.join("\n\n");
 }
 
 const TOOL_DEFS: ToolDef[] = [

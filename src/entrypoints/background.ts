@@ -2,7 +2,7 @@ import { initI18n, i18n } from "@/i18n";
 import { runAgentLoop } from "@/modules/agent";
 import { createDriver, showAgentIndicator, hideAgentIndicator } from "@/modules/browser";
 import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
-import { appendMessage } from "@/modules/conversation";
+import { appendMessage, getLastTab, setLastTab } from "@/modules/conversation";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
@@ -58,6 +58,15 @@ export default defineBackground(() => {
             send(port, { type: "error", message });
             return;
           }
+
+          // The user submitted from this window's active tab — but the conversation's
+          // previous run may have worked somewhere else. Name that tab so references
+          // like "now archive that email" can find their way back (rule 6 does the rest).
+          const lastTab = await getLastTab();
+          const previousTab =
+            lastTab && tab.url && lastTab.url !== tab.url
+              ? { title: lastTab.title, url: lastTab.url }
+              : undefined;
 
           log.info("run queued", {
             provider: providerConfig.name,
@@ -118,6 +127,7 @@ export default defineBackground(() => {
               driver,
               task: msg.task,
               images: msg.images,
+              previousTab,
               drainInjected: () => injectedQueue.splice(0, injectedQueue.length),
               signal: abortController.signal,
               callbacks: {
@@ -140,6 +150,8 @@ export default defineBackground(() => {
             chrome.tabs.onRemoved.removeListener(onTabGone);
             abortController = null;
             void hideAgentIndicator(drivenTabId);
+            // Runs whatever unwinds the loop — done, error, stop, panel closed.
+            void persistDrivenTab(drivenTabId);
           }
           break;
         }
@@ -207,6 +219,21 @@ function send(port: chrome.runtime.Port, event: Event) {
     port.postMessage(event);
   } catch {
     // Port closed
+  }
+}
+
+/**
+ * Remember the tab this run drove so the next run can spot a tab change.
+ * The final state is read fresh — navigations mid-run leave the start-time
+ * title and url stale.
+ */
+async function persistDrivenTab(tabId: number): Promise<void> {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab.url) return;
+    await setLastTab({ url: tab.url, title: tab.title ?? "", tabId });
+  } catch {
+    // The tab died during the run — nothing left to remember.
   }
 }
 

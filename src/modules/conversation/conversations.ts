@@ -2,6 +2,15 @@ import { defineItem } from "@/lib/storage";
 import { truncateTo } from "@/lib/format";
 import type { Message } from "./types";
 
+/** The tab the conversation's last run drove — lets the next run spot a tab change. */
+export interface LastTab {
+  /** The comparison key: tab ids die with their tabs, urls survive them. */
+  url: string;
+  title: string;
+  /** Opportunistic hint only — may point at a long-closed tab. */
+  tabId?: number;
+}
+
 /** List-view metadata — the list reads only this, never the message arrays. */
 export interface ConversationMeta {
   id: string;
@@ -10,6 +19,7 @@ export interface ConversationMeta {
   createdAt: number;
   updatedAt: number;
   messageCount: number;
+  lastTab?: LastTab;
 }
 
 // ponytail: fixed caps keep chrome.storage.local under quota — unbounded
@@ -46,6 +56,23 @@ export function getMessages(id: string): Promise<Message[]> {
 /** Opens a conversation. null starts a fresh one, created on its first message. */
 export function setActiveConversation(id: string | null): Promise<void> {
   return activeItem.set(id);
+}
+
+/** The tab the active conversation's last run drove, if any. */
+export async function getLastTab(): Promise<LastTab | null> {
+  const activeId = await activeItem.get();
+  if (!activeId) return null;
+  const row = (await indexItem.get()).find((c) => c.id === activeId);
+  return row?.lastTab ?? null;
+}
+
+/** Records where this run drove, so the next run can tell the model if it moved. */
+export async function setLastTab(tab: LastTab): Promise<void> {
+  const activeId = await activeItem.get();
+  if (!activeId) return;
+  const list = await indexItem.get();
+  if (!list.some((c) => c.id === activeId)) return;
+  await indexItem.set(list.map((c) => (c.id === activeId ? { ...c, lastTab: tab } : c)));
 }
 
 /** First line of the task, trimmed to fit a list row. */

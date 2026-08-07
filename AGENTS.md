@@ -40,7 +40,8 @@ never reach the service-worker bundle.
 - `agent/` — agent loop (stream → tool calls → results → repeat), tools, system prompt.
   Background-only.
 - `browser/` — accessibility-tree snapshot (injected script), CDP driver (trusted input),
-  unified driver seam, on-page "Regent is controlling this tab" badge. Background-only.
+  unified driver seam, on-page "Regent is controlling this tab" badge plus a purple dot over
+  the driven tab's favicon so the strip shows where a run is working. Background-only.
 - `providers/` — OpenAI/Anthropic adapters, presets, storage, config UI (add/edit dialog,
   list, per-task header picker, first-run onboarding). Adding a provider is a data change in
   `presets.ts` — never a code change elsewhere.
@@ -62,12 +63,14 @@ never reach the service-worker bundle.
 | Port (`runtime.connect`)        | Token deltas, step events, run/stop commands | Streaming; an open Port keeps the MV3 worker alive |
 
 **Conversation storage** (`conversation/conversations.ts`): a `conversations` index of metadata
-(id, title, counts) plus one `conversation:<id>` key per transcript — appending rewrites a single
-transcript, never the whole store. The panel writes through `appendMessage`, which resolves the
-active id itself, so the background worker can append (e.g. the panel-closed breadcrumb) without
-knowing which conversation is open. A fresh conversation is created lazily by its first message,
-so "New chat" never leaves an empty row behind. Runs stay stateless — the model gets the task,
-not the transcript; conversations are scrollback you can revisit and delete.
+(id, title, counts, last driven tab) plus one `conversation:<id>` key per transcript — appending
+rewrites a single transcript, never the whole store. The panel writes through `appendMessage`,
+which resolves the active id itself, so the background worker can append (e.g. the panel-closed
+breadcrumb) without knowing which conversation is open. A fresh conversation is created lazily by
+its first message, so "New chat" never leaves an empty row behind. Runs stay stateless — the model
+gets the task, not the transcript; conversations are scrollback you can revisit and delete. A run
+starts on the submit-time active tab; when that differs from the conversation's stored last driven
+tab, the task message points at the previous tab (title + url) so the model can switch back to it.
 
 ## Provider wire contracts (the load-bearing details)
 
