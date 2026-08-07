@@ -76,45 +76,55 @@ function HistoryIcon() {
   );
 }
 
-/** Panel-header pair: start a fresh transcript, or browse the stored ones. */
-export function HistoryControls({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+/** Quiet icon toggle to browse the stored transcripts. */
+export function HistoryToggle({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const { t } = useTranslation();
   const running = useConversationStore((s) => s.status === "running");
-  const newConversation = useConversationStore((s) => s.newConversation);
-  const messages = useConversationStore((s) => s.messages);
   // Switching transcripts mid-run would misroute the stream — finish or stop first.
   const busyTitle = running ? t("sidepanel.busyRunning") : undefined;
 
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className={`shrink-0 px-1.5 ${open ? "bg-neutral-100 dark:bg-neutral-800" : ""}`}
-        disabled={running}
-        aria-pressed={open}
-        title={busyTitle ?? t("history.title")}
-        aria-label={t("history.title")}
-        onClick={onToggle}
-      >
-        <HistoryIcon />
-      </Button>
-      {/* New chat is the primary action of the pair — the outline gives it the weight. */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="shrink-0 px-1.5"
-        disabled={running || (messages.length === 0 && !open)}
-        title={busyTitle ?? t("history.newChat")}
-        aria-label={t("history.newChat")}
-        onClick={() => {
-          newConversation();
-          if (open) onToggle();
-        }}
-      >
-        <PlusIcon />
-      </Button>
-    </>
+    <Button
+      variant="ghost"
+      size="sm"
+      className={`shrink-0 px-1.5 ${open ? "bg-neutral-100 dark:bg-neutral-800" : ""}`}
+      disabled={running}
+      aria-pressed={open}
+      title={busyTitle ?? t("history.title")}
+      aria-label={t("history.title")}
+      onClick={onToggle}
+    >
+      <HistoryIcon />
+    </Button>
+  );
+}
+
+/**
+ * The panel's most-used action, so it gets the row's end slot, a label, and the
+ * outline weight — the rare utilities sit together to its left, quiet.
+ */
+export function NewChatButton({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const { t } = useTranslation();
+  const running = useConversationStore((s) => s.status === "running");
+  const newConversation = useConversationStore((s) => s.newConversation);
+  const messages = useConversationStore((s) => s.messages);
+  const busyTitle = running ? t("sidepanel.busyRunning") : undefined;
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="ml-1 flex shrink-0 items-center gap-1"
+      disabled={running || (messages.length === 0 && !open)}
+      title={busyTitle ?? t("history.newChat")}
+      onClick={() => {
+        newConversation();
+        if (open) onToggle();
+      }}
+    >
+      <PlusIcon />
+      {t("history.newChat")}
+    </Button>
   );
 }
 
@@ -210,14 +220,10 @@ export function ConversationList({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between gap-2 border-b border-neutral-100 px-2 py-1.5 dark:border-neutral-800">
+      <div className="flex items-center gap-2 border-b border-neutral-100 px-2 py-1.5 dark:border-neutral-800">
         <Button variant="ghost" size="sm" className="flex items-center gap-1.5" onClick={onClose}>
           <BackIcon />
           {t("history.title")}
-        </Button>
-        <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={startNew}>
-          <PlusIcon />
-          {t("history.newChat")}
         </Button>
       </div>
 

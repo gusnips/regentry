@@ -4,7 +4,8 @@ import {
   ChatInput,
   RunStatus,
   ConversationList,
-  HistoryControls,
+  HistoryToggle,
+  NewChatButton,
   useConversationStore,
 } from "@/modules/conversation/ui";
 import {
@@ -37,20 +38,22 @@ export default function App() {
   return (
     <div className="flex h-screen flex-col bg-white dark:bg-neutral-950">
       <header className="border-b border-neutral-200 px-3 pt-2 dark:border-neutral-800">
-        {/* Row 1: brand + session actions. Row 2: who answers and with what,
-            as quiet chips — the header is read a hundred times per change. */}
+        {/* Row 1: brand, then the rare utilities quiet, then the hot action
+            labeled at the row's end. Row 2: who answers and with what, as
+            quiet chips — the header is read a hundred times per change. */}
         <div className="flex items-center gap-1 pb-1">
-          <img src="/icon.svg" className="h-5 w-5 shrink-0" alt="Regent" />
-          {needsProvider && (
-            <span className="flex-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-              Regent
-            </span>
-          )}
+          <img src="/icon.svg" className="h-5 w-5 shrink-0" alt="" aria-hidden />
+          <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            Regent
+          </span>
           <div className="min-w-0 flex-1" />
           {!needsProvider && (
-            <HistoryControls open={historyOpen} onToggle={() => setHistoryOpen((v) => !v)} />
+            <HistoryToggle open={historyOpen} onToggle={() => setHistoryOpen((v) => !v)} />
           )}
           <SettingsMenu />
+          {!needsProvider && (
+            <NewChatButton open={historyOpen} onToggle={() => setHistoryOpen((v) => !v)} />
+          )}
         </div>
         {/* The chips belong to the chat — history browsing hides them. */}
         {!needsProvider && !historyOpen && (
