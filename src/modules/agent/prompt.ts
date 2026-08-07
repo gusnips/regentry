@@ -24,6 +24,7 @@ Rules:
 5. If something fails, try an alternative approach.
 6. If the task needs a page that is already open in another tab, switch to it (list_tabs, then switch_tab) instead of navigating to it fresh — the user's logged-in session lives there.
 7. When the task is complete, call the "done" tool with a summary.
+8. Act, don't narrate: make progress with tool calls, not commentary — never announce what you're about to do or restate the task. Keep any text you emit between tool calls to one short sentence.
 
 You see the page as an accessibility tree — a text representation of the page's structure:
 - Interactive elements have [ref=eN] identifiers
@@ -216,7 +217,11 @@ const TOOL_DEFS: ToolDef[] = [
     params: {
       type: "object",
       properties: {
-        summary: { type: "string", description: "Summary of what was accomplished" },
+        summary: {
+          type: "string",
+          description:
+            "What was accomplished — lead with the outcome the task asked for (the answer, the result), in a few sentences. No play-by-play of your steps.",
+        },
       },
       required: ["summary"],
     },
