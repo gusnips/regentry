@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { PRESETS } from "../presets";
+import { Button } from "@/components/Button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export function ProviderList() {
   const { providers, activeId, loaded, load, remove, activate } = useProvidersStore();
@@ -50,24 +52,26 @@ export function ProviderList() {
                 <div className="text-sm font-medium text-neutral-900 truncate">{p.name}</div>
                 <div className="text-xs text-neutral-500 truncate">
                   {p.model} · {p.shape}
+                  {p.reasoningEffort ? ` · ${p.reasoningEffort} effort` : ""}
                 </div>
               </div>
             </div>
             <div className="flex shrink-0 gap-2 ml-3">
               {p.id !== activeId && (
-                <button
-                  className="text-xs text-brand-600 hover:underline"
-                  onClick={() => void activate(p.id)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => void activate(p.id)}>
                   Set active
-                </button>
+                </Button>
               )}
-              <button
-                className="text-xs text-red-600 hover:underline"
-                onClick={() => void remove(p.id)}
-              >
-                Remove
-              </button>
+              <ConfirmDialog
+                trigger={
+                  <Button variant="ghost-danger" size="sm">
+                    Remove
+                  </Button>
+                }
+                title={`Remove ${p.name}?`}
+                description="The API key stored for this provider will be deleted. You can add it again at any time."
+                onConfirm={() => void remove(p.id)}
+              />
             </div>
           </li>
         );

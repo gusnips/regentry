@@ -7,6 +7,14 @@ export default defineConfig({
   manifest: {
     name: "Regent",
     description: "Provider-agnostic browser agent",
+    homepage_url: "https://github.com/gusnips/regent",
+    icons: {
+      16: "icon/16.png",
+      32: "icon/32.png",
+      48: "icon/48.png",
+      96: "icon/96.png",
+      128: "icon/128.png",
+    },
     permissions: ["debugger", "storage", "scripting", "sidePanel", "tabs", "activeTab"],
     host_permissions: ["<all_urls>"],
     side_panel: {

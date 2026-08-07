@@ -1,9 +1,24 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { Tabs } from "@base-ui-components/react";
 import { useProvidersStore, PRESETS } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { Select } from "@/components/Select";
-import type { ProviderShape } from "../types";
+import { TextField } from "@/components/TextField";
+import { Button } from "@/components/Button";
+import type { ProviderShape, ReasoningEffort } from "../types";
+
+const EFFORT_OPTIONS = [
+  { value: "default", label: "Provider default" },
+  { value: "none", label: "None — fastest" },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "max", label: "Max — deepest" },
+];
+
+const TAB_CLASSES =
+  "rounded-md px-3 py-1.5 text-sm text-neutral-600 data-[selected]:bg-brand-50 data-[selected]:font-medium data-[selected]:text-brand-800";
 
 export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
   const add = useProvidersStore((s) => s.add);
@@ -14,6 +29,7 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
+  const [effort, setEffort] = useState<ReasoningEffort | "default">("default");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -50,11 +66,13 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
         baseUrl: resolvedUrl,
         apiKey: apiKey.trim(),
         model: resolvedModel,
+        reasoningEffort: effort === "default" ? undefined : effort,
       });
       setApiKey("");
       setModel("");
       setName("");
       setBaseUrl("");
+      setEffort("default");
       onSaved?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -65,22 +83,19 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className={`flex-1 rounded-lg border px-3 py-2 text-sm ${!custom ? "border-brand-600 bg-brand-50 text-brand-800" : "border-neutral-300 text-neutral-600"}`}
-          onClick={() => setCustom(false)}
-        >
-          Preset
-        </button>
-        <button
-          type="button"
-          className={`flex-1 rounded-lg border px-3 py-2 text-sm ${custom ? "border-brand-600 bg-brand-50 text-brand-800" : "border-neutral-300 text-neutral-600"}`}
-          onClick={() => setCustom(true)}
-        >
-          Custom endpoint
-        </button>
-      </div>
+      <Tabs.Root
+        value={custom ? "custom" : "preset"}
+        onValueChange={(v) => setCustom(v === "custom")}
+      >
+        <Tabs.List className="grid grid-cols-2 gap-1 rounded-lg border border-neutral-200 p-1">
+          <Tabs.Tab value="preset" className={TAB_CLASSES}>
+            Preset
+          </Tabs.Tab>
+          <Tabs.Tab value="custom" className={TAB_CLASSES}>
+            Custom endpoint
+          </Tabs.Tab>
+        </Tabs.List>
+      </Tabs.Root>
 
       {!custom ? (
         <div className="flex flex-col gap-1 text-sm">
@@ -98,15 +113,12 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
         </div>
       ) : (
         <>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-700">Name</span>
-            <input
-              className="rounded-lg border border-neutral-300 px-3 py-2"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="My provider"
-            />
-          </label>
+          <TextField
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="My provider"
+          />
           <div className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-neutral-700">API shape</span>
             <Select
@@ -118,29 +130,23 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
               ]}
             />
           </div>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-700">Base URL</span>
-            <input
-              className="rounded-lg border border-neutral-300 px-3 py-2"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="https://api.example.com/v1"
-            />
-          </label>
+          <TextField
+            label="Base URL"
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            placeholder="https://api.example.com/v1"
+          />
         </>
       )}
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-neutral-700">API key</span>
-        <input
-          className="rounded-lg border border-neutral-300 px-3 py-2"
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="sk-…"
-          autoComplete="off"
-        />
-      </label>
+      <TextField
+        label="API key"
+        type="password"
+        value={apiKey}
+        onChange={(e) => setApiKey(e.target.value)}
+        placeholder="sk-…"
+        autoComplete="off"
+      />
 
       <div className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-neutral-700">Model</span>
@@ -152,13 +158,25 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
             options={preset.models.map((m) => ({ value: m, label: m }))}
           />
         ) : (
-          <input
-            className="rounded-lg border border-neutral-300 px-3 py-2"
+          <TextField
             value={model}
             onChange={(e) => setModel(e.target.value)}
             placeholder="e.g. gpt-4o, claude-sonnet-5, llama3.1"
           />
         )}
+      </div>
+
+      <div className="flex flex-col gap-1 text-sm">
+        <span className="font-medium text-neutral-700">Reasoning effort</span>
+        <Select
+          value={effort}
+          onChange={(v) => setEffort(v as ReasoningEffort | "default")}
+          options={EFFORT_OPTIONS}
+        />
+        <span className="text-xs text-neutral-400">
+          How hard the model thinks before acting. Not every model accepts every level — an
+          unsupported one fails with a clear provider error.
+        </span>
       </div>
 
       {preset?.apiKeyUrl && !custom && (
@@ -178,13 +196,9 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
-      >
+      <Button type="submit" disabled={saving}>
         {saving ? "Saving…" : "Add provider"}
-      </button>
+      </Button>
     </form>
   );
 }

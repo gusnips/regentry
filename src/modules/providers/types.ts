@@ -1,6 +1,15 @@
 /** Provider shape — determines wire format for API calls. */
 export type ProviderShape = "openai" | "anthropic";
 
+/**
+ * Reasoning effort — how hard the model thinks before acting.
+ * Absent = provider default (never sent). Passed through verbatim on
+ * OpenAI-shape (`reasoning_effort`); mapped to adaptive thinking +
+ * `output_config.effort` on Anthropic-shape. Support varies per model —
+ * an unsupported level comes back as a clean provider 400, surfaced in chat.
+ */
+export type ReasoningEffort = "none" | "low" | "medium" | "high" | "max";
+
 /** A configured provider instance (stored in chrome.storage). */
 export interface ProviderConfig {
   id: string;
@@ -9,6 +18,7 @@ export interface ProviderConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
+  reasoningEffort?: ReasoningEffort;
   createdAt: number;
 }
 
@@ -76,9 +86,5 @@ export function isRetryable(e: unknown): boolean {
 
 /** Provider interface — both adapters implement this. */
 export interface ChatProvider {
-  stream(
-    messages: ChatMessage[],
-    tools: ToolDef[],
-    signal: AbortSignal,
-  ): AsyncIterable<Delta>;
+  stream(messages: ChatMessage[], tools: ToolDef[], signal: AbortSignal): AsyncIterable<Delta>;
 }

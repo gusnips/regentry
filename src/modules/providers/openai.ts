@@ -10,30 +10,22 @@ export function createOpenAIProvider(config: ProviderConfig): ChatProvider {
     async *stream(messages, tools, signal): AsyncIterable<Delta> {
       const url = `${config.baseUrl.replace(/\/$/, "")}/chat/completions`;
 
-      const body: Record<string, unknown> = {
-        model: config.model,
-        messages: messages.flatMap(toOpenAIMessages),
-        stream: true,
-        stream_options: { include_usage: true },
-      };
-
-      if (tools.length > 0) {
-        body.tools = tools.map(toOpenAITool);
-      }
-
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${config.apiKey}`,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(buildOpenAIBody(config, messages, tools)),
         signal,
       });
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new ProviderError(`OpenAI API error ${res.status}: ${text || res.statusText}`, res.status);
+        throw new ProviderError(
+          `OpenAI API error ${res.status}: ${text || res.statusText}`,
+          res.status,
+        );
       }
 
       if (!res.body) throw new Error("No response body");
@@ -130,6 +122,31 @@ export function createOpenAIProvider(config: ProviderConfig): ChatProvider {
       yield { type: "done" };
     },
   };
+}
+
+/** Request body for POST /chat/completions. Exported for tests. */
+export function buildOpenAIBody(
+  config: ProviderConfig,
+  messages: ChatMessage[],
+  tools: ToolDef[],
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    model: config.model,
+    messages: messages.flatMap(toOpenAIMessages),
+    stream: true,
+    stream_options: { include_usage: true },
+  };
+
+  if (tools.length > 0) {
+    body.tools = tools.map(toOpenAITool);
+  }
+
+  // Verbatim passthrough — the provider validates per-model support (400 if not).
+  if (config.reasoningEffort) {
+    body.reasoning_effort = config.reasoningEffort;
+  }
+
+  return body;
 }
 
 interface OpenAIChunk {

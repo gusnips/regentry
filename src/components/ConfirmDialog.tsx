@@ -1,0 +1,44 @@
+import { AlertDialog } from "@base-ui-components/react";
+import type { ReactElement } from "react";
+import { buttonClasses } from "./Button";
+
+/**
+ * Destructive-action confirmation. The trigger element must forward props
+ * (our Button does). Never fire a destructive action without one of these.
+ */
+export function ConfirmDialog({
+  trigger,
+  title,
+  description,
+  confirmLabel = "Remove",
+  onConfirm,
+}: {
+  trigger: ReactElement;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog.Root>
+      <AlertDialog.Trigger render={trigger as ReactElement<Record<string, unknown>>} />
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/30" />
+        <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-80 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-neutral-200 bg-white p-4 shadow-xl">
+          <AlertDialog.Title className="text-sm font-semibold text-neutral-900">
+            {title}
+          </AlertDialog.Title>
+          <AlertDialog.Description className="mt-1 text-sm text-neutral-600">
+            {description}
+          </AlertDialog.Description>
+          <div className="mt-4 flex justify-end gap-2">
+            <AlertDialog.Close className={buttonClasses("ghost", "md")}>Cancel</AlertDialog.Close>
+            <AlertDialog.Close className={buttonClasses("danger", "md")} onClick={onConfirm}>
+              {confirmLabel}
+            </AlertDialog.Close>
+          </div>
+        </AlertDialog.Popup>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
+  );
+}

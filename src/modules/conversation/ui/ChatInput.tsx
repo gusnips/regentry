@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { KeyboardEvent } from "react";
 import { useConversationStore } from "./store";
+import { Button } from "@/components/Button";
 
 export function ChatInput() {
   const [text, setText] = useState("");
@@ -36,20 +37,13 @@ export function ChatInput() {
         disabled={running}
       />
       {running ? (
-        <button
-          className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700"
-          onClick={stop}
-        >
+        <Button variant="danger" onClick={stop}>
           Stop
-        </button>
+        </Button>
       ) : (
-        <button
-          className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
-          onClick={submit}
-          disabled={!text.trim()}
-        >
+        <Button onClick={submit} disabled={!text.trim()}>
           Send
-        </button>
+        </Button>
       )}
     </div>
   );

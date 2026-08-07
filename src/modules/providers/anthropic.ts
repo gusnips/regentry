@@ -1,4 +1,4 @@
-import type { ChatProvider, ChatMessage, Delta, ProviderConfig } from "./types";
+import type { ChatProvider, ChatMessage, Delta, ProviderConfig, ToolDef } from "./types";
 import { ProviderError } from "./types";
 
 /**
@@ -15,29 +15,6 @@ export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
       const url = `${config.baseUrl.replace(/\/$/, "")}/v1/messages`;
       let toolCallBuffer: { id: string; name: string; args: string } | null = null;
 
-      // Anthropic splits system from conversation
-      const systemMsg = messages.find((m) => m.role === "system");
-      const conversation = messages.filter((m) => m.role !== "system");
-
-      const body: Record<string, unknown> = {
-        model: config.model,
-        max_tokens: 4096,
-        stream: true,
-        messages: conversation.map(toAnthropicMessage),
-      };
-
-      if (systemMsg) {
-        body.system = systemMsg.content;
-      }
-
-      if (tools.length > 0) {
-        body.tools = tools.map((t) => ({
-          name: t.name,
-          description: t.description,
-          input_schema: t.params,
-        }));
-      }
-
       const res = await fetch(url, {
         method: "POST",
         headers: {
@@ -49,13 +26,16 @@ export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(buildAnthropicBody(config, messages, tools)),
         signal,
       });
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new ProviderError(`Anthropic API error ${res.status}: ${text || res.statusText}`, res.status);
+        throw new ProviderError(
+          `Anthropic API error ${res.status}: ${text || res.statusText}`,
+          res.status,
+        );
       }
 
       if (!res.body) throw new Error("No response body");
@@ -96,7 +76,11 @@ export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
                 if (event.delta?.stop_reason) {
                   yield { type: "finish", reason: mapStopReason(event.delta.stop_reason) };
                 }
-                yield { type: "usage", input: inputTokens, output: event.usage?.output_tokens ?? 0 };
+                yield {
+                  type: "usage",
+                  input: inputTokens,
+                  output: event.usage?.output_tokens ?? 0,
+                };
                 break;
               }
               case "content_block_start": {
@@ -151,6 +135,47 @@ export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
       yield { type: "done" };
     },
   };
+}
+
+/** Request body for POST /v1/messages. Exported for tests. */
+export function buildAnthropicBody(
+  config: ProviderConfig,
+  messages: ChatMessage[],
+  tools: ToolDef[],
+): Record<string, unknown> {
+  // Anthropic splits system from conversation
+  const systemMsg = messages.find((m) => m.role === "system");
+  const conversation = messages.filter((m) => m.role !== "system");
+
+  const body: Record<string, unknown> = {
+    model: config.model,
+    max_tokens: 4096,
+    stream: true,
+    messages: conversation.map(toAnthropicMessage),
+  };
+
+  if (systemMsg) {
+    body.system = systemMsg.content;
+  }
+
+  if (tools.length > 0) {
+    body.tools = tools.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.params,
+    }));
+  }
+
+  if (config.reasoningEffort) {
+    body.thinking = { type: "adaptive" };
+    // "none" has no Anthropic equivalent — adaptive thinking alone lets Claude
+    // decide to skip reasoning; the other levels pin output_config.effort.
+    if (config.reasoningEffort !== "none") {
+      body.output_config = { effort: config.reasoningEffort };
+    }
+  }
+
+  return body;
 }
 
 interface AnthropicSSE {
