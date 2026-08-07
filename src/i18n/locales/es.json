@@ -169,7 +169,28 @@
     "queueNoImages": "Las imágenes no pueden unirse a una tarea en curso — encola el texto ahora y pega la imagen con la próxima tarea.",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensó durante {{duration}}",
-    "reasoningToggle": "Mostrar u ocultar el razonamiento del modelo (se guarda para todas las conversaciones)"
+    "reasoningToggle": "Mostrar u ocultar el razonamiento del modelo (se guarda para todas las conversaciones)",
+    "burstThinking": "Pensando durante {{duration}}",
+    "burstCount": {
+      "navigate_one": "{{count}} navegación",
+      "navigate_other": "{{count}} navegaciones",
+      "snapshot_one": "{{count}} lectura de página",
+      "snapshot_other": "{{count}} lecturas de página",
+      "click_one": "{{count}} clic",
+      "click_other": "{{count}} clics",
+      "type_one": "{{count}} entrada",
+      "type_other": "{{count}} entradas",
+      "pressKey_one": "{{count}} pulsación de tecla",
+      "pressKey_other": "{{count}} pulsaciones de tecla",
+      "scroll_one": "{{count}} desplazamiento",
+      "scroll_other": "{{count}} desplazamientos",
+      "screenshot_one": "{{count}} captura",
+      "screenshot_other": "{{count}} capturas",
+      "remember_one": "{{count}} nota",
+      "remember_other": "{{count}} notas",
+      "action_one": "{{count}} otra acción",
+      "action_other": "{{count}} otras acciones"
+    }
   },
   "indicator": {
     "driving": "Regent está controlando esta pestaña"

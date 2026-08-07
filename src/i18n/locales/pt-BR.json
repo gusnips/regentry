@@ -169,7 +169,28 @@
     "queueNoImages": "Imagens não podem entrar numa tarefa em andamento — enfileire o texto agora e cole a imagem na próxima tarefa.",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensou por {{duration}}",
-    "reasoningToggle": "Mostrar ou ocultar o raciocínio do modelo (salvo para todas as conversas)"
+    "reasoningToggle": "Mostrar ou ocultar o raciocínio do modelo (salvo para todas as conversas)",
+    "burstThinking": "Pensando por {{duration}}",
+    "burstCount": {
+      "navigate_one": "{{count}} navegação",
+      "navigate_other": "{{count}} navegações",
+      "snapshot_one": "{{count}} leitura de página",
+      "snapshot_other": "{{count}} leituras de página",
+      "click_one": "{{count}} clique",
+      "click_other": "{{count}} cliques",
+      "type_one": "{{count}} preenchimento",
+      "type_other": "{{count}} preenchimentos",
+      "pressKey_one": "{{count}} tecla pressionada",
+      "pressKey_other": "{{count}} teclas pressionadas",
+      "scroll_one": "{{count}} rolagem",
+      "scroll_other": "{{count}} rolagens",
+      "screenshot_one": "{{count}} captura",
+      "screenshot_other": "{{count}} capturas",
+      "remember_one": "{{count}} nota",
+      "remember_other": "{{count}} notas",
+      "action_one": "{{count}} outra ação",
+      "action_other": "{{count}} outras ações"
+    }
   },
   "indicator": {
     "driving": "O Regent está controlando esta aba"

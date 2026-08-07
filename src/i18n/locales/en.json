@@ -169,7 +169,28 @@
     "queueNoImages": "Images can't join a running task — queue the text now and paste the image with the next task.",
     "thinkingFor": "Thinking · {{duration}}",
     "thoughtFor": "Thought for {{duration}}",
-    "reasoningToggle": "Show or hide the model's reasoning (saved for all conversations)"
+    "reasoningToggle": "Show or hide the model's reasoning (saved for all conversations)",
+    "burstThinking": "Thinking for {{duration}}",
+    "burstCount": {
+      "navigate_one": "{{count}} navigation",
+      "navigate_other": "{{count}} navigations",
+      "snapshot_one": "{{count}} page read",
+      "snapshot_other": "{{count}} page reads",
+      "click_one": "{{count}} click",
+      "click_other": "{{count}} clicks",
+      "type_one": "{{count}} entry",
+      "type_other": "{{count}} entries",
+      "pressKey_one": "{{count}} key press",
+      "pressKey_other": "{{count}} key presses",
+      "scroll_one": "{{count}} scroll",
+      "scroll_other": "{{count}} scrolls",
+      "screenshot_one": "{{count}} screenshot",
+      "screenshot_other": "{{count}} screenshots",
+      "remember_one": "{{count}} note",
+      "remember_other": "{{count}} notes",
+      "action_one": "{{count}} other action",
+      "action_other": "{{count}} other actions"
+    }
   },
   "indicator": {
     "driving": "Regent is controlling this tab"

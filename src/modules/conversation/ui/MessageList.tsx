@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { Markdown } from "./Markdown";
 import { planGlyph } from "./plan";
+import { groupBursts, type Burst } from "./bursts";
 import { useNow } from "./hooks";
 import { toolVerbKey, toolHint } from "./tool-labels";
 import type { Message } from "../types";
@@ -53,16 +54,16 @@ function errorHint(message: string): { key: HintKey; cta?: CtaKey } | null {
   return null;
 }
 
-function StepIcon({ msg }: { msg: Message }) {
-  if (msg.live)
+function StepIcon({ live, ok }: { live?: boolean; ok?: boolean }) {
+  if (live)
     return (
       <span
         role="status"
         className="h-2.5 w-2.5 shrink-0 animate-spin rounded-full border border-neutral-300 border-t-brand-500 dark:border-neutral-600 dark:border-t-brand-400"
       />
     );
-  if (msg.ok === false) return <span className="text-red-500 dark:text-red-400">✗</span>;
-  if (msg.ok === true) return <span className="text-neutral-400 dark:text-neutral-500">✓</span>;
+  if (ok === false) return <span className="text-red-500 dark:text-red-400">✗</span>;
+  if (ok === true) return <span className="text-neutral-400 dark:text-neutral-500">✓</span>;
   return <span className="text-neutral-300 dark:text-neutral-600">•</span>;
 }
 
@@ -82,7 +83,7 @@ function StepRow({ msg }: { msg: Message }) {
 
   const line = (
     <>
-      <StepIcon msg={msg} />
+      <StepIcon live={msg.live} ok={msg.ok} />
       <span className="font-medium">{label}</span>
       {!msg.live && trailing && (
         <span className="truncate text-neutral-400 dark:text-neutral-500">{trailing}</span>
@@ -231,6 +232,104 @@ function ReasoningBlock({
       </button>
       {show && <div className="mt-1 break-words whitespace-pre-wrap">{text}</div>}
     </div>
+  );
+}
+
+/** A thought inside an expanded burst: a quiet line, not a card. Clicking it turns reasoning back on for everyone. */
+function QuietThought({ msg, onToggle }: { msg: Message; onToggle: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={t("chat.reasoningToggle")}
+      className="flex items-center gap-1.5 self-start rounded select-none hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:hover:text-neutral-300"
+    >
+      <span aria-hidden className="text-neutral-300 dark:text-neutral-600">
+        ▸
+      </span>
+      <span className="font-medium">
+        {t("chat.thoughtFor", { duration: formatDuration(msg.elapsed ?? 0) })}
+      </span>
+    </button>
+  );
+}
+
+/** Tool → plural count key for the burst summary ("5 clicks"). Unknown tools fold into "other actions". */
+const BURST_COUNT_KEYS = {
+  navigate: "chat.burstCount.navigate",
+  snapshot: "chat.burstCount.snapshot",
+  click: "chat.burstCount.click",
+  type: "chat.burstCount.type",
+  press_key: "chat.burstCount.pressKey",
+  scroll_down: "chat.burstCount.scroll",
+  scroll_up: "chat.burstCount.scroll",
+  screenshot: "chat.burstCount.screenshot",
+  remember: "chat.burstCount.remember",
+} as const;
+
+type BurstCountKey =
+  | (typeof BURST_COUNT_KEYS)[keyof typeof BURST_COUNT_KEYS]
+  | "chat.burstCount.action";
+
+function burstCountKey(tool: string | undefined): BurstCountKey {
+  return BURST_COUNT_KEYS[tool as keyof typeof BURST_COUNT_KEYS] ?? "chat.burstCount.action";
+}
+
+/**
+ * A collapsed think→act run: one quiet line — "Thinking for 4m 12s, 5 clicks,
+ * 3 entries and 2 page reads · 6m 40s" — that expands back to the rows it
+ * replaces. Counts keep the run's shape without truncation; the per-action
+ * hints live on the expanded rows. Live bursts stay open (same rule as the
+ * plan card) and settle closed when the run ends.
+ */
+function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoning: () => void }) {
+  const { t, i18n } = useTranslation();
+  const now = useNow(burst.live);
+  const last = burst.items[burst.items.length - 1];
+  const elapsed =
+    (burst.endedAt ?? (burst.live ? now : (last?.timestamp ?? burst.startedAt))) - burst.startedAt;
+  const failed = burst.steps.some((s) => s.ok === false);
+
+  const thinkMs = burst.items.reduce(
+    (sum, m) => sum + (m.role === "reasoning" ? (m.elapsed ?? 0) : 0),
+    0,
+  );
+  const counts = new Map<BurstCountKey, number>();
+  for (const s of burst.steps) {
+    const key = burstCountKey(s.tool);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const list = new Intl.ListFormat(i18n.language, { type: "conjunction" }).format([
+    t("chat.burstThinking", { duration: formatDuration(thinkMs) }),
+    ...[...counts].map(([key, count]) => t(key, { count })),
+  ]);
+
+  return (
+    <details
+      open={burst.live}
+      className="group max-w-full self-start px-1 text-xs text-neutral-500 dark:text-neutral-400"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none hover:text-neutral-700 dark:hover:text-neutral-300">
+        <span className="shrink-0 text-neutral-300 transition-transform group-open:rotate-90 dark:text-neutral-600">
+          ▸
+        </span>
+        <StepIcon live={burst.live} ok={failed ? false : true} />
+        <span className="truncate">{list}</span>
+        <span className="shrink-0 text-neutral-400 dark:text-neutral-500">
+          · {formatDuration(elapsed)}
+        </span>
+      </summary>
+      <div className="mt-1 ml-4 flex flex-col gap-1.5">
+        {burst.items.map((m) =>
+          m.role === "step" ? (
+            <StepRow key={m.id} msg={m} />
+          ) : (
+            <QuietThought key={m.id} msg={m} onToggle={onToggleReasoning} />
+          ),
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -408,21 +507,31 @@ export function MessageList() {
         onScroll={onScroll}
         className="flex flex-1 flex-col gap-2 overflow-y-auto p-3"
       >
-        {messages.map((m, i) => (
-          <MessageBubble
-            key={m.id}
-            msg={m}
-            activeProvider={activeProvider}
-            showReasoningOn={showReasoningOn}
-            onToggleReasoning={toggleReasoning}
-            onRetry={
-              // Only the newest error offers Retry, and only once the run has settled.
-              m.role === "error" && i === messages.length - 1 && status !== "running" && lastRun
-                ? retry
-                : undefined
-            }
-          />
-        ))}
+        {(showReasoningOn
+          ? messages.map((m) => ({ kind: "message" as const, msg: m }))
+          : groupBursts(messages)
+        ).map((item) =>
+          item.kind === "burst" ? (
+            <BurstCard key={item.id} burst={item} onToggleReasoning={toggleReasoning} />
+          ) : (
+            <MessageBubble
+              key={item.msg.id}
+              msg={item.msg}
+              activeProvider={activeProvider}
+              showReasoningOn={showReasoningOn}
+              onToggleReasoning={toggleReasoning}
+              onRetry={
+                // Only the newest error offers Retry, and only once the run has settled.
+                item.msg.role === "error" &&
+                item.msg.id === messages[messages.length - 1]?.id &&
+                status !== "running" &&
+                lastRun
+                  ? retry
+                  : undefined
+              }
+            />
+          ),
+        )}
         {reasoningText && (
           <ReasoningBlock
             text={reasoningText}
