@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
+  srcDir: "src",
   manifest: {
     name: "Regent",
     description: "Provider-agnostic browser agent",
@@ -17,10 +18,5 @@ export default defineConfig({
   },
   vite: () => ({
     plugins: [tailwindcss()],
-    resolve: {
-      alias: {
-        "@": "/src",
-      },
-    },
   }),
 });
