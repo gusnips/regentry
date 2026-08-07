@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class strategy — a stored light/dark choice must be able to override the OS. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Regent brand — royal purple (violet scale), used via brand-* utilities */
 @theme {
   --color-brand-50: #f5f3ff;
@@ -13,4 +16,15 @@
   --color-brand-800: #5b21b6;
   --color-brand-900: #4c1d95;
   --color-brand-950: #2e1065;
+}
+
+/* Native chrome (scrollbars, form controls) + the pre-render canvas follow the theme. */
+:root {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+body {
+  @apply bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100;
 }

@@ -105,7 +105,7 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
     "Leave empty to keep the saved key."
   ) : preset?.apiKeyUrl ? (
     <a
-      className="text-brand-600 hover:underline"
+      className="text-brand-600 hover:underline dark:text-brand-400"
       href={preset.apiKeyUrl}
       target="_blank"
       rel="noreferrer"
@@ -117,7 +117,7 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <div className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-neutral-700">Provider</span>
+        <span className="font-medium text-neutral-700 dark:text-neutral-300">Provider</span>
         <Select
           value={presetId}
           onChange={setPresetId}
@@ -130,7 +130,9 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
             { value: CUSTOM, label: "Custom endpoint…" },
           ]}
         />
-        {preset && <span className="text-xs text-neutral-400">{preset.baseUrl}</span>}
+        {preset && (
+          <span className="text-xs text-neutral-400 dark:text-neutral-500">{preset.baseUrl}</span>
+        )}
       </div>
 
       {!preset && (
@@ -142,7 +144,7 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
             placeholder="My gateway"
           />
           <div className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-700">API shape</span>
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">API shape</span>
             <Select
               value={shape}
               onChange={(v) => setShape(v as ProviderShape)}
@@ -170,14 +172,14 @@ export function ProviderForm({ onSaved }: { onSaved?: () => void }) {
         hint={keyHint}
       />
 
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-neutral-400 dark:text-neutral-500">
         Model and reasoning effort are picked per task in the side panel — newest model by default.
       </p>
 
       {error && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
         >
           {error}
         </div>

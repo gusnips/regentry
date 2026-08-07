@@ -102,21 +102,21 @@ export function ModelPicker() {
   return (
     <Popover.Root>
       <Popover.Trigger
-        className="flex max-w-[160px] items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs text-neutral-900 hover:border-neutral-400 data-[popup-open]:border-brand-500"
+        className="flex max-w-[160px] items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs text-neutral-900 hover:border-neutral-400 data-[popup-open]:border-brand-500 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-500"
         title="Provider, model, and reasoning effort for the next task"
       >
         {preset && <ProviderIcon icon={preset.icon} size={16} />}
         <span className="truncate">
           {active.name} · {active.model ?? "Auto"}
         </span>
-        <span className="text-neutral-400">▾</span>
+        <span className="text-neutral-400 dark:text-neutral-500">▾</span>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner sideOffset={6} align="end" className="z-50">
-          <Popover.Popup className="w-72 rounded-lg border border-neutral-200 bg-white p-3 shadow-lg">
+          <Popover.Popup className="w-72 rounded-lg border border-neutral-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-neutral-700">Provider</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300">Provider</span>
                 <Select
                   value={active.id}
                   onChange={(id) => void activate(id)}
@@ -132,7 +132,7 @@ export function ModelPicker() {
               </div>
 
               <div className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-neutral-700">Model</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300">Model</span>
                 {freeText ? (
                   <>
                     <TextField
@@ -143,7 +143,7 @@ export function ModelPicker() {
                       placeholder="model id — empty = auto"
                     />
                     {error && (
-                      <span className="text-xs text-neutral-400">
+                      <span className="text-xs text-neutral-400 dark:text-neutral-500">
                         The endpoint didn't return a model list — type an id, or leave empty to
                         auto-pick at run time.
                       </span>
@@ -159,7 +159,9 @@ export function ModelPicker() {
               </div>
 
               <div className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-neutral-700">Reasoning effort</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                  Reasoning effort
+                </span>
                 <Select
                   value={active.reasoningEffort ?? "default"}
                   onChange={(v) =>
@@ -169,12 +171,12 @@ export function ModelPicker() {
                   }
                   options={EFFORT_OPTIONS}
                 />
-                <span className="text-xs text-neutral-400">
+                <span className="text-xs text-neutral-400 dark:text-neutral-500">
                   An unsupported level fails with a clear provider error in chat.
                 </span>
               </div>
 
-              <p className="border-t border-neutral-100 pt-2 text-[11px] text-neutral-400">
+              <p className="border-t border-neutral-100 pt-2 text-[11px] text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
                 Changes apply from your next task — a run in flight keeps its snapshot.
               </p>
             </div>

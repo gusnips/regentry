@@ -100,6 +100,9 @@ copy a line from the proprietary ones.
 - `@/*` alias → `src/*` (via `srcDir: "src"` in wxt.config.ts — WXT owns the `@` default).
 - Base UI for interactive primitives — go through `src/components/`, don't hand-roll buttons,
   selects, inputs, or dialogs.
+- Theming: class-strategy dark mode (`@custom-variant dark` in `src/lib/theme.css`) — every color
+  utility needs a `dark:` counterpart. The preference lives in `src/lib/theme.ts` (`themeMode`
+  item, default `"system"`; `initTheme()` runs once per entrypoint, before render).
 - Every error and empty state must orient and offer a way forward — Problem · Cause · Fix for
   errors; Purpose · Content · Action for empty states. Never a raw error or a bare "no results".
 - Non-trivial logic leaves one runnable check behind (a small vitest file — no frameworks, no

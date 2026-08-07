@@ -36,7 +36,7 @@ export function ChatInput() {
   };
 
   return (
-    <div className="flex items-end gap-2 border-t border-neutral-200 p-3">
+    <div className="flex items-end gap-2 border-t border-neutral-200 p-3 dark:border-neutral-800">
       <TextArea
         ref={areaRef}
         className="flex-1"

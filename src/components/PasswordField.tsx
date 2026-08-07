@@ -52,11 +52,15 @@ export function PasswordField({
   const [show, setShow] = useState(false);
   return (
     <Field.Root className="flex flex-col gap-1 text-sm">
-      {label && <Field.Label className="font-medium text-neutral-700">{label}</Field.Label>}
+      {label && (
+        <Field.Label className="font-medium text-neutral-700 dark:text-neutral-300">
+          {label}
+        </Field.Label>
+      )}
       <div className="relative">
         <Field.Control
           type={show ? "text" : "password"}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 pr-9 focus:border-brand-500 focus:outline-none"
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2 pr-9 placeholder:text-neutral-400 focus:border-brand-500 focus:outline-none dark:border-neutral-600 dark:placeholder:text-neutral-500"
           {...props}
         />
         <BaseButton
@@ -64,12 +68,16 @@ export function PasswordField({
           aria-label={show ? "Hide key" : "Show key"}
           aria-pressed={show}
           onClick={() => setShow((s) => !s)}
-          className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r-lg text-neutral-400 hover:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+          className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r-lg text-neutral-400 hover:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-neutral-500 dark:hover:text-neutral-300"
         >
           {show ? <EyeOffIcon /> : <EyeIcon />}
         </BaseButton>
       </div>
-      {hint && <Field.Description className="text-xs text-neutral-400">{hint}</Field.Description>}
+      {hint && (
+        <Field.Description className="text-xs text-neutral-400 dark:text-neutral-500">
+          {hint}
+        </Field.Description>
+      )}
     </Field.Root>
   );
 }

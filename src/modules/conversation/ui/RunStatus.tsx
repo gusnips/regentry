@@ -62,10 +62,10 @@ export function RunStatus() {
   const totalTokens = usage.input + usage.output;
 
   return (
-    <div className="flex items-center gap-2 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-500">
+    <div className="flex items-center gap-2 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
       <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand-500" />
-      <span className="font-medium text-neutral-700">{verb}…</span>
-      <span className="text-neutral-400">
+      <span className="font-medium text-neutral-700 dark:text-neutral-200">{verb}…</span>
+      <span className="text-neutral-400 dark:text-neutral-500">
         {formatElapsed(now - runStartedAt)}
         {totalTokens > 0 && ` · ${formatTokens(totalTokens)} tokens`}
       </span>
