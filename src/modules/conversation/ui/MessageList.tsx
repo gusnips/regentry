@@ -583,7 +583,7 @@ function Transcript() {
         <MessageScrollerContent>
           {(showReasoningOn
             ? messages.map((m) => ({ kind: "message" as const, msg: m }))
-            : groupBursts(messages)
+            : groupBursts(messages, status === "running")
           ).map((item) =>
             item.kind === "burst" ? (
               <MessageScrollerItem key={item.id} messageId={item.id}>

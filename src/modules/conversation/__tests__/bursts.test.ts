@@ -55,14 +55,32 @@ describe("groupBursts", () => {
     expect(items[1]).toMatchObject({ kind: "message", msg: { role: "plan" } });
   });
 
-  it("marks a burst live while any step is in flight", () => {
-    const items = groupBursts([
-      msg("reasoning", 1000, { elapsed: 100 }),
-      msg("step", 1100, { tool: "click", live: true }),
-    ]);
+  it("keeps the trailing burst live for the whole run, not just while a step executes", () => {
+    // A think→act gap has no live step; the old flag collapsed the burst
+    // there and reopened it on the next tool call — visible flapping mid-run.
+    const tail = [msg("reasoning", 1000, { elapsed: 100 }), msg("step", 1100, { tool: "click" })];
+    const idle = groupBursts(tail);
+    const running = groupBursts(tail, true);
+    const burstOf = (items: ReturnType<typeof groupBursts>) => {
+      const [burst] = items;
+      if (!burst || burst.kind !== "burst") throw new Error("expected burst");
+      return burst;
+    };
+    expect(burstOf(idle).live).toBe(false);
+    expect(burstOf(running).live).toBe(true);
+  });
+
+  it("a bounded burst never lives, even mid-run", () => {
+    const items = groupBursts(
+      [
+        msg("reasoning", 1000, { elapsed: 100 }),
+        msg("step", 1100, { tool: "click" }),
+        msg("assistant", 2000),
+      ],
+      true,
+    );
     const [burst] = items;
     if (!burst || burst.kind !== "burst") throw new Error("expected burst");
-    expect(burst.live).toBe(true);
-    expect(burst.endedAt).toBeUndefined();
+    expect(burst.live).toBe(false);
   });
 });

@@ -17,6 +17,8 @@ export interface Burst {
   startedAt: number;
   /** Epoch ms when the run ended — absent while it is the tail of the transcript. */
   endedAt?: number;
+  /** Run in flight and this burst is the transcript's tail — open the whole
+   *  run (thinking phases included), settling closed only when it ends. */
   live: boolean;
 }
 
@@ -27,7 +29,7 @@ function burstable(m: Message): boolean {
   return m.role === "reasoning" || (m.role === "step" && m.tool !== "ask_user");
 }
 
-export function groupBursts(messages: Message[]): RenderItem[] {
+export function groupBursts(messages: Message[], running = false): RenderItem[] {
   const out: RenderItem[] = [];
   let run: Message[] = [];
 
@@ -44,7 +46,9 @@ export function groupBursts(messages: Message[]): RenderItem[] {
         steps,
         startedAt: first.timestamp - (first.role === "reasoning" ? (first.elapsed ?? 0) : 0),
         endedAt,
-        live: steps.some((m) => m.live),
+        // Keyed to the run, not to a step's live flag: a burst tied to an
+        // in-flight step would flap open/closed on every think→act boundary.
+        live: running && endedAt === undefined,
       });
     } else {
       out.push(...run.map((msg) => ({ kind: "message" as const, msg })));
