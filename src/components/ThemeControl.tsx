@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ThemeMode } from "@/lib/theme";
 import { themeMode } from "@/lib/theme";
-import { Button } from "./Button";
+import { SegmentedControl } from "./SegmentedControl";
+import type { SegmentedOption } from "./SegmentedControl";
 
 /** Current theme preference, live-synced across contexts via storage watch. */
 export function useThemeMode(): [ThemeMode, (mode: ThemeMode) => void] {
@@ -68,26 +70,22 @@ function MonitorIcon() {
   );
 }
 
-const NEXT: Record<ThemeMode, ThemeMode> = { system: "light", light: "dark", dark: "system" };
-const LABEL: Record<ThemeMode, string> = {
-  system: "System — follows your OS",
-  light: "Light",
-  dark: "Dark",
-};
-
-/** Panel-header theme control — cycles system → light → dark. */
-export function ThemeButton() {
+/** Theme picker — all three modes visible, so "System" never hides behind a toggle. */
+export function ThemeToggle({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useThemeMode();
+  const options: SegmentedOption<ThemeMode>[] = [
+    { value: "system", label: <MonitorIcon />, title: t("settings.themeSystem") },
+    { value: "light", label: <SunIcon />, title: t("settings.themeLight") },
+    { value: "dark", label: <MoonIcon />, title: t("settings.themeDark") },
+  ];
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="px-1.5"
-      onClick={() => setMode(NEXT[mode])}
-      title={`Theme: ${LABEL[mode]} — click to switch`}
-      aria-label={`Theme: ${LABEL[mode]} — click to switch`}
-    >
-      {mode === "system" ? <MonitorIcon /> : mode === "light" ? <SunIcon /> : <MoonIcon />}
-    </Button>
+    <SegmentedControl
+      value={mode}
+      onChange={setMode}
+      options={options}
+      ariaLabel={t("settings.appearance")}
+      className={className}
+    />
   );
 }

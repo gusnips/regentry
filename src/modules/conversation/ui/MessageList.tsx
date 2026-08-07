@@ -2,18 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { Markdown } from "./Markdown";
-import { toolVerbKey } from "./tool-labels";
+import { toolVerbKey, toolHint } from "./tool-labels";
 import type { Message } from "../types";
 import { splitErrorDetail } from "../error-detail";
+import { formatDuration } from "@/lib/format";
+import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { Button } from "@/components/Button";
 
-type HintKey = "badKey" | "rateLimited" | "rejected" | "network" | "noProvider";
+type HintKey = "badKey" | "quota" | "rateLimited" | "rejected" | "network" | "noProvider";
 type CtaKey = "updateKey" | "checkUrl" | "addProvider";
 
 const HINT_KEYS = {
   badKey: "chat.hint.badKey",
+  quota: "chat.hint.quota",
   rateLimited: "chat.hint.rateLimited",
   rejected: "chat.hint.rejected",
   network: "chat.hint.network",
@@ -33,6 +36,10 @@ const CTA_KEYS = {
  */
 function errorHint(message: string): { key: HintKey; cta?: CtaKey } | null {
   const m = message.toLowerCase();
+  // Quota first: a 403/429 body that talks about billing is not a bad key, and
+  // telling the user to re-enter a working key would send them the wrong way.
+  if (/usage limit|quota|out of credit|insufficient (balance|credit|funds)|billing/.test(m))
+    return { key: "quota", cta: "addProvider" };
   if (/401|403|unauthorized|forbidden|invalid api key|authentication/.test(m))
     return { key: "badKey", cta: "updateKey" };
   if (/429|rate limit/.test(m)) return { key: "rateLimited" };
@@ -42,43 +49,196 @@ function errorHint(message: string): { key: HintKey; cta?: CtaKey } | null {
   return null;
 }
 
+function StepIcon({ msg }: { msg: Message }) {
+  if (msg.live)
+    return (
+      <span
+        role="status"
+        className="h-2.5 w-2.5 shrink-0 animate-spin rounded-full border border-neutral-300 border-t-brand-500 dark:border-neutral-600 dark:border-t-brand-400"
+      />
+    );
+  if (msg.ok === false) return <span className="text-red-500 dark:text-red-400">✗</span>;
+  if (msg.ok === true) return <span className="text-neutral-400 dark:text-neutral-500">✓</span>;
+  return <span className="text-neutral-300 dark:text-neutral-600">•</span>;
+}
+
+/**
+ * One tool call: a single quiet line by default, expandable to what the tool
+ * actually saw. The transcript stays scannable, but nothing the agent did to
+ * your browser is hidden from you.
+ */
 function StepRow({ msg }: { msg: Message }) {
   const { t } = useTranslation();
   const key = toolVerbKey(msg.tool);
   const label = key ? t(key) : msg.tool;
-  return (
-    <div className="flex items-center gap-1.5 self-start px-1 text-xs text-neutral-500 dark:text-neutral-400">
-      {msg.live ? (
-        <span
-          role="status"
-          className="h-2.5 w-2.5 shrink-0 animate-spin rounded-full border border-neutral-300 border-t-brand-500 dark:border-neutral-600 dark:border-t-brand-400"
-        />
-      ) : msg.ok === false ? (
-        <span className="text-red-500 dark:text-red-400">✗</span>
-      ) : msg.ok === true ? (
-        <span className="text-neutral-400 dark:text-neutral-500">✓</span>
-      ) : (
-        <span className="text-neutral-300 dark:text-neutral-600">•</span>
-      )}
+  const hint = toolHint(msg.tool, msg.args);
+  // A failure's summary IS the error — it must stay on the visible line.
+  const trailing = msg.ok === false ? msg.content : (hint ?? msg.content);
+  const expandable = !msg.live && Boolean(msg.detail || msg.images?.length);
+
+  const line = (
+    <>
+      <StepIcon msg={msg} />
       <span className="font-medium">{label}</span>
-      {!msg.live && <span className="truncate">{msg.content}</span>}
-    </div>
+      {!msg.live && trailing && (
+        <span className="truncate text-neutral-400 dark:text-neutral-500">{trailing}</span>
+      )}
+    </>
+  );
+
+  if (!expandable) {
+    return (
+      <div className="flex items-center gap-1.5 self-start px-1 text-xs text-neutral-500 dark:text-neutral-400">
+        {line}
+      </div>
+    );
+  }
+
+  return (
+    <details className="group max-w-full self-start px-1 text-xs text-neutral-500 dark:text-neutral-400">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none hover:text-neutral-700 dark:hover:text-neutral-300">
+        {line}
+        <span className="shrink-0 text-neutral-300 transition-transform group-open:rotate-90 dark:text-neutral-600">
+          ▸
+        </span>
+      </summary>
+      <div className="mt-1 ml-4 flex flex-col gap-1.5">
+        {hint && msg.content && msg.ok !== false && <div>{msg.content}</div>}
+        {msg.images?.map((src, i) => (
+          <img
+            key={i}
+            src={src}
+            alt={t("chat.screenshotAlt")}
+            className="max-h-64 rounded border border-neutral-200 object-contain dark:border-neutral-700"
+          />
+        ))}
+        {msg.detail && (
+          <pre className="max-h-48 overflow-auto rounded bg-neutral-100 p-1.5 font-mono text-[11px] break-all whitespace-pre-wrap text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+            {msg.detail}
+          </pre>
+        )}
+      </div>
+    </details>
   );
 }
 
-/** Model reasoning — muted, collapsed once persisted, expanded while streaming. */
-function ReasoningBlock({ text, label, open }: { text: string; label: string; open?: boolean }) {
+/**
+ * The agent's checklist. Collapsed it shows only the step in flight, which is
+ * the one thing you want while it works; expanded it shows the whole route so
+ * you can tell early that the agent misread the task and stop it.
+ */
+function PlanCard({ steps, current }: { steps: string[]; current: number }) {
+  const { t } = useTranslation();
+  const done = Math.min(current, steps.length);
+  const active = steps[current];
+
   return (
     <details
-      open={open}
-      className="group max-w-[85%] self-start rounded-lg border border-neutral-200 px-3 py-1.5 text-xs text-neutral-500 dark:border-neutral-700 dark:text-neutral-400"
+      open={!active}
+      className="group max-w-[85%] self-start rounded-lg border border-neutral-200 px-3 py-1.5 text-xs dark:border-neutral-700"
     >
-      <summary className="cursor-pointer list-none font-medium select-none hover:text-neutral-700 dark:hover:text-neutral-300">
-        <span className="mr-1 inline-block transition-transform group-open:rotate-90">▸</span>
-        {label}
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none">
+        <span className="inline-block text-neutral-300 transition-transform group-open:rotate-90 dark:text-neutral-600">
+          ▸
+        </span>
+        <span className="font-medium text-neutral-700 dark:text-neutral-200">
+          {t("plan.title")}
+        </span>
+        <span className="text-neutral-400 dark:text-neutral-500">
+          {t("plan.progress", { done, total: steps.length })}
+        </span>
+        {active && (
+          <span className="truncate text-neutral-500 dark:text-neutral-400">· {active}</span>
+        )}
       </summary>
-      <div className="mt-1 break-words whitespace-pre-wrap">{text}</div>
+      <ol className="mt-1 flex flex-col gap-0.5">
+        {steps.map((step, i) => (
+          <li
+            key={i}
+            className={
+              i < current
+                ? "flex gap-1.5 text-neutral-400 line-through dark:text-neutral-600"
+                : i === current
+                  ? "flex gap-1.5 font-medium text-neutral-800 dark:text-neutral-100"
+                  : "flex gap-1.5 text-neutral-500 dark:text-neutral-400"
+            }
+          >
+            <span aria-hidden className="shrink-0">
+              {i < current ? "✓" : i === current ? "▪" : "○"}
+            </span>
+            <span>{step}</span>
+          </li>
+        ))}
+      </ol>
     </details>
+  );
+}
+
+/** The stored preference applies to every block; clicking a block toggles it. */
+function useShowReasoning(): [boolean, (v: boolean) => void] {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    void showReasoning.get().then(setShow);
+    return showReasoning.watch(setShow);
+  }, []);
+  return [show, (v) => void showReasoning.set(v)];
+}
+
+/**
+ * Reasoning collapses to a one-line summary by default — a wall of tokens is
+ * noise for most runs, and "Thought for 3m 48s" says everything that matters.
+ * Clicking toggles the stored show-reasoning preference for all blocks.
+ */
+function ReasoningBlock({
+  text,
+  startedAt,
+  elapsed,
+}: {
+  text: string;
+  /** Present while the segment is still streaming. */
+  startedAt?: number | null;
+  /** Recorded duration once persisted. */
+  elapsed?: number;
+}) {
+  const { t } = useTranslation();
+  const [show, setShow] = useShowReasoning();
+  const [now, setNow] = useState(() => Date.now());
+  const live = startedAt != null;
+
+  useEffect(() => {
+    if (!live) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [live]);
+
+  const duration = formatDuration(live ? now - (startedAt ?? now) : (elapsed ?? 0));
+
+  return (
+    <div className="max-w-[85%] self-start rounded-lg border border-neutral-200 px-3 py-1.5 text-xs text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
+      <button
+        type="button"
+        aria-expanded={show}
+        onClick={() => setShow(!show)}
+        title={t("chat.reasoningToggle")}
+        className="flex w-full items-center gap-1.5 rounded select-none hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:hover:text-neutral-300"
+      >
+        {live ? (
+          /* The same shimmer as the run bar: one visual language for "alive". */
+          <span className="shimmer-text font-medium">{t("chat.thinkingFor", { duration })}</span>
+        ) : (
+          <>
+            <span
+              aria-hidden
+              className={`inline-block transition-transform ${show ? "rotate-90" : ""}`}
+            >
+              ▸
+            </span>
+            <span className="font-medium">{t("chat.thoughtFor", { duration })}</span>
+          </>
+        )}
+      </button>
+      {show && <div className="mt-1 break-words whitespace-pre-wrap">{text}</div>}
+    </div>
   );
 }
 
@@ -96,7 +256,15 @@ function MessageBubble({
   switch (msg.role) {
     case "user":
       return (
-        <div className="max-w-[85%] self-end whitespace-pre-wrap break-words rounded-lg bg-brand-600 px-3 py-2 text-sm text-white">
+        <div className="flex max-w-[85%] flex-col gap-1.5 self-end rounded-lg bg-brand-600 px-3 py-2 text-sm break-words whitespace-pre-wrap text-white">
+          {msg.images?.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt={t("chat.attachmentAlt", { number: i + 1 })}
+              className="max-h-48 rounded border border-white/25 object-contain"
+            />
+          ))}
           {msg.content}
         </div>
       );
@@ -107,9 +275,11 @@ function MessageBubble({
         </div>
       );
     case "reasoning":
-      return <ReasoningBlock text={msg.content} label={t("chat.thinking")} />;
+      return <ReasoningBlock text={msg.content} elapsed={msg.elapsed} />;
     case "step":
       return <StepRow msg={msg} />;
+    case "plan":
+      return msg.steps?.length ? <PlanCard steps={msg.steps} current={msg.current ?? 0} /> : null;
     case "error": {
       const hint = errorHint(msg.content);
       const { summary, detail } = splitErrorDetail(msg.content);
@@ -171,8 +341,9 @@ export function MessageList() {
   const messages = useConversationStore((s) => s.messages);
   const streamingText = useConversationStore((s) => s.streamingText);
   const reasoningText = useConversationStore((s) => s.reasoningText);
+  const reasoningStartedAt = useConversationStore((s) => s.reasoningStartedAt);
   const status = useConversationStore((s) => s.status);
-  const lastTask = useConversationStore((s) => s.lastTask);
+  const lastRun = useConversationStore((s) => s.lastRun);
   const retry = useConversationStore((s) => s.retry);
   const activeProvider = useProvidersStore((s) => s.providers.find((p) => p.id === s.activeId));
   const containerRef = useRef<HTMLDivElement>(null);
@@ -237,13 +408,13 @@ export function MessageList() {
             activeProvider={activeProvider}
             onRetry={
               // Only the newest error offers Retry, and only once the run has settled.
-              m.role === "error" && i === messages.length - 1 && status !== "running" && lastTask
+              m.role === "error" && i === messages.length - 1 && status !== "running" && lastRun
                 ? retry
                 : undefined
             }
           />
         ))}
-        {reasoningText && <ReasoningBlock open text={reasoningText} label={t("chat.thinking")} />}
+        {reasoningText && <ReasoningBlock text={reasoningText} startedAt={reasoningStartedAt} />}
         {streamingText && (
           <div className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
             <Markdown>{streamingText}</Markdown>

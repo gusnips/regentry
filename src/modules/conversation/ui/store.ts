@@ -3,30 +3,72 @@ import { i18n } from "@/i18n";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
 import type { Message, AgentStatus } from "../types";
-import { getHistory, appendMessage, clearHistory } from "../history";
+import type { ConversationMeta } from "../conversations";
+import {
+  appendMessage,
+  deleteConversation,
+  getActiveId,
+  getMessages,
+  listConversations,
+  replaceMessage,
+  setActiveConversation,
+  watchConversations,
+} from "../conversations";
 import { toolVerbKey } from "./tool-labels";
+
+/** The tab the in-flight run is driving — the chip that orients and jumps to it. */
+export interface DrivingTabInfo {
+  tabId: number;
+  windowId: number;
+  title: string;
+  favIconUrl?: string;
+}
 
 interface ConversationState {
   messages: Message[];
+  /** Stored transcripts, most recently touched first — powers the history list */
+  conversations: ConversationMeta[];
+  /** Open conversation; null until the first message of a fresh one is stored */
+  activeId: string | null;
   status: AgentStatus;
   streamingText: string;
   /** Model reasoning stream for the current run (display-only, flushed at the next step or turn end) */
   reasoningText: string;
+  /** Epoch ms when the open reasoning segment began — powers its "for 3m 48s" clock */
+  reasoningStartedAt: number | null;
   /** Cumulative token usage for the current/last run */
   usage: { input: number; output: number };
   /** Epoch ms when the current run started (drives the elapsed display) */
   runStartedAt: number | null;
-  /** Last task sent — powers the Retry action on transient errors */
-  lastTask: string | null;
+  /** Epoch ms when it finished — keeps the summary line up after the run ends */
+  runEndedAt: number | null;
+  /** Last run's input — powers the Retry action on transient errors */
+  lastRun: { task: string; images?: string[] } | null;
   /** Id of the in-flight tool's live row (never persisted) */
   pendingStepId: string | null;
+  /** Id of this run's plan card — updates rewrite it rather than stacking copies */
+  planMsgId: string | null;
+  /** Messages typed mid-run, waiting for the next tool boundary. */
+  queued: { id: string; text: string }[];
+  /** The composer's text, so a recalled queue or an ending run can hand text back to it. */
+  draft: string;
+  /** The tab the current run is driving; null when idle. */
+  drivingTab: DrivingTabInfo | null;
 
   connect: () => void;
   disconnect: () => void;
-  sendTask: (task: string) => void;
+  sendTask: (task: string, images?: string[]) => void;
+  queueMessage: (text: string) => void;
+  unqueueMessage: (id: string) => void;
+  /** ↑-arrow recall: the newest queued message goes back to the composer. */
+  recallQueued: () => void;
+  setDraft: (text: string) => void;
   retry: () => void;
   stop: () => void;
-  clear: () => void;
+  /** Start a fresh transcript — the current one stays in history */
+  newConversation: () => void;
+  openConversation: (id: string) => void;
+  removeConversation: (id: string) => void;
 }
 
 let port: chrome.runtime.Port | null = null;
@@ -36,6 +78,10 @@ let intentionalDisconnect = false;
 /** Panel → worker heartbeat: any port traffic resets the MV3 worker's idle timer,
  *  so long tool calls and slow reasoning streams can't kill it mid-run. */
 let pingTimer: ReturnType<typeof setInterval> | null = null;
+/** Storage watch on the conversation index — background appends land here too. */
+let unwatchConversations: (() => void) | null = null;
+/** Did this run stream any prose? If not, the done summary is the only answer. */
+let sawAssistantText = false;
 
 function nextId(): string {
   return `m${Date.now()}-${++msgCounter}`;
@@ -48,41 +94,114 @@ function makeMsg(role: Message["role"], content: string, extra?: Partial<Message
 export const useConversationStore = create<ConversationState>((set, get) => {
   const pushMsg = (msg: Message) => {
     set({ messages: [...get().messages, msg] });
-    void appendMessage(msg);
+    // A fresh conversation is created by the first append — adopt its id.
+    void appendMessage(msg).then((id) => {
+      if (get().activeId !== id) set({ activeId: id });
+    });
   };
 
-  /** Persist accumulated reasoning as its own block, in transcript order. */
+  /** Transcript-independent state — reset whenever the panel switches transcripts. */
+  const resetRun = () => ({
+    streamingText: "",
+    reasoningText: "",
+    reasoningStartedAt: null,
+    status: "idle" as AgentStatus,
+    usage: { input: 0, output: 0 },
+    runStartedAt: null,
+    runEndedAt: null,
+    lastRun: null,
+    pendingStepId: null,
+    planMsgId: null,
+    queued: [],
+    draft: "",
+    drivingTab: null,
+  });
+
+  /**
+   * Reasoning and text are separate segments closed at the point the other one
+   * starts, so a run reads in the order it happened: think, say, act, think
+   * again. Accumulating either across a whole run would pile every thought into
+   * one block sitting where the first one opened.
+   *
+   * Because each flushes the other, at most one is ever non-empty — which is
+   * why the flush pairs below can run in either order.
+   */
   const flushReasoning = () => {
     const reasoning = get().reasoningText.trim();
-    if (reasoning) pushMsg(makeMsg("reasoning", reasoning));
-    set({ reasoningText: "" });
+    const startedAt = get().reasoningStartedAt;
+    if (reasoning) {
+      pushMsg(makeMsg("reasoning", reasoning, startedAt ? { elapsed: Date.now() - startedAt } : undefined));
+    }
+    set({ reasoningText: "", reasoningStartedAt: null });
+  };
+
+  const flushStreaming = () => {
+    const text = get().streamingText.trim();
+    if (text) {
+      sawAssistantText = true;
+      pushMsg(makeMsg("assistant", text));
+    }
+    set({ streamingText: "" });
   };
 
   /** A run that ends with a tool in flight must not leave its row spinning. */
   const settleLive = (msgs: Message[]) => msgs.map((m) => (m.live ? { ...m, live: false } : m));
 
-  const startRun = (p: chrome.runtime.Port, task: string) => {
+  /** Unconsumed queue returns to the composer — an ending run must not eat typed text. */
+  const recallQueue = () => {
+    const q = get().queued;
+    if (q.length === 0) return;
+    const draft = get().draft;
+    set({
+      queued: [],
+      draft: [draft.trimEnd(), ...q.map((x) => x.text)].filter(Boolean).join("\n"),
+    });
+  };
+
+  const startRun = (p: chrome.runtime.Port, task: string, images?: string[]) => {
+    sawAssistantText = false;
     set({
       status: "running",
       streamingText: "",
       reasoningText: "",
+      reasoningStartedAt: null,
       usage: { input: 0, output: 0 },
       runStartedAt: Date.now(),
-      lastTask: task,
+      runEndedAt: null,
+      lastRun: { task, ...(images?.length ? { images } : {}) },
       pendingStepId: null,
+      // A new run draws its own card — never revives the last run's checklist.
+      planMsgId: null,
     });
-    p.postMessage({ type: "run", task } satisfies Command);
+    p.postMessage({ type: "run", task, ...(images?.length ? { images } : {}) } satisfies Command);
   };
 
   const handleEvent = (event: Event) => {
     const s = get();
     switch (event.type) {
+      case "driving":
+        set({
+          drivingTab: {
+            tabId: event.tabId,
+            windowId: event.windowId,
+            title: event.title,
+            favIconUrl: event.favIconUrl,
+          },
+        });
+        break;
+
       case "token":
-        set({ streamingText: s.streamingText + event.text });
+        flushReasoning();
+        set({ streamingText: get().streamingText + event.text });
         break;
 
       case "reasoning":
-        set({ reasoningText: s.reasoningText + event.text });
+        flushStreaming();
+        set({
+          reasoningText: get().reasoningText + event.text,
+          // The first delta of a segment starts its clock.
+          reasoningStartedAt: get().reasoningStartedAt ?? Date.now(),
+        });
         break;
 
       case "step_start": {
@@ -90,6 +209,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         const key = toolVerbKey(event.tool);
         const msg = makeMsg("step", key ? `${i18n.t(key)}…` : "…", {
           tool: event.tool,
+          args: event.args,
           live: true,
         });
         // Live rows are in-memory only — persisted once the tool finishes.
@@ -99,20 +219,53 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
       case "step": {
         flushReasoning();
+        const settled: Partial<Message> = {
+          content: event.summary,
+          ok: event.ok,
+          args: event.args,
+          detail: event.detail,
+          images: event.images,
+          live: false,
+        };
         const pending = get().pendingStepId;
         if (pending) {
           // Settle the live row in place, then persist the finished step.
-          const msgs = get().messages.map((m) =>
-            m.id === pending ? { ...m, content: event.summary, ok: event.ok, live: false } : m,
-          );
+          const msgs = get().messages.map((m) => (m.id === pending ? { ...m, ...settled } : m));
           set({ messages: msgs, pendingStepId: null });
-          const settled = msgs.find((m) => m.id === pending);
-          if (settled) void appendMessage(settled);
+          const finished = msgs.find((m) => m.id === pending);
+          if (finished) void appendMessage(finished);
         } else {
-          pushMsg(makeMsg("step", event.summary, { tool: event.tool, ok: event.ok }));
+          pushMsg(makeMsg("step", event.summary, { tool: event.tool, ...settled }));
         }
         break;
       }
+
+      case "plan": {
+        flushReasoning();
+        flushStreaming();
+        const plan = { steps: event.steps, current: event.current };
+        const existing = get().planMsgId;
+        if (existing) {
+          // Rewritten in place, so the card stays where the agent first drew it
+          // instead of a new copy sliding in on every completed step.
+          const msgs = get().messages.map((m) => (m.id === existing ? { ...m, ...plan } : m));
+          set({ messages: msgs });
+          const updated = msgs.find((m) => m.id === existing);
+          if (updated) void replaceMessage(updated);
+        } else {
+          const msg = makeMsg("plan", "", plan);
+          set({ planMsgId: msg.id });
+          pushMsg(msg);
+        }
+        break;
+      }
+
+      case "injected":
+        // The loop consumed a queued message at a tool boundary — the pending
+        // line becomes a real transcript entry in the order the model saw it.
+        set({ queued: get().queued.filter((q) => q.id !== event.id) });
+        pushMsg(makeMsg("user", event.text));
+        break;
 
       case "usage":
         set({
@@ -121,36 +274,38 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         break;
 
       case "error": {
-        // Flush any partial streams first — they must not dangle as ghost bubbles.
+        // Flush any partial stream first — it must not dangle as a ghost bubble.
         flushReasoning();
-        const partial = s.streamingText.trim();
-        if (partial) pushMsg(makeMsg("assistant", partial));
+        flushStreaming();
+        recallQueue();
         pushMsg(makeMsg("error", event.message));
         set((st) => ({
           messages: settleLive(st.messages),
           streamingText: "",
           status: "error",
-          runStartedAt: null,
+          // runStartedAt survives the run so the summary line can still show
+          // how long it went before it failed.
+          runEndedAt: Date.now(),
           pendingStepId: null,
+          drivingTab: null,
         }));
         break;
       }
 
       case "done": {
         flushReasoning();
-        const text = s.streamingText.trim();
-        if (text) {
-          pushMsg(makeMsg("assistant", text));
-        } else if (event.summary) {
-          // Tool-only final turn — the done summary IS the answer.
-          pushMsg(makeMsg("assistant", event.summary));
-        }
+        flushStreaming();
+        // A run that only ever called tools has no prose of its own — then the
+        // done summary IS the answer, not a duplicate of something above.
+        if (!sawAssistantText && event.summary) pushMsg(makeMsg("assistant", event.summary));
+        recallQueue();
         set((st) => ({
           messages: settleLive(st.messages),
           streamingText: "",
           status: "idle",
-          runStartedAt: null,
+          runEndedAt: Date.now(),
           pendingStepId: null,
+          drivingTab: null,
         }));
         break;
       }
@@ -177,13 +332,16 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       if (get().status === "running") {
         pushMsg(makeMsg("error", i18n.t("chat.portLost")));
       }
+      recallQueue();
       set((st) => ({
         messages: settleLive(st.messages),
         streamingText: "",
         reasoningText: "",
+        reasoningStartedAt: null,
         status: "idle",
-        runStartedAt: null,
+        runEndedAt: Date.now(),
         pendingStepId: null,
+        drivingTab: null,
       }));
     });
     pingTimer ??= setInterval(() => {
@@ -198,21 +356,35 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
   return {
     messages: [],
+    conversations: [],
+    activeId: null,
     status: "idle",
     streamingText: "",
     reasoningText: "",
+    reasoningStartedAt: null,
     usage: { input: 0, output: 0 },
     runStartedAt: null,
-    lastTask: null,
+    runEndedAt: null,
+    lastRun: null,
     pendingStepId: null,
+    planMsgId: null,
+    queued: [],
+    draft: "",
+    drivingTab: null,
 
     connect: () => {
       if (port) return;
-      void getHistory().then((messages) => set({ messages }));
+      void listConversations().then((conversations) => set({ conversations }));
+      unwatchConversations ??= watchConversations((conversations) => set({ conversations }));
+      void getActiveId().then(async (activeId) => {
+        set({ activeId, messages: activeId ? await getMessages(activeId) : [] });
+      });
       attach();
     },
 
     disconnect: () => {
+      unwatchConversations?.();
+      unwatchConversations = null;
       if (!port) return;
       intentionalDisconnect = true;
       port.disconnect();
@@ -223,7 +395,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       }
     },
 
-    sendTask: (task) => {
+    sendTask: (task, images) => {
       if (get().status === "running") return;
       // The port dies with the worker — reconnect lazily instead of eating the task.
       let p: chrome.runtime.Port;
@@ -233,13 +405,46 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         pushMsg(makeMsg("error", i18n.t("chat.reloaded")));
         return;
       }
-      pushMsg(makeMsg("user", task));
-      startRun(p, task);
+      pushMsg(makeMsg("user", task, images?.length ? { images } : undefined));
+      startRun(p, task, images);
     },
 
+    queueMessage: (text) => {
+      const item = { id: nextId(), text };
+      set({ queued: [...get().queued, item] });
+      try {
+        port?.postMessage({ type: "inject", ...item } satisfies Command);
+      } catch {
+        // Port gone — onDisconnect recalls the queue to the composer.
+      }
+    },
+
+    unqueueMessage: (id) => {
+      set({ queued: get().queued.filter((q) => q.id !== id) });
+      try {
+        port?.postMessage({ type: "unqueue", id } satisfies Command);
+      } catch {
+        // Port gone — nothing to unqueue on the worker side.
+      }
+    },
+
+    recallQueued: () => {
+      const queued = get().queued;
+      const last = queued[queued.length - 1];
+      if (!last) return;
+      set({ queued: queued.slice(0, -1), draft: last.text });
+      try {
+        port?.postMessage({ type: "unqueue", id: last.id } satisfies Command);
+      } catch {
+        // Port gone.
+      }
+    },
+
+    setDraft: (text) => set({ draft: text }),
+
     retry: () => {
-      const task = get().lastTask;
-      if (!task || get().status === "running") return;
+      const last = get().lastRun;
+      if (!last || get().status === "running") return;
       // No duplicate user row — the failed attempt sits right above.
       let p: chrome.runtime.Port;
       try {
@@ -248,7 +453,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         pushMsg(makeMsg("error", i18n.t("chat.reloaded")));
         return;
       }
-      startRun(p, task);
+      startRun(p, last.task, last.images);
     },
 
     stop: () => {
@@ -256,23 +461,33 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       set((st) => ({
         messages: settleLive(st.messages),
         status: "idle",
-        runStartedAt: null,
+        runEndedAt: Date.now(),
         pendingStepId: null,
       }));
     },
 
-    clear: () => {
-      void clearHistory();
-      set({
-        messages: [],
-        streamingText: "",
-        reasoningText: "",
-        status: "idle",
-        usage: { input: 0, output: 0 },
-        runStartedAt: null,
-        lastTask: null,
-        pendingStepId: null,
+    newConversation: () => {
+      void setActiveConversation(null);
+      set({ ...resetRun(), messages: [], activeId: null });
+    },
+
+    openConversation: (id) => {
+      if (get().activeId === id) return;
+      void setActiveConversation(id);
+      set({ ...resetRun(), messages: [], activeId: id });
+      void getMessages(id).then((messages) => {
+        // A switch that raced this read wins — never paint a stale transcript.
+        if (get().activeId === id) set({ messages });
       });
+    },
+
+    removeConversation: (id) => {
+      void deleteConversation(id);
+      set((st) => ({
+        conversations: st.conversations.filter((c) => c.id !== id),
+        // Deleting the open one drops you into a fresh transcript, not a void.
+        ...(st.activeId === id ? { ...resetRun(), messages: [], activeId: null } : {}),
+      }));
     },
   };
 });

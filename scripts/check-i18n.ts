@@ -21,20 +21,21 @@
  * i18next idioms it understands so it does not cry wolf:
  *   - pluralization — `t("x.count", { count })` resolves to `x.count_one` /
  *     `x.count_other`, so a base key counts as present if any plural form exists;
- *   - returnObjects — a key may resolve to an array/object subtree.
+ *   - returnObjects — a key may resolve to an array/object subtree;
+ *   - keyPrefix — a bare `t("leaf")` inside a `keyPrefix` scope marks
+ *     `<prefix>.leaf` used.
  *
  * Hard failures (exit 1, so it can gate CI) are limited to what it can PROVE
  * wrong: a parity gap, or a fully-static key absent from the canonical locale
  * with no inline `defaultValue`. Everything dynamic is advisory.
  *
- *   Run:  bun run i18n:check            (add --unused to list advisory keys)
+ *   Run:  bun run i18n:check
  */
 
 import { Glob } from "bun";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "..");
-const SHOW_UNUSED = process.argv.includes("--unused");
 
 // ── Bundle configuration ──────────────────────────────────────────────────────
 
@@ -141,6 +142,8 @@ interface ScanResult {
   seenStatic: Set<string>;
   /** Bare key-path string literals (e.g. lookup-map values fed to t(key)). */
   prefixLiterals: Set<string>;
+  /** i18next `keyPrefix` values — bare t("leaf") refs under them count as used. */
+  keyPrefixes: Set<string>;
 }
 
 // [regex, qualify]. Qualified patterns only count when the key's first segment is
@@ -160,6 +163,10 @@ const PREFIX_LITERAL = /(["'`])([a-zA-Z][a-zA-Z0-9]*(?:\.[a-zA-Z0-9_]+)+)\1/g;
 // `const key = `chat.hint.${kind}`` then `t(key)`. Captures the static path
 // before `.${`; treated like a prefix literal (covers the subtree).
 const PREFIX_TEMPLATE = /`([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_]+)*)\.\$\{/g;
+
+// i18next `keyPrefix` (hook option or Trans prop): `t("leaf")` in that scope
+// resolves to `<prefix>.leaf`, so the bare ref marks the full key used.
+const KEY_PREFIX = /\bkeyPrefix\s*[:=]\s*(["'`])([a-zA-Z][a-zA-Z0-9_.]*)\1/g;
 
 function lineAt(source: string, index: number): number {
   let line = 1;
@@ -226,6 +233,11 @@ function scanSource(source: string, file: string, namespaces: Set<string>, into:
     const val = tm[1]!;
     if (namespaces.has(val.split(".", 1)[0]!)) into.prefixLiterals.add(val);
   }
+
+  // keyPrefix scopes (see KEY_PREFIX).
+  KEY_PREFIX.lastIndex = 0;
+  let km: RegExpExecArray | null;
+  while ((km = KEY_PREFIX.exec(source))) into.keyPrefixes.add(km[2]!);
 }
 
 // ── Runner ────────────────────────────────────────────────────────────────────
@@ -277,6 +289,7 @@ async function checkBundle(bundle: Bundle): Promise<number> {
     dynamics: new Map(),
     seenStatic: new Set(),
     prefixLiterals: new Set(),
+    keyPrefixes: new Set(),
   };
   const seenFile = new Set<string>();
   for (const pattern of bundle.code) {
@@ -332,6 +345,8 @@ async function checkBundle(bundle: Bundle): Promise<number> {
     );
   const coveredByLiteral = (k: string): boolean =>
     litPrefixes.some((p) => k === p || k.startsWith(`${p}.`));
+  const coveredByKeyPrefix = (k: string): boolean =>
+    [...scan.keyPrefixes].some((p) => k.startsWith(`${p}.`) && used.has(k.slice(p.length + 1)));
   // A plural leaf (`x_one`/`x_other`/…) is used when its base `x` is — i18next
   // resolves `t("x", { count })` to the variant, so the variant has no own ref.
   const pluralRe = new RegExp(`_(${PLURAL_SUFFIXES.join("|")})$`);
@@ -343,12 +358,19 @@ async function checkBundle(bundle: Bundle): Promise<number> {
   };
   const unused = leaves
     .filter(
-      (k) => !used.has(k) && !coveredByDynamic(k) && !coveredByLiteral(k) && !coveredByPlural(k),
+      (k) =>
+        !used.has(k) &&
+        !coveredByDynamic(k) &&
+        !coveredByLiteral(k) &&
+        !coveredByPlural(k) &&
+        !coveredByKeyPrefix(k),
     )
     .sort();
-  console.log(`\n  Possibly unused in ${bundle.canonical} (advisory)`);
-  console.log(`    · ${unused.length} key(s) with no static reference, under no dynamic prefix`);
-  if (SHOW_UNUSED) for (const k of unused) console.log(`        ${k}`);
+  // Silent when clean — an advisory that always prints trains you to ignore it.
+  if (unused.length > 0) {
+    console.log(`\n  Possibly unused in ${bundle.canonical} (advisory)`);
+    for (const k of unused) console.log(`    · ${k}`);
+  }
 
   return failures;
 }

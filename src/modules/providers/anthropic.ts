@@ -159,6 +159,9 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
   };
 }
 
+const MAX_OUTPUT_TOKENS = 4096;
+const MAX_THINKING_OUTPUT_TOKENS = 65536;
+
 /** Request body for POST /v1/messages. Exported for tests. */
 export function buildAnthropicBody(
   config: ResolvedProviderConfig,
@@ -171,9 +174,16 @@ export function buildAnthropicBody(
 
   const body: Record<string, unknown> = {
     model: config.model,
-    max_tokens: 4096,
+    // Thinking tokens count against max_tokens. With adaptive thinking on, the
+    // cap must exceed the budget the provider assigns (coding-plan gateways
+    // reject the request otherwise — seen: 32768) and still leave room for the
+    // answer; without thinking it's answer-only headroom.
+    max_tokens: config.reasoningEffort ? MAX_THINKING_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS,
     stream: true,
-    messages: conversation.map(toAnthropicMessage),
+    // tool_results and an injected mid-run message both serialize as user
+    // messages, and can land back to back — merge them, Anthropic rejects
+    // consecutive same-role messages.
+    messages: mergeConsecutiveUsers(conversation.map(toAnthropicMessage)),
   };
 
   if (systemMsg) {
@@ -221,6 +231,48 @@ function mapStopReason(reason: string): "stop" | "length" | "tool_use" | "unknow
   return "unknown";
 }
 
+/**
+ * `data:image/jpeg;base64,…` → an Anthropic image block. Anthropic takes the
+ * media type and payload as separate fields; it does not accept a data URL.
+ * A malformed URL falls back to png rather than throwing mid-request.
+ */
+function toImageBlock(dataUrl: string) {
+  const match = /^data:([^;,]+);base64,(.*)$/s.exec(dataUrl);
+  return {
+    type: "image" as const,
+    source: {
+      type: "base64" as const,
+      media_type: match?.[1] ?? "image/png",
+      data: match?.[2] ?? "",
+    },
+  };
+}
+
+interface AnthropicMessage {
+  role: "user" | "assistant";
+  content: string | Array<Record<string, unknown>>;
+}
+
+function asBlocks(
+  content: string | Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  return typeof content === "string" ? [{ type: "text", text: content }] : content;
+}
+
+/** Exported for tests — see buildAnthropicBody for why the merge exists. */
+export function mergeConsecutiveUsers(messages: AnthropicMessage[]): AnthropicMessage[] {
+  const merged: AnthropicMessage[] = [];
+  for (const msg of messages) {
+    const prev = merged[merged.length - 1];
+    if (prev?.role === "user" && msg.role === "user") {
+      prev.content = [...asBlocks(prev.content), ...asBlocks(msg.content)];
+    } else {
+      merged.push({ ...msg });
+    }
+  }
+  return merged;
+}
+
 export function toAnthropicMessage(msg: ChatMessage) {
   if (msg.role === "assistant" && msg.toolCalls) {
     return {
@@ -237,14 +289,23 @@ export function toAnthropicMessage(msg: ChatMessage) {
     };
   }
   if (msg.role === "tool_results") {
-    // Anthropic: all results collapse into ONE user message of tool_result blocks
+    // Anthropic: all results collapse into ONE user message of tool_result blocks.
+    // Screenshots nest directly inside their own result — no trailing message needed.
     return {
       role: "user" as const,
       content: (msg.toolResults ?? []).map((r) => ({
         type: "tool_result" as const,
         tool_use_id: r.id,
-        content: r.content,
+        content: r.images?.length
+          ? [{ type: "text" as const, text: r.content }, ...r.images.map(toImageBlock)]
+          : r.content,
       })),
+    };
+  }
+  if (msg.role === "user" && msg.images?.length) {
+    return {
+      role: "user" as const,
+      content: [{ type: "text" as const, text: msg.content }, ...msg.images.map(toImageBlock)],
     };
   }
   return { role: msg.role as "user" | "assistant", content: msg.content };

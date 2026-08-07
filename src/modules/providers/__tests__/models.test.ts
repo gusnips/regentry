@@ -93,6 +93,24 @@ describe("listModels", () => {
     expect(models.map((m) => m.id)).toEqual(["gpt-5", "gpt-4o"]);
   });
 
+  it("keeps the endpoint's human label (anthropic display_name, openrouter name)", async () => {
+    stubFetch(200, {
+      data: [
+        { id: "claude-sonnet-4-5-20250929", display_name: "Claude Sonnet 4.5" },
+        { id: "openai/gpt-5", name: "OpenAI: GPT-5" },
+        // A label that just echoes the id carries nothing — don't store it.
+        { id: "k3", display_name: "k3" },
+        { id: "glm-5.2" },
+      ],
+    });
+    expect((await listModels(anthropicConfig)).map((m) => m.name)).toEqual([
+      "Claude Sonnet 4.5",
+      "OpenAI: GPT-5",
+      undefined,
+      undefined,
+    ]);
+  });
+
   it("throws ProviderError with status on non-OK", async () => {
     stubFetch(404, { message: "Not support" });
     const err = await listModels(anthropicConfig).catch((e: unknown) => e);

@@ -59,6 +59,12 @@ describe("buildAnthropicBody", () => {
     const body = buildAnthropicBody(anthropicBase, messages, []);
     expect(body).not.toHaveProperty("thinking");
     expect(body).not.toHaveProperty("output_config");
+    expect(body.max_tokens).toBe(4096);
+  });
+
+  it("raises max_tokens above the thinking budget when thinking is on", () => {
+    const body = buildAnthropicBody({ ...anthropicBase, reasoningEffort: "high" }, messages, []);
+    expect(body.max_tokens).toBeGreaterThan(32768);
   });
 
   it("maps effort to adaptive thinking + output_config", () => {

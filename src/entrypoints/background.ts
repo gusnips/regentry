@@ -1,6 +1,6 @@
 import { initI18n, i18n } from "@/i18n";
 import { runAgentLoop } from "@/modules/agent";
-import { createDriver } from "@/modules/browser";
+import { createDriver, showAgentIndicator, hideAgentIndicator } from "@/modules/browser";
 import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
 import { appendMessage } from "@/modules/conversation";
 import { createLogger, truncate } from "@/lib/logger";
@@ -18,6 +18,8 @@ export default defineBackground(() => {
     log.debug("side panel connected");
 
     let abortController: AbortController | null = null;
+    /** Messages typed mid-run; drained by the loop at each tool boundary. */
+    const injectedQueue: { id: string; text: string }[] = [];
 
     port.onMessage.addListener(async (msg: Command) => {
       switch (msg.type) {
@@ -62,19 +64,37 @@ export default defineBackground(() => {
           });
 
           abortController = new AbortController();
+          injectedQueue.length = 0;
           const driver = createDriver(tab.id);
+          const tabId = tab.id;
+          // The panel is window-scoped and stays open on every tab — name the
+          // tab this run actually drives, so the user can find their way to it.
+          send(port, {
+            type: "driving",
+            tabId,
+            windowId: tab.windowId,
+            title: tabLabel(tab),
+            favIconUrl: tab.favIconUrl || undefined,
+          });
+          // Tell the page itself it is being driven — the side panel may be
+          // scrolled away or on another window.
+          void showAgentIndicator(tabId, i18n.t("indicator.driving"));
 
           try {
             await runAgentLoop({
               provider,
               driver,
               task: msg.task,
+              images: msg.images,
+              drainInjected: () => injectedQueue.splice(0, injectedQueue.length),
               signal: abortController.signal,
               callbacks: {
+                onInjected: (id, text) => send(port, { type: "injected", id, text }),
                 onToken: (text) => send(port, { type: "token", text }),
                 onReasoning: (text) => send(port, { type: "reasoning", text }),
-                onStepStart: (tool) => send(port, { type: "step_start", tool }),
-                onStep: (tool, summary, ok) => send(port, { type: "step", tool, summary, ok }),
+                onStepStart: (tool, args) => send(port, { type: "step_start", tool, args }),
+                onStep: (step) => send(port, { type: "step", ...step }),
+                onPlan: (plan) => send(port, { type: "plan", ...plan }),
                 onUsage: (input, output) => send(port, { type: "usage", input, output }),
                 onError: (message) => send(port, { type: "error", message }),
                 onDone: (summary) => send(port, { type: "done", summary }),
@@ -86,7 +106,20 @@ export default defineBackground(() => {
             send(port, { type: "error", message });
           } finally {
             abortController = null;
+            void hideAgentIndicator(tabId);
           }
+          break;
+        }
+
+        case "inject": {
+          // Only meaningful mid-run; the panel routes idle-time input to `run`.
+          if (abortController) injectedQueue.push({ id: msg.id, text: msg.text });
+          break;
+        }
+
+        case "unqueue": {
+          const i = injectedQueue.findIndex((q) => q.id === msg.id);
+          if (i >= 0) injectedQueue.splice(i, 1);
           break;
         }
 
@@ -94,6 +127,7 @@ export default defineBackground(() => {
           log.info("stop requested");
           abortController?.abort();
           abortController = null;
+          injectedQueue.length = 0;
           // Flush the partial stream immediately — the loop's own done arrives
           // as it unwinds and is a harmless no-op in the panel.
           send(port, { type: "done" });
@@ -109,6 +143,7 @@ export default defineBackground(() => {
     });
 
     port.onDisconnect.addListener(() => {
+      injectedQueue.length = 0;
       if (abortController) {
         abortController.abort();
         abortController = null;
@@ -139,5 +174,15 @@ function send(port: chrome.runtime.Port, event: Event) {
     port.postMessage(event);
   } catch {
     // Port closed
+  }
+}
+
+/** Best human label for a tab — its title, then hostname, then nothing (the panel hides the chip). */
+function tabLabel(tab: chrome.tabs.Tab): string {
+  if (tab.title) return tab.title;
+  try {
+    return tab.url ? new URL(tab.url).hostname : "";
+  } catch {
+    return "";
   }
 }

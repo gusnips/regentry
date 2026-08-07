@@ -1,5 +1,6 @@
 import type { TabId } from "@/shared/types";
 import { i18n } from "@/i18n";
+import { refreshAgentIndicator } from "./indicator";
 
 /**
  * CDP driver — manages chrome.debugger attach/detach and dispatches trusted input events.
@@ -181,16 +182,27 @@ export async function scroll(deltaX: number, deltaY: number): Promise<void> {
   });
 }
 
-/** Capture a screenshot as base64 PNG. */
+/**
+ * Capture the visible viewport as a `data:` URL, ready to hand to a model.
+ *
+ * JPEG, not PNG: a screenshot goes into the next request body, and PNG runs
+ * several times larger for no readability gain at q80 — on a slow uplink that
+ * difference is seconds per step.
+ */
 export async function screenshot(): Promise<string> {
-  const result = (await send("Page.captureScreenshot", { format: "png" })) as { data: string };
-  return result.data;
+  const result = (await send("Page.captureScreenshot", {
+    format: "jpeg",
+    quality: 80,
+  })) as { data: string };
+  return `data:image/jpeg;base64,${result.data}`;
 }
 
 /** Navigate the tab to a URL via chrome.tabs (not CDP — works pre-attach). */
 export async function navigateToUrl(tabId: TabId, url: string): Promise<void> {
   await chrome.tabs.update(tabId, { url });
   await waitForLoad(tabId);
+  // The new document wiped the badge — put it back before the agent acts here.
+  await refreshAgentIndicator(tabId);
 }
 
 function waitForLoad(tabId: TabId, timeoutMs = 30_000): Promise<void> {

@@ -22,9 +22,9 @@ your provider.
 
 ## Features
 
-- **Bring your own provider** — 12 presets (Anthropic, OpenAI, DeepSeek, Kimi coding plan,
-  Z.ai coding plan, QwenCloud token plan, Gemini, OpenRouter, Groq, Mistral, xAI, Ollama) plus any
-  custom endpoint speaking the OpenAI or Anthropic wire format.
+- **Bring your own provider** — 12 presets (Anthropic, OpenAI, DeepSeek, Kimi Coding, Z.ai Coding,
+  Qwen, Gemini, OpenRouter, Groq, Mistral, xAI, Ollama) plus any custom endpoint speaking the
+  OpenAI or Anthropic wire format.
 - **Real trusted input** — clicks and keystrokes go through the Chrome DevTools Protocol, so they
   are genuine trusted events, not synthetic JS dispatches that sites can ignore.
 - **Accessibility-tree snapshots** — the model sees a compact semantic tree
@@ -37,7 +37,10 @@ your provider.
 - **Reasoning effort control** — optional per-provider effort (`none` → `max`), mapped to each
   wire format; omitted entirely when you want provider defaults.
 - **Auto model resolution** — leave the model on Auto and Regent runs the newest model the
-  endpoint lists; pin a model and effort per task from the panel header.
+  endpoint lists, showing you which one that is; pin a model and effort per task from the panel
+  header.
+- **Speaks your language, matches your theme** — English, Português (Brasil), and Español; light,
+  dark, or follow the OS.
 - **Your data stays local** — provider configs and history live in `chrome.storage`. There is no
   Regent server.
 

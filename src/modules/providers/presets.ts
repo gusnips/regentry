@@ -156,3 +156,12 @@ export const PRESETS: ProviderPreset[] = [
     icon: "ollama",
   },
 ];
+
+/**
+ * Label for a stored provider. The preset's current name wins over the copy
+ * saved into the config at add time, so renaming a preset shows up everywhere
+ * without asking the user to re-save.
+ */
+export function providerDisplayName(provider: { id: string; name: string }): string {
+  return PRESETS.find((p) => p.id === provider.id)?.name ?? provider.name;
+}

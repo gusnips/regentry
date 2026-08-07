@@ -1,10 +1,19 @@
 import type { BrowserDriver } from "@/modules/browser";
-import type { ChatProvider, ChatMessage, ToolCall, Delta } from "@/modules/providers/types";
+import type {
+  ChatProvider,
+  ChatMessage,
+  ToolCall,
+  Delta,
+  ToolResult as ProviderToolResult,
+} from "@/modules/providers/types";
 import { isRetryable } from "@/modules/providers/types";
 import { createLogger, truncate } from "@/lib/logger";
 import { i18n } from "@/i18n";
+import { loadAgentContext } from "@/modules/memory";
+import type { ToolDef } from "@/modules/providers/types";
 import { executeTool } from "./tools";
-import { SYSTEM_PROMPT, buildUserPrompt, TOOL_DEFS } from "./prompt";
+import type { ToolResult, PlanState } from "./tools";
+import { buildSystemPrompt, buildUserPrompt, buildToolDefs } from "./prompt";
 
 const log = createLogger("agent");
 
@@ -13,12 +22,38 @@ const MAX_STEPS = 50;
 const MAX_STREAM_ATTEMPTS = 3;
 const BASE_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 15_000;
+/** Result payload kept for the panel's expandable step row — a page snapshot is far larger. */
+const MAX_DETAIL = 2000;
+/**
+ * Images are the most expensive thing in a request body: every one is re-sent on
+ * every later turn, so an unbounded run would grow quadratically. Only the newest
+ * screenshots stay attached; their text results carry the rest of the history.
+ *
+ * ponytail: a fixed count, not a token budget. The ceiling is that a model
+ * comparing four screenshots can only see the last two — it must re-capture.
+ * Upgrade path is trimming against the model's real context window.
+ */
+const MAX_ATTACHED_IMAGES = 2;
+
+/** Everything the panel needs to render one finished step. */
+export interface StepInfo {
+  tool: string;
+  summary: string;
+  /** true = succeeded, false = failed, absent = neutral note (retry, warn) */
+  ok?: boolean;
+  args?: Record<string, unknown>;
+  detail?: string;
+  images?: string[];
+}
 
 export interface LoopCallbacks {
   onToken?: (text: string) => void;
   onReasoning?: (text: string) => void;
-  onStepStart?: (tool: string) => void;
-  onStep?: (tool: string, summary: string, ok?: boolean) => void;
+  onStepStart?: (tool: string, args: Record<string, unknown>) => void;
+  onStep?: (step: StepInfo) => void;
+  onPlan?: (plan: PlanState) => void;
+  /** A queued mid-run message was consumed — the panel turns its pending line into a real one. */
+  onInjected?: (id: string, text: string) => void;
   onUsage?: (input: number, output: number) => void;
   onError?: (message: string) => void;
   onDone?: (summary?: string) => void;
@@ -28,6 +63,14 @@ export interface LoopOptions {
   provider: ChatProvider;
   driver: BrowserDriver;
   task: string;
+  /** Data-URL images the user attached to the task, referenced in the text as "[Image #1]". */
+  images?: string[];
+  /**
+   * Messages the user typed mid-run, drained at each tool boundary. Inserting
+   * them between tool batches (not mid-stream) keeps every provider wire valid
+   * and lands them in the conversation exactly where the user meant them.
+   */
+  drainInjected?: () => { id: string; text: string }[];
   signal: AbortSignal;
   callbacks: LoopCallbacks;
 }
@@ -57,6 +100,7 @@ interface TurnResult {
 async function streamTurn(
   provider: ChatProvider,
   messages: ChatMessage[],
+  tools: ToolDef[],
   signal: AbortSignal,
   callbacks: LoopCallbacks,
 ): Promise<TurnResult> {
@@ -67,7 +111,7 @@ async function streamTurn(
     let truncated = false;
 
     try {
-      for await (const delta of provider.stream(messages, TOOL_DEFS, signal)) {
+      for await (const delta of provider.stream(messages, tools, signal)) {
         if (delta.type === "error") throw new Error(delta.message);
         const handled = handleDelta(delta, callbacks, toolCalls);
         if (handled) {
@@ -88,10 +132,11 @@ async function streamTurn(
         `stream failed before any output — retrying (${attempt}/${MAX_STREAM_ATTEMPTS - 1}):`,
         reason,
       );
-      callbacks.onStep?.(
-        "retry",
-        i18n.t("errors.retrying", { attempt, max: MAX_STREAM_ATTEMPTS - 1 }),
-      );
+      callbacks.onStep?.({
+        tool: "retry",
+        summary: i18n.t("errors.retrying", { attempt, max: MAX_STREAM_ATTEMPTS - 1 }),
+        detail: reason,
+      });
       await sleep(backoffMs(attempt));
     }
   }
@@ -101,16 +146,24 @@ async function streamTurn(
  * Agent loop: snapshot → prompt → stream → execute tools → repeat until done or max steps.
  */
 export async function runAgentLoop(opts: LoopOptions): Promise<void> {
-  const { provider, driver, task, signal, callbacks } = opts;
+  const { provider, driver, task, images, drainInjected, signal, callbacks } = opts;
   log.info("run started:", truncate(task, 120));
+
+  // AGENTS.md / MEMORY.md are read once, here: a run keeps the context it started
+  // with, so editing a doc mid-run never rewrites the instructions under the model.
+  const context = await loadAgentContext();
+  const tools = buildToolDefs(context.memoryOn);
 
   // Auto-snapshot merged into the task message — Anthropic rejects consecutive user messages
   const initial = await driver.snapshot();
   const messages: ChatMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: buildSystemPrompt(context) },
     {
       role: "user",
       content: `${buildUserPrompt(task)}\n\nCurrent page:\n${initial.pageContent}`,
+      // The user's own attachments are the subject of the task — unlike screenshots
+      // they are never pruned, or a long run would forget what it was asked about.
+      ...(images?.length ? { images } : {}),
     },
   ];
 
@@ -133,7 +186,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
 
     let turn: TurnResult;
     try {
-      turn = await streamTurn(provider, messages, signal, callbacks);
+      turn = await streamTurn(provider, messages, tools, signal, callbacks);
     } catch (e) {
       if (signal.aborted) {
         callbacks.onDone?.();
@@ -152,7 +205,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
     });
 
     if (turn.truncated) {
-      callbacks.onStep?.("warn", i18n.t("errors.outputLimit"));
+      callbacks.onStep?.({ tool: "warn", summary: i18n.t("errors.outputLimit") });
     }
 
     messages.push({
@@ -173,7 +226,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
 
     // Execute each tool call
     let taskDone = false;
-    const results: { id: string; content: string }[] = [];
+    const results: ProviderToolResult[] = [];
 
     for (const call of turn.toolCalls) {
       if (signal.aborted) {
@@ -181,17 +234,27 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
         return;
       }
 
-      callbacks.onStepStart?.(call.name);
+      // The plan is bookkeeping, not an action on the page: it replaces a card
+      // rather than adding a row, so it gets no spinner and no step of its own.
+      const bookkeeping = call.name === "plan";
+      if (!bookkeeping) callbacks.onStepStart?.(call.name, call.args);
       const result = await executeTool(call, driver);
       if (!result.ok) log.warn(`tool ${call.name} failed:`, result.error);
 
-      callbacks.onStep?.(
-        call.name,
-        result.ok
-          ? formatSuccessSummary(call.name, result.data)
-          : i18n.t("errors.failed", { error: result.error }),
-        result.ok,
-      );
+      if (bookkeeping && result.ok) {
+        callbacks.onPlan?.(result.data as PlanState);
+      } else {
+        callbacks.onStep?.({
+          tool: call.name,
+          summary: result.ok
+            ? formatSuccessSummary(call.name, result.data)
+            : i18n.t("errors.failed", { error: result.error }),
+          ok: result.ok,
+          args: call.args,
+          detail: formatDetail(call.name, result),
+          images: result.images,
+        });
+      }
 
       if (call.name === "done") {
         taskDone = true;
@@ -203,6 +266,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
         results.push({
           id: call.id,
           content: JSON.stringify(result.ok ? result.data : { error: result.error }),
+          ...(result.images?.length ? { images: result.images } : {}),
         });
       }
     }
@@ -211,6 +275,15 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
     // for a turn in a single user message; OpenAI adapter expands to N messages.
     if (results.length > 0) {
       messages.push({ role: "tool_results", content: "", toolResults: results });
+      pruneImages(messages);
+    }
+
+    // Queued mid-run messages join here, after the tool results they comment on.
+    // A run that ends on `done` leaves its queue unconsumed — the panel recalls it.
+    for (const item of drainInjected?.() ?? []) {
+      log.info("injected mid-run message:", truncate(item.text, 120));
+      messages.push({ role: "user", content: item.text });
+      callbacks.onInjected?.(item.id, item.text);
     }
 
     if (taskDone) return;
@@ -241,6 +314,33 @@ function handleDelta(delta: Delta, callbacks: LoopCallbacks, toolCalls: ToolCall
   }
 }
 
+/**
+ * Drop every screenshot but the newest few, oldest first. Only tool results are
+ * pruned — a user's own attachment is what the task is about and always stays.
+ */
+function pruneImages(messages: ChatMessage[]): void {
+  let budget = MAX_ATTACHED_IMAGES;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    for (const result of messages[i]?.toolResults ?? []) {
+      if (!result.images?.length) continue;
+      if (budget > 0) budget -= result.images.length;
+      else delete result.images;
+    }
+  }
+}
+
+/** Result payload for the panel's expandable row — bounded, never a whole page. */
+function formatDetail(tool: string, result: ToolResult): string | undefined {
+  if (!result.ok) return result.error;
+  if (tool === "snapshot") {
+    const snapshot = result.data as { pageContent?: string } | undefined;
+    return snapshot?.pageContent ? truncate(snapshot.pageContent, MAX_DETAIL) : undefined;
+  }
+  if (result.data === undefined) return undefined;
+  const json = JSON.stringify(result.data, null, 2);
+  return json && json !== "{}" ? truncate(json, MAX_DETAIL) : undefined;
+}
+
 function formatSuccessSummary(tool: string, data: unknown): string {
   if (tool === "snapshot" && data && typeof data === "object") {
     const snap = data as { pageContent?: string };
@@ -256,6 +356,14 @@ function formatSuccessSummary(tool: string, data: unknown): string {
   }
   if (tool === "navigate") {
     return i18n.t("errors.navigated");
+  }
+  if (tool === "screenshot") {
+    return i18n.t("errors.screenshotCaptured");
+  }
+  if (tool === "remember" && data && typeof data === "object") {
+    // The fact itself is the summary — "Saved to memory" tells the user nothing
+    // about what Regent now knows, which is the only interesting part.
+    return (data as { fact: string }).fact;
   }
   return i18n.t("errors.toolCompleted", { tool });
 }

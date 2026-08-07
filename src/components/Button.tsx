@@ -1,7 +1,7 @@
 import { Button as BaseButton } from "@base-ui-components/react";
 import type { ComponentProps } from "react";
 
-type Variant = "primary" | "danger" | "ghost" | "ghost-danger";
+type Variant = "primary" | "danger" | "ghost" | "ghost-danger" | "outline";
 type Size = "sm" | "md";
 
 const VARIANTS: Record<Variant, string> = {
@@ -11,6 +11,8 @@ const VARIANTS: Record<Variant, string> = {
     "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 disabled:opacity-40",
   "ghost-danger":
     "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950 disabled:opacity-40",
+  outline:
+    "border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800 disabled:opacity-40",
 };
 
 const SIZES: Record<Size, string> = {

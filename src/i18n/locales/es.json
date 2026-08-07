@@ -23,7 +23,29 @@
     "language": "Idioma",
     "languageAuto": "Automático — seguir el navegador",
     "providers": "Proveedores",
-    "addProvider": "Añadir proveedor"
+    "addProvider": "Añadir proveedor",
+    "menuTitle": "Ajustes",
+    "allSettings": "Todos los ajustes →",
+    "languageAutoShort": "Auto"
+  },
+  "memory": {
+    "title": "Memoria",
+    "subtitle": "Dos archivos markdown que se cargan en cada ejecución: tus instrucciones permanentes y lo que Regent ha aprendido.",
+    "enable": "Memoria",
+    "fileTabs": "Archivos del agente",
+    "offNotice": "La memoria está desactivada. MEMORY.md no se carga en las ejecuciones y Regent no escribirá en él. Actívala para retomarlo, o vacía el archivo abajo.",
+    "instructionsHelp": "Tuyo para escribir. Todo lo que pongas aquí se aplica a cada tarea y prevalece sobre los valores por defecto de Regent.",
+    "memoryHelp": "De Regent. Añade una línea aquí cuando una ejecución le enseña algo duradero: edítalas o bórralas.",
+    "instructionsPlaceholder": "- Confírmame siempre antes de enviar un pago o un correo.\n- Mi cuenta de trabajo es yo@acme.com: úsala en todo lo de acme.com.\n- Prefiere navegar con el teclado cuando la página lo permita.",
+    "memoryPlaceholder": "Nada memorizado todavía. Regent escribe aquí a medida que aprende; tú también puedes añadir datos, uno por línea.",
+    "saved": "Guardado",
+    "chars_one": "{{count}} carácter",
+    "chars_other": "{{count}} caracteres",
+    "import": "Importar",
+    "export": "Exportar",
+    "clear": "Vaciar",
+    "clearTitle": "¿Vaciar {{name}}?",
+    "clearBody": "El archivo se vacía y su contenido deja de enviarse en las próximas ejecuciones. No se puede deshacer."
   },
   "addProvider": {
     "title": "Añadir proveedor",
@@ -69,37 +91,46 @@
   "modelPicker": {
     "providerTitle": "Proveedor para la próxima tarea",
     "modelTitle": "Modelo para la próxima tarea — Auto elige el más reciente al ejecutar",
+    "modelTitleFor": "{{model}} — modelo para la próxima tarea. Auto elige el más reciente al ejecutar.",
     "provider": "Proveedor",
     "addProvider": "Añadir un proveedor…",
     "model": "Modelo",
     "reasoningEffort": "Esfuerzo de razonamiento",
     "auto": "Auto",
-    "autoLoading": "Auto — cargando modelos…",
-    "autoLatest": "Auto — más reciente ({{model}})",
-    "current": "{{model}} (actual)",
+    "notListed": "no listado",
     "freeTextPlaceholder": "id del modelo — vacío = auto",
     "noModelListHint": "El endpoint no devolvió una lista de modelos — escribe un id o deja vacío para elegir automáticamente al ejecutar.",
     "effortHint": "Esfuerzo de razonamiento para la próxima tarea — un nivel no soportado falla con un error claro del proveedor en el chat.",
     "effort": {
-      "default": "Predeterminado del proveedor",
-      "none": "Ninguno — más rápido",
+      "default": "Por defecto",
+      "none": "Ninguno",
       "low": "Bajo",
       "medium": "Medio",
       "high": "Alto",
-      "max": "Máximo — más profundo"
+      "max": "Máximo"
     }
   },
   "sidepanel": {
-    "clear": "Limpiar",
-    "clearRunning": "Detén la ejecución antes de limpiar",
-    "clearTooltip": "Limpiar conversación",
-    "clearTitle": "¿Limpiar conversación?",
-    "clearBody": "Esto borra el historial visible guardado en este dispositivo. El agente no guarda memoria entre tareas — limpiar solo afecta a lo que ves aquí."
+    "busyRunning": "Detén la ejecución antes de cambiar de conversación"
+  },
+  "history": {
+    "title": "Historial",
+    "newChat": "Nueva conversación",
+    "untitled": "Tarea sin título",
+    "messages_one": "{{count}} mensaje",
+    "messages_other": "{{count}} mensajes",
+    "delete": "Eliminar",
+    "deleteAria": "Eliminar conversación: {{title}}",
+    "deleteTitle": "¿Eliminar esta conversación?",
+    "deleteBody": "La transcripción se elimina de este dispositivo. Lo que Regent haya guardado en MEMORY.md permanece: vacíalo aparte en Memoria.",
+    "emptyTitle": "Aún no hay conversaciones",
+    "emptyBody": "Cada tarea que envías se guarda aquí como historial — abre una para releer lo que hizo el agente, o elimina las que ya no necesites.",
+    "emptyAction": "Empezar una tarea",
+    "storedNote": "Guardado en este dispositivo · se conservan las 50 más recientes"
   },
   "chat": {
     "inputAria": "Descripción de la tarea",
     "placeholder": "Describe una tarea… (Enter para enviar, Shift+Enter para nueva línea)",
-    "runningTitle": "Hay una ejecución en curso — deténla para enviar una nueva tarea",
     "stop": "Detener",
     "send": "Enviar",
     "retry": "Reintentar",
@@ -108,11 +139,11 @@
     "emptyExample": "Ejemplo: \"ve a news.ycombinator.com y resume los 3 titulares principales\"",
     "portLost": "Se perdió la conexión con el agente — la ejecución se detuvo. Envía la tarea de nuevo para reintentar.",
     "reloaded": "Regent se recargó — cierra y vuelve a abrir este panel para continuar.",
-    "thinking": "Pensando",
     "working": "Trabajando",
     "jumpToLatest": "Ir al final ↓",
     "hint": {
       "badKey": "Probablemente una clave de API incorrecta o ausente — actualízala y vuelve a intentarlo.",
+      "quota": "La cuota de uso de tu plan se agotó — recarga con el proveedor o cambia a otro y vuelve a intentarlo.",
       "rateLimited": "Límite de peticiones alcanzado — espera un momento y envía de nuevo.",
       "rejected": "El proveedor rechazó la petición — a menudo un modelo o nivel de esfuerzo de razonamiento no soportado. El detalle de arriba indica cuál.",
       "network": "No se pudo contactar al proveedor — revisa la URL base y tu conexión.",
@@ -123,7 +154,29 @@
       "checkUrl": "Revisar URL base →",
       "addProvider": "Añadir un proveedor →"
     },
-    "details": "Detalles"
+    "details": "Detalles",
+    "screenshotAlt": "Captura de la página que tomó el agente",
+    "attachmentAlt": "Imagen adjunta {{number}}",
+    "removeAttachment": "Eliminar {{token}}",
+    "attachFailed": "No se pudo leer esa imagen — puede que el formato no sea compatible. Cópiala de nuevo como PNG o JPEG y vuelve a pegarla.",
+    "queue": "En cola",
+    "queueTitle": "Se inserta entre las próximas llamadas a herramientas",
+    "queuePlaceholder": "Pon en cola un mensaje para la tarea en curso… (Enter para encolar)",
+    "queuedBadge": "en cola",
+    "queuedHint": "En cola — entra entre las próximas llamadas a herramientas. Con el input vacío, ↑ edita el último; ✕ lo descarta.",
+    "unqueueAria": "Descartar mensaje en cola",
+    "queueNoImages": "Las imágenes no pueden unirse a una tarea en curso — encola el texto ahora y pega la imagen con la próxima tarea.",
+    "thinkingFor": "Pensando · {{duration}}",
+    "thoughtFor": "Pensó durante {{duration}}",
+    "reasoningToggle": "Mostrar u ocultar el razonamiento del modelo (se guarda para todas las conversaciones)"
+  },
+  "indicator": {
+    "driving": "Regent está controlando esta pestaña"
+  },
+  "plan": {
+    "title": "Plan",
+    "progress": "{{done}}/{{total}}",
+    "peekMore": "{{done}} hechos · {{pending}} pendientes"
   },
   "run": {
     "tool": {
@@ -134,13 +187,21 @@
       "press_key": "Pulsando teclas",
       "scroll": "Desplazando",
       "screenshot": "Capturando",
+      "remember": "Memorizando",
       "done": "Terminando",
       "retry": "Reintentando",
       "warn": "Trabajando",
       "interrupted": "Detenido"
     },
-    "idle": ["Pensando", "Trabajando", "Reflexionando", "Razonando", "Contemplando"],
-    "tokens": "{{count}} tokens"
+    "idle": [
+      "Pensando",
+      "Trabajando",
+      "Reflexionando",
+      "Razonando",
+      "Contemplando"
+    ],
+    "tokens": "{{count}} tokens",
+    "finished": "Listo"
   },
   "errors": {
     "alreadyRunning": "Ya hay una tarea en ejecución. Deténla primero.",
@@ -157,6 +218,7 @@
     "clickedAt": "Clic en ({{x}}, {{y}})",
     "keyPressed": "Tecla pulsada",
     "navigated": "Navegación completada",
+    "screenshotCaptured": "Captura realizada",
     "failed": "Error: {{error}}",
     "toolCompleted": "{{tool}} completado",
     "unknownTool": "Herramienta desconocida: {{name}}",
@@ -169,6 +231,8 @@
     "snapshotFailed": "Error de captura: la página pudo haber navegado o ser una URL restringida (chrome://, Web Store).",
     "refNotFound": "Referencia de elemento \"{{ref}}\" no encontrada. Ejecuta primero la captura para obtener referencias actualizadas.",
     "noTabAttached": "No hay pestaña adjunta. Llama primero a attach.",
-    "unsupportedKey": "Tecla no soportada: {{key}}. Soportadas: {{supported}}"
+    "unsupportedKey": "Tecla no soportada: {{key}}. Soportadas: {{supported}}",
+    "planEmpty": "El plan necesita al menos un paso — envía una lista no vacía de frases breves.",
+    "memoryEmpty": "No hay nada que memorizar: envía el dato como una frase."
   }
 }

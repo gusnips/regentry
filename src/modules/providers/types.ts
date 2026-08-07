@@ -31,6 +31,9 @@ export interface ResolvedProviderConfig extends ProviderConfig {
 /** One entry from a provider's model listing. `created` is epoch ms when the endpoint reports it. */
 export interface ModelInfo {
   id: string;
+  /** Human label when the endpoint ships one — Anthropic's `display_name`
+   *  ("Claude Sonnet 4.5"), OpenRouter's `name`. Absent on plain OpenAI. */
+  name?: string;
   created?: number;
 }
 
@@ -43,11 +46,19 @@ export interface ChatMessage {
    *  differently: OpenAI expands to N role:tool messages, Anthropic collapses
    *  to one user message with N tool_result blocks. */
   toolResults?: ToolResult[];
+  /** Images attached to a user message, as `data:` URLs. */
+  images?: string[];
 }
 
 export interface ToolResult {
   id: string;
   content: string;
+  /**
+   * Images produced by the tool (screenshots), as `data:` URLs. Anthropic nests
+   * them inside the tool_result block; OpenAI-shape tool messages are text-only,
+   * so that adapter trails a user message carrying them instead.
+   */
+  images?: string[];
 }
 
 export interface ToolCall {
@@ -65,8 +76,16 @@ export interface ToolDef {
 
 export interface JSONSchema {
   type: "object";
-  properties: Record<string, { type: string; description: string; enum?: string[] }>;
+  properties: Record<string, JSONSchemaProperty>;
   required?: string[];
+}
+
+export interface JSONSchemaProperty {
+  type: string;
+  description: string;
+  enum?: string[];
+  /** Element schema for `type: "array"` — both wire formats pass it through verbatim. */
+  items?: { type: string };
 }
 
 /** Streaming delta from the provider. */

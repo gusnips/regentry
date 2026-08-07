@@ -13,12 +13,13 @@ bun run lint       # eslint
 bun run compile    # tsc --noEmit
 bun run format     # prettier
 bun run deadcode   # knip (deadcode:fix to auto-fix)
+bun run i18n:check # locale parity + every static t() key resolves (--unused for orphans)
 bun run icons      # regenerate public/icon/* + docs/og.png from src/shared/logo.ts
 ```
 
 Load: `chrome://extensions` → Developer mode → Load unpacked → `dist/chrome-mv3`.
 
-Before submitting work: `compile`, `lint`, `test`, `deadcode` — all green.
+Before submitting work: `compile`, `lint`, `test`, `deadcode`, `i18n:check` — all green.
 
 ## Architecture
 
@@ -39,22 +40,34 @@ never reach the service-worker bundle.
 - `agent/` — agent loop (stream → tool calls → results → repeat), tools, system prompt.
   Background-only.
 - `browser/` — accessibility-tree snapshot (injected script), CDP driver (trusted input),
-  unified driver seam. Background-only.
+  unified driver seam, on-page "Regent is controlling this tab" badge. Background-only.
 - `providers/` — OpenAI/Anthropic adapters, presets, storage, config UI (add/edit dialog,
   list, per-task header picker, first-run onboarding). Adding a provider is a data change in
   `presets.ts` — never a code change elsewhere.
-- `conversation/` — history, message types, chat UI (MessageList, ChatInput, RunStatus).
+- `conversation/` — stored conversations, message types, chat UI (MessageList, ChatInput,
+  RunStatus, ConversationList).
 - `shared/` — Port protocol, shared types, brand mark (`logo.ts`).
-- `src/components/` — cross-domain Base UI primitives: Button, Select, TextField, PasswordField,
-  TextArea, ConfirmDialog.
+- `src/components/` — cross-domain Base UI primitives: Button, Select, SegmentedControl,
+  TextField, PasswordField, TextArea, ConfirmDialog, plus the ThemeToggle/LanguageToggle
+  preference controls shared by the panel's gear menu and the options page.
+- `src/i18n/` — the one i18next instance, the `en`/`pt-BR`/`es` catalogs, and typed keys.
+  Not a `modules/` domain because every layer needs it, background included.
 - `src/lib/` — storage helpers, logger, Tailwind theme tokens (`brand-*` purple scale).
 
 ### Data flow
 
 | Channel                         | What                                         | Why                                                |
 | ------------------------------- | -------------------------------------------- | -------------------------------------------------- |
-| `wxt/utils/storage` + `watch()` | Settings, provider configs, history          | Cross-context pub/sub, zero messaging code         |
+| `wxt/utils/storage` + `watch()` | Settings, provider configs, conversations    | Cross-context pub/sub, zero messaging code         |
 | Port (`runtime.connect`)        | Token deltas, step events, run/stop commands | Streaming; an open Port keeps the MV3 worker alive |
+
+**Conversation storage** (`conversation/conversations.ts`): a `conversations` index of metadata
+(id, title, counts) plus one `conversation:<id>` key per transcript — appending rewrites a single
+transcript, never the whole store. The panel writes through `appendMessage`, which resolves the
+active id itself, so the background worker can append (e.g. the panel-closed breadcrumb) without
+knowing which conversation is open. A fresh conversation is created lazily by its first message,
+so "New chat" never leaves an empty row behind. Runs stay stateless — the model gets the task,
+not the transcript; conversations are scrollback you can revisit and delete.
 
 ## Provider wire contracts (the load-bearing details)
 
@@ -71,6 +84,12 @@ never reach the service-worker bundle.
   `reasoning_effort` on OpenAI-shape; `thinking: {type:"adaptive"}` + `output_config: {effort}`
   on Anthropic-shape (`none` = adaptive only, Anthropic has no off switch). Unsupported levels
   come back as a clean provider 400, surfaced in chat — we never sniff model names.
+- **Images are data URLs everywhere inside Regent**, split per wire format at the adapter edge.
+  Anthropic nests image blocks inside the `tool_result` itself; an OpenAI-shape `role:"tool"`
+  message is text-only, so that adapter trails a `user` message carrying the images. The agent
+  loop keeps only the newest `MAX_ATTACHED_IMAGES` screenshots attached (every image is re-sent
+  on every later turn); a user's own attachment is never pruned. Screenshots are JPEG q80 from
+  `Page.captureScreenshot` and are stripped before storage — user attachments persist.
 - **Stream retry** happens in place (agent loop) with full-jitter backoff, only while nothing
   has been emitted yet — the UI never sees replayed tokens.
 - **Stop is not an error.** User abort is normal control flow: the loop ends with `done`, never
@@ -80,9 +99,12 @@ never reach the service-worker bundle.
   `GET {base}/v1/models` (Anthropic-shape) or `GET {base}/models` (OpenAI-shape, non-chat ids
   filtered). `ProviderConfig.model` is optional — absent means auto, resolved at run start by
   `resolveProviderModel`: persisted choice → newest listed (by `created`) → preset's first →
-  clear error. QwenCloud has no list route; that's why presets keep model ids at all. Model and
+  clear error. QwenCloud has no list route; that's why presets keep model ids at all. Endpoints
+  that ship a human label (Anthropic `display_name`, OpenRouter `name`) get it in `ModelInfo.name`
+  and the picker shows it; the id stays the value on the wire and in the tooltip. Model and
   effort are per-task choices in the side-panel header selects, persisted per provider — never asked
   for at provider-setup time (the key doesn't exist yet, so the list can't be fetched there).
+  The "Auto" option renders the model it currently resolves to, tagged with an `Auto` chip.
 
 ## Reference material
 
@@ -100,6 +122,13 @@ copy a line from the proprietary ones.
 - `@/*` alias → `src/*` (via `srcDir: "src"` in wxt.config.ts — WXT owns the `@` default).
 - Base UI for interactive primitives — go through `src/components/`, don't hand-roll buttons,
   selects, inputs, or dialogs.
+- i18n: no user-visible string is a literal — `useTranslation()` in UI, `i18n.t` elsewhere
+  (`src/i18n` is React-free so the service worker translates too). Keys are typed off `en.json`,
+  so a missing key is a compile error; add to **all three** catalogs in the same edit and run
+  `i18n:check`. The panel's UI entrypoints must `await initUiI18n()` **before** `render` —
+  `useTranslation` suspends forever on an uninitialized instance, which renders a blank panel.
+  Extension metadata (name, description, action tooltip) is separate: `public/_locales/<lang>/`
+  - `__MSG_*__` in `wxt.config.ts`, and Chrome wants `pt_BR`, not `pt-BR`.
 - Theming: class-strategy dark mode (`@custom-variant dark` in `src/lib/theme.css`) — every color
   utility needs a `dark:` counterpart. The preference lives in `src/lib/theme.ts` (`themeMode`
   item, default `"system"`; `initTheme()` runs once per entrypoint, before render).

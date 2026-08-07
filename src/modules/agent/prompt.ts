@@ -1,6 +1,7 @@
 import type { ToolDef } from "@/modules/providers/types";
+import type { AgentContext } from "@/modules/memory";
 
-export const SYSTEM_PROMPT = `You are Regent, a browser automation agent. You control the user's real browser via tools.
+const BASE_PROMPT = `You are Regent, a browser automation agent. You control the user's real browser via tools.
 
 Your capabilities:
 - Navigate to URLs
@@ -13,6 +14,7 @@ Your capabilities:
 - Signal task completion
 
 Rules:
+0. For any task needing more than about three steps, call "plan" before you act, and call it again each time you finish a step. Skip it for one-shot tasks — a plan for "what's on this page" is noise.
 1. ALWAYS call snapshot first to see the page before interacting with it.
 2. Use ref ids (e.g. "e12") from the snapshot to identify elements for click/type.
 3. After performing actions, call snapshot again to verify the result.
@@ -25,11 +27,44 @@ You see the page as an accessibility tree — a text representation of the page'
 - Example line: button "Submit" [ref=e3]
 - Attributes like href, type, placeholder are shown when present`;
 
+/**
+ * The user's standing instructions. They come after the base prompt so they win
+ * on anything the two disagree about — that is the whole point of writing them.
+ */
+function instructionsSection(instructions: string): string {
+  return `# AGENTS.md
+
+Standing instructions written by the user. They apply to every task and take precedence over your own defaults.
+
+${instructions}`;
+}
+
+/**
+ * Memory is presented as a file the agent owns, empty or not: a model that is
+ * never shown MEMORY.md has no reason to call "remember".
+ */
+function memorySection(memory: string): string {
+  return `# MEMORY.md
+
+What you have learned about this user and the sites they use, carried over from earlier runs.
+
+${memory || "(empty — nothing remembered yet)"}
+
+Call "remember" when a run teaches you something that will still be true next time: a stable fact about the user, or a site quirk you had to discover the hard way ("the real login on this site is the email link, not the SSO button"). Do NOT remember one-off task details, anything already written above, or — ever — passwords, API keys, card numbers, or other secrets. This file is sent to the model provider on every run.`;
+}
+
+export function buildSystemPrompt(ctx: AgentContext): string {
+  const sections = [BASE_PROMPT];
+  if (ctx.instructions) sections.push(instructionsSection(ctx.instructions));
+  if (ctx.memoryOn) sections.push(memorySection(ctx.memory));
+  return sections.join("\n\n");
+}
+
 export function buildUserPrompt(task: string): string {
   return `Task: ${task}`;
 }
 
-export const TOOL_DEFS: ToolDef[] = [
+const TOOL_DEFS: ToolDef[] = [
   {
     name: "navigate",
     description: "Navigate the browser to a URL.",
@@ -122,10 +157,32 @@ export const TOOL_DEFS: ToolDef[] = [
   },
   {
     name: "screenshot",
-    description: "Capture a screenshot of the current page. Returns base64 PNG.",
+    description:
+      "Capture an image of the visible viewport. Use it only when the accessibility snapshot is not enough — canvas, charts, maps, or a visual layout question. Prefer snapshot: it is far cheaper and it is the only tool that gives you clickable refs.",
     params: {
       type: "object",
       properties: {},
+    },
+  },
+  {
+    name: "plan",
+    description:
+      "Post or update your plan for the task. Call it once at the start of any task needing more than about three steps, then again whenever you finish a step or the plan changes. Always pass the WHOLE list — it replaces the previous one.",
+    params: {
+      type: "object",
+      properties: {
+        steps: {
+          type: "array",
+          description: "Every step, in order. Short imperative phrases, e.g. 'Open the repo page'.",
+          items: { type: "string" },
+        },
+        current: {
+          type: "number",
+          description:
+            "0-based index of the step you are working on now. Pass the number of steps once every one is finished.",
+        },
+      },
+      required: ["steps", "current"],
     },
   },
   {
@@ -140,3 +197,25 @@ export const TOOL_DEFS: ToolDef[] = [
     },
   },
 ];
+
+/** Offered only while memory is on — a tool whose result is discarded is worse than no tool. */
+const REMEMBER_TOOL: ToolDef = {
+  name: "remember",
+  description:
+    "Save one durable fact to MEMORY.md so future runs start knowing it. One fact per call, written as a standalone sentence that still makes sense with no task context. Never save secrets.",
+  params: {
+    type: "object",
+    properties: {
+      fact: {
+        type: "string",
+        description:
+          "The fact, e.g. 'On invoice.acme.com the working login is the \"Sign in with email\" link, not the SSO button.'",
+      },
+    },
+    required: ["fact"],
+  },
+};
+
+export function buildToolDefs(memoryOn: boolean): ToolDef[] {
+  return memoryOn ? [...TOOL_DEFS, REMEMBER_TOOL] : TOOL_DEFS;
+}

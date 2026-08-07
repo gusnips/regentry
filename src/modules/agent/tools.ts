@@ -1,11 +1,24 @@
 import type { BrowserDriver } from "@/modules/browser";
 import type { ToolCall } from "@/modules/providers/types";
+import { remember } from "@/modules/memory";
 import { i18n } from "@/i18n";
+
+/** Longer than this and the plan card stops being scannable in a side panel. */
+const MAX_PLAN_STEPS = 20;
+
+/** The agent's checklist: every step in order, plus the index it is working on. */
+export interface PlanState {
+  steps: string[];
+  /** 0-based; equals steps.length once every step is finished. */
+  current: number;
+}
 
 export interface ToolResult {
   ok: boolean;
   data?: unknown;
   error?: string;
+  /** Images the tool produced, as `data:` URLs — fed to the model as image blocks. */
+  images?: string[];
 }
 
 /** Execute a single tool call against the browser driver. */
@@ -43,10 +56,36 @@ export async function executeTool(call: ToolCall, driver: BrowserDriver): Promis
         return { ok: true };
 
       case "screenshot": {
-        const data = await driver.screenshot();
-        // ponytail: don't persist screenshots — base64 in storage.local blows the quota.
-        // Returned for model context only.
-        return { ok: true, data: { format: "png", dataLength: data.length } };
+        const image = await driver.screenshot();
+        // The text half tells a text-only model what happened; the image half is
+        // what a vision model actually reads. Both are needed — a provider that
+        // silently drops images still gets a coherent transcript.
+        return { ok: true, data: { captured: true }, images: [image] };
+      }
+
+      case "plan": {
+        // ponytail: a flat list plus a cursor, not per-step statuses — weaker
+        // models get nested enums wrong far more often than they get an index
+        // wrong. The ceiling is that no step can be marked skipped or failed.
+        const steps = (Array.isArray(call.args.steps) ? call.args.steps : [])
+          .filter((s): s is string => typeof s === "string" && s.trim() !== "")
+          .slice(0, MAX_PLAN_STEPS);
+        if (steps.length === 0) return { ok: false, error: i18n.t("errors.planEmpty") };
+        // Models routinely send a 1-based or already-past-the-end index; clamping
+        // beats rejecting, since the plan is a display aid and never control flow.
+        const raw = Number(call.args.current);
+        const current = Number.isFinite(raw)
+          ? Math.min(Math.max(0, Math.trunc(raw)), steps.length)
+          : 0;
+        return { ok: true, data: { steps, current } };
+      }
+
+      case "remember": {
+        // Reachable only when memory is on — buildToolDefs withholds the tool
+        // otherwise, so there is no second enabled check to drift out of sync.
+        const stored = await remember(String(call.args.fact ?? ""));
+        if (!stored) return { ok: false, error: i18n.t("errors.memoryEmpty") };
+        return { ok: true, data: { fact: stored } };
       }
 
       case "done":

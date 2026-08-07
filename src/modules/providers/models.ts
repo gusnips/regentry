@@ -76,11 +76,21 @@ function parseModelEntries(body: unknown): ModelInfo[] {
   if (!Array.isArray(data)) throw new ProviderError(i18n.t("errors.noModelData"), 0);
   const out: ModelInfo[] = [];
   for (const entry of data) {
-    const id = (entry as { id?: unknown } | null)?.id;
+    const record = (entry ?? {}) as Record<string, unknown>;
+    const id = record.id;
     if (typeof id !== "string" || !id) continue;
-    out.push({ id, created: parseCreated(entry as Record<string, unknown>) });
+    out.push({ id, name: parseName(record, id), created: parseCreated(record) });
   }
   return out;
+}
+
+/** Anthropic lists `display_name`, OpenRouter-style endpoints list `name`; plain OpenAI has neither. */
+function parseName(entry: Record<string, unknown>, id: string): string | undefined {
+  for (const key of ["display_name", "name"]) {
+    const value = entry[key];
+    if (typeof value === "string" && value.trim() && value !== id) return value.trim();
+  }
+  return undefined;
 }
 
 /** Endpoints report `created` (unix s) and/or `created_at` (ISO) — normalize to ms. */

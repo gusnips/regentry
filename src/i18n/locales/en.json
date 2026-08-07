@@ -23,7 +23,29 @@
     "language": "Language",
     "languageAuto": "Auto — follow the browser",
     "providers": "Providers",
-    "addProvider": "Add provider"
+    "addProvider": "Add provider",
+    "menuTitle": "Settings",
+    "allSettings": "All settings →",
+    "languageAutoShort": "Auto"
+  },
+  "memory": {
+    "title": "Memory",
+    "subtitle": "Two markdown files loaded into every run — your standing instructions, and what Regent has learned.",
+    "enable": "Memory",
+    "fileTabs": "Agent files",
+    "offNotice": "Memory is off. MEMORY.md is not loaded into runs and Regent will not write to it. Turn it back on to resume, or clear the file below.",
+    "instructionsHelp": "Yours to write. Anything here applies to every task and takes precedence over Regent's own defaults.",
+    "memoryHelp": "Regent's. It appends a line here when a run teaches it something durable — edit or delete any of them.",
+    "instructionsPlaceholder": "- Always confirm with me before submitting a payment or sending an email.\n- My work account is me@acme.com — use it for anything on acme.com.\n- Prefer keyboard navigation over clicking when a page supports it.",
+    "memoryPlaceholder": "Nothing remembered yet. Regent writes here as it learns — you can add facts yourself too, one per line.",
+    "saved": "Saved",
+    "chars_one": "{{count}} character",
+    "chars_other": "{{count}} characters",
+    "import": "Import",
+    "export": "Export",
+    "clear": "Clear",
+    "clearTitle": "Clear {{name}}?",
+    "clearBody": "The file is emptied and its contents stop being sent with future runs. This cannot be undone."
   },
   "addProvider": {
     "title": "Add provider",
@@ -69,37 +91,46 @@
   "modelPicker": {
     "providerTitle": "Provider for the next task",
     "modelTitle": "Model for the next task — Auto picks the newest at run start",
+    "modelTitleFor": "{{model}} — model for the next task. Auto picks the newest at run start.",
     "provider": "Provider",
     "addProvider": "Add a provider…",
     "model": "Model",
     "reasoningEffort": "Reasoning effort",
     "auto": "Auto",
-    "autoLoading": "Auto — loading models…",
-    "autoLatest": "Auto — latest ({{model}})",
-    "current": "{{model}} (current)",
+    "notListed": "not listed",
     "freeTextPlaceholder": "model id — empty = auto",
     "noModelListHint": "The endpoint didn't return a model list — type an id, or leave empty to auto-pick at run time.",
     "effortHint": "Reasoning effort for the next task — an unsupported level fails with a clear provider error in chat.",
     "effort": {
-      "default": "Provider default",
-      "none": "None — fastest",
+      "default": "Default",
+      "none": "None",
       "low": "Low",
       "medium": "Medium",
       "high": "High",
-      "max": "Max — deepest"
+      "max": "Max"
     }
   },
   "sidepanel": {
-    "clear": "Clear",
-    "clearRunning": "Stop the run before clearing",
-    "clearTooltip": "Clear conversation",
-    "clearTitle": "Clear conversation?",
-    "clearBody": "This wipes the visible transcript stored on this device. The agent keeps no memory between tasks — clearing only affects what you see here."
+    "busyRunning": "Stop the run before switching conversations"
+  },
+  "history": {
+    "title": "History",
+    "newChat": "New chat",
+    "untitled": "Untitled task",
+    "messages_one": "{{count}} message",
+    "messages_other": "{{count}} messages",
+    "delete": "Delete",
+    "deleteAria": "Delete conversation: {{title}}",
+    "deleteTitle": "Delete this conversation?",
+    "deleteBody": "The transcript is removed from this device. Anything Regent saved to MEMORY.md stays — clear that separately under Memory.",
+    "emptyTitle": "No conversations yet",
+    "emptyBody": "Every task you send is kept here as a transcript — open one to reread what the agent did, or delete the ones you're done with.",
+    "emptyAction": "Start a task",
+    "storedNote": "Stored on this device · the 50 most recent are kept"
   },
   "chat": {
     "inputAria": "Task description",
     "placeholder": "Describe a task… (Enter to send, Shift+Enter for newline)",
-    "runningTitle": "A run is in flight — stop it to send a new task",
     "stop": "Stop",
     "send": "Send",
     "retry": "Retry",
@@ -108,11 +139,11 @@
     "emptyExample": "Example: \"go to news.ycombinator.com and summarize the top 3 headlines\"",
     "portLost": "Connection to the agent was lost — the run stopped. Send the task again to retry.",
     "reloaded": "Regent was reloaded — close and reopen this panel to keep going.",
-    "thinking": "Thinking",
     "working": "Working",
     "jumpToLatest": "Jump to latest ↓",
     "hint": {
       "badKey": "Likely a bad or missing API key — update it and try again.",
+      "quota": "Your plan's usage quota is spent — top up with the provider, or switch to another one and retry.",
       "rateLimited": "Rate limited — wait a moment, then send again.",
       "rejected": "The provider rejected the request — often an unsupported model or reasoning effort level. The detail above says which.",
       "network": "Couldn't reach the provider — check the base URL and your connection.",
@@ -123,7 +154,29 @@
       "checkUrl": "Check base URL →",
       "addProvider": "Add a provider →"
     },
-    "details": "Details"
+    "details": "Details",
+    "screenshotAlt": "Screenshot of the page the agent captured",
+    "attachmentAlt": "Attached image {{number}}",
+    "removeAttachment": "Remove {{token}}",
+    "attachFailed": "Couldn't read that image — the format may be unsupported. Copy it again as PNG or JPEG and paste once more.",
+    "queue": "Queue",
+    "queueTitle": "Inserted between the next tool calls",
+    "queuePlaceholder": "Queue a message for the running task… (Enter to queue)",
+    "queuedBadge": "queued",
+    "queuedHint": "Queued — lands between the next tool calls. ↑ with an empty input edits the newest; ✕ drops it.",
+    "unqueueAria": "Drop queued message",
+    "queueNoImages": "Images can't join a running task — queue the text now and paste the image with the next task.",
+    "thinkingFor": "Thinking · {{duration}}",
+    "thoughtFor": "Thought for {{duration}}",
+    "reasoningToggle": "Show or hide the model's reasoning (saved for all conversations)"
+  },
+  "indicator": {
+    "driving": "Regent is controlling this tab"
+  },
+  "plan": {
+    "title": "Plan",
+    "progress": "{{done}}/{{total}}",
+    "peekMore": "{{done}} done · {{pending}} to go"
   },
   "run": {
     "tool": {
@@ -134,13 +187,21 @@
       "press_key": "Pressing keys",
       "scroll": "Scrolling",
       "screenshot": "Capturing",
+      "remember": "Remembering",
       "done": "Wrapping up",
       "retry": "Retrying",
       "warn": "Working",
       "interrupted": "Stopped"
     },
-    "idle": ["Thinking", "Working", "Pondering", "Reasoning", "Contemplating"],
-    "tokens": "{{count}} tokens"
+    "idle": [
+      "Thinking",
+      "Working",
+      "Pondering",
+      "Reasoning",
+      "Contemplating"
+    ],
+    "tokens": "{{count}} tokens",
+    "finished": "Done"
   },
   "errors": {
     "alreadyRunning": "A task is already running. Stop it first.",
@@ -157,6 +218,7 @@
     "clickedAt": "Clicked at ({{x}}, {{y}})",
     "keyPressed": "Key pressed",
     "navigated": "Navigated successfully",
+    "screenshotCaptured": "Screenshot captured",
     "failed": "Failed: {{error}}",
     "toolCompleted": "{{tool}} completed",
     "unknownTool": "Unknown tool: {{name}}",
@@ -169,6 +231,8 @@
     "snapshotFailed": "Snapshot failed: the page may have navigated or be a restricted URL (chrome://, Web Store).",
     "refNotFound": "Element ref \"{{ref}}\" not found. Run snapshot first to get fresh refs.",
     "noTabAttached": "No tab attached. Call attach first.",
-    "unsupportedKey": "Unsupported key: {{key}}. Supported: {{supported}}"
+    "unsupportedKey": "Unsupported key: {{key}}. Supported: {{supported}}",
+    "planEmpty": "The plan needs at least one step — pass a non-empty list of short phrases.",
+    "memoryEmpty": "Nothing to remember — pass the fact as a sentence."
   }
 }

@@ -199,21 +199,47 @@ function mapFinishReason(reason: string): "stop" | "length" | "tool_use" | "unkn
   return "unknown";
 }
 
+type OpenAIPart =
+  { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
+
 interface OpenAIMessage {
   role: "system" | "user" | "assistant" | "tool";
-  content: string | null;
+  content: string | null | OpenAIPart[];
   tool_call_id?: string;
   tool_calls?: OpenAIToolCall[];
+}
+
+function imageParts(images: string[]): OpenAIPart[] {
+  return images.map((url) => ({ type: "image_url" as const, image_url: { url } }));
 }
 
 export function toOpenAIMessages(msg: ChatMessage): OpenAIMessage[] {
   if (msg.role === "tool_results") {
     // OpenAI: one role:tool message per result
-    return (msg.toolResults ?? []).map((r) => ({
+    const results = msg.toolResults ?? [];
+    const messages: OpenAIMessage[] = results.map((r) => ({
       role: "tool" as const,
       content: r.content,
       tool_call_id: r.id,
     }));
+    // A role:tool message may only carry text, so screenshots ride along in a
+    // trailing user message — the same turn, just the only slot that accepts them.
+    const images = results.flatMap((r) => r.images ?? []);
+    if (images.length > 0) {
+      messages.push({
+        role: "user",
+        content: [
+          { type: "text", text: "Screenshot from the tool call above:" },
+          ...imageParts(images),
+        ],
+      });
+    }
+    return messages;
+  }
+  if (msg.role === "user" && msg.images?.length) {
+    return [
+      { role: "user", content: [{ type: "text", text: msg.content }, ...imageParts(msg.images)] },
+    ];
   }
   if (msg.role === "assistant" && msg.toolCalls) {
     return [

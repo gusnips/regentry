@@ -1,19 +1,79 @@
+import { truncate } from "@/lib/logger";
+
 /**
  * Split a provider error line into a human summary and a raw JSON detail blob.
- * Adapters throw `Anthropic API error 400: {"error":{...}}` — the JSON is for
- * debugging, not for the chat bubble, so the UI tucks it behind a disclosure.
+ * Adapters throw `Anthropic API error 400: {"error":{...}}`. The status alone
+ * ("error 403") says nothing actionable, so the provider's own message is lifted
+ * into the summary and the full JSON stays behind the Details disclosure.
  */
 export function splitErrorDetail(message: string): { summary: string; detail?: string } {
   const start = message.indexOf("{");
   if (start === -1) return { summary: message };
 
   const candidate = message.slice(start).trim();
+  let parsed: unknown;
   try {
-    JSON.parse(candidate);
+    parsed = JSON.parse(candidate);
   } catch {
     return { summary: message };
   }
 
-  const summary = message.slice(0, start).replace(/[:\s]+$/, "");
-  return summary ? { summary, detail: candidate } : { summary: message };
+  const prefix = message.slice(0, start).replace(/[:\s]+$/, "");
+  if (!prefix) return { summary: message };
+
+  const reason = findReason(parsed);
+  return { summary: reason ? `${prefix} — ${truncate(reason, 300)}` : prefix, detail: candidate };
 }
+
+/**
+ * Human-readable line out of a provider error body. Providers and proxies wrap
+ * errors in arbitrary shells — OpenAI's `{error:{message}}`, Anthropic's
+ * `{type:"error",error:{message}}`, gateways that serialize the upstream error
+ * (sometimes a whole SSE frame) into their own `message` — so unwrap until the
+ * innermost real text is found.
+ */
+function findReason(body: unknown, depth = 0): string | undefined {
+  if (!isRecord(body) || depth > 3) return undefined;
+  const source = isRecord(body.error) ? body.error : body;
+  const candidates = [
+    isString(body.error) ? body.error : undefined,
+    source.message,
+    source.detail,
+    body.message,
+    body.detail,
+  ];
+  for (const value of candidates) {
+    if (!isString(value) || !value.trim()) continue;
+    const text = value.trim();
+    const nested = embeddedJson(text);
+    if (nested !== undefined) {
+      // Wrapper string: readable text lives one level deeper, if at all.
+      const inner = findReason(nested, depth + 1);
+      if (inner) return inner;
+      continue;
+    }
+    // A serialized SSE frame with no JSON payload ("data: [DONE]") is noise.
+    if (/(?:^|\n)\s*(?:event|data)\s*:/.test(text)) continue;
+    return text;
+  }
+  return undefined;
+}
+
+/**
+ * JSON hiding inside a string value — bare JSON or an SSE frame like
+ * `data: {"error":...}`. Parsed from the first `{` on; undefined if none.
+ */
+function embeddedJson(text: string): unknown {
+  const start = text.indexOf("{");
+  if (start === -1) return undefined;
+  try {
+    return JSON.parse(text.slice(start).trim());
+  } catch {
+    return undefined;
+  }
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+const isString = (v: unknown): v is string => typeof v === "string";

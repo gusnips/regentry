@@ -1,1 +1,1 @@
-export { appendMessage } from "./history";
+export { appendMessage } from "./conversations";

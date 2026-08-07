@@ -1,23 +1,13 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
-import { toolVerbKey } from "./tool-labels";
-
-function formatElapsed(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  return `${m}m ${s % 60}s`;
-}
-
-function formatTokens(n: number): string {
-  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-}
+import { formatDuration, formatTokens } from "@/lib/format";
 
 export function RunStatus() {
   const { t } = useTranslation();
   const status = useConversationStore((s) => s.status);
   const runStartedAt = useConversationStore((s) => s.runStartedAt);
+  const runEndedAt = useConversationStore((s) => s.runEndedAt);
   const usage = useConversationStore((s) => s.usage);
   const messages = useConversationStore((s) => s.messages);
 
@@ -29,31 +19,107 @@ export function RunStatus() {
   useEffect(() => {
     if (!running) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
-    const verbTimer = setInterval(() => setVerbIdx((i) => i + 1), 2500);
+    let rotate: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      // Random 1–2 min. Tools churn in under a second, so a verb that tracked
+      // them read as flicker — the live rows above already name the tool.
+      // The verb is mood, the shimmer is the "alive" signal; it only needs to
+      // keep the bar from feeling like a frozen frame.
+      rotate = setTimeout(
+        () => {
+          setVerbIdx((i) => i + 1);
+          schedule();
+        },
+        60_000 + Math.random() * 60_000,
+      );
+    };
+    schedule();
     return () => {
       clearInterval(timer);
-      clearInterval(verbTimer);
+      clearTimeout(rotate);
     };
   }, [running]);
 
-  if (!running) return null;
-
-  // Verb: from the latest step's tool, else rotate generic gerunds
-  const idleVerbs = t("run.idle", { returnObjects: true });
-  const lastStep = [...messages].reverse().find((m) => m.role === "step");
-  const toolKey = toolVerbKey(lastStep?.tool);
-  const verb = toolKey ? t(toolKey) : (idleVerbs[verbIdx % idleVerbs.length] ?? idleVerbs[0] ?? "");
-
   const totalTokens = usage.input + usage.output;
 
+  // What the last run cost, kept up after it ends: while it streams the numbers
+  // move too fast to read, and they are gone by the time you look.
+  if (!running) {
+    if (runStartedAt === null || runEndedAt === null) return null;
+    return (
+      <div className="flex items-center gap-2 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
+        <span>{t("run.finished")}</span>
+        <span>
+          {formatDuration(runEndedAt - runStartedAt)}
+          {totalTokens > 0 && ` · ${t("run.tokens", { count: formatTokens(totalTokens) })}`}
+        </span>
+      </div>
+    );
+  }
+
+  const idleVerbs = t("run.idle", { returnObjects: true });
+  const verb = idleVerbs[verbIdx % idleVerbs.length] ?? idleVerbs[0] ?? "";
+  const plan = [...messages].reverse().find((m) => m.role === "plan");
+
+  /**
+   * Loud on purpose. Something is clicking and typing in your browser right now,
+   * and the muted one-liner this replaced read like a footer — you could scroll
+   * past it and not register that a run was live.
+   */
   return (
-    <div className="flex items-center gap-2 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
-      <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand-500" />
-      <span className="font-medium text-neutral-700 dark:text-neutral-200">{verb}…</span>
-      <span className="text-neutral-400 dark:text-neutral-500">
-        {formatElapsed(now - runStartedAt)}
-        {totalTokens > 0 && ` · ${t("run.tokens", { count: formatTokens(totalTokens) })}`}
-      </span>
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex flex-col gap-0.5 border-t border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-900 dark:bg-brand-950/60"
+    >
+      <div className="flex items-center gap-2 text-sm">
+        {/* One motion only — the shimmering verb is the live signal, so the dot stays still. */}
+        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500" />
+        <span className="shimmer-text font-semibold">{verb}…</span>
+        <span className="ml-auto shrink-0 font-mono text-xs text-brand-700/70 dark:text-brand-300/70">
+          {formatDuration(now - runStartedAt)}
+          {totalTokens > 0 && ` · ${t("run.tokens", { count: formatTokens(totalTokens) })}`}
+        </span>
+      </div>
+      {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
+    </div>
+  );
+}
+
+/** How many plan rows the footer shows — the full card lives in the transcript. */
+const PEEK_ROWS = 4;
+
+/**
+ * A window onto the checklist: the step just finished (for orientation), the
+ * one in flight, and what comes next. When the plan is bigger than the window,
+ * counts stand in for the hidden rows instead of pretending the list is short.
+ */
+function PlanPeek({ steps, current }: { steps: string[]; current: number }) {
+  const { t } = useTranslation();
+  const done = Math.min(current, steps.length);
+  const from = Math.max(0, current - 1);
+  const peek = steps.slice(from, from + PEEK_ROWS);
+  const hiddenBefore = from;
+  const hiddenAfter = steps.length - (from + peek.length);
+
+  return (
+    <div className="flex flex-col gap-0.5 pl-[1.125rem] text-xs text-brand-800/80 dark:text-brand-200/70">
+      {peek.map((step, j) => {
+        const i = from + j;
+        return (
+          <div key={i} className={i === current ? "flex gap-1.5 font-medium" : "flex gap-1.5"}>
+            <span aria-hidden className="shrink-0 opacity-70">
+              {i < current ? "✓" : i === current ? "▪" : "○"}
+            </span>
+            <span className="truncate">{step}</span>
+          </div>
+        );
+      })}
+      {(hiddenBefore > 0 || hiddenAfter > 0) && (
+        <div className="opacity-70">
+          {t("plan.peekMore", { done, pending: steps.length - done })}
+        </div>
+      )}
     </div>
   );
 }

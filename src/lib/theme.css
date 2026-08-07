@@ -28,3 +28,52 @@
 body {
   @apply bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100;
 }
+
+/*
+ * Live-run shimmer: a highlight sweeping through the status verb. A run can go
+ * minutes between visible changes, and motion is the only honest signal that
+ * the agent is still working rather than wedged. Text-clipped rather than a
+ * spinner so it reads as the word itself being alive.
+ */
+@keyframes regent-shimmer {
+  from {
+    background-position: 150% center;
+  }
+  to {
+    background-position: -50% center;
+  }
+}
+
+.shimmer-text {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-brand-800) 30%,
+    var(--color-brand-400) 50%,
+    var(--color-brand-800) 70%
+  );
+  background-size: 250% auto;
+  background-clip: text;
+  color: transparent;
+  animation: regent-shimmer 2.4s linear infinite;
+}
+
+:where(.dark) .shimmer-text {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-brand-300) 30%,
+    #ffffff 50%,
+    var(--color-brand-300) 70%
+  );
+}
+
+/* Motion is the point here, so the reduced-motion fallback must still be legible. */
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-text {
+    animation: none;
+    background-image: none;
+    color: var(--color-brand-800);
+  }
+  :where(.dark) .shimmer-text {
+    color: var(--color-brand-200);
+  }
+}

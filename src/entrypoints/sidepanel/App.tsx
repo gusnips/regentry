@@ -1,25 +1,27 @@
-import { useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { MessageList, ChatInput, RunStatus, useConversationStore } from "@/modules/conversation/ui";
+import { useEffect, useState } from "react";
+import {
+  MessageList,
+  ChatInput,
+  RunStatus,
+  ConversationList,
+  HistoryControls,
+  useConversationStore,
+} from "@/modules/conversation/ui";
 import {
   ProviderSelect,
   ModelControls,
   Onboarding,
   useProvidersStore,
 } from "@/modules/providers/ui";
-import { Button } from "@/components/Button";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { ThemeButton } from "@/components/ThemeButton";
+import { SettingsMenu } from "./SettingsMenu";
 
 export default function App() {
-  const { t } = useTranslation();
   const connect = useConversationStore((s) => s.connect);
   const disconnect = useConversationStore((s) => s.disconnect);
-  const clear = useConversationStore((s) => s.clear);
-  const status = useConversationStore((s) => s.status);
   const providers = useProvidersStore((s) => s.providers);
   const loaded = useProvidersStore((s) => s.loaded);
   const load = useProvidersStore((s) => s.load);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     connect();
@@ -31,46 +33,37 @@ export default function App() {
   }, [loaded, load]);
 
   const needsProvider = loaded && providers.length === 0;
-  const running = status === "running";
 
   return (
     <div className="flex h-screen flex-col bg-white dark:bg-neutral-950">
       <header className="border-b border-neutral-200 px-3 pt-2 dark:border-neutral-800">
-        {/* Row 1: brand + who's answering. Row 2: what it answers with. */}
-        <div className="flex items-center gap-2 pb-2">
+        {/* Row 1: brand + session actions. Row 2: who answers and with what,
+            as quiet chips — the header is read a hundred times per change. */}
+        <div className="flex items-center gap-1 pb-1">
           <img src="/icon.svg" className="h-5 w-5 shrink-0" alt="Regent" />
-          {needsProvider ? (
+          {needsProvider && (
             <span className="flex-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
               Regent
             </span>
-          ) : (
-            <ProviderSelect />
           )}
+          <div className="min-w-0 flex-1" />
           {!needsProvider && (
-            <ConfirmDialog
-              trigger={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="shrink-0"
-                  disabled={running}
-                  title={running ? t("sidepanel.clearRunning") : t("sidepanel.clearTooltip")}
-                >
-                  {t("sidepanel.clear")}
-                </Button>
-              }
-              title={t("sidepanel.clearTitle")}
-              description={t("sidepanel.clearBody")}
-              confirmLabel={t("sidepanel.clear")}
-              onConfirm={clear}
-            />
+            <HistoryControls open={historyOpen} onToggle={() => setHistoryOpen((v) => !v)} />
           )}
-          <ThemeButton />
+          <SettingsMenu />
         </div>
-        {!needsProvider && <ModelControls />}
+        {/* The chips belong to the chat — history browsing hides them. */}
+        {!needsProvider && !historyOpen && (
+          <div className="flex items-center gap-1 overflow-hidden pb-1.5">
+            <ProviderSelect />
+            <ModelControls />
+          </div>
+        )}
       </header>
       {needsProvider ? (
         <Onboarding />
+      ) : historyOpen ? (
+        <ConversationList onClose={() => setHistoryOpen(false)} />
       ) : (
         <>
           <MessageList />

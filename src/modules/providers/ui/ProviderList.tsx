@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { AddProviderDialog } from "./AddProviderDialog";
-import { PRESETS } from "../presets";
+import { PRESETS, providerDisplayName } from "../presets";
 import { Button } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
@@ -49,6 +49,7 @@ export function ProviderList() {
     <ul className="flex flex-col gap-2">
       {providers.map((p) => {
         const preset = PRESETS.find((pr) => pr.id === p.id);
+        const name = providerDisplayName(p);
         const isActive = p.id === activeId;
         const host = preset ? null : hostOf(p.baseUrl);
         return (
@@ -73,7 +74,7 @@ export function ProviderList() {
               )}
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                  <span className="truncate">{p.name}</span>
+                  <span className="truncate">{name}</span>
                   {isActive && (
                     <span className="shrink-0 rounded border border-brand-200 bg-white px-1.5 py-px text-[10px] font-medium text-brand-700 dark:border-brand-800 dark:bg-neutral-900 dark:text-brand-300">
                       {t("providerList.active")}
@@ -101,7 +102,7 @@ export function ProviderList() {
                     {t("common.remove")}
                   </Button>
                 }
-                title={t("providerList.removeTitle", { name: p.name })}
+                title={t("providerList.removeTitle", { name })}
                 description={
                   isActive ? t("providerList.removeActiveBody") : t("providerList.removeBody")
                 }

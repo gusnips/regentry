@@ -4,13 +4,21 @@ import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { AddProviderDialog } from "./AddProviderDialog";
 import { listModels, pickLatestModel } from "../models";
-import { PRESETS } from "../presets";
+import { PRESETS, providerDisplayName } from "../presets";
 import type { ModelInfo, ProviderShape, ReasoningEffort } from "../types";
 import { Select } from "@/components/Select";
+import type { SelectOption } from "@/components/Select";
 import { TextField } from "@/components/TextField";
 
 /** Sentinel option value — opens the add-provider dialog instead of switching. */
 const ADD_NEW = "__add__";
+
+/** Ordered least→most. The extra "default" option means "don't send the knob at all". */
+const EFFORTS: readonly string[] = ["none", "low", "medium", "high", "max"];
+
+function isEffort(value: string): value is ReasoningEffort {
+  return EFFORTS.includes(value);
+}
 
 interface ModelsTarget {
   shape: ProviderShape;
@@ -79,21 +87,22 @@ export function ProviderSelect() {
     <>
       <Select
         size="sm"
-        className="min-w-0 flex-1"
+        variant="quiet"
+        className="max-w-[45%] shrink-0"
         ariaLabel={t("modelPicker.provider")}
         title={t("modelPicker.providerTitle")}
         value={active.id}
         onChange={(id) => (id === ADD_NEW ? setAddOpen(true) : void activate(id))}
         options={[
           ...providers.map((p) => {
-            const pr = PRESETS.find((x) => x.id === p.id);
+            const preset = PRESETS.find((x) => x.id === p.id);
             return {
               value: p.id,
-              label: p.name,
-              icon: pr ? <ProviderIcon icon={pr.icon} size={14} /> : undefined,
+              label: providerDisplayName(p),
+              icon: preset ? <ProviderIcon icon={preset.icon} size={14} /> : undefined,
             };
           }),
-          { value: ADD_NEW, label: t("modelPicker.addProvider") },
+          { value: ADD_NEW, label: t("modelPicker.addProvider"), separatorBefore: true },
         ]}
       />
       <AddProviderDialog open={addOpen} onOpenChange={setAddOpen} />
@@ -128,38 +137,44 @@ export function ModelControls() {
   if (!active) return null;
 
   const preset = PRESETS.find((pr) => pr.id === active.id);
-  const listedIds = models.length > 0 ? models.map((m) => m.id) : (preset?.models ?? []);
-  const autoTarget = pickLatestModel(models)?.id ?? preset?.models[0];
+  // Live list wins; presets are the fallback for endpoints without a list route.
+  const listed: ModelInfo[] =
+    models.length > 0 ? models : (preset?.models.map((id) => ({ id })) ?? []);
+  const autoTarget = pickLatestModel(models) ?? listed[0];
 
-  const modelOptions = [
-    { value: "", label: t("modelPicker.auto") },
-    ...listedIds.map((id) => ({ value: id, label: id })),
+  // "Auto" shows what it will actually run, tagged so it stays distinguishable
+  // from having pinned that same model by hand.
+  const modelOptions: SelectOption[] = [
+    autoTarget
+      ? { value: "", label: autoTarget.name ?? autoTarget.id, hint: t("modelPicker.auto") }
+      : { value: "", label: t("modelPicker.auto") },
+    ...listed.map((m) => ({ value: m.id, label: m.name ?? m.id })),
   ];
   // A persisted id the endpoint no longer lists (e.g. k3[1m]) stays selectable.
-  if (active.model && !listedIds.includes(active.model)) {
+  if (active.model && !listed.some((m) => m.id === active.model)) {
     modelOptions.push({
       value: active.model,
-      label: t("modelPicker.current", { model: active.model }),
+      label: active.model,
+      hint: t("modelPicker.notListed"),
+      separatorBefore: true,
     });
   }
   // No list route and no preset data (custom endpoints) → free text.
-  const freeText = !loading && listedIds.length === 0;
-  // What "Auto" resolves to belongs in the tooltip, not the option label.
-  const modelTitle = active.model
-    ? t("modelPicker.modelTitle")
-    : loading
-      ? t("modelPicker.autoLoading")
-      : autoTarget
-        ? t("modelPicker.autoLatest", { model: autoTarget })
-        : t("modelPicker.modelTitle");
+  const freeText = !loading && listed.length === 0;
+  // The label may be a display name ("Claude Sonnet 4.5") — the tooltip carries the wire id.
+  const selectedId = active.model ?? autoTarget?.id;
+  const modelTitle = selectedId
+    ? t("modelPicker.modelTitleFor", { model: selectedId })
+    : t("modelPicker.modelTitle");
 
   return (
-    <div className="flex items-center gap-2 pb-2">
+    <div className="flex min-w-0 flex-1 items-center gap-1">
       {freeText ? (
         <TextField
+          size="sm"
           aria-label={t("modelPicker.model")}
           title={error ? t("modelPicker.noModelListHint") : modelTitle}
-          className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-2 py-1 text-xs placeholder:text-neutral-400 focus:border-brand-500 focus:outline-none dark:border-neutral-600 dark:placeholder:text-neutral-500"
+          className="min-w-0 flex-1"
           value={active.model ?? ""}
           onChange={(e) => void update(active.id, { model: e.target.value || undefined })}
           placeholder={t("modelPicker.freeTextPlaceholder")}
@@ -167,6 +182,7 @@ export function ModelControls() {
       ) : (
         <Select
           size="sm"
+          variant="quiet"
           className="min-w-0 flex-1"
           ariaLabel={t("modelPicker.model")}
           title={modelTitle}
@@ -178,15 +194,12 @@ export function ModelControls() {
 
       <Select
         size="sm"
-        className="w-28 shrink-0"
+        variant="quiet"
+        className="shrink-0"
         ariaLabel={t("modelPicker.reasoningEffort")}
         title={t("modelPicker.effortHint")}
         value={active.reasoningEffort ?? "default"}
-        onChange={(v) =>
-          void update(active.id, {
-            reasoningEffort: v === "default" ? undefined : (v as ReasoningEffort),
-          })
-        }
+        onChange={(v) => void update(active.id, { reasoningEffort: isEffort(v) ? v : undefined })}
         options={effortOptions}
       />
     </div>
