@@ -7,6 +7,7 @@ export {
   saveProvider,
   removeProvider,
   getActiveProvider,
+  getActiveProviderId,
   setActiveProvider,
   watchProviders,
   watchActiveProvider,
