@@ -33,18 +33,55 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
   const maxElements = opts.maxElements ?? 10000;
 
   const ROLE_MAP: Record<string, string> = {
-    a: "link", button: "button", input: "textbox", select: "combobox", textarea: "textbox",
-    h1: "heading", h2: "heading", h3: "heading", h4: "heading", h5: "heading", h6: "heading",
-    img: "image", nav: "navigation", main: "main", header: "banner", footer: "contentinfo",
-    section: "region", article: "article", aside: "complementary", form: "form", table: "table",
-    ul: "list", ol: "list", li: "listitem", label: "label", details: "group", summary: "button",
-    dialog: "dialog", search: "search",
+    a: "link",
+    button: "button",
+    input: "textbox",
+    select: "combobox",
+    textarea: "textbox",
+    h1: "heading",
+    h2: "heading",
+    h3: "heading",
+    h4: "heading",
+    h5: "heading",
+    h6: "heading",
+    img: "image",
+    nav: "navigation",
+    main: "main",
+    header: "banner",
+    footer: "contentinfo",
+    section: "region",
+    article: "article",
+    aside: "complementary",
+    form: "form",
+    table: "table",
+    ul: "list",
+    ol: "list",
+    li: "listitem",
+    label: "label",
+    details: "group",
+    summary: "button",
+    dialog: "dialog",
+    search: "search",
   };
 
   const INTERACTIVE_ROLES = new Set([
-    "button", "link", "textbox", "checkbox", "radio", "combobox", "listbox",
-    "menuitem", "menuitemcheckbox", "menuitemradio", "option", "searchbox",
-    "slider", "spinbutton", "switch", "tab", "treeitem",
+    "button",
+    "link",
+    "textbox",
+    "checkbox",
+    "radio",
+    "combobox",
+    "listbox",
+    "menuitem",
+    "menuitemcheckbox",
+    "menuitemradio",
+    "option",
+    "searchbox",
+    "slider",
+    "spinbutton",
+    "switch",
+    "tab",
+    "treeitem",
   ]);
 
   const SKIP_TAGS = new Set(["script", "style", "meta", "link", "title", "noscript", "head"]);
@@ -68,7 +105,16 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
     const type = (el.getAttribute("type") || "").toLowerCase();
     if (type === "password" || type === "hidden") return true;
     const ac = (el.getAttribute("autocomplete") || "").toLowerCase();
-    return ["current-password", "new-password", "one-time-code", "cc-number", "cc-csc", "cc-exp", "cc-exp-month", "cc-exp-year"].some((s) => ac.includes(s));
+    return [
+      "current-password",
+      "new-password",
+      "one-time-code",
+      "cc-number",
+      "cc-csc",
+      "cc-exp",
+      "cc-exp-month",
+      "cc-exp-year",
+    ].some((s) => ac.includes(s));
   }
 
   function directText(el: HTMLElement): string {
@@ -88,12 +134,26 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
       const opt = sel.querySelector("option[selected]") || sel.options[sel.selectedIndex];
       if (opt?.textContent) return opt.textContent.trim();
     }
-    const al = el.getAttribute("aria-label");          if (al?.trim()) return al.trim();
-    const alb = el.getAttribute("aria-labelledby");     if (alb) { const lb = document.getElementById(alb); if (lb?.textContent?.trim()) return lb.textContent.trim(); }
-    const ph = el.getAttribute("placeholder");          if (ph?.trim()) return ph.trim();
-    const ti = el.getAttribute("title");                if (ti?.trim()) return ti.trim();
-    const alt = el.getAttribute("alt");                 if (alt?.trim()) return alt.trim();
-    if (el.id) { const lb = document.querySelector(`label[for="${el.id}"]`) as HTMLElement | null; if (lb) { const t = directText(lb); if (t) return t; } }
+    const al = el.getAttribute("aria-label");
+    if (al?.trim()) return al.trim();
+    const alb = el.getAttribute("aria-labelledby");
+    if (alb) {
+      const lb = document.getElementById(alb);
+      if (lb?.textContent?.trim()) return lb.textContent.trim();
+    }
+    const ph = el.getAttribute("placeholder");
+    if (ph?.trim()) return ph.trim();
+    const ti = el.getAttribute("title");
+    if (ti?.trim()) return ti.trim();
+    const alt = el.getAttribute("alt");
+    if (alt?.trim()) return alt.trim();
+    if (el.id) {
+      const lb = document.querySelector(`label[for="${el.id}"]`) as HTMLElement | null;
+      if (lb) {
+        const t = directText(lb);
+        if (t) return t;
+      }
+    }
     if (tag === "input") {
       const ie = el as HTMLInputElement;
       const type = ie.getAttribute("type") || "";
@@ -101,8 +161,14 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
       if (type === "submit" && val?.trim()) return val.trim();
       if (ie.value && ie.value.length < 50 && ie.value.trim()) return ie.value.trim();
     }
-    if (tag === "button" || tag === "a" || tag === "summary") { const t = directText(el); if (t) return t; }
-    if (/^h[1-6]$/.test(tag)) { const t = el.textContent?.trim(); if (t) return t.substring(0, 100); }
+    if (tag === "button" || tag === "a" || tag === "summary") {
+      const t = directText(el);
+      if (t) return t;
+    }
+    if (/^h[1-6]$/.test(tag)) {
+      const t = el.textContent?.trim();
+      if (t) return t.substring(0, 100);
+    }
     const t = directText(el);
     if (t.length >= 3) return t.length > 100 ? t.substring(0, 100) + "..." : t;
     return "";
@@ -120,7 +186,8 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
 
   function isInteractive(el: HTMLElement): boolean {
     const tag = el.tagName.toLowerCase();
-    if (["a", "button", "input", "select", "textarea", "details", "summary"].includes(tag)) return true;
+    if (["a", "button", "input", "select", "textarea", "details", "summary"].includes(tag))
+      return true;
     if (el.getAttribute("onclick") || el.getAttribute("tabindex")) return true;
     if (el.getAttribute("contenteditable") === "true") return true;
     const role = el.getAttribute("role");
@@ -129,7 +196,23 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
 
   function isStructural(el: HTMLElement): boolean {
     const tag = el.tagName.toLowerCase();
-    return ["h1", "h2", "h3", "h4", "h5", "h6", "nav", "main", "header", "footer", "section", "article", "aside"].includes(tag) || el.getAttribute("role") !== null;
+    return (
+      [
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "nav",
+        "main",
+        "header",
+        "footer",
+        "section",
+        "article",
+        "aside",
+      ].includes(tag) || el.getAttribute("role") !== null
+    );
   }
 
   function shouldInclude(el: HTMLElement): boolean {
@@ -138,7 +221,12 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
     if (el.getAttribute("aria-hidden") === "true") return false;
     if (!isVisible(el)) return false;
     if (filter === "interactive") return isInteractive(el);
-    return isInteractive(el) || isStructural(el) || resolveName(el).length > 0 || resolveRole(el) !== "generic";
+    return (
+      isInteractive(el) ||
+      isStructural(el) ||
+      resolveName(el).length > 0 ||
+      resolveRole(el) !== "generic"
+    );
   }
 
   // Ref management on window — persists across calls
@@ -148,23 +236,42 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
     __regentCounter?: number;
   };
   function getOrCreateRef(el: HTMLElement): string {
-    if (!w.__regentRefs) { w.__regentRefs = new Map(); w.__regentReverse = new WeakMap(); w.__regentCounter = 0; }
+    if (!w.__regentRefs) {
+      w.__regentRefs = new Map();
+      w.__regentReverse = new WeakMap();
+      w.__regentCounter = 0;
+    }
     const existing = w.__regentReverse!.get(el);
-    if (existing) { const r = w.__regentRefs!.get(existing); if (r && r.deref() === el) return existing; }
+    if (existing) {
+      const r = w.__regentRefs!.get(existing);
+      if (r && r.deref() === el) return existing;
+    }
     const ref = `e${++w.__regentCounter!}`;
     w.__regentRefs!.set(ref, new WeakRef(el));
     w.__regentReverse!.set(el, ref);
     return ref;
   }
 
-  function formatLine(depth: number, role: string, name: string, ref: string | undefined, el: HTMLElement): string {
+  function formatLine(
+    depth: number,
+    role: string,
+    name: string,
+    ref: string | undefined,
+    el: HTMLElement,
+  ): string {
     const indent = "  ".repeat(depth);
     let line = `${indent}${role}`;
-    if (name) { const clean = name.replace(/\s+/g, " ").substring(0, 100).replace(/"/g, '\\"'); line += ` "${clean}"`; }
+    if (name) {
+      const clean = name.replace(/\s+/g, " ").substring(0, 100).replace(/"/g, '\\"');
+      line += ` "${clean}"`;
+    }
     if (ref) line += ` [ref=${ref}]`;
-    const href = el.getAttribute("href");       if (href) line += ` href="${href}"`;
-    const type = el.getAttribute("type");        if (type) line += ` type="${type}"`;
-    const ph = el.getAttribute("placeholder");   if (ph) line += ` placeholder="${ph}"`;
+    const href = el.getAttribute("href");
+    if (href) line += ` href="${href}"`;
+    const type = el.getAttribute("type");
+    if (type) line += ` type="${type}"`;
+    const ph = el.getAttribute("placeholder");
+    if (ph) line += ` placeholder="${ph}"`;
     return line;
   }
 
@@ -219,5 +326,10 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
     pageContent += `\n[truncated at ${maxElements} elements — use a ref or smaller depth to focus]`;
   }
 
-  return { pageContent, viewport: { width: window.innerWidth, height: window.innerHeight }, url: location.href, title: document.title };
+  return {
+    pageContent,
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    url: location.href,
+    title: document.title,
+  };
 }

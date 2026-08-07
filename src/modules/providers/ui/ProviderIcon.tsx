@@ -86,7 +86,15 @@ function GeminiMark() {
 
 function GroqMark() {
   return (
-    <text x="12" y="17" textAnchor="middle" fontSize="14" fontWeight="700" fill="#fff" fontFamily="system-ui, sans-serif">
+    <text
+      x="12"
+      y="17"
+      textAnchor="middle"
+      fontSize="14"
+      fontWeight="700"
+      fill="#fff"
+      fontFamily="system-ui, sans-serif"
+    >
       G
     </text>
   );

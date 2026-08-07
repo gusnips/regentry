@@ -15,4 +15,3 @@ export async function appendMessage(msg: Message): Promise<void> {
 export async function clearHistory(): Promise<void> {
   await historyItem.set([]);
 }
-

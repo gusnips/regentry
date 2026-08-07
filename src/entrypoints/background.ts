@@ -53,7 +53,8 @@ export default defineBackground(() => {
                 onToken: (text) => send(port, { type: "token", text }),
                 onStep: (tool, summary) => send(port, { type: "step", tool, summary }),
                 onToolCall: (tool, args) => send(port, { type: "tool_call", tool, args }),
-                onToolResult: (tool, ok, detail) => send(port, { type: "tool_result", tool, ok, detail }),
+                onToolResult: (tool, ok, detail) =>
+                  send(port, { type: "tool_result", tool, ok, detail }),
                 onUsage: (input, output) => send(port, { type: "usage", input, output }),
                 onError: (message) => send(port, { type: "error", message }),
                 onDone: () => send(port, { type: "done" }),

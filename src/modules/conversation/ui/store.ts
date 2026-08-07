@@ -80,7 +80,12 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
             content: event.message,
             timestamp: Date.now(),
           };
-          set({ messages: [...s.messages, msg], status: "error", error: event.message, runStartedAt: null });
+          set({
+            messages: [...s.messages, msg],
+            status: "error",
+            error: event.message,
+            runStartedAt: null,
+          });
           void appendMessage(msg);
           break;
         }
@@ -143,6 +148,13 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
   clear: () => {
     void clearHistory();
-    set({ messages: [], streamingText: "", error: null, status: "idle", usage: { input: 0, output: 0 }, runStartedAt: null });
+    set({
+      messages: [],
+      streamingText: "",
+      error: null,
+      status: "idle",
+      usage: { input: 0, output: 0 },
+      runStartedAt: null,
+    });
   },
 }));

@@ -76,8 +76,22 @@ export async function ensureAttached(tabId: TabId): Promise<void> {
 /** Click at coordinates via trusted CDP mouse events. */
 export async function clickAt(x: number, y: number): Promise<void> {
   await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 });
-  await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 });
-  await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
+  await send("Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x,
+    y,
+    button: "left",
+    buttons: 1,
+    clickCount: 1,
+  });
+  await send("Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x,
+    y,
+    button: "left",
+    buttons: 0,
+    clickCount: 1,
+  });
 }
 
 // CDP modifier bitmask: Alt=1, Ctrl=2, Meta/Cmd=4, Shift=8
@@ -94,8 +108,20 @@ async function getSelectAllModifier(): Promise<number> {
 /** Type text via CDP insertText (trusted input). Clears existing field first. */
 export async function typeText(text: string): Promise<void> {
   const mod = await getSelectAllModifier();
-  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: mod });
-  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, modifiers: mod });
+  await send("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "a",
+    code: "KeyA",
+    windowsVirtualKeyCode: 65,
+    modifiers: mod,
+  });
+  await send("Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "a",
+    code: "KeyA",
+    windowsVirtualKeyCode: 65,
+    modifiers: mod,
+  });
   await send("Input.insertText", { text });
 }
 
@@ -121,11 +147,22 @@ const KEY_MAP: Record<string, { key: string; code: string; vkc: number; text?: s
 export async function pressKey(key: string): Promise<void> {
   const k = key.toLowerCase();
   const spec = KEY_MAP[k];
-  if (!spec) throw new Error(`Unsupported key: ${key}. Supported: ${Object.keys(KEY_MAP).join(", ")}`);
-  const down: Record<string, unknown> = { type: "keyDown", key: spec.key, code: spec.code, windowsVirtualKeyCode: spec.vkc };
+  if (!spec)
+    throw new Error(`Unsupported key: ${key}. Supported: ${Object.keys(KEY_MAP).join(", ")}`);
+  const down: Record<string, unknown> = {
+    type: "keyDown",
+    key: spec.key,
+    code: spec.code,
+    windowsVirtualKeyCode: spec.vkc,
+  };
   if (spec.text) down.text = spec.text;
   await send("Input.dispatchKeyEvent", down);
-  await send("Input.dispatchKeyEvent", { type: "keyUp", key: spec.key, code: spec.code, windowsVirtualKeyCode: spec.vkc });
+  await send("Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: spec.key,
+    code: spec.code,
+    windowsVirtualKeyCode: spec.vkc,
+  });
 }
 
 /** Scroll the page by relative amounts. */
@@ -157,7 +194,11 @@ function waitForLoad(tabId: TabId, timeoutMs = 30_000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       chrome.tabs.onUpdated.removeListener(listener);
-      reject(new Error(`Page load timeout (${timeoutMs / 1000}s) — the page may be slow or unresponsive.`));
+      reject(
+        new Error(
+          `Page load timeout (${timeoutMs / 1000}s) — the page may be slow or unresponsive.`,
+        ),
+      );
     }, timeoutMs);
 
     const check = (tab: chrome.tabs.Tab) =>

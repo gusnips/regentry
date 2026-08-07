@@ -48,8 +48,8 @@ export function MessageList() {
       <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
         <div className="text-sm font-medium text-neutral-700">What should I do?</div>
         <p className="text-xs text-neutral-500 max-w-[240px]">
-          Describe a task and I'll drive this browser tab — navigate, read pages, click, type.
-          Uses your existing logins.
+          Describe a task and I'll drive this browser tab — navigate, read pages, click, type. Uses
+          your existing logins.
         </p>
         <p className="text-xs text-neutral-400 mt-2">
           Example: "go to news.ycombinator.com and summarize the top 3 headlines"

@@ -6,7 +6,10 @@ import type { TabId } from "@/shared/types";
  * Injects the snapshot function into the page and returns the result.
  * Uses executeScript({ func }) — the function is serialized and runs in page context.
  */
-export async function captureSnapshot(tabId: TabId, opts?: SnapshotOptions): Promise<SnapshotResult> {
+export async function captureSnapshot(
+  tabId: TabId,
+  opts?: SnapshotOptions,
+): Promise<SnapshotResult> {
   const [result] = await chrome.scripting.executeScript({
     target: { tabId },
     func: generateSnapshot,
@@ -15,7 +18,9 @@ export async function captureSnapshot(tabId: TabId, opts?: SnapshotOptions): Pro
   });
 
   if (!result?.result) {
-    throw new Error("Snapshot failed: the page may have navigated or be a restricted URL (chrome://, Web Store).");
+    throw new Error(
+      "Snapshot failed: the page may have navigated or be a restricted URL (chrome://, Web Store).",
+    );
   }
 
   return result.result as SnapshotResult;
@@ -25,7 +30,10 @@ export async function captureSnapshot(tabId: TabId, opts?: SnapshotOptions): Pro
  * Resolves a ref (e.g. "e12") to its bounding rect center via executeScript.
  * Used by cdp-driver for click-by-ref.
  */
-export async function resolveRefRect(tabId: TabId, ref: string): Promise<{ x: number; y: number; width: number; height: number }> {
+export async function resolveRefRect(
+  tabId: TabId,
+  ref: string,
+): Promise<{ x: number; y: number; width: number; height: number }> {
   const [result] = await chrome.scripting.executeScript({
     target: { tabId },
     func: (refId: string) => {

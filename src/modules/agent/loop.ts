@@ -79,7 +79,10 @@ async function streamTurn(
       if (signal.aborted) throw e;
       const canRetry = !emitted && attempt < MAX_STREAM_ATTEMPTS && isRetryable(e);
       if (!canRetry) throw e;
-      callbacks.onStep?.("retry", `Connection hiccup — retrying (${attempt}/${MAX_STREAM_ATTEMPTS - 1})`);
+      callbacks.onStep?.(
+        "retry",
+        `Connection hiccup — retrying (${attempt}/${MAX_STREAM_ATTEMPTS - 1})`,
+      );
       await sleep(backoffMs(attempt));
     }
   }
@@ -132,7 +135,10 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
     }
 
     if (turn.truncated) {
-      callbacks.onStep?.("warn", "Model hit its output limit mid-response — answer may be incomplete");
+      callbacks.onStep?.(
+        "warn",
+        "Model hit its output limit mid-response — answer may be incomplete",
+      );
     }
 
     messages.push({
@@ -145,7 +151,8 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
       // Model responded with text only — nudge it to use tools
       messages.push({
         role: "user",
-        content: "Use a tool to make progress on the task. Call snapshot if you need to see the page.",
+        content:
+          "Use a tool to make progress on the task. Call snapshot if you need to see the page.",
       });
       continue;
     }
@@ -167,9 +174,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
 
       callbacks.onStep?.(
         call.name,
-        result.ok
-          ? formatSuccessSummary(call.name, result.data)
-          : `Failed: ${result.error}`,
+        result.ok ? formatSuccessSummary(call.name, result.data) : `Failed: ${result.error}`,
       );
 
       if (call.name === "done") {
@@ -198,11 +203,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<void> {
   callbacks.onDone?.("Step budget exhausted");
 }
 
-function handleDelta(
-  delta: Delta,
-  callbacks: LoopCallbacks,
-  toolCalls: ToolCall[],
-): string | null {
+function handleDelta(delta: Delta, callbacks: LoopCallbacks, toolCalls: ToolCall[]): string | null {
   switch (delta.type) {
     case "text":
       callbacks.onToken?.(delta.text);

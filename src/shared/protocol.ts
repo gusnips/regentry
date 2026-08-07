@@ -5,10 +5,7 @@
 
 // ── Commands (side panel → background) ──────────────────────────────
 
-export type Command =
-  | { type: "run"; task: string }
-  | { type: "stop" }
-  | { type: "pause" };
+export type Command = { type: "run"; task: string } | { type: "stop" } | { type: "pause" };
 
 // ── Events (background → side panel) ────────────────────────────────
 

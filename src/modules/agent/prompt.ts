@@ -42,7 +42,8 @@ export const TOOL_DEFS: ToolDef[] = [
   },
   {
     name: "snapshot",
-    description: "Capture an accessibility-tree snapshot of the current page. Returns the page structure with interactive element refs.",
+    description:
+      "Capture an accessibility-tree snapshot of the current page. Returns the page structure with interactive element refs.",
     params: {
       type: "object",
       properties: {},
@@ -61,7 +62,8 @@ export const TOOL_DEFS: ToolDef[] = [
   },
   {
     name: "type",
-    description: "Type text into the currently focused element (click first to focus). Clears existing content.",
+    description:
+      "Type text into the currently focused element (click first to focus). Clears existing content.",
     params: {
       type: "object",
       properties: {

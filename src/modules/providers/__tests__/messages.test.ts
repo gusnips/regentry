@@ -49,7 +49,11 @@ describe("Anthropic message mapping", () => {
     expect(Array.isArray(out.content)).toBe(true);
     const blocks = out.content as { type: string; tool_use_id: string; content: string }[];
     expect(blocks).toHaveLength(2);
-    expect(blocks[0]).toEqual({ type: "tool_result", tool_use_id: "c1", content: '{"x":100,"y":200}' });
+    expect(blocks[0]).toEqual({
+      type: "tool_result",
+      tool_use_id: "c1",
+      content: '{"x":100,"y":200}',
+    });
   });
 
   it("maps assistant toolCalls to tool_use blocks", () => {
