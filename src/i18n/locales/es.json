@@ -211,6 +211,7 @@
     "noActiveProvider": "No hay proveedor activo — elige uno en el selector del panel o añade uno en Configuración.",
     "noActiveTab": "No se encontró ninguna pestaña activa.",
     "panelClosed": "Panel lateral cerrado — la ejecución se detuvo",
+    "tabClosed": "La pestaña que manejaba esta tarea ({{title}}) se cerró — la ejecución se detuvo. Regent necesita que la pestaña siga abierta; reabre la página y envía la tarea de nuevo.",
     "providerError": "Error del proveedor: {{message}}",
     "outputLimit": "El modelo alcanzó su límite de salida a mitad de la respuesta — la respuesta puede estar incompleta",
     "taskComplete": "Tarea completada",

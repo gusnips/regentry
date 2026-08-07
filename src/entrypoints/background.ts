@@ -76,6 +76,19 @@ export default defineBackground(() => {
             title: tabLabel(tab),
             favIconUrl: tab.favIconUrl || undefined,
           });
+          // The driven tab going away is fatal, not transient: every later tool
+          // call would fail the same way. End the run with a clear error instead
+          // of letting the model burn turns retrying a dead tab id.
+          const onTabGone = (removedId: number) => {
+            if (removedId !== tabId) return;
+            log.info("driven tab closed mid-run", { tabId });
+            send(port, {
+              type: "error",
+              message: i18n.t("errors.tabClosed", { title: tabLabel(tab) }),
+            });
+            abortController?.abort();
+          };
+          chrome.tabs.onRemoved.addListener(onTabGone);
           // Tell the page itself it is being driven — the side panel may be
           // scrolled away or on another window.
           void showAgentIndicator(tabId, i18n.t("indicator.driving"));
@@ -105,6 +118,7 @@ export default defineBackground(() => {
             log.error("run crashed:", message);
             send(port, { type: "error", message });
           } finally {
+            chrome.tabs.onRemoved.removeListener(onTabGone);
             abortController = null;
             void hideAgentIndicator(tabId);
           }

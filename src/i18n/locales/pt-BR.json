@@ -211,6 +211,7 @@
     "noActiveProvider": "Nenhum provedor ativo — escolha um no seletor do painel ou adicione um nas Configurações.",
     "noActiveTab": "Nenhuma aba ativa encontrada.",
     "panelClosed": "Painel lateral fechado — a execução foi interrompida",
+    "tabClosed": "A aba que esta tarefa estava dirigindo ({{title}}) foi fechada — a execução parou. O Regent precisa que a aba fique aberta; reabra a página e envie a tarefa de novo.",
     "providerError": "Erro do provedor: {{message}}",
     "outputLimit": "O modelo atingiu seu limite de saída no meio da resposta — a resposta pode estar incompleta",
     "taskComplete": "Tarefa concluída",
