@@ -1,6 +1,6 @@
 import { runAgentLoop } from "@/modules/agent";
 import { createDriver } from "@/modules/browser";
-import { createProvider, getActiveProvider } from "@/modules/providers";
+import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
 import { log } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
@@ -38,7 +38,15 @@ export default defineBackground(() => {
           }
 
           abortController = new AbortController();
-          const provider = createProvider(providerConfig);
+          // Resolve "auto" model to a concrete id at run start — mid-task
+          // changes to the stored config never affect a run in flight.
+          let provider;
+          try {
+            provider = createProvider(await resolveProviderModel(providerConfig));
+          } catch (e) {
+            send(port, { type: "error", message: e instanceof Error ? e.message : String(e) });
+            return;
+          }
           const driver = createDriver(tab.id);
 
           send(port, { type: "token", text: `Starting: ${msg.task}\n\n` });

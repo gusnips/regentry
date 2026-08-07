@@ -15,7 +15,7 @@ const noReactOutsideUi = {
     "**/entrypoints/**",
     "**/__tests__/**",
     ".wxt/**",
-    ".output/**",
+    "dist/**",
     "refs/**",
   ],
   rules: {
@@ -43,7 +43,7 @@ const noReactOutsideUi = {
 };
 
 export default tseslint.config(
-  { ignores: [".wxt/**", ".output/**", "refs/**", "node_modules/**"] },
+  { ignores: [".wxt/**", "dist/**", "refs/**", "node_modules/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

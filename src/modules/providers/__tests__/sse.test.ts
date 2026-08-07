@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { createOpenAIProvider } from "../openai";
 import { createAnthropicProvider } from "../anthropic";
-import type { ProviderConfig } from "../types";
+import type { ResolvedProviderConfig } from "../types";
 
-function makeConfig(shape: "openai" | "anthropic", baseUrl: string): ProviderConfig {
+function makeConfig(shape: "openai" | "anthropic", baseUrl: string): ResolvedProviderConfig {
   return {
     id: "test",
     name: "Test",

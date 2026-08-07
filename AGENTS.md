@@ -71,6 +71,13 @@ never reach the service-worker bundle.
   come back as a clean provider 400, surfaced in chat — we never sniff model names.
 - **Stream retry** happens in place (agent loop) with full-jitter backoff, only while nothing
   has been emitted yet — the UI never sees replayed tokens.
+- **Model lists are live, presets are fallback.** `listModels` (`models.ts`) reads
+  `GET {base}/v1/models` (Anthropic-shape) or `GET {base}/models` (OpenAI-shape, non-chat ids
+  filtered). `ProviderConfig.model` is optional — absent means auto, resolved at run start by
+  `resolveProviderModel`: persisted choice → newest listed (by `created`) → preset's first →
+  clear error. QwenCloud has no list route; that's why presets keep model ids at all. Model and
+  effort are per-task choices in the side-panel popover, persisted per provider — never asked
+  for at provider-setup time (the key doesn't exist yet, so the list can't be fetched there).
 
 ## Reference material
 

@@ -1,9 +1,9 @@
-import type { ChatProvider, ProviderConfig } from "./types";
+import type { ChatProvider, ResolvedProviderConfig } from "./types";
 import { createOpenAIProvider } from "./openai";
 import { createAnthropicProvider } from "./anthropic";
 
 /** Factory — picks adapter by shape. Adding a new shape = one case here. */
-export function createProvider(config: ProviderConfig): ChatProvider {
+export function createProvider(config: ResolvedProviderConfig): ChatProvider {
   switch (config.shape) {
     case "openai":
       return createOpenAIProvider(config);

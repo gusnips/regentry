@@ -1,11 +1,11 @@
-import type { ChatProvider, ChatMessage, ToolDef, Delta, ProviderConfig } from "./types";
+import type { ChatProvider, ChatMessage, ToolDef, Delta, ResolvedProviderConfig } from "./types";
 import { ProviderError } from "./types";
 
 /**
  * OpenAI-shape adapter — works with any OpenAI-compatible endpoint.
  * Streams SSE from POST /chat/completions.
  */
-export function createOpenAIProvider(config: ProviderConfig): ChatProvider {
+export function createOpenAIProvider(config: ResolvedProviderConfig): ChatProvider {
   return {
     async *stream(messages, tools, signal): AsyncIterable<Delta> {
       const url = `${config.baseUrl.replace(/\/$/, "")}/chat/completions`;
@@ -126,7 +126,7 @@ export function createOpenAIProvider(config: ProviderConfig): ChatProvider {
 
 /** Request body for POST /chat/completions. Exported for tests. */
 export function buildOpenAIBody(
-  config: ProviderConfig,
+  config: ResolvedProviderConfig,
   messages: ChatMessage[],
   tools: ToolDef[],
 ): Record<string, unknown> {

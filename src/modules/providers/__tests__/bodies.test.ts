@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { buildOpenAIBody } from "../openai";
 import { buildAnthropicBody } from "../anthropic";
-import type { ChatMessage, ProviderConfig } from "../types";
+import type { ChatMessage, ResolvedProviderConfig } from "../types";
 
-const base: ProviderConfig = {
+const base: ResolvedProviderConfig = {
   id: "test",
   name: "Test",
   shape: "openai",
@@ -31,7 +31,7 @@ describe("buildOpenAIBody", () => {
 });
 
 describe("buildAnthropicBody", () => {
-  const anthropicBase: ProviderConfig = { ...base, shape: "anthropic" };
+  const anthropicBase: ResolvedProviderConfig = { ...base, shape: "anthropic" };
 
   it("splits system out of the conversation", () => {
     const body = buildAnthropicBody(anthropicBase, messages, []);

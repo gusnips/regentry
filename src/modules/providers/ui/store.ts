@@ -20,11 +20,16 @@ interface ProvidersState {
   add: (input: Omit<ProviderConfig, "id" | "createdAt"> & { id?: string }) => Promise<void>;
   remove: (id: string) => Promise<void>;
   activate: (id: string) => Promise<void>;
+  /** Patch a stored provider's per-task choices (model / effort). Falsy = back to auto/default. */
+  update: (
+    id: string,
+    patch: Partial<Pick<ProviderConfig, "model" | "reasoningEffort">>,
+  ) => Promise<void>;
 }
 
 let watchersStarted = false;
 
-export const useProvidersStore = create<ProvidersState>((set) => ({
+export const useProvidersStore = create<ProvidersState>((set, get) => ({
   providers: [],
   activeId: null,
   loaded: false,
@@ -58,6 +63,16 @@ export const useProvidersStore = create<ProvidersState>((set) => ({
 
   activate: async (id) => {
     await setActiveProvider(id);
+  },
+
+  update: async (id, patch) => {
+    const current = get().providers.find((p) => p.id === id);
+    if (!current) return;
+    const next = { ...current, ...patch };
+    // Falsy means "back to auto/default" — drop the key rather than storing "".
+    if (!next.model) delete next.model;
+    if (!next.reasoningEffort) delete next.reasoningEffort;
+    await saveProvider(next);
   },
 }));
 

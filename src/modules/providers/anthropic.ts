@@ -1,4 +1,4 @@
-import type { ChatProvider, ChatMessage, Delta, ProviderConfig, ToolDef } from "./types";
+import type { ChatProvider, ChatMessage, Delta, ResolvedProviderConfig, ToolDef } from "./types";
 import { ProviderError } from "./types";
 
 /**
@@ -9,7 +9,7 @@ import { ProviderError } from "./types";
  * If a direct browser-access error occurs, the user may need to add the
  * 'anthropic-dangerous-direct-browser-access' header. We set it proactively.
  */
-export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
+export function createAnthropicProvider(config: ResolvedProviderConfig): ChatProvider {
   return {
     async *stream(messages, tools, signal): AsyncIterable<Delta> {
       const url = `${config.baseUrl.replace(/\/$/, "")}/v1/messages`;
@@ -139,7 +139,7 @@ export function createAnthropicProvider(config: ProviderConfig): ChatProvider {
 
 /** Request body for POST /v1/messages. Exported for tests. */
 export function buildAnthropicBody(
-  config: ProviderConfig,
+  config: ResolvedProviderConfig,
   messages: ChatMessage[],
   tools: ToolDef[],
 ): Record<string, unknown> {

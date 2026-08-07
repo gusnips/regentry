@@ -17,9 +17,21 @@ export interface ProviderConfig {
   shape: ProviderShape;
   baseUrl: string;
   apiKey: string;
-  model: string;
+  /** Absent = auto — resolveProviderModel picks the newest model the endpoint serves. */
+  model?: string;
   reasoningEffort?: ReasoningEffort;
   createdAt: number;
+}
+
+/** A config whose model has been resolved to a concrete id — what adapters accept. */
+export interface ResolvedProviderConfig extends ProviderConfig {
+  model: string;
+}
+
+/** One entry from a provider's model listing. `created` is epoch ms when the endpoint reports it. */
+export interface ModelInfo {
+  id: string;
+  created?: number;
 }
 
 /** Chat message in provider-agnostic format. */

@@ -8,14 +8,9 @@ export default function App() {
         Regent settings
       </h1>
 
-      <section className="mt-6">
-        <h2 className="text-sm font-medium text-neutral-700">Providers</h2>
-        <div className="mt-3">
-          <ProviderList />
-        </div>
-      </section>
+      <ProviderList />
 
-      <section className="mt-8">
+      <section className="mt-6">
         <h2 className="text-sm font-medium text-neutral-700">Add provider</h2>
         <div className="mt-3">
           <ProviderForm />
