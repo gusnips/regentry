@@ -168,7 +168,6 @@
     "unqueueAria": "Drop queued message",
     "queueNoImages": "Images can't join a running task — queue the text now and paste the image with the next task.",
     "askUserHint": "Tap one, or write your own",
-    "askUserHintOpen": "Write your reply below",
     "thinkingFor": "Thinking · {{duration}}",
     "thoughtFor": "Thought for {{duration}}",
     "reasoningToggle": "Show or hide the model's reasoning (saved for all conversations)",

@@ -59,6 +59,12 @@ describe("recallStep", () => {
     expect(recallStep("ArrowUp", 1, "middle", history)).toEqual({ index: 2, text: "oldest" });
   });
 
+  it("starts over from the newest whenever the composer is empty", () => {
+    // Switching conversations empties the composer while the position stands —
+    // resuming it would recall a message from the transcript you just left.
+    expect(recallStep("ArrowUp", 2, "", history)).toEqual({ index: 0, text: "newest" });
+  });
+
   it("does nothing when there is no history yet", () => {
     expect(recallStep("ArrowUp", null, "", [])).toBeNull();
   });

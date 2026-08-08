@@ -145,37 +145,42 @@ function StepRow({ msg }: { msg: Message }) {
  * composer, in the same brand chip language as a queued message: tapping one
  * sends it verbatim, so it is a draft reply of yours, not a control of the
  * agent's. Answered questions keep the question and drop the chips — the reply
- * is already in the transcript right below.
+ * is already in the transcript right below. A question with no choices is just
+ * the question: the composer below it is the answer, and saying so in a hint
+ * under every one of them would be wallpaper.
  */
 function QuestionCard({ msg, onAnswer }: { msg: Message; onAnswer?: (text: string) => void }) {
   const { t } = useTranslation();
-  const choices = Array.isArray(msg.args?.choices)
-    ? msg.args.choices.filter((c): c is string => typeof c === "string" && c.trim() !== "")
-    : [];
+  const listed = Array.isArray(msg.args?.choices) ? msg.args.choices : [];
+  // Deduped: a repeated option is a dead chip — and a duplicate React key.
+  const choices = [
+    ...new Set(listed.filter((c): c is string => typeof c === "string" && c.trim() !== "")),
+  ];
+
+  const question = (
+    <Bubble variant="muted" className="border border-brand-200 dark:border-brand-900">
+      <BubbleContent>
+        <Markdown>{msg.content}</Markdown>
+      </BubbleContent>
+    </Bubble>
+  );
+  if (!onAnswer || choices.length === 0) return question;
 
   return (
     <div className="flex flex-col gap-1.5">
-      <Bubble variant="muted" className="border border-brand-200 dark:border-brand-900">
-        <BubbleContent>
-          <Markdown>{msg.content}</Markdown>
-        </BubbleContent>
-      </Bubble>
-      {onAnswer && (
-        <div className="flex flex-col items-end gap-1">
-          {choices.length > 0 && (
-            <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
-              {choices.map((c) => (
-                <Button key={c} variant="choice" size="sm" onClick={() => onAnswer(c)}>
-                  {c}
-                </Button>
-              ))}
-            </div>
-          )}
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
-            {choices.length > 0 ? t("chat.askUserHint") : t("chat.askUserHintOpen")}
-          </span>
+      {question}
+      <div className="flex flex-col items-end gap-1">
+        <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+          {choices.map((c) => (
+            <Button key={c} variant="choice" size="sm" onClick={() => onAnswer(c)}>
+              {c}
+            </Button>
+          ))}
         </div>
-      )}
+        <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
+          {t("chat.askUserHint")}
+        </span>
+      </div>
     </div>
   );
 }

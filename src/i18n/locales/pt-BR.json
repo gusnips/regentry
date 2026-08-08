@@ -168,7 +168,6 @@
     "unqueueAria": "Descartar mensagem enfileirada",
     "queueNoImages": "Imagens não podem entrar numa tarefa em andamento — enfileire o texto agora e cole a imagem na próxima tarefa.",
     "askUserHint": "Toque numa opção ou escreva a sua",
-    "askUserHintOpen": "Escreva sua resposta abaixo",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensou por {{duration}}",
     "reasoningToggle": "Mostrar ou ocultar o raciocínio do modelo (salvo para todas as conversas)",

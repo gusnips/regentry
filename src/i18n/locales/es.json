@@ -168,7 +168,6 @@
     "unqueueAria": "Descartar mensaje en cola",
     "queueNoImages": "Las imágenes no pueden unirse a una tarea en curso — encola el texto ahora y pega la imagen con la próxima tarea.",
     "askUserHint": "Toca una opción o escribe la tuya",
-    "askUserHintOpen": "Escribe tu respuesta abajo",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensó durante {{duration}}",
     "reasoningToggle": "Mostrar u ocultar el razonamiento del modelo (se guarda para todas las conversaciones)",

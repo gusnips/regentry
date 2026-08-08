@@ -28,6 +28,9 @@ export interface Recall {
  *
  * - Only an empty composer starts browsing; once browsing, arrows keep browsing
  *   however long the recalled text is.
+ * - An empty composer is always a fresh draft, whatever the last position was:
+ *   switching conversations empties it, and resuming someone else's place would
+ *   hand you a message from a transcript you left.
  * - ↑ at the oldest entry holds rather than wrapping — a wrap silently loses
  *   your place in a long history.
  * - ↓ past the newest returns the empty draft you started from.
@@ -38,10 +41,11 @@ export function recallStep(
   text: string,
   history: string[],
 ): Recall | null {
-  const browsing = index !== null;
-  if (!browsing && (key === "ArrowDown" || text)) return null;
+  // An empty composer is a fresh draft, whatever position it was left at.
+  const at = index !== null && text !== "" ? index : null;
+  if (at === null && (key === "ArrowDown" || text !== "")) return null;
 
-  const next = (index ?? -1) + (key === "ArrowUp" ? 1 : -1);
+  const next = (at ?? -1) + (key === "ArrowUp" ? 1 : -1);
   if (next < 0) return { index: null, text: "" };
   const recalled = history[next];
   return recalled === undefined ? null : { index: next, text: recalled };

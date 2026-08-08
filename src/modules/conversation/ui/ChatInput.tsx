@@ -98,8 +98,12 @@ export function ChatInput() {
     }
     setText("");
     setAttachError(null);
-    // The sent message becomes history's newest entry — browse from the top again.
+  };
+
+  /** Typing ends the browse: ↑ must never overwrite text you just wrote. */
+  const onChangeText = (value: string) => {
     historyIndex.current = null;
+    setText(value);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -108,11 +112,7 @@ export function ChatInput() {
       submit();
       return;
     }
-    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") {
-      // Any other keystroke is a new draft — the next ↑ starts from the newest.
-      historyIndex.current = null;
-      return;
-    }
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
     // ↑ recalls the newest queued line first: it is still unsent, so it is the
     // most likely thing you meant to edit. Once the queue is empty ↑ walks back
     // through what you already sent, ↓ walks forward and out.
@@ -195,7 +195,7 @@ export function ChatInput() {
           aria-label={t("chat.inputAria")}
           placeholder={running ? t("chat.queuePlaceholder") : t("chat.placeholder")}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => onChangeText(e.target.value)}
           onKeyDown={onKeyDown}
           onPaste={(e) => void onPaste(e)}
         />
