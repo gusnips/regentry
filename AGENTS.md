@@ -16,6 +16,7 @@ bun run deadcode   # knip (deadcode:fix to auto-fix)
 bun run i18n:check # locale parity + every static t() key resolves (--unused for orphans)
 bun run icons      # regenerate public/icon/* + docs/og.png from src/shared/logo.ts
 bun run zip        # build + pack dist/regentry-<version>-chrome.zip
+bun run crx        # build + sign a test CRX with regentry-test.pem (gitignored) → dist/regentry-<version>-test.crx
 bun run release    # bun run release <patch|minor|major> — gates, bump, commit, tag, zip
 bun run bridge     # run the MCP daemon by hand (clients spawn it themselves)
 bun run bridge:check # end-to-end check of the MCP bridge — no Chrome needed
