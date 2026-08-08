@@ -99,14 +99,19 @@ function reply(requestId: string, result: unknown): void {
   send({ type: "response", requestId, ok: true, result });
 }
 
-/** Resolves with the next request the daemon makes for `method`. */
+/**
+ * Resolves with the next request the daemon makes for `method`, consuming it —
+ * a cached match would otherwise hand the same request to a second call and
+ * quietly assert nothing.
+ */
 function awaitRequest(method: string): Promise<BridgeRequestSeen> {
-  const seen = requests.find((r) => r.method === method);
-  if (seen) return Promise.resolve(seen);
+  const at = requests.findIndex((r) => r.method === method);
+  if (at !== -1) return Promise.resolve(requests.splice(at, 1)[0] as BridgeRequestSeen);
   return new Promise((resolve) => {
     onRequest = (req) => {
       if (req.method !== method) return;
       onRequest = null;
+      requests.splice(requests.indexOf(req), 1);
       resolve(req);
     };
   });
@@ -265,6 +270,21 @@ check(
   "screenshot returns an image the model can see",
   shotContent[0]?.type === "image" && (shotContent[1]?.text ?? "").includes("mail.example.com"),
 );
+
+// Stop must never report a no-op as success: a panel-owned run is untouchable
+// from here, and "Stopped." would tell the model the browser was free.
+const stoppedNothing = rpc("tools/call", { name: "stop", arguments: {} });
+const idleStop = await awaitRequest("stop");
+reply(idleStop.requestId, { stopped: false, panelBusy: true });
+check(
+  "a stop that stopped nothing says so, and names the panel",
+  bodyOf(await stoppedNothing).includes("only the panel can stop it"),
+);
+
+const stoppedOurs = rpc("tools/call", { name: "stop", arguments: {} });
+const realStop = await awaitRequest("stop");
+reply(realStop.requestId, { stopped: false, panelBusy: false });
+check("an idle stop is still not an error", bodyOf(await stoppedOurs).includes("Nothing to stop"));
 
 // An extension-side refusal reaches the model as an oriented error, not a crash.
 const steered = rpc("tools/call", { name: "steer", arguments: { text: "use the search box" } });

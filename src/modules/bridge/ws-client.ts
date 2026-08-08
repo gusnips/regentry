@@ -20,9 +20,9 @@ export const bridgeItem = defineItem<{ enabled: boolean; port: number }>("bridge
  * `start()` is synchronous on purpose: an MV3 worker only receives events whose
  * listeners were registered in the first turn after the script evaluates, so
  * registering the alarm handler behind an `await` would silently forfeit the
- * wake-ups this class exists for. Config is read at connect time instead —
- * which also means toggling the bridge off, or moving its port, takes effect on
- * the next reconcile without a worker restart.
+ * wake-ups this class exists for. Creating the alarm is an ordinary API call
+ * and can wait for the config — which is what lets a disabled bridge cost
+ * nothing at all, and a re-enabled one connect without a worker restart.
  */
 export class BridgeSocket {
   private ws: WebSocket | null = null;
@@ -37,14 +37,32 @@ export class BridgeSocket {
   ) {}
 
   start(): void {
-    chrome.alarms.create(this.alarm, { periodInMinutes: 0.5 });
+    // Both listeners must be registered before the first await — see above.
     chrome.alarms.onAlarm.addListener((alarm) => {
-      if (alarm.name !== this.alarm) return;
-      // Heartbeat keeps the worker alive; a dead socket gets reconnected.
-      if (this.ws?.readyState === WebSocket.OPEN) this.send({ type: "pong" });
-      else void this.connect();
+      if (alarm.name === this.alarm) void this.reconcile();
     });
-    void this.connect();
+    bridgeItem.watch(() => void this.reconcile());
+    void this.reconcile();
+  }
+
+  /**
+   * The one path that decides whether we should be connected and gets us there.
+   * Runs on boot, on every alarm, and the moment the config changes.
+   */
+  private async reconcile(): Promise<void> {
+    const { enabled, port } = await bridgeItem.get();
+    if (!enabled) {
+      // An alarm firing every 30s for a feature the user switched off is pure
+      // battery cost — the bridge that isn't running wakes nothing.
+      await chrome.alarms.clear(this.alarm);
+      this.ws?.close();
+      return;
+    }
+    // Same name replaces, so reconciling never stacks alarms.
+    await chrome.alarms.create(this.alarm, { periodInMinutes: 0.5 });
+    // Heartbeat keeps the worker alive; a dead socket gets reconnected.
+    if (this.ws?.readyState === WebSocket.OPEN) this.send({ type: "pong" });
+    else await this.connect(port);
   }
 
   /** Best-effort send — a dead socket silently drops it; the alarm retries. */
@@ -57,15 +75,15 @@ export class BridgeSocket {
     }
   }
 
-  private async connect(): Promise<void> {
+  private async connect(port: number): Promise<void> {
     if (this.ws || this.connecting) return;
     this.connecting = true;
     try {
-      const { enabled, port } = await bridgeItem.get();
-      if (!enabled) return;
       const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
       this.ws = ws;
+      let established = false;
       ws.onopen = () => {
+        established = true;
         log.info("bridge connected");
         this.onOpen();
       };
@@ -79,7 +97,12 @@ export class BridgeSocket {
       ws.onclose = () => {
         this.ws = null;
         log.debug("bridge ws closed");
-        this.scheduleReconnect();
+        // Only a link that actually existed earns the fast retry. A socket that
+        // never opened means no daemon is listening — the overwhelmingly common
+        // case — and retrying every 2s would hammer a closed port forever and
+        // keep the worker awake for a feature nobody is using. Leave that to
+        // the 30s alarm.
+        if (established) this.scheduleReconnect();
       };
       ws.onerror = () => ws.close();
     } catch {
@@ -90,11 +113,12 @@ export class BridgeSocket {
     }
   }
 
+  /** A drop is usually a daemon restart — retry once quickly before the alarm. */
   private scheduleReconnect(): void {
     if (this.reconnectTimer) return;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      void this.connect();
+      void this.reconcile();
     }, 2_000);
   }
 }

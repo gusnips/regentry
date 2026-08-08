@@ -16,6 +16,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { BridgeError, BridgeLink, NOT_CONNECTED } from "./link";
 import type { BridgeStatus, CaptureResult } from "./protocol";
+// One source of truth for the version, exactly as the extension does it.
+import pkg from "../package.json" with { type: "json" };
 
 const PORT = Number(process.env.REGENTRY_BRIDGE_PORT ?? 17_836);
 /** The Chrome Web Store build. A dev build has its own id — set the env var. */
@@ -129,7 +131,7 @@ function formatStatus(status: BridgeStatus): string {
 
 // ── MCP server ──────────────────────────────────────────────────────
 
-const server = new McpServer({ name: "regentry", version: "0.1.0" });
+const server = new McpServer({ name: "regentry", version: pkg.version });
 
 server.registerTool(
   "health",
@@ -271,8 +273,14 @@ server.registerTool(
   },
   async () =>
     withLink(async () => {
-      await link.request("stop");
-      return text("Stopped.");
+      const result = await link.request<{ stopped: boolean; panelBusy: boolean }>("stop");
+      if (result.stopped) return text("Stopped.");
+      // Never let a no-op stop read as "the browser is free now".
+      return text(
+        result.panelBusy
+          ? "Nothing of yours was stopped — the task in flight was started from Regentry's own panel, and only the panel can stop it. Ask the user to stop it there, or wait."
+          : "Nothing to stop — no task was running.",
+      );
     }),
 );
 

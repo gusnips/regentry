@@ -89,7 +89,7 @@ export class BridgeLink {
         },
         websocket: {
           open: (ws) => this.onOpen(ws),
-          message: (ws, message) => this.onMessage(ws, String(message)),
+          message: (_ws, message) => this.onMessage(String(message)),
           close: (ws) => this.onClose(ws),
         },
       });
@@ -188,7 +188,7 @@ export class BridgeLink {
     this.bump();
   }
 
-  private onMessage(ws: ServerWebSocket<unknown>, raw: string): void {
+  private onMessage(raw: string): void {
     let msg: ExtensionMessage;
     try {
       msg = JSON.parse(raw) as ExtensionMessage;
@@ -221,7 +221,6 @@ export class BridgeLink {
       case "pong":
         break;
     }
-    void ws;
   }
 
   /**

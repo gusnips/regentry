@@ -152,13 +152,15 @@ export class Bridge {
 
   private stopRun(requestId: string): void {
     const run = getActiveRun();
-    if (run?.owner === "bridge") {
+    const mine = run?.owner === "bridge";
+    if (run && mine) {
       run.controller.abort();
       run.injectedQueue.length = 0;
       releaseRun(run);
     }
-    // Stop is not an error — a no-op stop still succeeds.
-    this.respond(requestId, { ok: true });
+    // Stop is not an error — a no-op stop still succeeds. But say which no-op
+    // it was: a panel run left untouched must never read as "browser is idle".
+    this.respond(requestId, { stopped: mine, panelBusy: !mine && run?.owner === "panel" });
   }
 
   /** What the browser looks like right now — the model's eyes between steps. */
@@ -172,8 +174,14 @@ export class Bridge {
   }
 
   private newConversation(requestId: string): void {
-    if (getActiveRun()) {
-      this.fail(requestId, "run-in-progress", "A run is in progress — stop it first.");
+    // Only our own run blocks the reset — a panel run has nothing to do with
+    // this thread, and refusing over it would be a dead end with no way out.
+    if (getActiveRun()?.owner === "bridge") {
+      this.fail(
+        requestId,
+        "run-in-progress",
+        "This thread has a run in progress — stop it first, then start the new one.",
+      );
       return;
     }
     this.conversationId = null;

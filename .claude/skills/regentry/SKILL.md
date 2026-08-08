@@ -55,7 +55,8 @@ installing the extension, opening the panel, choosing a provider.
 particular site, put the URL in the task text — Regentry will navigate there.
 
 **One run at a time.** Regentry drives one browser, so the panel and this bridge share a single run
-slot. If a run is already going, `run` tells you where it is; `stop()` it or wait.
+slot. If a run is already going, `run` tells you where it is. `stop()` ends your own; a run the user
+started in Regentry's panel is theirs to stop — ask them, or wait.
 
 **Steer instead of restarting.** If the goal is unchanged and you just need to correct course, use
 `steer`. It lands between tool calls. Reserve `stop` + `run` for a genuinely different task.
