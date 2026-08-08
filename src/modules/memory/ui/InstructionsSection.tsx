@@ -16,7 +16,9 @@ export function InstructionsSection() {
       <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
         {t("instructions.title")}
       </h2>
-      <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t("instructions.help")}</p>
+      <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        {t("instructions.help")}
+      </p>
 
       <TextArea
         ref={ref}

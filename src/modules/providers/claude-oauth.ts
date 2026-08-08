@@ -87,7 +87,11 @@ export async function signInWithClaude(
  * the moment the navigation starts and the tab is closed before that page
  * renders.
  */
-function waitForCallback(state: string, authorizeUrl: string, signal: AbortSignal): Promise<string> {
+function waitForCallback(
+  state: string,
+  authorizeUrl: string,
+  signal: AbortSignal,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     let openedTabId: number | undefined;
     let settled = false;
@@ -159,8 +163,7 @@ function waitForCallback(state: string, authorizeUrl: string, signal: AbortSigna
         }
         openedTabId = tab.id;
       },
-      (err: unknown) =>
-        finish(() => reject(err instanceof Error ? err : new Error(String(err)))),
+      (err: unknown) => finish(() => reject(err instanceof Error ? err : new Error(String(err)))),
     );
   });
 }

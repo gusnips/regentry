@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { accountFromToken, pollForToken, refreshCredential, requestDeviceCode } from "../kimi-oauth";
+import {
+  accountFromToken,
+  pollForToken,
+  refreshCredential,
+  requestDeviceCode,
+} from "../kimi-oauth";
 import type { DevicePrompt } from "../kimi-oauth";
 import { SignInError } from "../types";
 

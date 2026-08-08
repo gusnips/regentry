@@ -22,7 +22,9 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
         url: apiUrl(config.baseUrl, "/v1/messages"),
         // A signed-in subscription provider sends the access token as a Bearer
         // and talks OAuth-token mode; a key provider sends x-api-key.
-        headers: config.auth ? anthropicOAuthHeaders(config.apiKey) : anthropicHeaders(config.apiKey),
+        headers: config.auth
+          ? anthropicOAuthHeaders(config.apiKey)
+          : anthropicHeaders(config.apiKey),
         body: JSON.stringify(buildAnthropicBody(config, messages, tools)),
         label: providerDisplayName(config),
         signal,
@@ -139,7 +141,10 @@ export function buildAnthropicBody(
 
   if (systemMsg) {
     body.system = isOAuth
-      ? [{ type: "text", text: CLAUDE_IDENTITY }, { type: "text", text: systemMsg.content }]
+      ? [
+          { type: "text", text: CLAUDE_IDENTITY },
+          { type: "text", text: systemMsg.content },
+        ]
       : systemMsg.content;
   } else if (isOAuth) {
     body.system = [{ type: "text", text: CLAUDE_IDENTITY }];

@@ -12,14 +12,14 @@ sync with the product; when a feature lands, update the matching block and re-su
 
 ## 1. Identity
 
-| Field | Value |
-| --- | --- |
-| **Name** | Regentry |
-| **Category** | Productivity |
-| **Language** | English (listing is localized: en / pt-BR / es shipped in `public/_locales/`) |
-| **Visibility** | Public |
-| **Support URL** | https://github.com/gusnips/regentry/issues |
-| **Homepage URL** | https://github.com/gusnips/regentry |
+| Field            | Value                                                                         |
+| ---------------- | ----------------------------------------------------------------------------- |
+| **Name**         | Regentry                                                                      |
+| **Category**     | Productivity                                                                  |
+| **Language**     | English (listing is localized: en / pt-BR / es shipped in `public/_locales/`) |
+| **Visibility**   | Public                                                                        |
+| **Support URL**  | https://github.com/gusnips/regentry/issues                                    |
+| **Homepage URL** | https://github.com/gusnips/regentry                                           |
 
 **Title field** (≤ 45 chars) — use the plain name, it's the strongest brand:
 
@@ -57,7 +57,7 @@ An AI agent that drives your real browser — your tabs, sessions and logins —
 Markdown-friendly subset: `##`/`###`, `**bold**`, `-` lists, links. CWS renders headings as
 sections. Paste as-is.
 
-````markdown
+```markdown
 ## Your browser, commanded
 
 Regentry is a browser agent that lives in your browser and works in it — not in a sandbox. It
@@ -102,7 +102,7 @@ already use, until the task you described is done.
 ## Languages
 
 English · Português (Brasil) · Español. Light and dark theme, or follow your OS.
-````
+```
 
 ---
 
@@ -139,15 +139,15 @@ Saved in `docs/screenshots/` as `01-side-panel.png`, `02-chat.png`, `03-provider
 
 Paste into the **Permission justification** section. (CWS shows this to reviewers; be precise.)
 
-| Permission | Justification |
-| --- | --- |
-| `debugger` | Required for trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol, the only way to produce real (trusted) events a site can't ignore. |
-| `scripting` | Injects the accessibility-tree snapshot script into the tab the agent reads. |
-| `sidePanel` | Hosts the chat UI where the user writes tasks and watches the agent run. |
-| `tabs` | Reads the active tab's URL/title and switches tabs when a task references another open tab. |
-| `activeTab` | Grants access to the tab the user submits a task from, per action. |
-| `storage` | Persists provider configs and conversation history locally in `chrome.storage`. |
-| `notifications` | Alerts the user when the agent needs their input while Chrome is not focused. |
+| Permission                      | Justification                                                                                                                                                                      |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `debugger`                      | Required for trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol, the only way to produce real (trusted) events a site can't ignore.            |
+| `scripting`                     | Injects the accessibility-tree snapshot script into the tab the agent reads.                                                                                                       |
+| `sidePanel`                     | Hosts the chat UI where the user writes tasks and watches the agent run.                                                                                                           |
+| `tabs`                          | Reads the active tab's URL/title and switches tabs when a task references another open tab.                                                                                        |
+| `activeTab`                     | Grants access to the tab the user submits a task from, per action.                                                                                                                 |
+| `storage`                       | Persists provider configs and conversation history locally in `chrome.storage`.                                                                                                    |
+| `notifications`                 | Alerts the user when the agent needs their input while Chrome is not focused.                                                                                                      |
 | Host permissions (`<all_urls>`) | The agent must be able to navigate, read, and interact with any site the user asks it to use. No network calls are made beyond the user's configured provider and the site itself. |
 
 **Single-purpose disclosure:** the extension exists solely to let a user's chosen LLM drive their

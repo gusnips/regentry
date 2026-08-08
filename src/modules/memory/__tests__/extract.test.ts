@@ -135,7 +135,9 @@ describe("extractAndRemember", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("writes the facts the extraction turn names", async () => {
-    mockStreamReply("- The user's work account is me@acme.com.\n- Login on billing is the email link.");
+    mockStreamReply(
+      "- The user's work account is me@acme.com.\n- Login on billing is the email link.",
+    );
     await extractAndRemember(makeConfig(), [], new AbortController().signal);
     expect(await getDoc("MEMORY.md")).toBe(
       "- The user's work account is me@acme.com.\n- Login on billing is the email link.\n",
@@ -159,7 +161,11 @@ describe("extractAndRemember", () => {
   it("never throws — a failing extraction is a background nicety, not a run failure", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("boom"));
     await expect(
-      extractAndRemember(makeConfig(), [{ role: "user", content: "task" }], new AbortController().signal),
+      extractAndRemember(
+        makeConfig(),
+        [{ role: "user", content: "task" }],
+        new AbortController().signal,
+      ),
     ).resolves.toBeUndefined();
     expect(await getDoc("MEMORY.md")).toBe("");
   });

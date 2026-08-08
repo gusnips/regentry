@@ -2,7 +2,15 @@ import { describe, it, expect } from "vitest";
 
 // Storage stand-in (reset between tests) and i18n come from src/test-setup.ts.
 
-import { remember, getDoc, setDoc, memoryEnabled, loadAgentContext, listMemory, removeMemory } from "../documents";
+import {
+  remember,
+  getDoc,
+  setDoc,
+  memoryEnabled,
+  loadAgentContext,
+  listMemory,
+  removeMemory,
+} from "../documents";
 import { buildSystemPrompt, buildToolDefs } from "@/modules/agent/prompt";
 
 describe("remember", () => {

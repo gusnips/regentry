@@ -42,7 +42,9 @@ ${memory || "(empty)"}`;
  * the last N messages here — extraction only needs the run's highlights.
  */
 export function buildExtractionMessages(transcript: ChatMessage[], memory: string): ChatMessage[] {
-  const messages: ChatMessage[] = [{ role: "system", content: buildExtractionSystemPrompt(memory) }];
+  const messages: ChatMessage[] = [
+    { role: "system", content: buildExtractionSystemPrompt(memory) },
+  ];
   for (const m of transcript) {
     if (m.role === "system") continue;
     messages.push({
@@ -91,7 +93,11 @@ export async function extractAndRemember(
     const memory = await getDoc("MEMORY.md");
     const messages = buildExtractionMessages(transcript, memory);
     // The extraction turn needs no thinking tokens and sees no images.
-    const extraction = createProvider({ ...config, reasoningEffort: undefined, supportsImages: false });
+    const extraction = createProvider({
+      ...config,
+      reasoningEffort: undefined,
+      supportsImages: false,
+    });
 
     let reply = "";
     for await (const delta of extraction.stream(messages, [], signal)) {
