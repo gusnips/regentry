@@ -1,6 +1,11 @@
 import { initI18n, i18n } from "@/i18n";
 import { runAgentLoop, buildConversationHistory } from "@/modules/agent";
-import { createDriver, showAgentIndicator, hideAgentIndicator } from "@/modules/browser";
+import {
+  createDriver,
+  showAgentIndicator,
+  hideAgentIndicator,
+  refreshAgentIndicator,
+} from "@/modules/browser";
 import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
 import {
   appendMessage,
@@ -222,6 +227,13 @@ export default defineBackground(() => {
     if (tab.windowId !== undefined) {
       await chrome.sidePanel.open({ windowId: tab.windowId });
     }
+  });
+
+  // A load wipes the badge and the favicon dot. The navigate tool repaints
+  // itself, but click-triggered navigations have no other hook — any load
+  // completing in a driven tab puts its marks back. No-op for every other tab.
+  chrome.tabs.onUpdated.addListener((tabId, info) => {
+    if (info.status === "complete") void refreshAgentIndicator(tabId);
   });
 });
 

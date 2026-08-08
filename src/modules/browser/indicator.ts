@@ -4,6 +4,8 @@ import { createLogger } from "@/lib/logger";
 const log = createLogger("indicator");
 const HOST_ID = "regent-agent-indicator";
 const FAVICON_LINK_ID = "regent-agent-favicon";
+/** The link that hands the favicon back to the page when the run lets go. */
+const RESTORE_LINK_ID = "regent-agent-favicon-restore";
 
 /**
  * Driving marks on the tab an agent is driving — two halves, one lifecycle:
@@ -14,12 +16,22 @@ const FAVICON_LINK_ID = "regent-agent-favicon";
  *   another tab the badge is invisible and the strip is all they have left.
  *   A still dot, not a blink: motion in a 16px favicon reads as a broken page.
  *
+ * One tab per run, and runs move one at a time (switch_tab hides before it
+ * shows), so at most one tab per run is marked. Marks are repainted after any
+ * load that wipes them, including click-triggered navigations.
+ *
  * Best-effort by design: restricted pages (chrome://, the Web Store) reject
  * injection, and a run must not fail because its marks could not be drawn.
  */
 
-/** Set while a run owns a tab, so a navigation can restore the marks it wiped. */
+/** The label every mark carries, while any run is driving. */
 let activeLabel: string | null = null;
+/**
+ * Tabs currently bearing the marks — one per live run; concurrent runs in
+ * different windows each keep theirs. Refresh and hide consult this set, so
+ * one run ending never blanks another run's marks.
+ */
+const markedTabs = new Set<TabId>();
 
 /** Solid brand dot — the favicon the driven tab shows in the tab strip. */
 const FAVICON_DATA_URL =
@@ -31,9 +43,16 @@ const FAVICON_DATA_URL =
  * manages its favicon dynamically (unread counters) can still out-vote it mid-run —
  * we don't fight the page, the badge keeps carrying the signal.
  */
-function paintIndicator(hostId: string, label: string, linkId: string, faviconUrl: string): void {
+export function paintIndicator(
+  hostId: string,
+  label: string,
+  linkId: string,
+  faviconUrl: string,
+  restoreId: string,
+): void {
   document.getElementById(hostId)?.remove();
   document.getElementById(linkId)?.remove();
+  document.getElementById(restoreId)?.remove();
 
   const host = document.createElement("div");
   host.id = hostId;
@@ -81,10 +100,24 @@ function paintIndicator(hostId: string, label: string, linkId: string, faviconUr
   (document.head ?? document.documentElement).appendChild(link);
 }
 
-/** Runs in the page. Removing the favicon link hands the strip back to the page's own. */
-function removeIndicator(hostId: string, linkId: string): void {
+/**
+ * Runs in the page. Removing our link alone is not enough: Chrome keeps showing
+ * the last-set favicon until an icon link CHANGES, and the implicit /favicon.ico
+ * fallback only applies at load — so the dot would linger on the strip. Re-assert
+ * the page's own icon (the last one, mirroring Chrome's pick) — or the root
+ * favicon.ico a fresh load would fall back to, when the page declared none.
+ */
+export function removeIndicator(hostId: string, linkId: string, restoreId: string): void {
   document.getElementById(hostId)?.remove();
   document.getElementById(linkId)?.remove();
+  document.getElementById(restoreId)?.remove();
+
+  const own = [...document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')];
+  const restore = document.createElement("link");
+  restore.id = restoreId;
+  restore.rel = "icon";
+  restore.href = own.length > 0 ? (own[own.length - 1]?.href ?? "/favicon.ico") : "/favicon.ico";
+  (document.head ?? document.documentElement).appendChild(restore);
 }
 
 async function inject(
@@ -101,17 +134,31 @@ async function inject(
 
 export async function showAgentIndicator(tabId: TabId, label: string): Promise<void> {
   activeLabel = label;
-  await inject(tabId, paintIndicator, [HOST_ID, label, FAVICON_LINK_ID, FAVICON_DATA_URL]);
+  markedTabs.add(tabId);
+  await inject(tabId, paintIndicator, [
+    HOST_ID,
+    label,
+    FAVICON_LINK_ID,
+    FAVICON_DATA_URL,
+    RESTORE_LINK_ID,
+  ]);
 }
 
-/** Repaint after a navigation wiped the document. No-op when no run is active. */
+/** Repaint after a load wiped the document. No-op unless this tab is driven. */
 export async function refreshAgentIndicator(tabId: TabId): Promise<void> {
-  if (activeLabel) {
-    await inject(tabId, paintIndicator, [HOST_ID, activeLabel, FAVICON_LINK_ID, FAVICON_DATA_URL]);
+  if (activeLabel && markedTabs.has(tabId)) {
+    await inject(tabId, paintIndicator, [
+      HOST_ID,
+      activeLabel,
+      FAVICON_LINK_ID,
+      FAVICON_DATA_URL,
+      RESTORE_LINK_ID,
+    ]);
   }
 }
 
 export async function hideAgentIndicator(tabId: TabId): Promise<void> {
-  activeLabel = null;
-  await inject(tabId, removeIndicator, [HOST_ID, FAVICON_LINK_ID]);
+  markedTabs.delete(tabId);
+  if (markedTabs.size === 0) activeLabel = null;
+  await inject(tabId, removeIndicator, [HOST_ID, FAVICON_LINK_ID, RESTORE_LINK_ID]);
 }
