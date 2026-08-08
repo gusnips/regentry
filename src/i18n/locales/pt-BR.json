@@ -167,7 +167,8 @@
     "queuedHint": "Na fila — entra entre as próximas chamadas de ferramenta. Com o campo vazio, ↑ edita a última; ✕ descarta.",
     "unqueueAria": "Descartar mensagem enfileirada",
     "queueNoImages": "Imagens não podem entrar numa tarefa em andamento — enfileire o texto agora e cole a imagem na próxima tarefa.",
-    "askUserHint": "Toque numa opção ou escreva uma resposta abaixo.",
+    "askUserHint": "Toque numa opção ou escreva a sua",
+    "askUserHintOpen": "Escreva sua resposta abaixo",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensou por {{duration}}",
     "reasoningToggle": "Mostrar ou ocultar o raciocínio do modelo (salvo para todas as conversas)",
@@ -217,13 +218,7 @@
       "warn": "Trabalhando",
       "interrupted": "Interrompido"
     },
-    "idle": [
-      "Pensando",
-      "Trabalhando",
-      "Refletindo",
-      "Raciocinando",
-      "Contemplando"
-    ],
+    "idle": ["Pensando", "Trabalhando", "Refletindo", "Raciocinando", "Contemplando"],
     "tokens": "{{count}} tokens",
     "finished": "Concluído",
     "drivingTabTip": "Mostrar a aba que o Regent está controlando"

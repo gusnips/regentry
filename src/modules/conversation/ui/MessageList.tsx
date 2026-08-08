@@ -138,34 +138,45 @@ function StepRow({ msg }: { msg: Message }) {
 
 /**
  * The agent paused for a decision — ask_user rendered as a card, not a step
- * row: the question is the headline and the choices are tappable. An answer is
- * just the next user message, so history replay reads it as a plain turn.
+ * row: the question is the headline. An answer is just the next user message,
+ * so history replay reads it as a plain turn.
+ *
+ * The choices are laid out on the USER's side, right-aligned toward the
+ * composer, in the same brand chip language as a queued message: tapping one
+ * sends it verbatim, so it is a draft reply of yours, not a control of the
+ * agent's. Answered questions keep the question and drop the chips — the reply
+ * is already in the transcript right below.
  */
 function QuestionCard({ msg, onAnswer }: { msg: Message; onAnswer?: (text: string) => void }) {
   const { t } = useTranslation();
   const choices = Array.isArray(msg.args?.choices)
     ? msg.args.choices.filter((c): c is string => typeof c === "string" && c.trim() !== "")
     : [];
+
   return (
-    <Bubble variant="muted" className="border border-brand-300 dark:border-brand-700">
-      <BubbleContent>
-        <Markdown>{msg.content}</Markdown>
-        {onAnswer && choices.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {choices.map((c) => (
-              <Button key={c} variant="outline" size="sm" onClick={() => onAnswer(c)}>
-                {c}
-              </Button>
-            ))}
-          </div>
-        )}
-        {onAnswer && (
-          <div className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-            {t("chat.askUserHint")}
-          </div>
-        )}
-      </BubbleContent>
-    </Bubble>
+    <div className="flex flex-col gap-1.5">
+      <Bubble variant="muted" className="border border-brand-200 dark:border-brand-900">
+        <BubbleContent>
+          <Markdown>{msg.content}</Markdown>
+        </BubbleContent>
+      </Bubble>
+      {onAnswer && (
+        <div className="flex flex-col items-end gap-1">
+          {choices.length > 0 && (
+            <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+              {choices.map((c) => (
+                <Button key={c} variant="choice" size="sm" onClick={() => onAnswer(c)}>
+                  {c}
+                </Button>
+              ))}
+            </div>
+          )}
+          <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
+            {choices.length > 0 ? t("chat.askUserHint") : t("chat.askUserHintOpen")}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -466,7 +477,11 @@ function MessageBubble({
         />
       );
     case "step":
-      return msg.tool === "ask_user" ? <QuestionCard msg={msg} onAnswer={onAnswer} /> : <StepRow msg={msg} />;
+      return msg.tool === "ask_user" ? (
+        <QuestionCard msg={msg} onAnswer={onAnswer} />
+      ) : (
+        <StepRow msg={msg} />
+      );
     case "plan":
       return msg.steps?.length ? <PlanCard steps={msg.steps} current={msg.current ?? 0} /> : null;
     case "error": {
@@ -569,9 +584,8 @@ function Transcript() {
   const hasLiveStep = messages.some((m) => m.live);
   // User messages name their tab only once a conversation spans more than one —
   // with a single tab every message is obviously there, so the label is noise.
-  const multiTab = new Set(
-    messages.flatMap((m) => (m.role === "user" && m.tab ? [m.tab.url] : [])),
-  ).size > 1;
+  const multiTab =
+    new Set(messages.flatMap((m) => (m.role === "user" && m.tab ? [m.tab.url] : []))).size > 1;
   // `end` is "unseen content below the viewport" — the old !stuck: true once
   // the reader scrolls off the live edge, so the pill shows exactly then.
   const { end: offEnd } = useMessageScrollerScrollable();

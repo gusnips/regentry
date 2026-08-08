@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { toAttachment } from "./image";
+import { recallStep, sentMessages } from "./history-recall";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
 import { ZoomableImage } from "@/components/ZoomableImage";
@@ -22,6 +23,7 @@ export function ChatInput() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const status = useConversationStore((s) => s.status);
+  const messages = useConversationStore((s) => s.messages);
   const queued = useConversationStore((s) => s.queued);
   const sendTask = useConversationStore((s) => s.sendTask);
   const queueMessage = useConversationStore((s) => s.queueMessage);
@@ -31,6 +33,9 @@ export function ChatInput() {
   const areaRef = useRef<HTMLTextAreaElement>(null);
   /** Monotonic, so removing #1 never lets a later paste reuse its token. */
   const imageCount = useRef(0);
+  /** Position in `sentHistory` while browsing it; null = editing a fresh draft. */
+  const historyIndex = useRef<number | null>(null);
+  const sentHistory = useMemo(() => sentMessages(messages), [messages]);
 
   const running = status === "running";
 
@@ -93,6 +98,8 @@ export function ChatInput() {
     }
     setText("");
     setAttachError(null);
+    // The sent message becomes history's newest entry — browse from the top again.
+    historyIndex.current = null;
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -101,11 +108,24 @@ export function ChatInput() {
       submit();
       return;
     }
-    // Shell-history recall: ↑ on an empty composer edits the newest queued line.
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") {
+      // Any other keystroke is a new draft — the next ↑ starts from the newest.
+      historyIndex.current = null;
+      return;
+    }
+    // ↑ recalls the newest queued line first: it is still unsent, so it is the
+    // most likely thing you meant to edit. Once the queue is empty ↑ walks back
+    // through what you already sent, ↓ walks forward and out.
     if (e.key === "ArrowUp" && !text && queued.length > 0) {
       e.preventDefault();
       recallQueued();
+      return;
     }
+    const recall = recallStep(e.key, historyIndex.current, text, sentHistory);
+    if (!recall) return;
+    e.preventDefault();
+    historyIndex.current = recall.index;
+    setText(recall.text);
   };
 
   return (
