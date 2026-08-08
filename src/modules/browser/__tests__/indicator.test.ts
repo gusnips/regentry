@@ -3,8 +3,11 @@ import {
   paintIndicator,
   removeIndicator,
   stepFaviconFrame,
+  waitIndicator,
   showAgentIndicator,
   hideAgentIndicator,
+  waitAgentIndicator,
+  clearAgentWait,
 } from "../indicator";
 
 // The page-side halves of the indicator, run directly in jsdom the way
@@ -107,6 +110,34 @@ describe("indicator page marks", () => {
   });
 });
 
+describe("waiting state", () => {
+  const WAITING_URL = "data:image/svg+xml,question";
+
+  beforeEach(() => {
+    document.head.innerHTML = "";
+    document.body.innerHTML = "";
+  });
+
+  it("removes the badge and sets the waiting favicon", () => {
+    paint();
+    waitIndicator(ARGS.hostId, ARGS.linkId, WAITING_URL);
+
+    expect(document.getElementById(ARGS.hostId)).toBeNull();
+    const links = iconLinks();
+    expect(links).toHaveLength(1);
+    expect(links[0]?.href).toBe(WAITING_URL);
+  });
+
+  it("creates the link when none existed yet", () => {
+    waitIndicator(ARGS.hostId, ARGS.linkId, WAITING_URL);
+
+    const links = iconLinks();
+    expect(links).toHaveLength(1);
+    expect(links[0]?.id).toBe(ARGS.linkId);
+    expect(links[0]?.href).toBe(WAITING_URL);
+  });
+});
+
 describe("worker-driven favicon heartbeat", () => {
   // The pulse lives in the worker because Chrome throttles hidden-tab timers
   // into silence — hidden is exactly when the strip signal matters.
@@ -143,5 +174,41 @@ describe("worker-driven favicon heartbeat", () => {
     await hideAgentIndicator(1);
     await vi.advanceTimersByTimeAsync(2800);
     expect(frameBeats()).toHaveLength(2); // no beats after hide
+  });
+
+  it("wait marks the strip without a pulse, and clear removes the mark", async () => {
+    await waitAgentIndicator(2);
+    // No pulse beats, ever — the wait is a still state.
+    await vi.advanceTimersByTimeAsync(2800);
+    expect(frameBeats()).toHaveLength(0);
+    // One injection, carrying waitIndicator + waiting URL.
+    const waits = executeScript.mock.calls.filter(
+      (c) => (c[0] as { func: unknown }).func === waitIndicator,
+    );
+    expect(waits).toHaveLength(1);
+
+    // clear in a new run calls hideAgentIndicator → removeIndicator.
+    await clearAgentWait();
+    const removes = executeScript.mock.calls.filter(
+      (c) => (c[0] as { func: unknown }).func === removeIndicator,
+    );
+    expect(removes).toHaveLength(1);
+  });
+
+  it("show drives again on a waiting tab — wait is cleared, paint and restore follow", async () => {
+    await waitAgentIndicator(3);
+
+    await showAgentIndicator(3, "Regent is driving");
+    // showAgentIndicator calls paintIndicator, never waitIndicator or removeIndicator.
+    const paints = executeScript.mock.calls.filter(
+      (c) => (c[0] as { func: unknown }).func === paintIndicator,
+    );
+    expect(paints).toHaveLength(1);
+    // hide runs normally once — no wait-specific cleanup, since show already cleared it.
+    await hideAgentIndicator(3);
+    const removes = executeScript.mock.calls.filter(
+      (c) => (c[0] as { func: unknown }).func === removeIndicator,
+    );
+    expect(removes).toHaveLength(1);
   });
 });

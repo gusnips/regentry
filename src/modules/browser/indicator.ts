@@ -26,6 +26,13 @@ const RESTORE_LINK_ID = "regent-agent-favicon-restore";
  * strip signal matters. The worker stays awake for the run (the panel's Port
  * heartbeat sees to that).
  *
+ * When a run ends on a question (ask_user), the dot does not vanish — that is
+ * the moment the agent needs you most. It settles into a still purple "?":
+ * working became waiting-on-you. Still, not pulsing — the pulse is the "alive"
+ * language, and the agent is now blocked on the human. The on-page badge goes
+ * away: "being controlled" is no longer true. The wait clears when the next
+ * run starts (an answer is a run) or the tab is otherwise unmarked.
+ *
  * Best-effort by design: restricted pages (chrome://, the Web Store) reject
  * injection, and a run must not fail because its marks could not be drawn.
  */
@@ -38,6 +45,13 @@ let activeLabel: string | null = null;
  * one run ending never blanks another run's marks.
  */
 const markedTabs = new Set<TabId>();
+/**
+ * The tab whose run ended on an unanswered question — its favicon carries the
+ * still "?" while the agent waits. One conversation drives at a time, so one
+ * wait at a time is enough (a second panel's question would overwrite this
+ * tracking, not the first tab's mark).
+ */
+let waitingTabId: TabId | null = null;
 
 /** Solid brand dot — the favicon the driven tab shows in the tab strip. */
 const FAVICON_DATA_URL =
@@ -45,6 +59,9 @@ const FAVICON_DATA_URL =
 /** The same dot at a quarter opacity — the heartbeat's low beat. */
 const FAVICON_DIM_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23a78bfa' fill-opacity='0.25'/%3E%3C/svg%3E";
+/** The dot with a knocked-out "?" — the run ended on a question for the user. */
+const FAVICON_WAITING_URL =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23a78bfa'/%3E%3Ctext x='8' y='11.3' font-size='9.5' font-weight='700' text-anchor='middle' fill='white' font-family='ui-sans-serif,system-ui,sans-serif'%3E%3F%3C/text%3E%3C/svg%3E";
 const FAVICON_FRAMES = [FAVICON_DATA_URL, FAVICON_DIM_URL];
 /** Two beats make the badge's 1.4s breath — one motion language for "alive". */
 const PULSE_BEAT_MS = 700;
@@ -145,6 +162,24 @@ export function stepFaviconFrame(linkId: string, frameUrl: string): void {
   if (link instanceof HTMLLinkElement) link.href = frameUrl;
 }
 
+/**
+ * Runs in the page: settle the marks into the waiting state — badge gone (the
+ * page is no longer being controlled), favicon swapped to the still "?".
+ * Self-contained: if a load wiped the link, it is re-created, so a repaint
+ * after a navigation lands the same state.
+ */
+export function waitIndicator(hostId: string, linkId: string, waitingUrl: string): void {
+  document.getElementById(hostId)?.remove();
+  const existing = document.getElementById(linkId);
+  const link = existing instanceof HTMLLinkElement ? existing : document.createElement("link");
+  if (!(existing instanceof HTMLLinkElement)) {
+    link.id = linkId;
+    link.rel = "icon";
+    (document.head ?? document.documentElement).appendChild(link);
+  }
+  link.href = waitingUrl;
+}
+
 function startPulse(tabId: TabId): void {
   stopPulse(tabId);
   let frame = 0;
@@ -180,6 +215,7 @@ async function inject(
 
 export async function showAgentIndicator(tabId: TabId, label: string): Promise<void> {
   activeLabel = label;
+  waitingTabId = null;
   markedTabs.add(tabId);
   startPulse(tabId);
   await inject(tabId, paintIndicator, [
@@ -191,9 +227,14 @@ export async function showAgentIndicator(tabId: TabId, label: string): Promise<v
   ]);
 }
 
-/** Repaint after a load wiped the document. No-op unless this tab is driven. */
+/** Repaint after a load wiped the document. No-op unless this tab is marked. */
 export async function refreshAgentIndicator(tabId: TabId): Promise<void> {
-  if (activeLabel && markedTabs.has(tabId)) {
+  if (!markedTabs.has(tabId)) return;
+  if (waitingTabId === tabId) {
+    await inject(tabId, waitIndicator, [HOST_ID, FAVICON_LINK_ID, FAVICON_WAITING_URL]);
+    return;
+  }
+  if (activeLabel) {
     await inject(tabId, paintIndicator, [
       HOST_ID,
       activeLabel,
@@ -205,8 +246,26 @@ export async function refreshAgentIndicator(tabId: TabId): Promise<void> {
 }
 
 export async function hideAgentIndicator(tabId: TabId): Promise<void> {
+  if (waitingTabId === tabId) waitingTabId = null;
   markedTabs.delete(tabId);
   stopPulse(tabId);
   if (markedTabs.size === 0) activeLabel = null;
   await inject(tabId, removeIndicator, [HOST_ID, FAVICON_LINK_ID, RESTORE_LINK_ID]);
+}
+
+/**
+ * The run ended on a question for the user: stop the heartbeat, drop the
+ * badge, and leave the still "?" on the strip until the next run starts.
+ */
+export async function waitAgentIndicator(tabId: TabId): Promise<void> {
+  stopPulse(tabId);
+  waitingTabId = tabId;
+  markedTabs.add(tabId);
+  await inject(tabId, waitIndicator, [HOST_ID, FAVICON_LINK_ID, FAVICON_WAITING_URL]);
+}
+
+/** Forget any pending wait — called when the next run starts anywhere. */
+export async function clearAgentWait(): Promise<void> {
+  if (waitingTabId === null) return;
+  await hideAgentIndicator(waitingTabId);
 }

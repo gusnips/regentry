@@ -5,6 +5,8 @@ import {
   showAgentIndicator,
   hideAgentIndicator,
   refreshAgentIndicator,
+  waitAgentIndicator,
+  clearAgentWait,
 } from "@/modules/browser";
 import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
 import {
@@ -88,6 +90,7 @@ export default defineBackground(() => {
 
           abortController = new AbortController();
           injectedQueue.length = 0;
+          let endedOnQuestion = false;
           // A moving target: the run starts on the submit-time tab but the
           // agent may re-target itself with switch_tab — badge, panel chip and
           // fail-fast all follow.
@@ -130,6 +133,7 @@ export default defineBackground(() => {
           chrome.tabs.onRemoved.addListener(onTabGone);
           // Tell the page itself it is being driven — the side panel may be
           // scrolled away or on another window.
+          await clearAgentWait();
           void showAgentIndicator(drivenTabId, i18n.t("indicator.driving"));
 
           // The stored conversation as wire turns — "continue" lands on a model
@@ -156,6 +160,7 @@ export default defineBackground(() => {
                 onUsage: (input, output) => send(port, { type: "usage", input, output }),
                 onError: (message) => send(port, { type: "error", message }),
                 onDone: (summary) => send(port, { type: "done", summary }),
+                onAskUser: () => { endedOnQuestion = true; },
               },
             });
           } catch (e) {
@@ -165,7 +170,8 @@ export default defineBackground(() => {
           } finally {
             chrome.tabs.onRemoved.removeListener(onTabGone);
             abortController = null;
-            void hideAgentIndicator(drivenTabId);
+            if (endedOnQuestion) void waitAgentIndicator(drivenTabId);
+            else void hideAgentIndicator(drivenTabId);
             // Runs whatever unwinds the loop — done, error, stop, panel closed.
             void persistDrivenTab(drivenTabId);
           }

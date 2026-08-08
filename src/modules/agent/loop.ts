@@ -48,6 +48,8 @@ export interface LoopCallbacks {
   onUsage?: (input: number, output: number) => void;
   onError?: (message: string) => void;
   onDone?: (summary?: string) => void;
+  /** The run ended on a question for the user — not on error and not on done. */
+  onAskUser?: () => void;
 }
 
 export interface LoopOptions {
@@ -286,6 +288,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
         // answer arrives as the next message, with this run replayed as history.
         taskDone = true;
         log.info("run paused on ask_user after step", step + 1);
+        callbacks.onAskUser?.();
         callbacks.onDone?.();
       } else {
         results.push({
