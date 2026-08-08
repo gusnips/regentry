@@ -46,15 +46,9 @@ export class DirectSession {
   private tabId: TabId | null = null;
   private claim: ActiveRun | null = null;
   private idle: ReturnType<typeof setTimeout> | null = null;
-  private agent = "";
 
   get open(): boolean {
     return this.claim !== null;
-  }
-
-  /** The thread this session is writing to — the bridge's current one. */
-  get conversation(): string | null {
-    return this.conversationId;
   }
 
   /** The tab being driven, so a screenshot can say whether it caught it. */
@@ -80,7 +74,6 @@ export class DirectSession {
 
     this.claim = claim.run;
     this.tabId = tab.id;
-    this.agent = agent;
     this.conversationId = claim.run.conversationId;
     await openAgentConversation(this.conversationId, agent);
     await appendMessageTo(this.conversationId, {
@@ -193,7 +186,7 @@ export class DirectSession {
 function alreadyRunning(run: ActiveRun): string {
   return run.owner === "panel"
     ? i18n.t("errors.alreadyRunningPanel")
-    : i18n.t("errors.alreadyRunning");
+    : i18n.t("errors.alreadyRunningMCP");
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

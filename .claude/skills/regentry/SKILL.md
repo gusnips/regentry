@@ -52,7 +52,7 @@ Driving yourself:
 | `browser_type(text)`                 | Type into whatever is focused — click the field first.                                    |
 | `browser_press_key(key)`             | `Enter`, `Escape`, `Tab`, an arrow.                                                       |
 | `browser_scroll(direction, amount?)` | Below the fold isn't in a snapshot until you scroll to it.                                |
-| `browser_tabs()` / `switch_tab(id)`  | Find another tab and re-target every later action at it.                                  |
+| `browser_tabs()` / `browser_switch_tab(id)` | Find another tab and re-target every later action at it. |
 | `browser_end()`                      | Hand the browser back. Always call it when you're done.                                   |
 
 **Refs belong to the snapshot that made them.** Every action returns the page it produced — act on

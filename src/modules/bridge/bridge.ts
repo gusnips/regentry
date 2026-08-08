@@ -166,8 +166,10 @@ export class Bridge {
       this.fail(requestId, "empty-text", "Steer message can't be empty.");
       return;
     }
+    // A direct session holds the slot but runs no loop, so there is nothing to
+    // steer — the message would land in a queue nothing drains.
     const run = getActiveRun();
-    if (!run || run.owner !== "bridge") {
+    if (this.direct.open || !run || run.owner !== "bridge") {
       this.fail(requestId, "no-run", "No run is in progress to steer. Start one with run.");
       return;
     }
@@ -296,12 +298,13 @@ export class Bridge {
     } satisfies ExtensionMessage);
   }
 
-  /** Oriented already-running text naming where the run is. */
+  /** Oriented already-running text naming where the run is and how to stop it. */
   private alreadyRunningText(): string {
     const run = getActiveRun();
-    return run?.owner === "panel"
+    if (!run) return i18n.t("errors.alreadyRunning");
+    return run.owner === "panel"
       ? i18n.t("errors.alreadyRunningPanel")
-      : i18n.t("errors.alreadyRunning");
+      : i18n.t("errors.alreadyRunningMCP");
   }
 }
 

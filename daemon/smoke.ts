@@ -329,6 +329,17 @@ check(
   bodyOf(await clicking).includes("valid only for THIS snapshot"),
 );
 
+// A refused action reaches the model as a failed step, never a lying "ok" —
+// a stale ref, a missing element, a dead tab. The error has to be visible.
+const refused = rpc("tools/call", { name: "browser_click", arguments: { ref: "gone" } });
+const refusedRequest = await awaitRequest("browserAct");
+reply(refusedRequest.requestId, { ok: false, error: "No element with ref 'gone'." });
+const refusedBody = bodyOf(await refused);
+check(
+  "a failed action says it failed, and why",
+  refusedBody.includes("click: failed") && refusedBody.includes("No element with ref 'gone'."),
+);
+
 const scrolling = rpc("tools/call", {
   name: "browser_scroll",
   arguments: { direction: "up", amount: 200 },

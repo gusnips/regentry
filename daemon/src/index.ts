@@ -339,23 +339,30 @@ server.registerTool(
 /** What the client calls itself, from MCP initialize — history shows this. */
 function clientName(): string {
   const info = server.server.getClientVersion();
-  return info?.name ? `${info.name}` : "An MCP client";
+  // Empty when unknown — the extension localizes the fallback label for the
+  // transcript chip (history.unknownAgent); the daemon is English-only and
+  // has no business naming the client itself.
+  return info?.name ? `${info.name}` : "";
 }
 
 async function act(tool: string, toolArgs: Record<string, unknown> = {}) {
   return withLink(async () => {
-    const result = await link.request<{ data?: unknown; error?: string }>("browserAct", {
-      tool,
-      args: toolArgs,
-    });
+    const result = await link.request<{ ok?: boolean; data?: unknown; error?: string }>(
+      "browserAct",
+      { tool, args: toolArgs },
+    );
     return text(renderToolResult(tool, result));
   });
 }
 
 /** The page as the model needs to read it, plus whatever the action returned. */
-function renderToolResult(tool: string, result: { data?: unknown; error?: string }): string {
+function renderToolResult(
+  tool: string,
+  result: { ok?: boolean; data?: unknown; error?: string },
+): string {
   const data = (result.data ?? {}) as { pageContent?: string; tabs?: unknown[]; url?: string };
-  const parts: string[] = [`${tool}: ok`];
+  const parts: string[] = [`${tool}: ${result.ok === false ? "failed" : "ok"}`];
+  if (result.error) parts.push(`error: ${result.error}`);
   if (data.url) parts.push(`url: ${data.url}`);
   if (data.tabs) parts.push(JSON.stringify(data.tabs, null, 2));
   if (data.pageContent) {
