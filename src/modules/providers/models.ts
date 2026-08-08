@@ -97,11 +97,11 @@ function parseCreated(entry: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-// ponytail: name heuristic — big OpenAI-shape catalogs (OpenAI, OpenRouter) mix
-// embeddings/tts/image/moderation models into /models. Ceiling: a chat model
-// with an unlucky name gets hidden; it stays reachable via free-text entry.
+// ponytail: name heuristic — big OpenAI-shape catalogs (OpenAI, OpenRouter,
+// Gemini) mix embeddings/tts/image/live/realtime models into /models. Ceiling:
+// a chat model with an unlucky name gets hidden; it stays reachable via free-text entry.
 const NON_CHAT_PATTERN =
-  /embed|whisper|tts|dall-e|gpt-image|moderation|realtime|audio|transcrib|search-preview/i;
+  /embed|whisper|tts|dall-e|image|moderation|realtime|audio|transcrib|search-preview|-live/i;
 
 function isNonChatModel(id: string): boolean {
   return NON_CHAT_PATTERN.test(id);

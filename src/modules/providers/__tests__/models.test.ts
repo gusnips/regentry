@@ -67,6 +67,22 @@ describe("listModels", () => {
     expect(models.map((m) => m.id)).toEqual(["gpt-5", "gpt-4o"]);
   });
 
+  it("hides Google's non-chat families (Live, image, tts) from the OpenAI-compat list", async () => {
+    stubFetch(200, {
+      data: [
+        { id: "gemini-3.6-flash", created: 1790000000 },
+        // Newest by created, but Live-API-only — must not win "Auto" (404s on generateContent).
+        { id: "gemini-3.5-live-translate-preview", created: 1791000000 },
+        { id: "gemini-3.1-flash-live-preview", created: 1789000000 },
+        { id: "gemini-3.1-flash-tts-preview", created: 1788000000 },
+        { id: "gemini-3.1-flash-image", created: 1787000000 },
+        { id: "imagen-3", created: 1786000000 },
+      ],
+    });
+    const models = await listModels(openaiConfig);
+    expect(models.map((m) => m.id)).toEqual(["gemini-3.6-flash"]);
+  });
+
   it("keeps the endpoint's human label (anthropic display_name, openrouter name)", async () => {
     stubFetch(200, {
       data: [
