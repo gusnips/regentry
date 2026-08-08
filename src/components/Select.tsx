@@ -6,9 +6,14 @@ import { useTranslation } from "react-i18next";
 export interface SelectOption {
   value: string;
   label: string;
-  /** Short qualifier pinned after the label — never shrinks, so it survives
+  /** Short qualifier pinned beside the label — never shrinks, so it survives
    *  truncation of a long label (e.g. a model id tagged "Auto"). */
   hint?: string;
+  /** Render the hint before the label instead of after. Use when the qualifier
+   *  is what distinguishes the row: two options can share a label (the auto
+   *  choice and that same model pinned by hand), and a trailing chip is read
+   *  too late to tell them apart. */
+  hintLeading?: boolean;
   icon?: ReactNode;
   /** Rule above this item — separates trailing actions from the real choices. */
   separatorBefore?: boolean;
@@ -84,11 +89,13 @@ export function Select({
                   {t("common.selectPlaceholder")}
                 </span>
               );
+            const hint = opt.hint ? <Hint text={opt.hint} /> : null;
             return (
               <span className="flex min-w-0 items-center gap-1.5">
                 {opt.icon}
+                {opt.hintLeading && hint}
                 <span className="truncate">{opt.label}</span>
-                {opt.hint && <Hint text={opt.hint} />}
+                {!opt.hintLeading && hint}
               </span>
             );
           }}
@@ -101,28 +108,32 @@ export function Select({
             and looked missing. A plain dropdown always shows the list from the top. */}
         <BaseSelect.Positioner sideOffset={4} alignItemWithTrigger={false} className="z-50">
           <BaseSelect.Popup className="max-h-72 w-max min-w-[var(--anchor-width)] max-w-72 overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-            {options.map((o) => (
-              <Fragment key={o.value}>
-                {/* Base UI's Select has no Separator part — a presentational
-                    rule keeps it out of the listbox's accessibility tree. */}
-                {o.separatorBefore && (
-                  <div aria-hidden className="my-1 h-px bg-neutral-200 dark:bg-neutral-700" />
-                )}
-                <BaseSelect.Item
-                  value={o.value}
-                  className={`flex cursor-default items-center gap-1.5 text-neutral-900 data-[highlighted]:bg-brand-50 data-[highlighted]:text-brand-900 dark:text-neutral-100 dark:data-[highlighted]:bg-brand-950 dark:data-[highlighted]:text-brand-100 ${s.item}`}
-                >
-                  {o.icon}
-                  <BaseSelect.ItemText className="min-w-0 flex-1 truncate">
-                    {o.label}
-                  </BaseSelect.ItemText>
-                  {o.hint && <Hint text={o.hint} />}
-                  <BaseSelect.ItemIndicator className="shrink-0 text-brand-600 dark:text-brand-400">
-                    ✓
-                  </BaseSelect.ItemIndicator>
-                </BaseSelect.Item>
-              </Fragment>
-            ))}
+            {options.map((o) => {
+              const hint = o.hint ? <Hint text={o.hint} /> : null;
+              return (
+                <Fragment key={o.value}>
+                  {/* Base UI's Select has no Separator part — a presentational
+                      rule keeps it out of the listbox's accessibility tree. */}
+                  {o.separatorBefore && (
+                    <div aria-hidden className="my-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+                  )}
+                  <BaseSelect.Item
+                    value={o.value}
+                    className={`flex cursor-default items-center gap-1.5 text-neutral-900 data-[highlighted]:bg-brand-50 data-[highlighted]:text-brand-900 dark:text-neutral-100 dark:data-[highlighted]:bg-brand-950 dark:data-[highlighted]:text-brand-100 ${s.item}`}
+                  >
+                    {o.icon}
+                    {o.hintLeading && hint}
+                    <BaseSelect.ItemText className="min-w-0 flex-1 truncate">
+                      {o.label}
+                    </BaseSelect.ItemText>
+                    {!o.hintLeading && hint}
+                    <BaseSelect.ItemIndicator className="shrink-0 text-brand-600 dark:text-brand-400">
+                      ✓
+                    </BaseSelect.ItemIndicator>
+                  </BaseSelect.Item>
+                </Fragment>
+              );
+            })}
           </BaseSelect.Popup>
         </BaseSelect.Positioner>
       </BaseSelect.Portal>

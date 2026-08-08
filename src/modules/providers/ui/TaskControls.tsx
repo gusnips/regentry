@@ -171,12 +171,23 @@ export function ModelControls() {
   const autoTarget = pickLatestModel(models) ?? listed[0];
 
   // "Auto" shows what it will actually run, tagged so it stays distinguishable
-  // from having pinned that same model by hand.
+  // from having pinned that same model by hand — the tag leads, because those
+  // two rows carry the identical model name and a trailing chip reads too late
+  // to tell them apart. The rule below it separates the mode from the values.
   const modelOptions: SelectOption[] = [
     autoTarget
-      ? { value: "", label: autoTarget.name ?? autoTarget.id, hint: t("modelPicker.auto") }
+      ? {
+          value: "",
+          label: autoTarget.name ?? autoTarget.id,
+          hint: t("modelPicker.auto"),
+          hintLeading: true,
+        }
       : { value: "", label: t("modelPicker.auto") },
-    ...listed.map((m) => ({ value: m.id, label: m.name ?? m.id })),
+    ...listed.map((m, i) => ({
+      value: m.id,
+      label: m.name ?? m.id,
+      separatorBefore: i === 0 && autoTarget !== undefined,
+    })),
   ];
   // A persisted id the endpoint no longer lists (e.g. k3[1m]) stays selectable.
   if (active.model && !listed.some((m) => m.id === active.model)) {
