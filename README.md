@@ -39,6 +39,10 @@ your provider.
 - **Auto model resolution** — leave the model on Auto and Regentry runs the newest model the
   endpoint lists, showing you which one that is; pin a model and effort per task from the panel
   header.
+- **Drivable over MCP** — Claude Code, Claude Desktop, or any Model Context Protocol client can
+  hand Regentry a task and follow it to the answer, using the same browser and the same logins.
+  Not a pile of low-level browser tools: the client says what it wants done, Regentry does it.
+  See [docs/mcp.md](docs/mcp.md).
 - **Speaks your language, matches your theme** — English, Português (Brasil), and Español; light,
   dark, or follow the OS.
 - **Your data stays local** — provider configs and history live in `chrome.storage`. There is no
@@ -80,12 +84,14 @@ no zombie clicking with nobody watching).
 ## Development
 
 ```bash
-bun run dev        # watch mode with hot reload
-bun run test       # vitest
-bun run lint       # eslint
-bun run compile    # tsc --noEmit
-bun run deadcode   # knip
-bun run icons      # regenerate extension icons + OG card from src/shared/logo.ts
+bun run dev           # watch mode with hot reload
+bun run test          # vitest
+bun run lint          # eslint
+bun run compile       # tsc --noEmit (extension + daemon)
+bun run deadcode      # knip
+bun run icons         # regenerate extension icons + OG card from src/shared/logo.ts
+bun run bridge        # run the MCP daemon by hand
+bun run bridge:check  # end-to-end check of the MCP bridge, no Chrome needed
 ```
 
 Domain-first layout under `src/modules/` (agent, browser, providers, conversation), UI primitives

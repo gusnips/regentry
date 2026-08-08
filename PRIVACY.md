@@ -47,6 +47,11 @@ in your browser as real user input.
 2. **The websites you ask it to drive** — navigating, clicking, and typing on a site sends the same
    traffic your own browser session would, with your existing logins. Regentry does not re-route,
    log, or capture this beyond what the site itself sees.
+3. **A local MCP bridge on your own machine, if you run one** — Regentry can be driven by an AI
+   client you run yourself (Claude Code, Claude Desktop) through a daemon listening on
+   `127.0.0.1`. Nothing off your machine can reach it, and the daemon stores nothing: it relays
+   tasks in and run progress out. It only exists while you run it, and Regentry connects to
+   nothing when you don't. See [docs/mcp.md](docs/mcp.md).
 
 No other party — no relay, no proxy, no analytics, no developer-owned server — ever receives your
 data.
@@ -75,21 +80,23 @@ data.
 
 ## 5. Permissions, explained
 
-| Permission | What it's for |
-| --- | --- |
-| `debugger` | Real trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol so sites can't ignore them. |
-| `scripting` | Injects the accessibility-tree snapshot script into the tab Regentry reads. |
-| `sidePanel` | Hosts the chat UI where you write tasks and watch the run. |
-| `tabs` | Reads the active tab's URL/title and switches tabs when a task references another open tab. |
-| `activeTab` | Grants access to the tab you submit a task from, per action. |
-| `storage` | Persists provider configs, history, and memory locally. |
-| `notifications` | Alerts you when Regentry needs your input while Chrome isn't focused. |
+| Permission                      | What it's for                                                                                                                    |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `debugger`                      | Real trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol so sites can't ignore them.          |
+| `scripting`                     | Injects the accessibility-tree snapshot script into the tab Regentry reads.                                                      |
+| `sidePanel`                     | Hosts the chat UI where you write tasks and watch the run.                                                                       |
+| `tabs`                          | Reads the active tab's URL/title and switches tabs when a task references another open tab.                                      |
+| `activeTab`                     | Grants access to the tab you submit a task from, per action.                                                                     |
+| `storage`                       | Persists provider configs, history, and memory locally.                                                                          |
+| `notifications`                 | Alerts you when Regentry needs your input while Chrome isn't focused.                                                            |
+| `alarms`                        | A periodic wake-up that reconnects the local MCP bridge. It runs no task and touches no page.                                    |
 | Host permissions (`<all_urls>`) | Regentry must be able to navigate, read, and interact with any site you ask it to use. It uses this only when a task is running. |
 
 ## 6. Guardrails
 
-- **Ask before acting.** Consequential actions — paying, sending, deleting — require your explicit
-  confirmation in the panel before they execute.
+- **Ask before acting.** Consequential actions — paying, sending, deleting — stop the run and ask
+  for your explicit confirmation before they execute: in the panel, or relayed to you by whichever
+  client started the task.
 - **No background surveillance.** Regentry reads and acts on pages only while a task you started is
   running, and only on the tabs that task touches.
 

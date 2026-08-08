@@ -4,12 +4,17 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "workspaces": [
+    "daemon"
+  ],
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
     "zip": "wxt zip",
     "release": "bun run scripts/release.ts",
-    "compile": "tsc --noEmit",
+    "bridge": "bun daemon/src/index.ts",
+    "bridge:check": "bun daemon/smoke.ts",
+    "compile": "tsc --noEmit && tsc --noEmit -p daemon",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

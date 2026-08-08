@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "regentry": {
+      "command": "bun",
+      "args": ["daemon/src/index.ts"]
+    }
+  }
+}

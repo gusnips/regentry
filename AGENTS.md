@@ -17,7 +17,12 @@ bun run i18n:check # locale parity + every static t() key resolves (--unused for
 bun run icons      # regenerate public/icon/* + docs/og.png from src/shared/logo.ts
 bun run zip        # build + pack dist/regentry-<version>-chrome.zip
 bun run release    # bun run release <patch|minor|major> — gates, bump, commit, tag, zip
+bun run bridge     # run the MCP daemon by hand (clients spawn it themselves)
+bun run bridge:check # end-to-end check of the MCP bridge — no Chrome needed
 ```
+
+`daemon/` is a bun workspace, so one `bun install` covers both packages and `compile` typechecks
+both.
 
 Load: `chrome://extensions` → Developer mode → Load unpacked → `dist/chrome-mv3`.
 
@@ -67,7 +72,11 @@ never reach the service-worker bundle.
   list, per-task header picker, first-run onboarding). Adding a provider is a data change in
   `presets.ts` — never a code change elsewhere.
 - `conversation/` — stored conversations, message types, chat UI (MessageList, ChatInput,
-  RunStatus, ConversationList).
+  RunStatus, ConversationList). `transcript.ts` is the persistence half of the panel store's
+  event handling, background-safe: one `TranscriptWriter` per run turns run events into stored
+  messages. The panel store renders, the writer stores — two views of one event stream, and they
+  must stay in lockstep.
+- `bridge/` — the MCP bridge's extension half. Background-only. See the MCP bridge section below.
 - `shared/` — Port protocol, shared types, brand mark (`logo.ts`).
 - `src/components/` — cross-domain Base UI primitives: Button, Select, SegmentedControl,
   TextField, PasswordField, TextArea, ConfirmDialog, plus the ThemeToggle/LanguageToggle
@@ -109,6 +118,39 @@ transcript once the conversation spans more than one tab), and the conversation 
 runs drove — deduped by url, newest first, capped. A run starts on the submit-time active tab; the
 task message names any stored tabs the user is not on, so "that email" and "the doc" can find
 their way back via list_tabs/switch_tab.
+
+## MCP bridge
+
+Lets an external AI client (Claude Code, Claude Desktop) drive the same agent loop the panel
+drives. Human-facing docs: [docs/mcp.md](docs/mcp.md).
+
+**The extension is always the WS client** — an MV3 service worker cannot listen on a socket, so it
+can never be an MCP server itself. It dials `ws://127.0.0.1:<port>/ws`; `daemon/` accepts, and
+speaks MCP over stdio to the client. Two hops, one direction of dialling, no way around it.
+
+**A thin front over the existing loop, not a second tool catalog.** The client sends one task;
+`bridge.ts` hands it to the same `startAgentRun` the panel uses. Model resolution, conversation
+memory, ask_user, screenshots and done-summary semantics all come for free, and can never drift
+from the panel's.
+
+- **One run, one slot.** `agent/active-runs.ts` holds a single `ActiveRun` tagged `panel` or
+  `bridge`; only its owner may stop or steer it. Whoever asks second gets an error naming the
+  holder — that's what `errors.alreadyRunningMCP` / `alreadyRunningPanel` are for.
+- **The bridge owns its own conversation**, created lazily and reset by `newConversation`. It never
+  touches the panel's active thread, but it shows up in history like any other.
+- **Compact events only.** Tokens, reasoning and usage never cross the WS; `bridge/status.ts` folds
+  the run's events into a `BridgeStatus` and forwards only structural changes. The daemon runs the
+  same reduction over that compact stream (`daemon/src/protocol.ts` `applyCompact`) so
+  `get_status(wait)` can long-poll — one MCP turn per real event, not per poll.
+- **The status is mirrored, not owned, on the daemon side.** On every `hello` the daemon issues
+  `sync` and takes the extension's answer as truth. A dropped link doesn't stop the run; a
+  suspended worker does, and shows up as a run that vanished across the resync.
+- **The protocol is declared twice on purpose** — `src/modules/bridge/protocol.ts` (source of
+  truth) and `daemon/src/protocol.ts`. The daemon is a standalone bun package and must not import
+  from the extension bundle. Change them together, then `bun run bridge:check`.
+- **MV3 timing.** `BridgeSocket.start()` is synchronous: a listener registered after an `await`
+  is silently dropped by Chrome, and the reconcile alarm is the whole point of the class. Config
+  is read at connect time instead.
 
 ## Provider wire contracts (the load-bearing details)
 

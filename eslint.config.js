@@ -68,5 +68,13 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
+  {
+    // The MCP daemon is a bun program, not an extension context: no chrome, no
+    // DOM, and its own package.json. Only its globals differ from the rules above.
+    files: ["daemon/**/*.ts"],
+    languageOptions: {
+      globals: { ...globals.node, Bun: "readonly", WebSocket: "readonly" },
+    },
+  },
   noReactOutsideUi,
 );

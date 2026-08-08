@@ -1,0 +1,19 @@
+{
+  "name": "regentry-bridge",
+  "description": "MCP server that lets external AI clients drive the Regentry browser agent",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "compile": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "typescript": "^5.9.3"
+  }
+}
