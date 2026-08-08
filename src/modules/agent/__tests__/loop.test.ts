@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runAgentLoop } from "../loop";
+import { runAgentLoop, MAX_STEPS } from "../loop";
 import { i18n } from "@/i18n";
 import type { BrowserDriver } from "@/modules/browser";
 import type { SnapshotResult } from "@/modules/browser/snapshot";
@@ -61,5 +61,60 @@ describe("runAgentLoop image handling", () => {
 
     const taskMessage = captured.messages?.find((m) => m.role === "user");
     expect(taskMessage?.images).toEqual(["data:image/jpeg;base64,AAAA"]);
+  });
+});
+
+describe("runAgentLoop step budget", () => {
+  it("lets the model ask the user whether to continue as the budget runs out", async () => {
+    const question = "I've filled 12 of 20 fields on the quote form. Keep digging?";
+    let calls = 0;
+    let sawNearEndNudge = false;
+    const provider: ChatProvider = {
+      async *stream(messages) {
+        calls++;
+        // The near-end nudge (offering ask_user) is pushed the turn before the model asks.
+        const last = messages[messages.length - 1];
+        if (last?.role === "user" && last.content.includes("ask_user")) sawNearEndNudge = true;
+        if (calls === MAX_STEPS - 1) {
+          // Step MAX_STEPS - 2 — the turn the near-end nudge was pushed into.
+          yield { type: "tool_use", id: "c1", name: "ask_user", args: { question } };
+        } else {
+          yield { type: "tool_use", id: "c1", name: "snapshot", args: {} };
+        }
+        yield { type: "done" };
+      },
+    };
+    const asked: string[] = [];
+    await runAgentLoop({
+      provider,
+      driver,
+      task: "Fill the quote form",
+      signal: new AbortController().signal,
+      callbacks: { onAskUser: (q) => asked.push(q) },
+    });
+
+    // The question ended the run (not the exhausted-budget fallback), and the
+    // continuation choice was on the table when the model took it.
+    expect(sawNearEndNudge).toBe(true);
+    expect(asked).toEqual([question]);
+  });
+
+  it("closes gracefully when the model ignores the budget nudges", async () => {
+    const provider: ChatProvider = {
+      async *stream() {
+        yield { type: "tool_use", id: "c1", name: "snapshot", args: {} };
+        yield { type: "done" };
+      },
+    };
+    let doneSummary: string | undefined;
+    await runAgentLoop({
+      provider,
+      driver,
+      task: "Keep going",
+      signal: new AbortController().signal,
+      callbacks: { onDone: (s) => (doneSummary = s) },
+    });
+
+    expect(doneSummary).toBe(i18n.t("errors.stepBudgetExhausted"));
   });
 });

@@ -18,7 +18,7 @@ import { buildSystemPrompt, buildTaskMessage, buildToolDefs, type PreviousTab } 
 
 const log = createLogger("agent");
 
-const MAX_STEPS = 150;
+export const MAX_STEPS = 150;
 /** Transient stream failures are retried in place this many times before surfacing. */
 const MAX_STREAM_ATTEMPTS = 3;
 const BASE_BACKOFF_MS = 1000;
@@ -206,14 +206,25 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       return messages;
     }
 
-    // Step-budget finalize: on the last step, force a best-effort answer instead
-    // of dying with "did not complete" (featury engine pattern)
+    // Step-budget finalize: one step before the hard limit, offer the model the
+    // choice between wrapping up (done) and asking the user whether to continue
+    // (ask_user) — the answer then starts a fresh run with history replayed, so a
+    // long task resumes with a clean budget and a clean context window. On the
+    // final step, force a best-effort answer so the run never hangs with
+    // "did not complete" (featury engine pattern) — ask_user stays available there.
+    const nearEnd = step === MAX_STEPS - 2;
     const finalizing = step === MAX_STEPS - 1;
-    if (finalizing) {
+    if (nearEnd) {
       messages.push({
         role: "user",
         content:
-          "You have reached your step budget. Call done now with your best summary of what you accomplished, based only on what you have already gathered. Do not call any other tool.",
+          "You are near the end of your working budget. If you can wrap up meaningfully now, call `done` with your best summary of what you accomplished. If you genuinely need more work and have a concrete plan to finish, call `ask_user` to ask the user whether to continue — describe what you have done so far and offer specific choices (for example, keep digging vs stop). Only ask if continuing is meaningfully better than stopping here.",
+      });
+    } else if (finalizing) {
+      messages.push({
+        role: "user",
+        content:
+          "This is your final step. Call `done` now with your best summary of what you accomplished, based only on what you have already gathered. If you still need more work, you may call `ask_user` instead. Do not call any other tool.",
       });
     }
 
@@ -339,8 +350,8 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     if (taskDone) return messages;
   }
 
-  // Unreachable in practice — the finalize nudge fires on the last step — but if the
-  // model ignored it, close out gracefully instead of hanging.
+  // Unreachable in practice — the near-end nudges fire before the final step — but
+  // if the model ignored them, close out gracefully instead of hanging.
   callbacks.onDone?.(i18n.t("errors.stepBudgetExhausted"));
   return messages;
 }
