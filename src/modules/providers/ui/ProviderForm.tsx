@@ -3,8 +3,9 @@ import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
+import { KimiSignIn } from "./KimiSignIn";
 import { PRESETS } from "../presets";
-import type { ProviderConfig, ProviderShape } from "../types";
+import type { OAuthCredential, ProviderConfig, ProviderShape } from "../types";
 import { Select } from "@/components/Select";
 import { TextField } from "@/components/TextField";
 import { PasswordField } from "@/components/PasswordField";
@@ -59,6 +60,10 @@ export function ProviderForm({
 
   const preset = presetId === CUSTOM ? undefined : PRESETS.find((p) => p.id === presetId);
   const existing = providers.find((p) => p.id === (preset ? preset.id : initialProvider?.id));
+  // Signed in during this form's lifetime, before Save writes it through.
+  const [pendingAuth, setPendingAuth] = useState<OAuthCredential | undefined>();
+  const isOAuth = preset?.auth === "oauth";
+  const auth = pendingAuth ?? existing?.auth;
 
   const fail = (message: string) => setError(message);
 
@@ -86,7 +91,13 @@ export function ProviderForm({
         return;
       }
     }
-    if (!key && !existing && !isLocalUrl(resolvedUrl)) {
+    // OAuth providers carry a credential instead of a key — sign-in is the gate.
+    if (isOAuth) {
+      if (!auth) {
+        fail(t("providerForm.signInRequired"));
+        return;
+      }
+    } else if (!key && !existing && !isLocalUrl(resolvedUrl)) {
       fail(t("providerForm.apiKeyRequired"));
       return;
     }
@@ -100,6 +111,7 @@ export function ProviderForm({
         shape: preset ? preset.shape : shape,
         baseUrl: resolvedUrl,
         apiKey: key || (existing?.apiKey ?? ""),
+        ...(auth ? { auth } : {}),
         // Not asked at setup — preserved across an update, picked per task in the panel.
         model: existing?.model,
         reasoningEffort: existing?.reasoningEffort,
@@ -185,16 +197,22 @@ export function ProviderForm({
         </>
       )}
 
-      <PasswordField
-        label={t("providerForm.apiKey")}
-        value={apiKey}
-        onChange={(e) => setApiKey(e.target.value)}
-        placeholder={
-          existing ? t("providerForm.apiKeyPlaceholderSaved") : t("providerForm.apiKeyPlaceholder")
-        }
-        autoComplete="off"
-        hint={keyHint}
-      />
+      {isOAuth ? (
+        <KimiSignIn signedIn={auth} onSignedIn={setPendingAuth} />
+      ) : (
+        <PasswordField
+          label={t("providerForm.apiKey")}
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder={
+            existing
+              ? t("providerForm.apiKeyPlaceholderSaved")
+              : t("providerForm.apiKeyPlaceholder")
+          }
+          autoComplete="off"
+          hint={keyHint}
+        />
+      )}
 
       <p className="text-xs text-neutral-400 dark:text-neutral-500">
         {t("providerForm.modelNote")}

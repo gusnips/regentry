@@ -24,6 +24,8 @@ interface ProvidersState {
     id: string,
     patch: Partial<Pick<ProviderConfig, "model" | "reasoningEffort">>,
   ) => Promise<void>;
+  /** Forget an OAuth sign-in but keep the provider — signing in again restores it. */
+  signOut: (id: string) => Promise<void>;
 }
 
 let watchersStarted = false;
@@ -81,6 +83,14 @@ export const useProvidersStore = create<ProvidersState>((set, get) => ({
     // Falsy means "back to auto/default" — drop the key rather than storing "".
     if (!next.model) delete next.model;
     if (!next.reasoningEffort) delete next.reasoningEffort;
+    await saveProvider(next);
+  },
+
+  signOut: async (id) => {
+    const current = get().providers.find((p) => p.id === id);
+    if (!current?.auth) return;
+    const next = { ...current };
+    delete next.auth;
     await saveProvider(next);
   },
 }));

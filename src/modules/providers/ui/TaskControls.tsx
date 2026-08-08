@@ -152,8 +152,15 @@ export function ModelControls() {
   const update = useProvidersStore((s) => s.update);
   const active = useActiveProvider();
   // Only the connection fields key the fetch — changing model/effort must not refetch.
+  // An OAuth provider stores no key; its access token is the bearer for listing too.
   const { models, loading, error } = useModels(
-    active ? { shape: active.shape, baseUrl: active.baseUrl, apiKey: active.apiKey } : null,
+    active
+      ? {
+          shape: active.shape,
+          baseUrl: active.baseUrl,
+          apiKey: active.auth?.accessToken ?? active.apiKey,
+        }
+      : null,
   );
 
   // The extra "default" option means "don't send the knob at all".

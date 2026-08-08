@@ -18,6 +18,11 @@ export interface ProviderPreset {
    * so the family flag is the single source of truth.
    */
   supportsImages?: boolean;
+  /**
+   * Present when the provider is signed into instead of keyed. The form swaps
+   * the key field for a sign-in button and the list offers signing out.
+   */
+  auth?: "oauth";
 }
 
 export type IconKey =
@@ -69,6 +74,19 @@ export const PRESETS: ProviderPreset[] = [
     baseUrl: "https://api.kimi.com/coding",
     models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],
     apiKeyUrl: "https://platform.moonshot.ai/console/api-keys",
+    color: "#0F172A",
+    icon: "kimi",
+  },
+  {
+    // The same coding endpoint as `kimi`, reached with a subscription sign-in
+    // instead of a key. Kimi bills the two separately, so they stay separate
+    // rows — a user with both always knows which quota a run spends.
+    id: "kimi-plan",
+    name: "Kimi (subscription)",
+    shape: "anthropic",
+    baseUrl: "https://api.kimi.com/coding",
+    models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],
+    auth: "oauth",
     color: "#0F172A",
     icon: "kimi",
   },

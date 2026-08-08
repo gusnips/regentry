@@ -4,6 +4,7 @@ import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { AddProviderDialog } from "./AddProviderDialog";
 import { PRESETS, providerDisplayName } from "../presets";
+import { byCredentialStatus, credentialStatus, isOAuthProvider } from "../status";
 import { Button } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
@@ -15,9 +16,29 @@ function hostOf(url: string): string | null {
   }
 }
 
+/**
+ * Credential state, leading the metadata line. Colour never carries it alone —
+ * the glyph differs too, and the adjacent text says the same thing, so the
+ * states survive greyscale and colour blindness.
+ */
+function StatusDot({ connected }: { connected: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={
+        connected
+          ? "text-emerald-600 dark:text-emerald-400"
+          : "text-neutral-400 dark:text-neutral-500"
+      }
+    >
+      {connected ? "●" : "○"}
+    </span>
+  );
+}
+
 export function ProviderList() {
   const { t } = useTranslation();
-  const { providers, activeId, loaded, load, remove, activate } = useProvidersStore();
+  const { providers, activeId, loaded, load, remove, activate, signOut } = useProvidersStore();
 
   useEffect(() => {
     void load(); // idempotent — the store dedupes concurrent mounts
@@ -45,13 +66,20 @@ export function ProviderList() {
     );
   }
 
+  // Connected first: the rows a task can actually run on lead the list, and
+  // anything needing attention collects at the bottom where it reads as a
+  // to-do rather than as clutter between working providers.
+  const ordered = [...providers].sort(byCredentialStatus);
+
   return (
     <ul className="flex flex-col gap-2">
-      {providers.map((p) => {
+      {ordered.map((p) => {
         const preset = PRESETS.find((pr) => pr.id === p.id);
         const name = providerDisplayName(p);
         const isActive = p.id === activeId;
         const host = preset ? null : hostOf(p.baseUrl);
+        const connected = credentialStatus(p) === "connected";
+        const oauth = isOAuthProvider(p.id);
         return (
           <li
             key={p.id}
@@ -81,17 +109,51 @@ export function ProviderList() {
                     </span>
                   )}
                 </div>
-                <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">
-                  {p.model ?? t("providerList.auto")} · {p.shape}
-                  {host ? ` · ${host}` : ""}
-                  {p.reasoningEffort
-                    ? ` · ${t("providerList.effort", { effort: p.reasoningEffort })}`
-                    : ""}
+                <div className="flex items-center gap-1.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
+                  <StatusDot connected={connected} />
+                  <span className="truncate">
+                    {/* A signed-in row names its account — that's what makes it
+                        self-evidently the user's own. */}
+                    {connected
+                      ? (p.auth?.account ?? t("providerList.statusConnected"))
+                      : oauth
+                        ? t("providerList.statusNoSignIn")
+                        : t("providerList.statusNoKey")}{" "}
+                    · {p.model ?? t("providerList.auto")} · {p.shape}
+                    {host ? ` · ${host}` : ""}
+                    {p.reasoningEffort
+                      ? ` · ${t("providerList.effort", { effort: p.reasoningEffort })}`
+                      : ""}
+                  </span>
                 </div>
               </div>
             </div>
             <div className="ml-3 flex shrink-0 gap-2">
-              {!isActive && (
+              {/* Never dead-end an unusable row: the one thing that fixes it is
+                  right here, opening the same form that would add it. */}
+              {!connected && (
+                <AddProviderDialog
+                  initialProvider={p}
+                  trigger={
+                    <Button size="sm">
+                      {oauth ? t("providerList.signIn") : t("providerList.addKey")}
+                    </Button>
+                  }
+                />
+              )}
+              {connected && oauth && (
+                <ConfirmDialog
+                  trigger={
+                    <Button variant="ghost" size="sm">
+                      {t("providerList.signOut")}
+                    </Button>
+                  }
+                  title={t("providerList.signOutTitle", { name })}
+                  description={t("providerList.signOutBody")}
+                  onConfirm={() => void signOut(p.id)}
+                />
+              )}
+              {!isActive && connected && (
                 <Button variant="ghost" size="sm" onClick={() => void activate(p.id)}>
                   {t("providerList.setActive")}
                 </Button>

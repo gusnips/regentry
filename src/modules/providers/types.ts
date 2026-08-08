@@ -16,20 +16,44 @@ export type ProviderShape = "openai" | "anthropic";
 export const REASONING_EFFORTS = ["none", "low", "medium", "high", "max"] as const;
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
+/**
+ * Tokens from a provider's OAuth sign-in, in place of a pasted key. Both
+ * tokens rotate on every refresh, so a refresh always persists both.
+ */
+export interface OAuthCredential {
+  accessToken: string;
+  refreshToken: string;
+  /**
+   * Epoch ms, already skewed early by REFRESH_SKEW_MS — treat it as "refresh
+   * at or after this", not as the server's true expiry.
+   */
+  expiresAt: number;
+  /** Display only, decoded from the token — names the signed-in account in the UI. */
+  account?: string;
+}
+
 /** A configured provider instance (stored in chrome.storage). */
 export interface ProviderConfig {
   id: string;
   name: string;
   shape: ProviderShape;
   baseUrl: string;
+  /** Empty when the provider signs in instead — `auth` carries the credential. */
   apiKey: string;
+  /** Present only for OAuth providers; absent means the apiKey is the credential. */
+  auth?: OAuthCredential;
   /** Absent = auto — resolveProviderModel picks the newest model the endpoint serves. */
   model?: string;
   reasoningEffort?: ReasoningEffort;
   createdAt: number;
 }
 
-/** A config whose model has been resolved to a concrete id — what adapters accept. */
+/**
+ * A config whose model has been resolved to a concrete id — what adapters
+ * accept. `apiKey` here is the EFFECTIVE bearer: for OAuth providers the
+ * credential seam swaps in a fresh access token, so adapters never learn
+ * which kind of credential they are holding.
+ */
 export interface ResolvedProviderConfig extends ProviderConfig {
   model: string;
   /**

@@ -8,7 +8,12 @@ import {
   showAgentIndicator,
   waitAgentIndicator,
 } from "@/modules/browser";
-import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
+import {
+  createProvider,
+  ensureProviderCredential,
+  getActiveProvider,
+  resolveProviderModel,
+} from "@/modules/providers";
 import type { ResolvedProviderConfig } from "@/modules/providers/types";
 import { getConversationTabsFor, getMessages, recordDrivenTabFor } from "@/modules/conversation";
 import { createLogger, truncate } from "@/lib/logger";
@@ -63,11 +68,12 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     }
 
     // Resolve "auto" model to a concrete id at run start — mid-task changes to
-    // the stored config never affect a run in flight.
+    // the stored config never affect a run in flight. An OAuth provider gets a
+    // fresh access token first, so a long-idle session doesn't 401 mid-task.
     let provider;
     let resolvedProvider: ResolvedProviderConfig | undefined;
     try {
-      resolvedProvider = await resolveProviderModel(providerConfig);
+      resolvedProvider = await resolveProviderModel(await ensureProviderCredential(providerConfig));
       provider = createProvider(resolvedProvider);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
