@@ -1,8 +1,44 @@
 import { ProviderError } from "./types";
+import { classifyProviderError, type ErrorKind } from "./error-classify";
 import { createLogger, truncate } from "@/lib/logger";
 import { i18n } from "@/i18n";
 
 const log = createLogger("providers");
+
+/** Actionable lead line per failure kind — the raw body still rides along for Details. */
+const ERROR_KIND_KEYS = {
+  entitlement: "errors.kindEntitlement",
+  quota: "errors.kindQuota",
+  auth: "errors.kindAuth",
+  model: "errors.kindModel",
+  rate: "errors.kindRate",
+  overload: "errors.kindOverload",
+} as const satisfies Record<ErrorKind, string>;
+
+/**
+ * Classified errors lead with what fixes them ("rejected the API key — check
+ * it…") and keep the raw body after a colon, so splitErrorDetail still lifts
+ * the provider's own line into the summary and the JSON behind Details.
+ */
+function providerErrorMessage(
+  label: string,
+  status: number,
+  text: string,
+  fallbackDetail: string,
+): { message: string; kind?: ErrorKind } {
+  const kind = classifyProviderError(status, text);
+  if (kind) {
+    const line = i18n.t(ERROR_KIND_KEYS[kind], { provider: label });
+    return { message: text ? `${line}: ${text}` : line, kind };
+  }
+  return {
+    message: i18n.t("errors.apiError", {
+      provider: label,
+      status,
+      detail: text || fallbackDetail,
+    }),
+  };
+}
 
 /** Base + path joined once — trailing slashes on stored base URLs would double up. */
 export function apiUrl(baseUrl: string, path: string): string {
@@ -64,14 +100,8 @@ export async function* streamSse(opts: {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     log.error(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
-    throw new ProviderError(
-      i18n.t("errors.apiError", {
-        provider: label,
-        status: res.status,
-        detail: text || res.statusText,
-      }),
-      res.status,
-    );
+    const { message, kind } = providerErrorMessage(label, res.status, text, res.statusText);
+    throw new ProviderError(message, res.status, kind);
   }
 
   if (!res.body) throw new Error(i18n.t("errors.noResponseBody"));

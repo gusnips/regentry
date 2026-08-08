@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { createOpenAIProvider } from "../openai";
 import { createAnthropicProvider } from "../anthropic";
-import type { ResolvedProviderConfig } from "../types";
+import { ProviderError, isRetryable, type ResolvedProviderConfig } from "../types";
 
 // Storage stand-in and i18n come from src/test-setup.ts (vitest setupFiles).
 
@@ -117,7 +117,7 @@ describe("OpenAI provider SSE parsing", () => {
     vi.restoreAllMocks();
   });
 
-  it("throws on non-200 response", async () => {
+  it("classifies a 401 as an auth failure and leads the message with the fix", async () => {
     const config = makeConfig("openai", "https://api.openai.com/v1");
     const provider = createOpenAIProvider(config);
 
@@ -125,13 +125,50 @@ describe("OpenAI provider SSE parsing", () => {
       new Response("Unauthorized", { status: 401 }),
     );
 
-    await expect(
-      (async () => {
+    const error = await (async () => {
+      try {
         for await (const delta of provider.stream([], [], new AbortController().signal)) {
           void delta;
         }
-      })(),
-    ).rejects.toThrow("OpenAI API error 401");
+      } catch (e) {
+        return e;
+      }
+      throw new Error("expected the stream to throw");
+    })();
+
+    expect(error).toBeInstanceOf(ProviderError);
+    expect((error as ProviderError).kind).toBe("auth");
+    expect((error as ProviderError).message).toContain("rejected the API key");
+    // The raw body still rides along for the Details disclosure.
+    expect((error as ProviderError).message).toContain("Unauthorized");
+    expect(isRetryable(error)).toBe(false);
+    vi.restoreAllMocks();
+  });
+
+  it("classifies a quota-shaped 429 as permanent — never retried", async () => {
+    const config = makeConfig("openai", "https://api.openai.com/v1");
+    const provider = createOpenAIProvider(config);
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        '{"error":{"message":"You exceeded your current quota","type":"insufficient_quota"}}',
+        { status: 429 },
+      ),
+    );
+
+    const error = await (async () => {
+      try {
+        for await (const delta of provider.stream([], [], new AbortController().signal)) {
+          void delta;
+        }
+      } catch (e) {
+        return e;
+      }
+      throw new Error("expected the stream to throw");
+    })();
+
+    expect((error as ProviderError).kind).toBe("quota");
+    expect(isRetryable(error)).toBe(false);
     vi.restoreAllMocks();
   });
 });
@@ -215,7 +252,7 @@ describe("Anthropic provider SSE parsing", () => {
     vi.restoreAllMocks();
   });
 
-  it("throws on non-200 response", async () => {
+  it("classifies a plain 429 as rate limiting — still retryable", async () => {
     const config = makeConfig("anthropic", "https://api.anthropic.com");
     const provider = createAnthropicProvider(config);
 
@@ -223,13 +260,20 @@ describe("Anthropic provider SSE parsing", () => {
       new Response("rate limited", { status: 429 }),
     );
 
-    await expect(
-      (async () => {
+    const error = await (async () => {
+      try {
         for await (const delta of provider.stream([], [], new AbortController().signal)) {
           void delta;
         }
-      })(),
-    ).rejects.toThrow("Anthropic API error 429");
+      } catch (e) {
+        return e;
+      }
+      throw new Error("expected the stream to throw");
+    })();
+
+    expect((error as ProviderError).kind).toBe("rate");
+    expect((error as ProviderError).message).toContain("rate-limiting");
+    expect(isRetryable(error)).toBe(true);
     vi.restoreAllMocks();
   });
 });

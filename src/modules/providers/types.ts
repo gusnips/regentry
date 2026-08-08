@@ -1,3 +1,5 @@
+import type { ErrorKind } from "./error-classify";
+
 /** Provider shape — determines wire format for API calls. */
 export type ProviderShape = "openai" | "anthropic";
 
@@ -118,15 +120,27 @@ export class ProviderError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    /** What the body says is actually wrong — overrides the status for retry decisions. */
+    public readonly kind?: ErrorKind,
   ) {
     super(message);
     this.name = "ProviderError";
   }
 }
 
-/** 429 and 5xx are transient — retry in place. 4xx auth/request errors are not. */
+/** Permanent failures — no amount of backoff fixes an empty balance or a bad key. */
+const NON_RETRYABLE_KINDS: readonly ErrorKind[] = ["entitlement", "quota", "auth", "model"];
+
+/**
+ * 429 and 5xx are transient — retry in place. 4xx auth/request errors are not.
+ * A classified permanent failure never retries even when its status looks
+ * transient: OpenAI files "insufficient_quota" under 429.
+ */
 export function isRetryable(e: unknown): boolean {
-  if (e instanceof ProviderError) return e.status === 429 || e.status >= 500;
+  if (e instanceof ProviderError) {
+    if (e.kind && NON_RETRYABLE_KINDS.includes(e.kind)) return false;
+    return e.status === 429 || e.status >= 500;
+  }
   // Network-level failures (TypeError from fetch) have no status — retryable
   return e instanceof TypeError;
 }
