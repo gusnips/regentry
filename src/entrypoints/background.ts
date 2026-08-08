@@ -134,6 +134,7 @@ export default defineBackground(() => {
           // Tell the page itself it is being driven — the side panel may be
           // scrolled away or on another window.
           await clearAgentWait();
+          chrome.notifications.clear("regent-question");
           void showAgentIndicator(drivenTabId, i18n.t("indicator.driving"));
 
           // The stored conversation as wire turns — "continue" lands on a model
@@ -160,7 +161,10 @@ export default defineBackground(() => {
                 onUsage: (input, output) => send(port, { type: "usage", input, output }),
                 onError: (message) => send(port, { type: "error", message }),
                 onDone: (summary) => send(port, { type: "done", summary }),
-                onAskUser: () => { endedOnQuestion = true; },
+                onAskUser: (question) => {
+                  endedOnQuestion = true;
+                  void notifyIfAway(question);
+                },
               },
             });
           } catch (e) {
@@ -265,6 +269,35 @@ async function persistDrivenTab(tabId: number): Promise<void> {
     // The tab died during the run — nothing left to remember.
   }
 }
+
+/**
+ * Fires an OS notification when a run ends on ask_user and the user is not
+ * looking at a Chrome window — the strip "?" is invisible from another app.
+ */
+async function notifyIfAway(question: string): Promise<void> {
+  try {
+    const windows = await chrome.windows.getAll({ windowTypes: ["normal"] });
+    if (windows.some((w) => w.focused)) return;
+    void chrome.notifications.create("regent-question", {
+      type: "basic",
+      iconUrl: "icon/128.png",
+      title: "Regent",
+      message: truncate(question, 256),
+    });
+  } catch {
+    // Notifications can fail silently — the strip mark still carries the signal.
+  }
+}
+
+// Notification click opens the panel so the user can answer.
+chrome.notifications.onClicked.addListener((id) => {
+  if (id === "regent-question") {
+    chrome.notifications.clear("regent-question");
+    void chrome.windows.getLastFocused({ windowTypes: ["normal"] }).then((win) => {
+      if (win.id) void chrome.sidePanel.open({ windowId: win.id });
+    });
+  }
+});
 
 /** Best human label for a tab — its title, then hostname, then nothing (the panel hides the chip). */
 function tabLabel(tab: chrome.tabs.Tab): string {

@@ -17,7 +17,7 @@ export default defineConfig({
       96: "icon/96.png",
       128: "icon/128.png",
     },
-    permissions: ["debugger", "storage", "scripting", "sidePanel", "tabs", "activeTab"],
+    permissions: ["debugger", "storage", "scripting", "sidePanel", "tabs", "activeTab", "notifications"],
     host_permissions: ["<all_urls>"],
     side_panel: {
       default_path: "/sidepanel.html",
