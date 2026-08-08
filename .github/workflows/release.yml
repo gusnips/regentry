@@ -1,0 +1,26 @@
+name: Release zip
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run zip
+      # Permanent record of the version's artifact — public download link on
+      # the tagged GitHub Release, with auto-generated notes. The CWS dashboard
+      # itself never exposes a shareable artifact, so this is the storage seam.
+      - name: Attach zip to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/regentry-*-chrome.zip
+          generate_release_notes: true
