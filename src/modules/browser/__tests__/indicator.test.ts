@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { paintIndicator, removeIndicator } from "../indicator";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import {
+  paintIndicator,
+  removeIndicator,
+  stepFaviconFrame,
+  showAgentIndicator,
+  hideAgentIndicator,
+} from "../indicator";
 
 // The page-side halves of the indicator, run directly in jsdom the way
 // snapshot-script is tested — the chrome.scripting wrapper is a thin try/catch.
@@ -77,5 +83,65 @@ describe("indicator page marks", () => {
     paint();
     expect(iconLinks()).toHaveLength(1);
     expect(iconLinks()[0]?.href).toBe(ARGS.dot);
+  });
+
+  it("holds the full frame under prefers-reduced-motion", () => {
+    document.head.innerHTML = "";
+    const link = document.createElement("link");
+    link.id = ARGS.linkId;
+    link.rel = "icon";
+    link.href = ARGS.dot;
+    document.head.appendChild(link);
+    // jsdom never matches media features — stub the query itself.
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      stepFaviconFrame(ARGS.linkId, "data:image/svg+xml,dim");
+      expect(link.href).toBe(ARGS.dot);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+});
+
+describe("worker-driven favicon heartbeat", () => {
+  // The pulse lives in the worker because Chrome throttles hidden-tab timers
+  // into silence — hidden is exactly when the strip signal matters.
+  let executeScript: ReturnType<typeof vi.fn>;
+  const chromeBackup = globalThis.chrome;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    executeScript = vi.fn().mockResolvedValue([]);
+    (globalThis as Record<string, unknown>).chrome = {
+      ...chromeBackup,
+      scripting: { executeScript },
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    (globalThis as Record<string, unknown>).chrome = chromeBackup;
+  });
+
+  const frameBeats = () =>
+    executeScript.mock.calls.filter((c) => (c[0] as { func: unknown }).func === stepFaviconFrame);
+
+  it("alternates two frames every beat while shown, and stops on hide", async () => {
+    await showAgentIndicator(1, "Regent is driving");
+    expect(frameBeats()).toHaveLength(0);
+
+    await vi.advanceTimersByTimeAsync(700);
+    await vi.advanceTimersByTimeAsync(700);
+    const frames = frameBeats().map((c) => (c[0] as { args: string[] }).args[1]);
+    expect(frames).toHaveLength(2);
+    expect(frames[0]).not.toBe(frames[1]); // full ↔ dim, one motion language
+
+    await hideAgentIndicator(1);
+    await vi.advanceTimersByTimeAsync(2800);
+    expect(frameBeats()).toHaveLength(2); // no beats after hide
   });
 });

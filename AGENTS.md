@@ -44,7 +44,9 @@ never reach the service-worker bundle.
   the answer arrives as the next message. Background-only.
 - `browser/` — accessibility-tree snapshot (injected script), CDP driver (trusted input),
   unified driver seam, on-page "Regent is controlling this tab" badge plus a purple dot over
-  the driven tab's favicon so the strip shows where a run is working. Background-only.
+  the driven tab's favicon so the strip shows where a run is working — the dot pulses via
+  frames pushed from the worker, because Chrome throttles hidden-tab timers and hidden is
+  exactly when the strip signal matters. Background-only.
 - `providers/` — OpenAI/Anthropic adapters, presets, storage, config UI (add/edit dialog,
   list, per-task header picker, first-run onboarding). Adding a provider is a data change in
   `presets.ts` — never a code change elsewhere.
@@ -77,7 +79,7 @@ one promise chain — concurrent appends otherwise read the same array and the l
 `sendTask` **awaits** its user message before posting `run`: the worker builds the run's history
 by reading the transcript, and a fire-and-forget write loses that race every time. A fresh conversation is created lazily by
 its first message, so "New chat" never leaves an empty row behind. The transcript doubles as the
-model's memory, strictly per conversation: at run start the background rebuilds *that*
+model's memory, strictly per conversation: at run start the background rebuilds _that_
 conversation's transcript as alternating user/assistant wire turns (`buildConversationHistory`
 in `agent/history.ts`) — entries capped, a total char budget spent newest-first, the original task
 always kept — and replays it ahead of the new task message, so "continue" lands on a model that has read the same

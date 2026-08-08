@@ -20,6 +20,12 @@ const RESTORE_LINK_ID = "regent-agent-favicon-restore";
  * shows), so at most one tab per run is marked. Marks are repainted after any
  * load that wipes them, including click-triggered navigations.
  *
+ * The favicon dot breathes — a heartbeat saying "working", not just "here".
+ * The frames are pushed from this worker, never by a page-side timer: Chrome
+ * throttles hidden-tab timers into silence, and hidden is exactly when the
+ * strip signal matters. The worker stays awake for the run (the panel's Port
+ * heartbeat sees to that).
+ *
  * Best-effort by design: restricted pages (chrome://, the Web Store) reject
  * injection, and a run must not fail because its marks could not be drawn.
  */
@@ -36,6 +42,14 @@ const markedTabs = new Set<TabId>();
 /** Solid brand dot — the favicon the driven tab shows in the tab strip. */
 const FAVICON_DATA_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23a78bfa'/%3E%3C/svg%3E";
+/** The same dot at a quarter opacity — the heartbeat's low beat. */
+const FAVICON_DIM_URL =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23a78bfa' fill-opacity='0.25'/%3E%3C/svg%3E";
+const FAVICON_FRAMES = [FAVICON_DATA_URL, FAVICON_DIM_URL];
+/** Two beats make the badge's 1.4s breath — one motion language for "alive". */
+const PULSE_BEAT_MS = 700;
+/** One heartbeat per driven tab; started on show, stopped on hide. */
+const pulseTimers = new Map<TabId, ReturnType<typeof setInterval>>();
 
 /**
  * Runs in the page. Must be fully self-contained — it is serialized, not closed over.
@@ -120,6 +134,38 @@ export function removeIndicator(hostId: string, linkId: string, restoreId: strin
   (document.head ?? document.documentElement).appendChild(restore);
 }
 
+/**
+ * Runs in the page: one heartbeat frame. Reduced motion holds the full frame —
+ * checked per beat so a live preference change takes effect without a re-run.
+ * A no-op between a navigation wiping the link and the repaint restoring it.
+ */
+export function stepFaviconFrame(linkId: string, frameUrl: string): void {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const link = document.getElementById(linkId);
+  if (link instanceof HTMLLinkElement) link.href = frameUrl;
+}
+
+function startPulse(tabId: TabId): void {
+  stopPulse(tabId);
+  let frame = 0;
+  pulseTimers.set(
+    tabId,
+    setInterval(() => {
+      frame = 1 - frame;
+      void inject(tabId, stepFaviconFrame, [
+        FAVICON_LINK_ID,
+        FAVICON_FRAMES[frame] ?? FAVICON_DATA_URL,
+      ]);
+    }, PULSE_BEAT_MS),
+  );
+}
+
+function stopPulse(tabId: TabId): void {
+  const timer = pulseTimers.get(tabId);
+  if (timer !== undefined) clearInterval(timer);
+  pulseTimers.delete(tabId);
+}
+
 async function inject(
   tabId: TabId,
   func: (...args: string[]) => void,
@@ -135,6 +181,7 @@ async function inject(
 export async function showAgentIndicator(tabId: TabId, label: string): Promise<void> {
   activeLabel = label;
   markedTabs.add(tabId);
+  startPulse(tabId);
   await inject(tabId, paintIndicator, [
     HOST_ID,
     label,
@@ -159,6 +206,7 @@ export async function refreshAgentIndicator(tabId: TabId): Promise<void> {
 
 export async function hideAgentIndicator(tabId: TabId): Promise<void> {
   markedTabs.delete(tabId);
+  stopPulse(tabId);
   if (markedTabs.size === 0) activeLabel = null;
   await inject(tabId, removeIndicator, [HOST_ID, FAVICON_LINK_ID, RESTORE_LINK_ID]);
 }
