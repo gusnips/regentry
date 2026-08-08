@@ -24,3 +24,6 @@ web-ext.config.ts
 *.njsproj
 *.sln
 *.sw?
+
+# Extension signing key — never commit (regentry-test.pem)
+*.pem
