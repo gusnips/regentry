@@ -1,5 +1,6 @@
 import { initI18n, i18n } from "@/i18n";
 import { runAgentLoop, buildConversationHistory } from "@/modules/agent";
+import { extractAndRemember } from "@/modules/memory";
 import {
   createDriver,
   showAgentIndicator,
@@ -150,7 +151,7 @@ export default defineBackground(() => {
           const history = buildConversationHistory(transcript);
 
           try {
-            await runAgentLoop({
+            const wire = await runAgentLoop({
               provider,
               driver,
               task: msg.task,
@@ -176,6 +177,12 @@ export default defineBackground(() => {
                 },
               },
             });
+            // Memory is a background nicety: after a finished run, one cheap extra
+            // call distills the durable facts the agent never got around to remembering.
+            // Fire-and-forget — best-effort, a failed extraction never fails the run.
+            if (!runController.signal.aborted && resolvedProvider) {
+              void extractAndRemember(resolvedProvider, wire, runController.signal);
+            }
           } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
             log.error("run crashed:", message);

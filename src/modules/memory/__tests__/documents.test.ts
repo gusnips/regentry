@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 // Storage stand-in (reset between tests) and i18n come from src/test-setup.ts.
 
-import { remember, getDoc, setDoc, memoryEnabled, loadAgentContext } from "../documents";
+import { remember, getDoc, setDoc, memoryEnabled, loadAgentContext, listMemory, removeMemory } from "../documents";
 import { buildSystemPrompt, buildToolDefs } from "@/modules/agent/prompt";
 
 describe("remember", () => {
@@ -37,6 +37,33 @@ describe("remember", () => {
     expect(doc).toContain("- the newest fact");
     expect(doc).not.toContain("xxx");
     expect(doc.length).toBeLessThanOrEqual(8_000);
+  });
+});
+
+describe("listMemory", () => {
+  it("returns stored facts with the bullet marker stripped, skipping blank lines", () => {
+    expect(listMemory("- one\n\n- two\n")).toEqual(["one", "two"]);
+    expect(listMemory("")).toEqual([]);
+  });
+});
+
+describe("removeMemory", () => {
+  it("removes the matching fact and keeps the rest", async () => {
+    await setDoc("MEMORY.md", "- one\n- two\n- three\n");
+    await removeMemory("two");
+    expect(await getDoc("MEMORY.md")).toBe("- one\n- three\n");
+  });
+
+  it("leaves the doc empty when the last fact goes", async () => {
+    await setDoc("MEMORY.md", "- one\n");
+    await removeMemory("one");
+    expect(await getDoc("MEMORY.md")).toBe("");
+  });
+
+  it("is a no-op for a fact that is not there", async () => {
+    await setDoc("MEMORY.md", "- one\n");
+    await removeMemory("missing");
+    expect(await getDoc("MEMORY.md")).toBe("- one\n");
   });
 });
 

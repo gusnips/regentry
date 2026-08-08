@@ -83,6 +83,21 @@ export async function remember(fact: string): Promise<string | null> {
   return entry;
 }
 
+/** MEMORY.md as displayable facts — stored bullets with the list marker stripped. */
+export function listMemory(doc: string): string[] {
+  return entries(doc)
+    .map((line) => line.replace(/^\s*[-*]\s+/, "").trim())
+    .filter(Boolean);
+}
+
+/** Delete one fact from MEMORY.md — matched by display text, so the list and the store agree. */
+export async function removeMemory(entry: string): Promise<void> {
+  const lines = entries(await getDoc("MEMORY.md")).filter(
+    (line) => line.replace(/^\s*[-*]\s+/, "").trim() !== entry,
+  );
+  await setDoc("MEMORY.md", lines.length > 0 ? `${lines.join("\n")}\n` : "");
+}
+
 /** Everything the agent's system prompt needs, resolved once at run start. */
 export interface AgentContext {
   /** AGENTS.md — always loaded; the toggle governs memory, not your instructions. */

@@ -28,24 +28,20 @@
     "allSettings": "All settings →",
     "languageAutoShort": "Auto"
   },
+  "instructions": {
+    "title": "Instructions",
+    "help": "Things Regentry should always do — or never do — in every chat. Write them like plain sentences.",
+    "placeholder": "Always ask me before sending an email or making a payment.\nMy work email is me@acme.com.",
+    "autosave": "Changes save automatically and apply to every chat."
+  },
   "memory": {
-    "title": "Memory",
-    "subtitle": "Two markdown files loaded into every run — your standing instructions, and what Regentry has learned.",
-    "enable": "Memory",
-    "fileTabs": "Agent files",
-    "offNotice": "Memory is off. MEMORY.md is not loaded into runs and Regentry will not write to it. Turn it back on to resume, or clear the file below.",
-    "instructionsHelp": "Yours to write. Anything here applies to every task and takes precedence over Regentry's own defaults.",
-    "memoryHelp": "Regentry's. It appends a line here when a run teaches it something durable — edit or delete any of them.",
-    "instructionsPlaceholder": "- Always confirm with me before submitting a payment or sending an email.\n- My work account is me@acme.com — use it for anything on acme.com.\n- Prefer keyboard navigation over clicking when a page supports it.",
-    "memoryPlaceholder": "Nothing remembered yet. Regentry writes here as it learns — you can add facts yourself too, one per line.",
+    "title": "What Regentry remembers",
+    "help": "Facts Regentry has picked up from your tasks, so it doesn't have to ask twice. Delete anything that's wrong.",
+    "enable": "Remember what it learns",
+    "empty": "Nothing yet. When a task teaches Regentry something about you or a site you use, it will show up here.",
+    "off": "Memory is off — Regentry isn't saving what it learns. Turn it on above to resume.",
     "saved": "Saved",
-    "chars_one": "{{count}} character",
-    "chars_other": "{{count}} characters",
-    "import": "Import",
-    "export": "Export",
-    "clear": "Clear",
-    "clearTitle": "Clear {{name}}?",
-    "clearBody": "The file is emptied and its contents stop being sent with future runs. This cannot be undone."
+    "deleteMemory": "Delete this fact"
   },
   "addProvider": {
     "title": "Add provider",

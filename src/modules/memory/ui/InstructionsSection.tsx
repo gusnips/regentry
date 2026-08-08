@@ -1,0 +1,37 @@
+import { useTranslation } from "react-i18next";
+import { TextArea } from "@/components/TextArea";
+import { useStoredDoc } from "./useStoredDoc";
+
+/**
+ * The user's standing instructions — they apply to every chat, they are not
+ * memory. Free prose in a plain-language box: the model reads it as rules, so
+ * no markdown needed. Always on, autosaved.
+ */
+export function InstructionsSection() {
+  const { t } = useTranslation();
+  const { text, saved, ref, edit } = useStoredDoc("AGENTS.md");
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+        {t("instructions.title")}
+      </h2>
+      <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t("instructions.help")}</p>
+
+      <TextArea
+        ref={ref}
+        value={text}
+        onChange={(e) => edit(e.target.value)}
+        rows={6}
+        spellCheck={false}
+        aria-label={t("instructions.title")}
+        placeholder={t("instructions.placeholder")}
+        className="mt-3 w-full resize-y bg-white text-sm leading-relaxed text-neutral-800 dark:bg-neutral-900 dark:text-neutral-200"
+      />
+
+      <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+        {saved ? t("memory.saved") : t("instructions.autosave")}
+      </p>
+    </section>
+  );
+}

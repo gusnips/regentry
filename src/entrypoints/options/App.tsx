@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { AddProviderDialog, ProviderList } from "@/modules/providers/ui";
-import { MemorySection } from "@/modules/memory/ui";
+import { InstructionsSection, MemorySection } from "@/modules/memory/ui";
 import { Button } from "@/components/Button";
 import { ThemeToggle } from "@/components/ThemeControl";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -34,6 +34,9 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      {/* Standing instructions shape every chat — not memory, so it sits on its own. */}
+      <InstructionsSection />
 
       <section className="mt-8">
         <div className="flex items-center justify-between">

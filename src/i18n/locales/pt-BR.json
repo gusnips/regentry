@@ -28,24 +28,20 @@
     "allSettings": "Todas as configurações →",
     "languageAutoShort": "Auto"
   },
+  "instructions": {
+    "title": "Instruções",
+    "help": "Coisas que o Regentry deve sempre fazer — ou nunca fazer — em todo chat. Escreva como frases simples.",
+    "placeholder": "Sempre me pergunte antes de enviar um e-mail ou fazer um pagamento.\nMeu e-mail de trabalho é eu@acme.com.",
+    "autosave": "As mudanças são salvas automaticamente e valem para todo chat."
+  },
   "memory": {
-    "title": "Memória",
-    "subtitle": "Dois arquivos markdown carregados em toda execução — suas instruções permanentes e o que o Regentry aprendeu.",
-    "enable": "Memória",
-    "fileTabs": "Arquivos do agente",
-    "offNotice": "A memória está desligada. O MEMORY.md não é carregado nas execuções e o Regentry não escreve nele. Ligue de novo para retomar, ou limpe o arquivo abaixo.",
-    "instructionsHelp": "Seu para escrever. Tudo aqui vale para todas as tarefas e prevalece sobre os padrões do Regentry.",
-    "memoryHelp": "Do Regentry. Ele acrescenta uma linha aqui quando uma execução ensina algo duradouro — edite ou apague à vontade.",
-    "instructionsPlaceholder": "- Sempre confirme comigo antes de enviar um pagamento ou um e-mail.\n- Minha conta de trabalho é eu@acme.com — use ela em qualquer coisa da acme.com.\n- Prefira navegar pelo teclado quando a página permitir.",
-    "memoryPlaceholder": "Nada memorizado ainda. O Regentry escreve aqui conforme aprende — você também pode adicionar fatos, um por linha.",
+    "title": "O que o Regentry lembra",
+    "help": "Fatos que o Regentry aprendeu com suas tarefas, para não ter que perguntar duas vezes. Apague o que estiver errado.",
+    "enable": "Lembrar o que aprende",
+    "empty": "Nada ainda. Quando uma tarefa ensinar algo ao Regentry sobre você ou um site que você usa, aparece aqui.",
+    "off": "A memória está desligada — o Regentry não está salvando o que aprende. Ligue acima para retomar.",
     "saved": "Salvo",
-    "chars_one": "{{count}} caractere",
-    "chars_other": "{{count}} caracteres",
-    "import": "Importar",
-    "export": "Exportar",
-    "clear": "Limpar",
-    "clearTitle": "Limpar {{name}}?",
-    "clearBody": "O arquivo é esvaziado e seu conteúdo deixa de ser enviado nas próximas execuções. Não dá para desfazer."
+    "deleteMemory": "Excluir este fato"
   },
   "addProvider": {
     "title": "Adicionar provedor",

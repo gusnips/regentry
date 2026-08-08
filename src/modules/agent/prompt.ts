@@ -67,7 +67,7 @@ What you have learned about this user and the sites they use, carried over from 
 
 ${memory || "(empty — nothing remembered yet)"}
 
-Call "remember" when a run teaches you something that will still be true next time: a stable fact about the user, or a site quirk you had to discover the hard way ("the real login on this site is the email link, not the SSO button"). Do NOT remember one-off task details, anything already written above, or — ever — passwords, API keys, card numbers, or other secrets. This file is sent to the model provider on every run.`;
+Call "remember" when a run teaches you something that will still be true next time: a stable fact about the user, or a site quirk you hit a wall on and had to discover the hard way ("the real login on this site is the email link, not the SSO button"). Save the lesson, not the instance. Do NOT remember one-off task details, anything already written above, or — ever — passwords, API keys, card numbers, or other secrets. A run that taught you nothing durable should save nothing. This file is sent to the model provider on every run.`;
 }
 
 /**
@@ -296,7 +296,7 @@ const TOOL_DEFS: ToolDef[] = [
 const REMEMBER_TOOL: ToolDef = {
   name: "remember",
   description:
-    "Save one durable fact to MEMORY.md so future runs start knowing it. One fact per call, written as a standalone sentence that still makes sense with no task context. Never save secrets.",
+    "Save one durable fact to memory so future runs start knowing it. Save it when this run teaches you something a future run would want to know before it starts: a stable fact about the user (their accounts, how they prefer things done), or a site quirk you hit a wall on and had to figure out (the working login, a step a form needs). Write the lesson as a standalone sentence that makes sense with no task context — not the one-off instance ('To book on this site you must create an account first; there is no guest checkout.'). Never save secrets (passwords, API keys, card numbers).",
   params: {
     type: "object",
     properties: {
