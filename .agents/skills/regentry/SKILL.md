@@ -124,8 +124,9 @@ rather than guessing at causes.
 
 - **Not connected** — the extension isn't installed, or its service worker is asleep. The user
   installs Regentry in Chrome and opens the side panel once; it reconnects within ~30 seconds.
-- **No provider** — the user adds one in Regentry's settings and picks it in the panel header.
-  Regentry runs on the user's own model, not yours.
+- **No provider, or one that needs a sign-in** — `health` names it and which of the two it wants;
+  the user fixes it in Regentry's settings. Regentry runs on the user's own model, not yours — but
+  direct control (`browser_start` and the `browser_*` verbs) needs no provider at all.
 - **A different extension id** — usually an unpacked dev build. `health` names the id to accept.
 
 Full reference: `docs/mcp.md` in the Regentry repo.

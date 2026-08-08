@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { acquireRun, getActiveRun, releaseRun } from "@/modules/agent/active-runs";
 import type { Event } from "@/shared/protocol";
+import type { ProviderConfig } from "@/modules/providers/types";
 import type { DaemonMessage } from "../protocol";
 
 /**
@@ -49,6 +50,10 @@ vi.mock("@/modules/browser", () => ({
   hideAgentIndicator: () => Promise.resolve(),
   captureVisibleTab: () => Promise.resolve({ data: "data:image/jpeg;base64,AA==", tabId: 7 }),
 }));
+let activeProvider: ProviderConfig | null = null;
+vi.mock("@/modules/providers", () => ({
+  getActiveProvider: () => Promise.resolve(activeProvider),
+}));
 vi.mock("@/modules/agent/tools", () => ({
   executeTool: () => Promise.resolve({ ok: true, data: { pageContent: "[ref=e1] button" } }),
   formatSuccessSummary: () => "did the thing",
@@ -62,6 +67,7 @@ type Activity = { mode: "run" | "direct"; client: string } | null;
 beforeEach(() => {
   sendSpy.mockClear();
   emitRunEvent = null;
+  activeProvider = null;
   delete socketHandlers.onMessage;
   (globalThis.chrome as Record<string, unknown>).tabs = {
     query: () => Promise.resolve([{ id: 7, windowId: 1, title: "Inbox", url: "https://x.test/" }]),
@@ -160,5 +166,65 @@ describe("Bridge activity", () => {
     );
 
     expect(bridge.activity).toBeNull();
+  });
+});
+
+/**
+ * health asks this before a task is sent: a reachable browser with no usable
+ * provider is a run that dies on its first model call. Every field feeds a
+ * different line of the answer, so each one is worth pinning.
+ */
+describe("Bridge providerInfo", () => {
+  const ask = async (requestId: string) => {
+    const bridge = new Bridge();
+    bridge.start();
+    socketHandlers.onMessage?.({ type: "request", requestId, method: "providerInfo", params: {} });
+    await vi.waitFor(() =>
+      expect(sendSpy).toHaveBeenCalledWith(expect.objectContaining({ requestId })),
+    );
+    const call = sendSpy.mock.calls.find(
+      (c) => (c[0] as { requestId?: string }).requestId === requestId,
+    );
+    return (call?.[0] as { result: unknown }).result;
+  };
+
+  it("reports a signed-in subscription as ready, under its display name", async () => {
+    activeProvider = {
+      id: "claude",
+      name: "Anthropic",
+      shape: "anthropic",
+      baseUrl: "https://api.anthropic.com",
+      apiKey: "",
+      auth: { accessToken: "at", refreshToken: "rt", expiresAt: 0 },
+      createdAt: 0,
+    };
+    expect(await ask("p1")).toEqual({
+      name: "Anthropic (Subscription)",
+      ready: true,
+      auth: "subscription",
+      model: null,
+    });
+  });
+
+  it("reports a keyless provider as not ready, so health can say which fix applies", async () => {
+    activeProvider = {
+      id: "openai",
+      name: "OpenAI (API)",
+      shape: "openai",
+      baseUrl: "https://api.openai.com/v1",
+      apiKey: "",
+      model: "gpt-5",
+      createdAt: 0,
+    };
+    expect(await ask("p2")).toEqual({
+      name: "OpenAI (API)",
+      ready: false,
+      auth: "key",
+      model: "gpt-5",
+    });
+  });
+
+  it("reports no provider at all rather than failing the request", async () => {
+    expect(await ask("p3")).toEqual({ name: null, ready: false, auth: null, model: null });
   });
 });

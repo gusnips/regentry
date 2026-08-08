@@ -60,6 +60,22 @@ export type CompactRunEvent =
   | { type: "done"; summary?: string }
   | { type: "question"; question: string };
 
+/**
+ * The model side of "can a task actually run", answered before one is sent.
+ * The browser link being up says nothing about whether Regentry has a model to
+ * think with, and finding that out from a failed run wastes the user's turn.
+ */
+export interface BridgeProviderInfo {
+  /** Display name of the active provider; null when none is configured. */
+  name: string | null;
+  /** Whether its credential is usable — false means it needs a key or a sign-in. */
+  ready: boolean;
+  /** How it authenticates, so the fix can name the right one. */
+  auth: "key" | "subscription" | null;
+  /** The pinned model id, or null for auto (resolved at run start). */
+  model: string | null;
+}
+
 export interface BridgeStatus {
   conversationId: string | null;
   runId: string | null;

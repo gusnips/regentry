@@ -236,8 +236,7 @@ export function ProviderForm({
 
       {isOAuth ? (
         <OAuthSignIn
-          presetId={preset.id}
-          provider={providerDisplayName(preset)}
+          preset={preset}
           signedIn={auth}
           onSignedIn={async (credential) => {
             await save(credential);

@@ -35,8 +35,9 @@ the daemon is what your AI client talks to.
 ## Setup
 
 **1. Install the extension** and open its side panel once. That starts the service worker, which
-connects to the bridge. Add a provider first if you haven't — the bridge uses whatever provider and
-model the panel is set to.
+connects to the bridge. Add a provider first if you haven't — a subscription sign-in or an API key;
+the bridge uses whatever provider and model the panel is set to. `health` tells you whether that
+provider is ready before you send a task.
 
 **2. Register the server** with your client:
 
@@ -150,7 +151,8 @@ Every failure comes back as text that says what happened, why, and what to do ne
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Extension not connected            | How to install it and wake the worker. It reconnects on its own within ~30s.                                                                    |
 | A different extension connected    | The id that connected, and the env var to accept it (a dev build has its own id).                                                               |
-| No provider configured             | Add one in Regentry's settings and pick it in the panel header.                                                                                 |
+| No provider configured             | `health` says so up front. Add one in Regentry's settings and pick it in the panel header.                                                      |
+| Provider needs a sign-in or key    | `health` names it and which of the two it wants. Direct `browser_*` control keeps working without a provider.                                   |
 | No tab to drive                    | Open a tab in the window you want Regentry to work in.                                                                                          |
 | A run is already going             | Where it's running — panel or MCP — and how to stop it.                                                                                         |
 | The link drops mid-run             | **The run keeps going.** The extension reconnects and re-syncs; `get_status` picks up where it left off. A long task survives a daemon restart. |

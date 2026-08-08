@@ -33,6 +33,11 @@ const TIMED_OUT =
 
 /** One request/response round trip. Long work is polled, never held open here. */
 const REQUEST_TIMEOUT_MS = 30_000;
+/**
+ * For lookups a caller would rather skip than wait for. health is a pre-flight
+ * check — an answer that takes half a minute has already failed at its job.
+ */
+export const QUICK_TIMEOUT_MS = 4_000;
 /** Keeps the socket warm and detects a half-open link between reconciles. */
 const PING_MS = 20_000;
 
@@ -112,7 +117,11 @@ export class BridgeLink {
   }
 
   /** Ask the extension to do something and wait for its answer. */
-  request<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+  request<T>(
+    method: string,
+    params: Record<string, unknown> = {},
+    timeoutMs: number = REQUEST_TIMEOUT_MS,
+  ): Promise<T> {
     const socket = this.socket;
     if (!socket) return Promise.reject(new BridgeError("no-extension", NOT_CONNECTED));
     const requestId = crypto.randomUUID();
@@ -120,7 +129,7 @@ export class BridgeLink {
       const timer = setTimeout(() => {
         this.pending.delete(requestId);
         reject(new BridgeError("timeout", TIMED_OUT));
-      }, REQUEST_TIMEOUT_MS);
+      }, timeoutMs);
       this.pending.set(requestId, { resolve: (v) => resolve(v as T), reject, timer });
       socket.send(
         JSON.stringify({ type: "request", requestId, method, params } satisfies DaemonMessage),

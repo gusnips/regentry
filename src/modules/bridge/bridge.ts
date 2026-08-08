@@ -5,9 +5,12 @@ import { captureVisibleTab } from "@/modules/browser";
 import { appendMessageTo, openAgentConversation } from "@/modules/conversation";
 import { DirectSession } from "./direct";
 import { TranscriptWriter } from "@/modules/conversation/transcript";
+import { getActiveProvider } from "@/modules/providers";
+import { providerDisplayName } from "@/modules/providers/presets";
+import { credentialStatus, isOAuthProvider } from "@/modules/providers/status";
 import { createLogger, truncate } from "@/lib/logger";
 import type { BridgeActive, Event } from "@/shared/protocol";
-import type { BridgeStatus, DaemonMessage, ExtensionMessage } from "./protocol";
+import type { BridgeProviderInfo, BridgeStatus, DaemonMessage, ExtensionMessage } from "./protocol";
 import { applyQuestion, applyStatusEvent, emptyStatus, newRunStatus } from "./status";
 import { BridgeSocket } from "./ws-client";
 
@@ -74,6 +77,9 @@ export class Bridge {
     switch (method) {
       case "sync":
         this.respond(requestId, this.status);
+        break;
+      case "providerInfo":
+        this.respond(requestId, await providerInfo());
         break;
       case "run":
         await this.beginRun(requestId, str(params.task), images(params.images), str(params.agent));
@@ -357,6 +363,22 @@ export class Bridge {
       ? i18n.t("errors.alreadyRunningPanel")
       : i18n.t("errors.alreadyRunningMCP");
   }
+}
+
+/**
+ * Whether Regentry has a model to think with, for health to answer before a
+ * task is sent. Read live rather than cached at connect: a user who signs in
+ * while the daemon is already up must not still read as unconfigured.
+ */
+async function providerInfo(): Promise<BridgeProviderInfo> {
+  const provider = await getActiveProvider();
+  if (!provider) return { name: null, ready: false, auth: null, model: null };
+  return {
+    name: providerDisplayName(provider),
+    ready: credentialStatus(provider) === "connected",
+    auth: isOAuthProvider(provider.id) ? "subscription" : "key",
+    model: provider.model ?? null,
+  };
 }
 
 /** Wire params are unknown until proven otherwise — the daemon is not trusted input. */

@@ -153,6 +153,11 @@ from the panel's.
   holder — that's what `errors.alreadyRunningMCP` / `alreadyRunningPanel` are for.
 - **The bridge owns its own conversation**, created lazily and reset by `newConversation`. It never
   touches the panel's active thread, but it shows up in history like any other.
+- **`health` answers the whole pre-flight**, link AND model: it asks the extension for
+  `providerInfo` (active provider, whether its credential works, key vs subscription) so a missing
+  or signed-out provider is reported before a task is sent instead of killing the first model call.
+  That lookup uses the short `QUICK_TIMEOUT_MS` and degrades to silence — a slow answer must never
+  hold a pre-flight check open, and direct `browser_*` control needs no provider anyway.
 - **Compact events only.** Tokens, reasoning and usage never cross the WS; `bridge/status.ts` folds
   the run's events into a `BridgeStatus` and forwards only structural changes. The daemon runs the
   same reduction over that compact stream (`daemon/src/protocol.ts` `applyCompact`) so

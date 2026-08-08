@@ -14,8 +14,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { BridgeError, BridgeLink, NOT_CONNECTED } from "./link";
-import type { BridgeStatus, CaptureResult } from "./protocol";
+import { BridgeError, BridgeLink, NOT_CONNECTED, QUICK_TIMEOUT_MS } from "./link";
+import type { BridgeProviderInfo, BridgeStatus, CaptureResult } from "./protocol";
 // One source of truth for the version, exactly as the extension does it.
 import pkg from "../package.json" with { type: "json" };
 
@@ -138,16 +138,19 @@ server.registerTool(
   {
     title: "Regentry health",
     description:
-      "Check that the browser agent is reachable before driving it. Reports whether the Regentry extension is connected to this bridge, which extension it is, and what to do when it isn't. Call this first, and again after any connection error.",
+      "Check that the browser agent is reachable before driving it. Reports whether the Regentry extension is connected to this bridge, which extension it is, whether it has a provider ready to think with, and what to do when any of that is missing. Call this first, and again after any connection error.",
   },
   async () => {
     const match = link.extension ? link.extension.id === EXPECTED_EXTENSION_ID : null;
+    const provider = link.connected ? await providerInfo() : null;
     const lines = [
       `connected: ${link.connected}`,
       `port: ${PORT}`,
       `extension: ${link.extension ? `${link.extension.id} (v${link.extension.version})` : "none"}`,
       `expected extension: ${EXPECTED_EXTENSION_ID}`,
     ];
+    if (provider) lines.push(`provider: ${describeProvider(provider)}`);
+
     if (link.problem) lines.push("", link.problem);
     else if (!link.connected) lines.push("", NOT_CONNECTED);
     else if (match === false) {
@@ -155,10 +158,40 @@ server.registerTool(
         "",
         `A different extension is connected than the one expected.\nCause: this is probably an unpacked dev build, which gets its own id.\nFix: if you trust it, set REGENTRY_BRIDGE_EXPECTED_EXTENSION_ID=${link.extension?.id} for this daemon; otherwise load the Chrome Web Store build.`,
       );
-    } else lines.push("", "Ready — start a browser task with run.");
+    } else if (provider && !provider.ready) lines.push("", providerProblem(provider));
+    else lines.push("", "Ready — start a browser task with run.");
     return text(lines.join("\n"));
   },
 );
+
+/** Never let a provider lookup fail the health check — the link report still stands. */
+async function providerInfo(): Promise<BridgeProviderInfo | null> {
+  try {
+    return await link.request<BridgeProviderInfo>("providerInfo", {}, QUICK_TIMEOUT_MS);
+  } catch {
+    return null;
+  }
+}
+
+const describeProvider = (p: BridgeProviderInfo): string =>
+  p.name === null
+    ? "none configured"
+    : `${p.name} · model ${p.model ?? "auto"}${p.ready ? "" : p.auth === "subscription" ? " · NOT SIGNED IN" : " · NO API KEY"}`;
+
+/**
+ * A reachable browser with no usable provider is the failure this tool exists
+ * to pre-empt: run would take the task and die on the first model call. Direct
+ * control needs no provider, so the fix says so rather than declaring the
+ * browser unusable.
+ */
+const providerProblem = (p: BridgeProviderInfo): string =>
+  p.name === null
+    ? "Regentry is connected, but no provider is configured — run has no model to think with.\n" +
+      "Cause: nothing has been added in Regentry's settings yet.\n" +
+      "Fix: the user adds one in Regentry's settings — a subscription sign-in or an API key. Direct control (browser_start and the browser_* verbs) works without one."
+    : `Regentry is connected, but ${p.name} has no working credential — run would fail on its first model call.\n` +
+      `Cause: the ${p.auth === "subscription" ? "sign-in was never completed, expired, or was revoked" : "API key is missing"}.\n` +
+      `Fix: the user ${p.auth === "subscription" ? "signs in again" : "pastes a key"} in Regentry's settings, or picks another provider in the panel header. Direct control (browser_start and the browser_* verbs) works without one.`;
 
 server.registerTool(
   "run",

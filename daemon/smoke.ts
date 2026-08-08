@@ -198,10 +198,34 @@ const sync = await awaitRequest("sync");
 reply(sync.requestId, emptyStatus());
 await Bun.sleep(50);
 
-const online = bodyOf(await rpc("tools/call", { name: "health", arguments: {} }));
+// health asks the extension what it has to think with, so the answer has to be
+// served alongside the call rather than before it.
+const healthCall = rpc("tools/call", { name: "health", arguments: {} });
+const readyInfo = await awaitRequest("providerInfo");
+reply(readyInfo.requestId, {
+  name: "Anthropic (Subscription)",
+  ready: true,
+  auth: "subscription",
+  model: null,
+});
+const online = bodyOf(await healthCall);
 check(
   "health sees the expected extension",
   online.includes("connected: true") && online.includes("Ready"),
+);
+check(
+  "health names the provider a run would think with",
+  online.includes("Anthropic (Subscription)") && online.includes("model auto"),
+);
+
+// The failure this pre-empts: a reachable browser that has no model behind it.
+const unreadyCall = rpc("tools/call", { name: "health", arguments: {} });
+const unreadyInfo = await awaitRequest("providerInfo");
+reply(unreadyInfo.requestId, { name: null, ready: false, auth: null, model: null });
+const unready = bodyOf(await unreadyCall);
+check(
+  "health warns when no provider is configured, and says direct control still works",
+  unready.includes("no provider is configured") && unready.includes("browser_start"),
 );
 
 // A run: the daemon forwards it, the extension acknowledges, events flow back.

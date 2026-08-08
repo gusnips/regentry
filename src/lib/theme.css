@@ -77,3 +77,95 @@ body {
     color: var(--color-brand-200);
   }
 }
+
+/*
+ * Sign-in connected — the one genuinely good moment in setup, so it gets a
+ * beat rather than a static green box: the provider's own mark lands, a ring
+ * breaks off it once, the check draws onto its corner, and the words follow.
+ * The whole sequence is under a second because the dialog closes right after
+ * it; every delay below is part of that budget, which is why they live here
+ * together instead of scattered across the markup.
+ */
+@keyframes regentry-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes regentry-ring {
+  from {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.85);
+  }
+}
+
+@keyframes regentry-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes regentry-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.connected-card {
+  animation: regentry-rise 220ms ease-out both;
+}
+.connected-tile {
+  animation: regentry-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 60ms both;
+}
+.connected-ring {
+  animation: regentry-ring 700ms ease-out 180ms both;
+}
+.connected-badge {
+  animation: regentry-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 300ms both;
+}
+.connected-check {
+  stroke-dasharray: 14;
+  stroke-dashoffset: 14;
+  animation: regentry-draw 260ms ease-out 430ms both;
+}
+.connected-title {
+  animation: regentry-rise 220ms ease-out 460ms both;
+}
+.connected-account {
+  animation: regentry-rise 220ms ease-out 600ms both;
+}
+
+/* Reduced motion keeps the whole card — it just arrives already finished. */
+@media (prefers-reduced-motion: reduce) {
+  .connected-card,
+  .connected-tile,
+  .connected-badge,
+  .connected-title,
+  .connected-account {
+    animation: none;
+  }
+  .connected-ring {
+    display: none;
+  }
+  .connected-check {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+}

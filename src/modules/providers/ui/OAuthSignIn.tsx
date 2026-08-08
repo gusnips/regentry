@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
+import { ProviderIcon } from "./ProviderIcon";
 import { OAUTH_FLOWS } from "../oauth-flows";
 import type { SignInPrompt } from "../oauth-flows";
+import { providerDisplayName } from "../presets";
+import type { ProviderPreset } from "../presets";
 import { SignInError } from "../types";
 import type { OAuthCredential, SignInFailure } from "../types";
 
-/** How long the "connected" card stays up before the dialog closes over it. */
-export const SIGN_IN_DONE_MS = 1800;
+/**
+ * How long the "connected" card stays up before the dialog closes over it.
+ * Its animation sequence (theme.css) finishes around 820ms, so this is that
+ * plus a beat to read the account name.
+ */
+export const SIGN_IN_DONE_MS = 2000;
 
 type Phase =
   | { step: "idle" }
@@ -27,14 +34,12 @@ type Phase =
  * visible in case the tab never opened.
  */
 export function OAuthSignIn({
-  presetId,
-  provider,
+  preset,
   signedIn,
   onSignedIn,
 }: {
-  presetId: string;
-  /** Display name, shown in every line of copy — no string names a vendor. */
-  provider: string;
+  /** The preset being connected — names the copy, and marks the connected card. */
+  preset: ProviderPreset;
   /** Existing credential — the button then offers re-authenticating. */
   signedIn?: OAuthCredential;
   /** Persists the credential; a rejection is shown as the sign-in's failure. */
@@ -43,6 +48,9 @@ export function OAuthSignIn({
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
   const abort = useRef<AbortController | null>(null);
+  // Every line of copy names the provider — no string in this file names a vendor.
+  const provider = providerDisplayName(preset);
+  const presetId = preset.id;
 
   // A dialog closed mid-sign-in must not leave a tab-watcher or poll running behind it.
   useEffect(() => () => abort.current?.abort(), []);
@@ -131,21 +139,44 @@ export function OAuthSignIn({
       <div
         role="status"
         aria-live="polite"
-        className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950"
+        // Clips the ring at the card's edge rather than letting it bleed past.
+        className="connected-card flex flex-col items-center gap-2 overflow-hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-4 text-center dark:border-emerald-900 dark:bg-emerald-950"
       >
-        <span aria-hidden className="text-emerald-600 dark:text-emerald-400">
-          ✓
+        <span className="relative inline-flex">
+          <span
+            aria-hidden
+            className="connected-ring absolute inset-0 rounded-full border-2 border-emerald-400 dark:border-emerald-500"
+          />
+          <span className="connected-tile inline-flex">
+            <ProviderIcon icon={preset.icon} size={36} />
+          </span>
+          <span
+            aria-hidden
+            className="connected-badge absolute -right-1.5 -bottom-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-emerald-50 dark:bg-emerald-400 dark:ring-emerald-950"
+          >
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
+              <path
+                className="connected-check"
+                d="M4 8.4 6.7 11.1 12 5.6"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
         </span>
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
-            {t("providerForm.signInConnected", { provider })}
+        <span className="connected-title text-sm font-medium text-emerald-900 dark:text-emerald-100">
+          {t("providerForm.signInConnected", { provider })}
+        </span>
+        {/* Anonymous credentials skip the second line: "Signed in" under
+            "Connected to X" is the same sentence twice. */}
+        {phase.account && (
+          <span className="connected-account max-w-full truncate text-xs text-emerald-800 dark:text-emerald-200">
+            {t("providerForm.signInDone", { account: phase.account })}
           </span>
-          <span className="truncate text-xs text-emerald-800 dark:text-emerald-200">
-            {phase.account
-              ? t("providerForm.signInDone", { account: phase.account })
-              : t("providerForm.signInDoneAnon")}
-          </span>
-        </div>
+        )}
       </div>
     );
   }
