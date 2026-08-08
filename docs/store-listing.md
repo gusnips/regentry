@@ -159,11 +159,17 @@ network activity.
 
 ## 6. Privacy
 
-CWS asks for a **single-purpose description** and a **privacy policy URL**. No privacy policy page
-exists yet — decide with Gus before submitting. Options: a short `PRIVACY.md` served on GitHub
-(`https://github.com/gusnips/regentry/blob/main/PRIVACY.md`), or the store's "No privacy policy
-needed" path is **not** available for extensions that handle personal data — we do process page
-content, so a policy is expected.
+CWS asks for a **single-purpose description** and a **privacy policy URL**. The policy lives in the
+repo at [`PRIVACY.md`](../../PRIVACY.md), served on GitHub:
+
+```
+https://github.com/gusnips/regentry/blob/main/PRIVACY.md
+```
+
+Paste that URL into the **Privacy policy** field. (The store's "No privacy policy needed" path is
+not available for extensions that handle personal data — we do process page content, so a policy
+is required.) Keep `PRIVACY.md` in sync with the product the same way this doc is: when a feature
+changes what's stored or sent, update the matching section.
 
 Draft single-purpose description (paste into the privacy form):
 

@@ -42,7 +42,7 @@ your provider.
 - **Speaks your language, matches your theme** — English, Português (Brasil), and Español; light,
   dark, or follow the OS.
 - **Your data stays local** — provider configs and history live in `chrome.storage`. There is no
-  Regentry server.
+  Regentry server. See [PRIVACY.md](PRIVACY.md) for the full picture.
 
 ## Install
 
