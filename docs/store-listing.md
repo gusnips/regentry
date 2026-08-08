@@ -4,9 +4,9 @@ Source of truth for the store submission. Copy-paste from the blocks below into 
 (`chrome.google.com/webstore/devconsole` → Regentry → **Store listing**). Everything here is kept in
 sync with the product; when a feature lands, update the matching block and re-submit.
 
-> Status: **draft for v0.1.0.** Screenshots captured (4 × 1280×800 — see
-> [Screenshots](#screenshots)). Permissions justification and privacy notes verified against
-> `wxt.config.ts` and `README.md`.
+> Status: **submitted to the Chrome Web Store (v0.1.0, 2026-08-08) — pending review.** All
+> checklist items in [§7](#7-pre-submit-checklist) are done. Permissions justification and privacy
+> notes verified against `wxt.config.ts` and `README.md`.
 
 ---
 
@@ -186,11 +186,15 @@ Draft single-purpose description (paste into the privacy form):
 
 ## 7. Pre-submit checklist
 
-- [ ] `bun run compile && bun run lint && bun run test && bun run deadcode && bun run i18n:check` — all green
-- [ ] Screenshots captured at 1280×800 / 640×400, saved to `docs/screenshots/`, approved by Gus
-- [ ] Short description verified ≤ 132 chars
-- [ ] Privacy policy URL decided (see §6)
-- [ ] Zip built from the exact release being submitted: `bun run release <patch|minor|major>`
+- [x] `bun run compile && bun run lint && bun run test && bun run deadcode && bun run i18n:check` — all green
+- [x] Screenshots captured at 1280×800 / 640×400, saved to `docs/screenshots/`, approved by Gus
+- [x] Short description verified ≤ 132 chars
+- [x] Privacy policy URL decided (see §6)
+- [x] Zip built from the exact release being submitted: `bun run release <patch|minor|major>`
       → `dist/regentry-<version>-chrome.zip`
-- [ ] The zip uploaded to CWS matches the git tag's artifact (same build, same version)
-- [ ] Push and let the GitHub Action attach the zip to the release: `git push --follow-tags`
+- [x] The zip uploaded to CWS matches the git tag's artifact (same build, same version)
+- [x] Push and let the GitHub Action attach the zip to the release: `git push --follow-tags`
+
+**Status: submitted to the Chrome Web Store 2026-08-08 — v0.1.0 pending review.** The extension
+ID is `gkblgkcofolbpcbafkdhiihfbpjhdpgh` and the Action-built artifact
+(`regentry-0.1.0-chrome.zip`, tag `v0.1.0` → `42196cb`) is what was uploaded.
