@@ -190,22 +190,24 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       drivingTab: null,
     }));
 
+  /** Recall a text into the composer, preserving anything already there. */
+  const mergeIntoDraft = (text: string) => {
+    const draft = get().draft.trimEnd();
+    return [draft, text].filter(Boolean).join("\n");
+  };
+
   /** Unconsumed queue returns to the composer — an ending run must not eat typed text. */
   const recallQueue = () => {
     const q = get().queued;
     if (q.length === 0) return;
-    const draft = get().draft;
-    set({
-      queued: [],
-      draft: [draft.trimEnd(), ...q.map((x) => x.text)].filter(Boolean).join("\n"),
-    });
+    set({ queued: [], draft: mergeIntoDraft(q.map((x) => x.text).join("\n")) });
   };
 
   /** A stop's pending redirect that errored instead of unwinding cleanly returns to the composer. */
   const returnPending = () => {
     const pending = get().pendingSend;
     if (pending === null) return;
-    set({ pendingSend: null, draft: [get().draft.trimEnd(), pending].filter(Boolean).join("\n") });
+    set({ pendingSend: null, draft: mergeIntoDraft(pending) });
   };
 
   const startRun = (p: chrome.runtime.Port, task: string, images?: string[]) => {

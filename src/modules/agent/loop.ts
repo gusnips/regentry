@@ -340,7 +340,8 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     }
 
     // Queued mid-run messages join here, after the tool results they comment on.
-    // A run that ends on `done` leaves its queue unconsumed — the panel recalls it.
+    // A run that ends on `done` leaves its queue unconsumed — the panel recalls
+    // it on a natural end, or sends it as the next task on a user stop.
     for (const item of drainInjected?.() ?? []) {
       log.info("injected mid-run message:", truncate(item.text, 120));
       messages.push({ role: "user", content: item.text });
