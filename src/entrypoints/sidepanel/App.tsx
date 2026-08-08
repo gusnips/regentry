@@ -19,6 +19,8 @@ import { SettingsMenu } from "./SettingsMenu";
 export default function App() {
   const connect = useConversationStore((s) => s.connect);
   const disconnect = useConversationStore((s) => s.disconnect);
+  const status = useConversationStore((s) => s.status);
+  const stop = useConversationStore((s) => s.stop);
   const providers = useProvidersStore((s) => s.providers);
   const loaded = useProvidersStore((s) => s.loaded);
   const load = useProvidersStore((s) => s.load);
@@ -28,6 +30,21 @@ export default function App() {
     connect();
     return () => disconnect();
   }, [connect, disconnect]);
+
+  // Esc cancels the current run from anywhere in the panel — the stop gesture,
+  // which auto-sends a pending queue as the next task. A Base UI overlay's own
+  // Esc-to-close wins: with a dialog/menu open, Esc never halts a run by surprise.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (document.querySelector('[role="dialog"],[role="menu"],[role="listbox"]')) return;
+      if (e.key === "Escape" && status === "running") {
+        e.preventDefault();
+        stop();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [status, stop]);
 
   useEffect(() => {
     void load(); // idempotent — the store dedupes concurrent mounts

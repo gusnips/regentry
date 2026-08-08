@@ -205,7 +205,7 @@ export function ChatInput() {
           </Button>
         )}
         {running ? (
-          <Button variant="danger" onClick={stop}>
+          <Button variant="danger" onClick={stop} title={t("chat.stopTitle")}>
             {t("chat.stop")}
           </Button>
         ) : (

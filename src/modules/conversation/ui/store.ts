@@ -42,6 +42,8 @@ interface ConversationState {
   planMsgId: string | null;
   /** Messages typed mid-run, waiting for the next tool boundary. */
   queued: { id: string; text: string }[];
+  /** Joined queued text waiting to auto-run once the current run fully unwinds (a stop redirect). */
+  pendingSend: string | null;
   /** The composer's text, so a recalled queue or an ending run can hand text back to it. */
   draft: string;
   /** The tab the current run is driving; null when idle. */
@@ -131,6 +133,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     pendingStepId: null,
     planMsgId: null,
     queued: [],
+    pendingSend: null,
     draft: "",
     drivingTab: null,
   });
@@ -198,6 +201,13 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     });
   };
 
+  /** A stop's pending redirect that errored instead of unwinding cleanly returns to the composer. */
+  const returnPending = () => {
+    const pending = get().pendingSend;
+    if (pending === null) return;
+    set({ pendingSend: null, draft: [get().draft.trimEnd(), pending].filter(Boolean).join("\n") });
+  };
+
   const startRun = (p: chrome.runtime.Port, task: string, images?: string[]) => {
     sawAssistantText = false;
     set({
@@ -214,6 +224,46 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       planMsgId: null,
     });
     p.postMessage({ type: "run", task, ...(images?.length ? { images } : {}) } satisfies Command);
+  };
+
+  /**
+   * Send a task, stamping it with the panel's active tab. Guarded against the
+   * stop redirect: while pendingSend is set, a user's Enter must not start a
+   * third run mid-handoff — the pending send fires from the done handler.
+   */
+  const sendTask = async (task: string, images?: string[]) => {
+    if (get().status === "running" || get().pendingSend !== null) return;
+    // The port dies with the worker — reconnect lazily instead of eating the task.
+    let p: chrome.runtime.Port;
+    try {
+      p = attach();
+    } catch {
+      pushMsg(makeMsg("error", i18n.t("chat.reloaded")));
+      return;
+    }
+    // The message is anchored to the tab it was sent from. The panel queries
+    // its own window here — the send-time fact — while the background's own
+    // query stays the authority on what the run drives.
+    let tab: Message["tab"];
+    try {
+      const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (active?.url) {
+        tab = {
+          title: active.title ?? "",
+          url: active.url,
+          ...(active.favIconUrl ? { favIconUrl: active.favIconUrl } : {}),
+        };
+      }
+    } catch {
+      // No stamp — the run still gets its tab from the background.
+    }
+    // Stored BEFORE the run starts: the worker builds this run's history by
+    // reading the transcript, so a fire-and-forget write would race it and
+    // cost the model the exchange it is being asked to continue.
+    await pushMsg(
+      makeMsg("user", task, { ...(images?.length ? { images } : {}), ...(tab ? { tab } : {}) }),
+    );
+    startRun(p, task, images);
   };
 
   const handleEvent = (event: Event) => {
@@ -312,6 +362,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         flushReasoning();
         flushStreaming();
         recallQueue();
+        // A stop redirect must never auto-fire into an error — hand it back.
+        returnPending();
         pushMsg(makeMsg("error", event.message));
         settleRun("error");
         break;
@@ -329,6 +381,14 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         if (closing) pushMsg(makeMsg("assistant", closing));
         recallQueue();
         settleRun("idle");
+        // The stop was a redirect, not just a halt: the queued text runs as the
+        // next task now that the old run has fully unwound.
+        const pending = get().pendingSend;
+        if (pending !== null) {
+          // Clear BEFORE sendTask — the guard above would otherwise bail.
+          set({ pendingSend: null });
+          void sendTask(pending);
+        }
         break;
       }
     }
@@ -364,6 +424,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         pushMsg(makeMsg("error", i18n.t("chat.portLost")));
       }
       recallQueue();
+      // A stop redirect must survive a mid-handoff port drop — back to the composer.
+      returnPending();
       settleRun("idle");
     });
     pingTimer ??= setInterval(() => post({ type: "ping" }), 25_000);
@@ -385,6 +447,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     pendingStepId: null,
     planMsgId: null,
     queued: [],
+    pendingSend: null,
     draft: "",
     drivingTab: null,
 
@@ -411,40 +474,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       }
     },
 
-    sendTask: async (task, images) => {
-      if (get().status === "running") return;
-      // The port dies with the worker — reconnect lazily instead of eating the task.
-      let p: chrome.runtime.Port;
-      try {
-        p = attach();
-      } catch {
-        pushMsg(makeMsg("error", i18n.t("chat.reloaded")));
-        return;
-      }
-      // The message is anchored to the tab it was sent from. The panel queries
-      // its own window here — the send-time fact — while the background's own
-      // query stays the authority on what the run drives.
-      let tab: Message["tab"];
-      try {
-        const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (active?.url) {
-          tab = {
-            title: active.title ?? "",
-            url: active.url,
-            ...(active.favIconUrl ? { favIconUrl: active.favIconUrl } : {}),
-          };
-        }
-      } catch {
-        // No stamp — the run still gets its tab from the background.
-      }
-      // Stored BEFORE the run starts: the worker builds this run's history by
-      // reading the transcript, so a fire-and-forget write would race it and
-      // cost the model the exchange it is being asked to continue.
-      await pushMsg(
-        makeMsg("user", task, { ...(images?.length ? { images } : {}), ...(tab ? { tab } : {}) }),
-      );
-      startRun(p, task, images);
-    },
+    sendTask,
 
     queueMessage: (text) => {
       const item = { id: crypto.randomUUID(), text };
@@ -483,6 +513,13 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     },
 
     stop: () => {
+      // A queued message turns the halt into a redirect: the queue is sent as the
+      // next task once the current run has fully unwound (its done event). A second
+      // stop during the unwind must preserve the pending text, not wipe it.
+      const pending =
+        get().queued.length > 0
+          ? get().queued.map((x) => x.text).join("\n")
+          : get().pendingSend;
       post({ type: "stop" });
       // Deliberately NOT settleRun: the loop's done event arrives as the worker
       // unwinds and flushes any partial stream into the transcript first.
@@ -491,6 +528,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         status: "idle",
         runEndedAt: Date.now(),
         pendingStepId: null,
+        queued: [],
+        pendingSend: pending,
       }));
     },
 

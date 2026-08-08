@@ -91,7 +91,12 @@ export default defineBackground(() => {
             task: truncate(msg.task, 120),
           });
 
-          abortController = new AbortController();
+          // The run owns its controller: the shared `abortController` may already
+          // name a newer run by the time this one unwinds (a stop redirect hands
+          // off immediately), so the finally and the tab-gone listener must act on
+          // this run's own instance, not the shared one.
+          const runController = new AbortController();
+          abortController = runController;
           injectedQueue.length = 0;
           let endedOnQuestion = false;
           // A moving target: the run starts on the submit-time tab but the
@@ -131,7 +136,7 @@ export default defineBackground(() => {
               type: "error",
               message: i18n.t("errors.tabClosed", { title: drivenTitle }),
             });
-            abortController?.abort();
+            runController.abort();
           };
           chrome.tabs.onRemoved.addListener(onTabGone);
           // Tell the page itself it is being driven — the side panel may be
@@ -154,7 +159,7 @@ export default defineBackground(() => {
               history: history.length > 0 ? history : undefined,
               previousTabs: previousTabs.length > 0 ? previousTabs : undefined,
               drainInjected: () => injectedQueue.splice(0, injectedQueue.length),
-              signal: abortController.signal,
+              signal: runController.signal,
               callbacks: {
                 onInjected: (id, text) => send(port, { type: "injected", id, text }),
                 onToken: (text) => send(port, { type: "token", text }),
@@ -177,7 +182,9 @@ export default defineBackground(() => {
             send(port, { type: "error", message });
           } finally {
             chrome.tabs.onRemoved.removeListener(onTabGone);
-            abortController = null;
+            // Only clear if this run's controller is still the current one — a stop
+            // redirect may have installed a newer run's controller already.
+            if (abortController === runController) abortController = null;
             if (endedOnQuestion) void waitAgentIndicator(drivenTabId);
             else void hideAgentIndicator(drivenTabId);
             // Runs whatever unwinds the loop — done, error, stop, panel closed.
