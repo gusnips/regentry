@@ -1,6 +1,15 @@
 import type { ChatProvider, ChatMessage, Delta, ResolvedProviderConfig, ToolDef } from "./types";
-import { anthropicHeaders, apiUrl, parseToolArgs, streamSse } from "./http";
+import { anthropicHeaders, anthropicOAuthHeaders, apiUrl, parseToolArgs, streamSse } from "./http";
 import { providerDisplayName } from "./presets";
+
+/**
+ * Claude Code identities the subscription token as theirs, so OAuth traffic
+ * must wear its two signatures: a `custom_` tool-name prefix (the server
+ * strips it before the model sees the name) and a first system block naming
+ * the agent SDK.
+ */
+const CLAUDE_IDENTITY = "You are a Claude agent, built on Anthropic's Claude Agent SDK.";
+const TOOL_PREFIX = "custom_";
 
 /** Anthropic-shape adapter — streams SSE from POST /v1/messages. */
 export function createAnthropicProvider(config: ResolvedProviderConfig): ChatProvider {
@@ -11,7 +20,9 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
 
       const stream = streamSse({
         url: apiUrl(config.baseUrl, "/v1/messages"),
-        headers: anthropicHeaders(config.apiKey),
+        // A signed-in subscription provider sends the access token as a Bearer
+        // and talks OAuth-token mode; a key provider sends x-api-key.
+        headers: config.auth ? anthropicOAuthHeaders(config.apiKey) : anthropicHeaders(config.apiKey),
         body: JSON.stringify(buildAnthropicBody(config, messages, tools)),
         label: providerDisplayName(config),
         signal,
@@ -52,7 +63,9 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
             if (event.content_block?.type === "tool_use") {
               toolCallBuffer = {
                 id: event.content_block.id ?? "",
-                name: event.content_block.name ?? "",
+                // The model echoes prefixed names back in OAuth mode — the wire
+                // is "custom_*", the loop only ever sees the unprefixed name.
+                name: stripToolPrefix(event.content_block.name ?? ""),
                 args: "",
               };
             }
@@ -104,7 +117,9 @@ export function buildAnthropicBody(
   messages: ChatMessage[],
   tools: ToolDef[],
 ): Record<string, unknown> {
-  // Anthropic splits system from conversation
+  // Anthropic splits system from conversation. OAuth traffic additionally
+  // prepends the client-identity block and prefixes every tool name.
+  const isOAuth = Boolean(config.auth);
   const systemMsg = messages.find((m) => m.role === "system");
   const conversation = messages.filter((m) => m.role !== "system");
 
@@ -119,16 +134,20 @@ export function buildAnthropicBody(
     // tool_results and an injected mid-run message both serialize as user
     // messages, and can land back to back — merge them, Anthropic rejects
     // consecutive same-role messages.
-    messages: mergeConsecutiveUsers(conversation.map(toAnthropicMessage)),
+    messages: mergeConsecutiveUsers(conversation.map((m) => toAnthropicMessage(m, isOAuth))),
   };
 
   if (systemMsg) {
-    body.system = systemMsg.content;
+    body.system = isOAuth
+      ? [{ type: "text", text: CLAUDE_IDENTITY }, { type: "text", text: systemMsg.content }]
+      : systemMsg.content;
+  } else if (isOAuth) {
+    body.system = [{ type: "text", text: CLAUDE_IDENTITY }];
   }
 
   if (tools.length > 0) {
     body.tools = tools.map((t) => ({
-      name: t.name,
+      name: isOAuth ? `${TOOL_PREFIX}${t.name}` : t.name,
       description: t.description,
       input_schema: t.params,
     }));
@@ -158,6 +177,11 @@ interface AnthropicSSE {
     partial_json?: string;
     stop_reason?: string;
   };
+}
+
+/** Idempotent — the non-OAuth path streams unprefixed names and is untouched. */
+function stripToolPrefix(name: string): string {
+  return name.startsWith(TOOL_PREFIX) ? name.slice(TOOL_PREFIX.length) : name;
 }
 
 function mapStopReason(reason: string): "stop" | "length" | "tool_use" | "unknown" {
@@ -209,16 +233,18 @@ function mergeConsecutiveUsers(messages: AnthropicMessage[]): AnthropicMessage[]
   return merged;
 }
 
-export function toAnthropicMessage(msg: ChatMessage) {
+export function toAnthropicMessage(msg: ChatMessage, isOAuth = false) {
   if (msg.role === "assistant" && msg.toolCalls) {
     return {
       role: "assistant" as const,
       content: [
         ...(msg.content ? [{ type: "text", text: msg.content }] : []),
+        // Replayed tool_use names ride the same prefixed wire as the tools we
+        // declared, so a resumed OAuth run re-prefixes them on the way out.
         ...msg.toolCalls.map((tc) => ({
           type: "tool_use" as const,
           id: tc.id,
-          name: tc.name,
+          name: isOAuth ? `${TOOL_PREFIX}${tc.name}` : tc.name,
           input: tc.args,
         })),
       ],

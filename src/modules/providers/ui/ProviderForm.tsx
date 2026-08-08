@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { KimiSignIn } from "./KimiSignIn";
+import { ClaudeSignIn } from "./ClaudeSignIn";
 import { PRESETS } from "../presets";
 import type { OAuthCredential, ProviderConfig, ProviderShape } from "../types";
 import { Select } from "@/components/Select";
@@ -94,7 +95,14 @@ export function ProviderForm({
     // OAuth providers carry a credential instead of a key — sign-in is the gate.
     if (isOAuth) {
       if (!auth) {
-        fail(t("providerForm.signInRequired"));
+        // Each vendor's sign-in is a different flow, so the message names its own.
+        fail(
+          t(
+            preset.id === "claude"
+              ? "providerForm.claudeSignInRequired"
+              : "providerForm.kimiSignInRequired",
+          ),
+        );
         return;
       }
     } else if (!key && !existing && !isLocalUrl(resolvedUrl)) {
@@ -198,7 +206,11 @@ export function ProviderForm({
       )}
 
       {isOAuth ? (
-        <KimiSignIn signedIn={auth} onSignedIn={setPendingAuth} />
+        preset.id === "claude" ? (
+          <ClaudeSignIn signedIn={auth} onSignedIn={setPendingAuth} />
+        ) : (
+          <KimiSignIn signedIn={auth} onSignedIn={setPendingAuth} />
+        )
       ) : (
         <PasswordField
           label={t("providerForm.apiKey")}

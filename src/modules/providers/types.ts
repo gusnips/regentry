@@ -32,6 +32,17 @@ export interface OAuthCredential {
   account?: string;
 }
 
+/** Why a sign-in ended without a credential — each wording is a different fix. */
+export type SignInFailure = "expired" | "denied" | "cancelled";
+
+/** Thrown by the per-vendor sign-in flows (device code, callback capture) so the UI can word each ending. */
+export class SignInError extends Error {
+  constructor(public readonly reason: SignInFailure) {
+    super(reason);
+    this.name = "SignInError";
+  }
+}
+
 /** A configured provider instance (stored in chrome.storage). */
 export interface ProviderConfig {
   id: string;

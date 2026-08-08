@@ -62,6 +62,27 @@ export function anthropicHeaders(apiKey: string): Record<string, string> {
   };
 }
 
+/**
+ * Anthropic OAuth requests — a subscription credential is a Bearer, not an
+ * x-api-key, and the beta header is what switches the API into OAuth-token
+ * mode. Shared by /v1/messages and /v1/models.
+ *
+ * ponytail: omits Claude Code's X-Claude-Code-Session-Id and X-Stainless-*
+ * fingerprint headers — they're rate-limit/telemetry granularity, not an auth
+ * gate, and the Stainless ones advertise a Node runtime the extension isn't.
+ * Ceiling: if Anthropic starts rejecting clean OAuth requests, add the full
+ * fingerprint set (opencodex's client-fingerprint.ts).
+ */
+export function anthropicOAuthHeaders(accessToken: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    "anthropic-version": "2023-06-01",
+    "anthropic-beta": "claude-code-20250219,oauth-2025-04-20",
+    "anthropic-dangerous-direct-browser-access": "true",
+    "x-client-request-id": crypto.randomUUID(),
+  };
+}
+
 /** Tool-call args arrive in fragments and may end mid-JSON — parse defensively. */
 export function parseToolArgs(raw: string): Record<string, unknown> {
   try {

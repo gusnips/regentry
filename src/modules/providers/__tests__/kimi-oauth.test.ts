@@ -1,12 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import {
-  accountFromToken,
-  pollForToken,
-  refreshCredential,
-  requestDeviceCode,
-  SignInError,
-} from "../kimi-oauth";
+import { accountFromToken, pollForToken, refreshCredential, requestDeviceCode } from "../kimi-oauth";
 import type { DevicePrompt } from "../kimi-oauth";
+import { SignInError } from "../types";
 
 // Storage stand-in and i18n come from src/test-setup.ts (vitest setupFiles).
 

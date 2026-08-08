@@ -58,6 +58,19 @@ export const PRESETS: ProviderPreset[] = [
     icon: "anthropic",
   },
   {
+    // The same API as `anthropic`, reached with a Claude subscription (Pro/Max)
+    // sign-in instead of a key. One row per way to pay — a user with both a key
+    // and a plan always knows which quota a run spends.
+    id: "claude",
+    name: "Claude",
+    shape: "anthropic",
+    baseUrl: "https://api.anthropic.com",
+    models: ["claude-fable-5", "claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
+    auth: "oauth",
+    color: "#D97757",
+    icon: "anthropic",
+  },
+  {
     id: "openai",
     name: "OpenAI",
     shape: "openai",

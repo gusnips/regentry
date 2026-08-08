@@ -6,7 +6,7 @@ import { AddProviderDialog } from "./AddProviderDialog";
 import { listModels, pickLatestModel } from "../models";
 import { PRESETS, providerDisplayName } from "../presets";
 import { REASONING_EFFORTS } from "../types";
-import type { ModelInfo, ProviderShape, ReasoningEffort } from "../types";
+import type { ModelInfo, ProviderConfig, ProviderShape, ReasoningEffort } from "../types";
 import { Select } from "@/components/Select";
 import type { SelectOption } from "@/components/Select";
 import { TextField } from "@/components/TextField";
@@ -32,6 +32,8 @@ interface ModelsTarget {
   shape: ProviderShape;
   baseUrl: string;
   apiKey: string;
+  /** Present on signed-in providers — listModels switches to OAuth-token mode headers. */
+  auth?: ProviderConfig["auth"];
 }
 
 /**
@@ -159,6 +161,7 @@ export function ModelControls() {
           shape: active.shape,
           baseUrl: active.baseUrl,
           apiKey: active.auth?.accessToken ?? active.apiKey,
+          auth: active.auth,
         }
       : null,
   );

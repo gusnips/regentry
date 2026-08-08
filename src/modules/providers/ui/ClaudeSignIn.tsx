@@ -1,28 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
-import { requestDeviceCode, pollForToken } from "../kimi-oauth";
-import type { DevicePrompt } from "../kimi-oauth";
+import { signInWithClaude } from "../claude-oauth";
 import { SignInError } from "../types";
 import type { OAuthCredential, SignInFailure } from "../types";
 
 type Phase =
   | { step: "idle" }
   | { step: "starting" }
-  | { step: "waiting"; prompt: DevicePrompt }
+  | { step: "waiting"; authorizeUrl: string }
   | { step: "failed"; reason: SignInFailure }
   | { step: "error"; message: string };
 
 /**
- * Device-code sign-in, start to finish. Regentry asks Kimi for a code, opens
- * the approval page with it pre-filled, and polls until the user approves —
- * so the only thing the user must do is confirm a code that is on screen in
- * front of them.
+ * OAuth sign-in for a Claude subscription (Pro/Max). Regentry opens the
+ * claude.ai approval page in a new tab, captures the localhost redirect, and
+ * exchanges the code — the only thing the user must do is approve on that page.
  *
- * Every ending is actionable: expiry and refusal both offer a fresh start,
- * and the code stays visible in case the tab never opened.
+ * Every ending is actionable: expiry and refusal both offer a fresh start, and
+ * the authorize link stays visible in case the tab never opened.
  */
-export function KimiSignIn({
+export function ClaudeSignIn({
   signedIn,
   onSignedIn,
 }: {
@@ -34,7 +32,7 @@ export function KimiSignIn({
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
   const abort = useRef<AbortController | null>(null);
 
-  // A dialog closed mid-poll must not leave a fetch loop running behind it.
+  // A dialog closed mid-sign-in must not leave the tab-watcher running behind it.
   useEffect(() => () => abort.current?.abort(), []);
 
   const start = useCallback(async () => {
@@ -44,13 +42,9 @@ export function KimiSignIn({
     setPhase({ step: "starting" });
 
     try {
-      const prompt = await requestDeviceCode();
-      setPhase({ step: "waiting", prompt });
-      // Pre-filled approval page. If the browser blocks it, the code below is
-      // the fallback — that's why it stays on screen while we wait.
-      void chrome.tabs.create({ url: prompt.verificationUrl });
-
-      const credential = await pollForToken(prompt, controller.signal);
+      const credential = await signInWithClaude(controller.signal, (authorizeUrl) =>
+        setPhase({ step: "waiting", authorizeUrl }),
+      );
       if (controller.signal.aborted) return;
       setPhase({ step: "idle" });
       onSignedIn(credential);
@@ -73,17 +67,19 @@ export function KimiSignIn({
   if (phase.step === "waiting") {
     return (
       <div className="flex flex-col gap-2 rounded-lg border border-brand-200 bg-brand-50 p-3 dark:border-brand-800 dark:bg-brand-950">
-        <span className="text-xs text-neutral-600 dark:text-neutral-300">
-          {t("providerForm.kimiSignInCodeLabel")}
-        </span>
-        <span className="text-center font-mono text-xl font-semibold tracking-[0.2em] text-neutral-900 dark:text-neutral-50">
-          {phase.prompt.userCode}
-        </span>
         <p className="text-xs text-neutral-600 dark:text-neutral-300">
-          {t("providerForm.kimiSignInOpened")}
+          {t("providerForm.claudeSignInOpened")}
         </p>
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
-          {t("providerForm.kimiSignInBlocked", { url: phase.prompt.verificationUrl })}
+          {t("providerForm.claudeSignInBlocked")}{" "}
+          <a
+            className="text-brand-600 break-all hover:underline dark:text-brand-400"
+            href={phase.authorizeUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {phase.authorizeUrl}
+          </a>
         </p>
         <div className="flex items-center justify-between gap-2 pt-1">
           <span
@@ -112,14 +108,14 @@ export function KimiSignIn({
           {phase.step === "error"
             ? phase.message
             : expired
-              ? t("providerForm.kimiSignInExpiredTitle")
+              ? t("providerForm.claudeSignInExpiredTitle")
               : t("providerForm.signInDeniedTitle")}
         </span>
         {phase.step === "failed" && (
           <span className="text-xs text-amber-800 dark:text-amber-200">
             {expired
-              ? t("providerForm.kimiSignInExpiredBody")
-              : t("providerForm.kimiSignInDeniedBody")}
+              ? t("providerForm.claudeSignInExpiredBody")
+              : t("providerForm.claudeSignInDeniedBody")}
           </span>
         )}
         <Button type="button" size="sm" className="self-start" onClick={() => void start()}>
@@ -148,11 +144,11 @@ export function KimiSignIn({
           ? t("providerForm.signInWaiting")
           : signedIn
             ? t("providerForm.signInAgain")
-            : t("providerForm.kimiSignInStart")}
+            : t("providerForm.claudeSignInStart")}
       </Button>
       {!signedIn && (
         <span className="text-xs text-neutral-500 dark:text-neutral-400">
-          {t("providerForm.kimiSignInHint")}
+          {t("providerForm.claudeSignInHint")}
         </span>
       )}
     </div>

@@ -1,5 +1,5 @@
 import type { OAuthCredential } from "./types";
-import { ProviderError } from "./types";
+import { ProviderError, SignInError } from "./types";
 import { createLogger } from "@/lib/logger";
 import { i18n } from "@/i18n";
 
@@ -38,16 +38,6 @@ export interface DevicePrompt {
   deviceCode: string;
   intervalMs: number;
   expiresAt: number;
-}
-
-/** Why a sign-in ended without a credential — each wording is a different fix. */
-export type SignInFailure = "expired" | "denied" | "cancelled";
-
-export class SignInError extends Error {
-  constructor(public readonly reason: SignInFailure) {
-    super(reason);
-    this.name = "SignInError";
-  }
 }
 
 /** Step 1 — ask Kimi for a code the user can approve on the web. */

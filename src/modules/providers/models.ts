@@ -1,7 +1,7 @@
 import type { ModelInfo, ProviderConfig, ResolvedProviderConfig } from "./types";
 import { ProviderError } from "./types";
 import { PRESETS } from "./presets";
-import { anthropicHeaders, apiUrl } from "./http";
+import { anthropicHeaders, anthropicOAuthHeaders, apiUrl } from "./http";
 import { i18n } from "@/i18n";
 
 /**
@@ -10,12 +10,16 @@ import { i18n } from "@/i18n";
  * presets are only the fallback when an endpoint doesn't (QwenCloud 404s).
  */
 export async function listModels(
-  config: Pick<ProviderConfig, "shape" | "baseUrl" | "apiKey">,
+  config: Pick<ProviderConfig, "shape" | "baseUrl" | "apiKey" | "auth">,
 ): Promise<ModelInfo[]> {
   const url = apiUrl(config.baseUrl, config.shape === "anthropic" ? "/v1/models" : "/models");
+  // Signed-in providers list with their access token (OAuth-token mode); key
+  // providers with x-api-key. Callers pass an ensureProviderCredential'd config.
   const headers: Record<string, string> =
     config.shape === "anthropic"
-      ? anthropicHeaders(config.apiKey)
+      ? config.auth
+        ? anthropicOAuthHeaders(config.apiKey)
+        : anthropicHeaders(config.apiKey)
       : { Authorization: `Bearer ${config.apiKey}` };
 
   const res = await fetch(url, { headers });

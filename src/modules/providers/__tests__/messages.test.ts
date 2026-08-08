@@ -72,4 +72,10 @@ describe("Anthropic message mapping", () => {
       content: "hi",
     });
   });
+
+  it("re-prefixes replayed tool_use names in OAuth mode", () => {
+    const out = toAnthropicMessage(assistantWithTools, true);
+    const blocks = out.content as { type: string }[];
+    expect(blocks[1]).toMatchObject({ type: "tool_use", id: "c1", name: "custom_click" });
+  });
 });

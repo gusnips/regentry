@@ -149,4 +149,44 @@ describe("buildAnthropicBody", () => {
       { type: "text", text: "also check the footer" },
     ]);
   });
+
+  describe("in OAuth mode", () => {
+    // A signed-in subscription provider — the adapter must wear Claude Code's
+    // wire signatures: identity system block + custom_ tool-name prefix.
+    const oauth: ResolvedProviderConfig = {
+      ...anthropicBase,
+      auth: { accessToken: "at", refreshToken: "rt", expiresAt: 0 },
+    };
+    const tools = [
+      {
+        name: "snapshot",
+        description: "Snapshot the page",
+        params: { type: "object" as const, properties: {} },
+      },
+    ];
+
+    it("prepends the Claude Code identity as the first system block", () => {
+      const body = buildAnthropicBody(oauth, messages, []);
+      expect(body.system).toEqual([
+        { type: "text", text: "You are a Claude agent, built on Anthropic's Claude Agent SDK." },
+        { type: "text", text: "You are an agent." },
+      ]);
+    });
+
+    it("emits an identity block even when the conversation has no system message", () => {
+      const body = buildAnthropicBody(oauth, [{ role: "user", content: "hi" }], []);
+      expect((body.system as { text: string }[])[0]?.text).toContain("Claude Agent SDK");
+    });
+
+    it("prefixes declared tool names with custom_", () => {
+      const body = buildAnthropicBody(oauth, messages, tools);
+      expect((body.tools as { name: string }[])[0]?.name).toBe("custom_snapshot");
+    });
+
+    it("leaves key-based bodies untouched", () => {
+      const body = buildAnthropicBody(anthropicBase, messages, tools);
+      expect((body.tools as { name: string }[])[0]?.name).toBe("snapshot");
+      expect(body.system).toBe("You are an agent.");
+    });
+  });
 });
