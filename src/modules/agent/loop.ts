@@ -18,7 +18,7 @@ import { buildSystemPrompt, buildTaskMessage, buildToolDefs, type PreviousTab } 
 
 const log = createLogger("agent");
 
-const MAX_STEPS = 50;
+const MAX_STEPS = 150;
 /** Transient stream failures are retried in place this many times before surfacing. */
 const MAX_STREAM_ATTEMPTS = 3;
 const BASE_BACKOFF_MS = 1000;
