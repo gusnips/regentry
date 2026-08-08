@@ -20,6 +20,8 @@ sync with the product; when a feature lands, update the matching block and re-su
 | **Visibility**   | Public                                                                        |
 | **Support URL**  | https://github.com/gusnips/regentry/issues                                    |
 | **Homepage URL** | https://github.com/gusnips/regentry                                           |
+| **Extension ID** | `gkblgkcofolbpcbafkdhiihfbpjhdpgh` (assigned 2026-08-08)                      |
+| **Store URL**    | https://chromewebstore.google.com/detail/gkblgkcofolbpcbafkdhiihfbpjhdpgh     |
 
 **Title field** (≤ 45 chars) — use the plain name, it's the strongest brand:
 
