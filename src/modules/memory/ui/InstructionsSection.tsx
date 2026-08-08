@@ -23,10 +23,9 @@ export function InstructionsSection() {
         value={text}
         onChange={(e) => edit(e.target.value)}
         rows={6}
-        spellCheck={false}
         aria-label={t("instructions.title")}
         placeholder={t("instructions.placeholder")}
-        className="mt-3 w-full resize-y bg-white text-sm leading-relaxed text-neutral-800 dark:bg-neutral-900 dark:text-neutral-200"
+        className="mt-3 w-full bg-white text-sm leading-relaxed text-neutral-800 dark:bg-neutral-900 dark:text-neutral-200"
       />
 
       <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">

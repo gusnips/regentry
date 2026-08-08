@@ -118,7 +118,7 @@
     "delete": "Delete",
     "deleteAria": "Delete conversation: {{title}}",
     "deleteTitle": "Delete this conversation?",
-    "deleteBody": "The transcript is removed from this device. Anything Regentry saved to MEMORY.md stays — clear that separately under Memory.",
+    "deleteBody": "The transcript is removed from this device. What Regentry has learned stays in its memory — you can delete any of those in Settings.",
     "emptyTitle": "No conversations yet",
     "emptyBody": "Every task you send is kept here as a transcript — open one to reread what the agent did, or delete the ones you're done with.",
     "emptyAction": "Start a task",

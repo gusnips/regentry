@@ -37,6 +37,9 @@ export default function App() {
 
       {/* Standing instructions shape every chat — not memory, so it sits on its own. */}
       <InstructionsSection />
+      {/* What it has learned lives next to how it behaves — the two knowledge
+          surfaces sit together, the provider machinery last. */}
+      <MemorySection />
 
       <section className="mt-8">
         <div className="flex items-center justify-between">
@@ -49,8 +52,6 @@ export default function App() {
           <ProviderList />
         </div>
       </section>
-
-      <MemorySection />
     </div>
   );
 }

@@ -118,7 +118,7 @@
     "delete": "Excluir",
     "deleteAria": "Excluir conversa: {{title}}",
     "deleteTitle": "Excluir esta conversa?",
-    "deleteBody": "A transcrição é removida deste dispositivo. O que o Regentry salvou no MEMORY.md permanece — limpe esse arquivo em Memória.",
+    "deleteBody": "A transcrição é removida deste dispositivo. O que o Regentry aprendeu fica na memória dele — você pode apagar isso nas Configurações.",
     "emptyTitle": "Nenhuma conversa ainda",
     "emptyBody": "Cada tarefa que você envia fica guardada aqui como histórico — abra uma para reler o que o agente fez, ou exclua as que não precisa mais.",
     "emptyAction": "Começar uma tarefa",

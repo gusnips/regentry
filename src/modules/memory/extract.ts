@@ -25,7 +25,7 @@ Do NOT save:
 - One-off task details ("archived the email", "the price was $50") — those belong to this task only.
 - Anything already in the memory below.
 - Secrets: passwords, API keys, card numbers, or login credentials.
-- More than 2 facts — save only what is clearly durable.
+- More than 3 facts — save only what is clearly durable.
 
 Reply with only the facts, one per line, each starting with "- ". If nothing is durable, reply with exactly: none
 

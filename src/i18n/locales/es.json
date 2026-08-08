@@ -118,7 +118,7 @@
     "delete": "Eliminar",
     "deleteAria": "Eliminar conversación: {{title}}",
     "deleteTitle": "¿Eliminar esta conversación?",
-    "deleteBody": "La transcripción se elimina de este dispositivo. Lo que Regentry haya guardado en MEMORY.md permanece: vacíalo aparte en Memoria.",
+    "deleteBody": "La transcripción se elimina de este dispositivo. Lo que Regentry haya aprendido queda en su memoria — puedes eliminarlo en Configuración.",
     "emptyTitle": "Aún no hay conversaciones",
     "emptyBody": "Cada tarea que envías se guarda aquí como historial — abre una para releer lo que hizo el agente, o elimina las que ya no necesites.",
     "emptyAction": "Empezar una tarea",
