@@ -63,9 +63,10 @@ export const useProvidersStore = create<ProvidersState>((set, get) => ({
       createdAt: Date.now(),
     };
     await saveProvider(provider);
-    // Auto-activate the first provider
-    const activeId = await getActiveProviderId();
-    if (!activeId) await setActiveProvider(provider.id);
+    // The provider you just set up is the one you want to run on — adding
+    // (or signing in to / keying) one switches to it. Removing still falls
+    // back to the next provider in storage.
+    await setActiveProvider(provider.id);
   },
 
   remove: async (id) => {
