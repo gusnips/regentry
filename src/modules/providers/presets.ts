@@ -49,7 +49,7 @@ export type IconKey =
 export const PRESETS: ProviderPreset[] = [
   {
     id: "anthropic",
-    name: "Anthropic",
+    name: "Anthropic (API)",
     shape: "anthropic",
     baseUrl: "https://api.anthropic.com",
     models: ["claude-fable-5", "claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
@@ -62,7 +62,7 @@ export const PRESETS: ProviderPreset[] = [
     // sign-in instead of a key. One row per way to pay — a user with both a key
     // and a plan always knows which quota a run spends.
     id: "claude",
-    name: "Claude",
+    name: "Anthropic (Subscription)",
     shape: "anthropic",
     baseUrl: "https://api.anthropic.com",
     models: ["claude-fable-5", "claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
@@ -72,7 +72,7 @@ export const PRESETS: ProviderPreset[] = [
   },
   {
     id: "openai",
-    name: "OpenAI",
+    name: "OpenAI (API)",
     shape: "openai",
     baseUrl: "https://api.openai.com/v1",
     models: ["gpt-5", "gpt-5-mini", "gpt-4o"],
@@ -86,7 +86,7 @@ export const PRESETS: ProviderPreset[] = [
     // Responses wire format at a backend with no public model-list route, so
     // the preset models ARE the picker's list.
     id: "chatgpt",
-    name: "ChatGPT",
+    name: "OpenAI (Subscription)",
     shape: "responses",
     baseUrl: "https://chatgpt.com/backend-api/codex",
     models: ["gpt-5.4-mini", "gpt-5.5", "gpt-5.3-codex", "gpt-5.1-codex-max"],
@@ -96,7 +96,7 @@ export const PRESETS: ProviderPreset[] = [
   },
   {
     id: "kimi",
-    name: "Kimi Coding",
+    name: "Kimi Coding (API)",
     shape: "anthropic",
     baseUrl: "https://api.kimi.com/coding",
     models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],
@@ -109,7 +109,7 @@ export const PRESETS: ProviderPreset[] = [
     // instead of a key. Kimi bills the two separately, so they stay separate
     // rows — a user with both always knows which quota a run spends.
     id: "kimi-plan",
-    name: "Kimi (subscription)",
+    name: "Kimi Coding (Subscription)",
     shape: "anthropic",
     baseUrl: "https://api.kimi.com/coding",
     models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],

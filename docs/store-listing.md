@@ -68,10 +68,10 @@ already use, until the task you described is done.
 
 - **Works in your real browser** — your existing logins are its sessions. No setup on every site,
   no fake profile, no separate account.
-- **Bring your own provider** — 15 presets (Anthropic, OpenAI, ChatGPT, Kimi, Z.ai, Qwen, DeepSeek,
-  Gemini, OpenRouter, Groq, Mistral, xAI, Ollama; Claude and Kimi sign in with a subscription) plus
-  any endpoint speaking the OpenAI or Anthropic wire format. No vendor lock-in, no relay, no
-  Regentry server.
+- **Bring your own provider** — 15 presets (Anthropic, OpenAI, Kimi, Z.ai, Qwen, DeepSeek,
+  Gemini, OpenRouter, Groq, Mistral, xAI, Ollama; Anthropic, OpenAI and Kimi each sign in with a
+  subscription) plus any endpoint speaking the OpenAI or Anthropic wire format. No vendor lock-in,
+  no relay, no Regentry server.
 - **Your keys stay yours** — the API key goes straight from the extension to your provider.
   Nothing is stored outside Chrome. No account, no telemetry.
 - **Trusted input** — clicks and keystrokes go through the Chrome DevTools Protocol, so they are

@@ -72,7 +72,11 @@ export async function signInWithClaude(
   onPending?: (authorizeUrl: string) => void,
 ): Promise<OAuthCredential> {
   const { verifier, challenge } = await generatePKCE();
-  const state = generateState();
+  // Anthropic quirk: claude.ai/oauth/authorize rejects a random `state` with
+  // "Invalid request format" — the state must be the PKCE verifier, which is
+  // what the Claude Code CLI ships. Same secret the exchange needs, so a
+  // forged callback still can't mint tokens.
+  const state = verifier;
   const authorizeUrl = buildAuthorizeUrl(challenge, state);
   onPending?.(authorizeUrl);
 
@@ -241,12 +245,6 @@ function accountFromResponse(body: Record<string, unknown>): string | undefined 
   const record = account as Record<string, unknown>;
   const email = str(record.email_address);
   return email?.toLowerCase() ?? str(record.uuid);
-}
-
-function generateState(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return toBase64Url(bytes);
 }
 
 function toBase64Url(bytes: Uint8Array): string {
