@@ -1,7 +1,8 @@
 export {
   appendMessage,
+  appendMessageTo,
   getActiveId,
-  getConversationTabs,
+  getConversationTabsFor,
   getMessages,
-  recordDrivenTab,
+  recordDrivenTabFor,
 } from "./conversations";

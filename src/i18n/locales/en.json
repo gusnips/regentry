@@ -223,6 +223,8 @@
   },
   "errors": {
     "alreadyRunning": "A task is already running. Stop it first.",
+    "alreadyRunningMCP": "A task from an external MCP client is already running. Stop it from the client (regentry.stop), or wait for it to finish.",
+    "alreadyRunningPanel": "A task is already running in the Regentry panel. Open the panel and stop it, or wait for it to finish.",
     "noActiveProvider": "No active provider — pick one in the panel dropdown, or add one in Settings.",
     "noActiveTab": "No active tab found.",
     "panelClosed": "Side panel closed — the run was stopped",

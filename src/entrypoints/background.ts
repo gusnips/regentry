@@ -1,222 +1,70 @@
 import { initI18n, i18n } from "@/i18n";
-import { runAgentLoop, buildConversationHistory } from "@/modules/agent";
-import { extractAndRemember } from "@/modules/memory";
-import {
-  createDriver,
-  showAgentIndicator,
-  hideAgentIndicator,
-  refreshAgentIndicator,
-  waitAgentIndicator,
-  clearAgentWait,
-} from "@/modules/browser";
-import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
-import type { ResolvedProviderConfig } from "@/modules/providers/types";
-import {
-  appendMessage,
-  getActiveId,
-  getConversationTabs,
-  getMessages,
-  recordDrivenTab,
-} from "@/modules/conversation";
+import { startAgentRun } from "@/modules/agent/start-run";
+import { getActiveRun, releaseRun } from "@/modules/agent/active-runs";
+import type { ActiveRun } from "@/modules/agent/active-runs";
+import { appendMessage, getActiveId } from "@/modules/conversation";
+import { refreshAgentIndicator } from "@/modules/browser";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
+import { startBridge } from "@/modules/bridge";
 
 const log = createLogger("bg");
 
 export default defineBackground(() => {
   void initI18n();
+  // The MCP bridge — a WS client to the local daemon so external AI clients can
+  // drive the same loop. Reconnects on its own reconcile alarm; harmless when
+  // no daemon is listening.
+  startBridge();
   log.debug("background initialized");
 
   chrome.runtime.onConnect.addListener((port) => {
     if (port.name !== PORT_NAME) return;
     log.debug("side panel connected");
 
-    let abortController: AbortController | null = null;
-    /** Messages typed mid-run; drained by the loop at each tool boundary. */
-    const injectedQueue: { id: string; text: string }[] = [];
-
     port.onMessage.addListener(async (msg: Command) => {
       switch (msg.type) {
         case "run": {
-          if (abortController) {
-            send(port, { type: "error", message: i18n.t("errors.alreadyRunning") });
-            return;
-          }
-
-          // Independent lookups — run them together; error precedence stays provider-first.
-          const [providerConfig, [tab], transcript] = await Promise.all([
-            getActiveProvider(),
-            chrome.tabs.query({ active: true, currentWindow: true }),
-            getActiveId().then((id) => (id ? getMessages(id) : [])),
-          ]);
-          if (!providerConfig) {
-            send(port, {
-              type: "error",
-              message: i18n.t("errors.noActiveProvider"),
-            });
-            return;
-          }
-
-          if (!tab?.id) {
-            send(port, { type: "error", message: i18n.t("errors.noActiveTab") });
-            return;
-          }
-
-          // Resolve "auto" model to a concrete id at run start — mid-task
-          // changes to the stored config never affect a run in flight.
-          let provider;
-          let resolvedProvider: ResolvedProviderConfig | undefined;
-          try {
-            resolvedProvider = await resolveProviderModel(providerConfig);
-            provider = createProvider(resolvedProvider);
-          } catch (e) {
-            const message = e instanceof Error ? e.message : String(e);
-            log.error("provider setup failed:", message);
-            send(port, { type: "error", message });
-            return;
-          }
-
-          // The user submitted from this window's active tab — but the conversation
-          // may have worked elsewhere (one run per message, and users move between
-          // messages). Name those tabs so references like "that email" or "the doc"
-          // can find their way back (rule 6 does the rest).
-          const previousTabs = tab.url
-            ? (await getConversationTabs()).filter((t) => t.url !== tab.url)
-            : [];
-
-          log.info("run queued", {
-            provider: providerConfig.name,
-            model: providerConfig.model ?? "auto",
-            tabId: tab.id,
-            task: truncate(msg.task, 120),
+          // The panel's task message was stored (and its id adopted) before the
+          // run command left — so the active conversation is this run's home.
+          const conversationId = (await getActiveId()) ?? crypto.randomUUID();
+          const result = await startAgentRun({
+            conversationId,
+            owner: "panel",
+            task: msg.task,
+            images: msg.images,
+            emit: (event) => send(port, event),
+            onAskUser: (question) => void notifyIfAway(question),
           });
-
-          // The run owns its controller: the shared `abortController` may already
-          // name a newer run by the time this one unwinds (a stop redirect hands
-          // off immediately), so the finally and the tab-gone listener must act on
-          // this run's own instance, not the shared one.
-          const runController = new AbortController();
-          abortController = runController;
-          injectedQueue.length = 0;
-          let endedOnQuestion = false;
-          // A moving target: the run starts on the submit-time tab but the
-          // agent may re-target itself with switch_tab — badge, panel chip and
-          // fail-fast all follow.
-          let drivenTabId = tab.id;
-          let drivenTitle = tabLabel(tab);
-          const driver = createDriver(tab.id, (info) => {
-            void hideAgentIndicator(drivenTabId);
-            drivenTabId = info.id;
-            drivenTitle = info.title;
-            send(port, {
-              type: "driving",
-              tabId: info.id,
-              windowId: info.windowId,
-              title: info.title,
-              favIconUrl: info.favIconUrl,
-            });
-            void showAgentIndicator(info.id, i18n.t("indicator.driving"));
-          });
-          // The panel is window-scoped and stays open on every tab — name the
-          // tab this run actually drives, so the user can find their way to it.
-          send(port, {
-            type: "driving",
-            tabId: drivenTabId,
-            windowId: tab.windowId,
-            title: drivenTitle,
-            favIconUrl: tab.favIconUrl || undefined,
-          });
-          // The driven tab going away is fatal, not transient: every later tool
-          // call would fail the same way. End the run with a clear error instead
-          // of letting the model burn turns retrying a dead tab id.
-          const onTabGone = (removedId: number) => {
-            if (removedId !== drivenTabId) return;
-            log.info("driven tab closed mid-run", { tabId: drivenTabId });
-            send(port, {
-              type: "error",
-              message: i18n.t("errors.tabClosed", { title: drivenTitle }),
-            });
-            runController.abort();
-          };
-          chrome.tabs.onRemoved.addListener(onTabGone);
-          // Tell the page itself it is being driven — the side panel may be
-          // scrolled away or on another window.
-          await clearAgentWait();
-          chrome.notifications.clear("regentry-question");
-          void showAgentIndicator(drivenTabId, i18n.t("indicator.driving"));
-
-          // The stored conversation as wire turns — "continue" lands on a model
-          // that has read the same exchange, not on a stranger.
-          const history = buildConversationHistory(transcript);
-
-          try {
-            const wire = await runAgentLoop({
-              provider,
-              driver,
-              task: msg.task,
-              images: msg.images,
-              supportsImages: resolvedProvider?.supportsImages,
-              history: history.length > 0 ? history : undefined,
-              previousTabs: previousTabs.length > 0 ? previousTabs : undefined,
-              drainInjected: () => injectedQueue.splice(0, injectedQueue.length),
-              signal: runController.signal,
-              callbacks: {
-                onInjected: (id, text) => send(port, { type: "injected", id, text }),
-                onToken: (text) => send(port, { type: "token", text }),
-                onReasoning: (text) => send(port, { type: "reasoning", text }),
-                onStepStart: (tool, args) => send(port, { type: "step_start", tool, args }),
-                onStep: (step) => send(port, { type: "step", ...step }),
-                onPlan: (plan) => send(port, { type: "plan", ...plan }),
-                onUsage: (input, output) => send(port, { type: "usage", input, output }),
-                onError: (message) => send(port, { type: "error", message }),
-                onDone: (summary) => send(port, { type: "done", summary }),
-                onAskUser: (question) => {
-                  endedOnQuestion = true;
-                  void notifyIfAway(question);
-                },
-              },
-            });
-            // Memory is a background nicety: after a finished run, one cheap extra
-            // call distills the durable facts the agent never got around to remembering.
-            // Fire-and-forget — best-effort, a failed extraction never fails the run.
-            if (!runController.signal.aborted && resolvedProvider) {
-              void extractAndRemember(resolvedProvider, wire, runController.signal);
-            }
-          } catch (e) {
-            const message = e instanceof Error ? e.message : String(e);
-            log.error("run crashed:", message);
-            send(port, { type: "error", message });
-          } finally {
-            chrome.tabs.onRemoved.removeListener(onTabGone);
-            // Only clear if this run's controller is still the current one — a stop
-            // redirect may have installed a newer run's controller already.
-            if (abortController === runController) abortController = null;
-            if (endedOnQuestion) void waitAgentIndicator(drivenTabId);
-            else void hideAgentIndicator(drivenTabId);
-            // Runs whatever unwinds the loop — done, error, stop, panel closed.
-            void persistDrivenTab(drivenTabId);
+          if (!result.ok) {
+            send(port, { type: "error", message: alreadyRunningMessage(result.active) });
           }
           break;
         }
 
         case "inject": {
           // Only meaningful mid-run; the panel routes idle-time input to `run`.
-          if (abortController) injectedQueue.push({ id: msg.id, text: msg.text });
+          const run = getActiveRun();
+          if (run?.owner === "panel") run.injectedQueue.push({ id: msg.id, text: msg.text });
           break;
         }
 
         case "unqueue": {
-          const i = injectedQueue.findIndex((q) => q.id === msg.id);
-          if (i >= 0) injectedQueue.splice(i, 1);
+          const run = getActiveRun();
+          if (run?.owner !== "panel") break;
+          const i = run.injectedQueue.findIndex((q) => q.id === msg.id);
+          if (i >= 0) run.injectedQueue.splice(i, 1);
           break;
         }
 
         case "stop": {
-          log.info("stop requested");
-          abortController?.abort();
-          abortController = null;
-          injectedQueue.length = 0;
+          const run = getActiveRun();
+          if (run?.owner === "panel") {
+            run.controller.abort();
+            run.injectedQueue.length = 0;
+            releaseRun(run);
+          }
           // Flush the partial stream immediately — the loop's own done arrives
           // as it unwinds and is a harmless no-op in the panel.
           send(port, { type: "done" });
@@ -232,10 +80,11 @@ export default defineBackground(() => {
     });
 
     port.onDisconnect.addListener(() => {
-      injectedQueue.length = 0;
-      if (abortController) {
-        abortController.abort();
-        abortController = null;
+      const run = getActiveRun();
+      if (run?.owner === "panel") {
+        run.controller.abort();
+        run.injectedQueue.length = 0;
+        releaseRun(run);
         // Best-effort breadcrumb so a reopened panel doesn't read as if the
         // agent simply never replied — the worker may die before this lands.
         void appendMessage({
@@ -273,19 +122,11 @@ function send(port: chrome.runtime.Port, event: Event) {
   }
 }
 
-/**
- * Remember the tab this run drove so the next run can spot a tab change.
- * The final state is read fresh — navigations mid-run leave the start-time
- * title and url stale.
- */
-async function persistDrivenTab(tabId: number): Promise<void> {
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    if (!tab.url) return;
-    await recordDrivenTab({ url: tab.url, title: tab.title ?? "", tabId });
-  } catch {
-    // The tab died during the run — nothing left to remember.
-  }
+/** alreadyRunning text naming who holds the slot — the panel reader needs to know. */
+function alreadyRunningMessage(run: ActiveRun): string {
+  return run.owner === "bridge"
+    ? i18n.t("errors.alreadyRunningMCP")
+    : i18n.t("errors.alreadyRunning");
 }
 
 /**
@@ -316,13 +157,3 @@ chrome.notifications.onClicked.addListener((id) => {
     });
   }
 });
-
-/** Best human label for a tab — its title, then hostname, then nothing (the panel hides the chip). */
-function tabLabel(tab: chrome.tabs.Tab): string {
-  if (tab.title) return tab.title;
-  try {
-    return tab.url ? new URL(tab.url).hostname : "";
-  } catch {
-    return "";
-  }
-}

@@ -66,23 +66,19 @@ export function setActiveConversation(id: string | null): Promise<void> {
  */
 const MAX_CONVERSATION_TABS = 5;
 
-/** The tabs the active conversation's runs drove, most recently worked first. */
-export async function getConversationTabs(): Promise<LastTab[]> {
-  const activeId = await activeItem.get();
-  if (!activeId) return [];
-  const row = (await indexItem.get()).find((c) => c.id === activeId);
+/** The tabs a conversation's runs drove, most recently worked first. */
+export async function getConversationTabsFor(id: string): Promise<LastTab[]> {
+  const row = (await indexItem.get()).find((c) => c.id === id);
   return row?.tabs ?? [];
 }
 
-/** Records where this run drove — re-driving a tab moves it back to the front. */
-export async function recordDrivenTab(tab: LastTab): Promise<void> {
-  const activeId = await activeItem.get();
-  if (!activeId) return;
+/** Records where a run drove — re-driving a tab moves it back to the front. */
+export async function recordDrivenTabFor(id: string, tab: LastTab): Promise<void> {
   const list = await indexItem.get();
-  if (!list.some((c) => c.id === activeId)) return;
+  if (!list.some((c) => c.id === id)) return;
   await indexItem.set(
     list.map((c) =>
-      c.id === activeId
+      c.id === id
         ? {
             ...c,
             tabs: [tab, ...(c.tabs ?? []).filter((t) => t.url !== tab.url)].slice(
@@ -102,18 +98,19 @@ export function conversationTitle(text: string): string {
 }
 
 /**
- * The conversation messages belong to, creating it if the panel is on a fresh
- * one — or if the active record was deleted mid-run and left the id dangling.
+ * Resolves the conversation's metadata, creating it if it doesn't exist — or
+ * if the record was deleted mid-run and left the id dangling. Never touches the
+ * active item: id-targeted writers (the bridge's MCP thread) use this without
+ * disturbing the panel's open conversation.
  */
-async function ensureActive(): Promise<ConversationMeta> {
-  const activeId = await activeItem.get();
+async function ensureConversation(id: string): Promise<ConversationMeta> {
   const list = await indexItem.get();
-  const existing = activeId ? list.find((c) => c.id === activeId) : undefined;
+  const existing = list.find((c) => c.id === id);
   if (existing) return existing;
 
   const now = Date.now();
   const meta: ConversationMeta = {
-    id: activeId ?? crypto.randomUUID(),
+    id,
     title: "",
     createdAt: now,
     updatedAt: now,
@@ -123,6 +120,22 @@ async function ensureActive(): Promise<ConversationMeta> {
   const evicted = list.slice(MAX_CONVERSATIONS - 1);
   await Promise.all(evicted.map((c) => messagesItem(c.id).remove()));
   await indexItem.set(kept);
+  return meta;
+}
+
+/**
+ * The conversation the panel's messages belong to. A fresh conversation (active
+ * id null) is created lazily on its first message and becomes the active one;
+ * a dangling id (deleted mid-run) is re-created under the same id.
+ */
+async function ensureActive(): Promise<ConversationMeta> {
+  const activeId = await activeItem.get();
+  if (activeId) {
+    const list = await indexItem.get();
+    const existing = list.find((c) => c.id === activeId);
+    if (existing) return existing;
+  }
+  const meta = await ensureConversation(activeId ?? crypto.randomUUID());
   await activeItem.set(meta.id);
   return meta;
 }
@@ -165,11 +178,16 @@ function serialized<T>(op: () => Promise<T>): Promise<T> {
 
 /** Appends to the active conversation and returns its id. */
 export function appendMessage(msg: Message): Promise<string> {
-  return serialized(() => append(msg));
+  return serialized(() => appendTo(null, msg));
 }
 
-async function append(msg: Message): Promise<string> {
-  const meta = await ensureActive();
+/** Appends to a specific conversation (the bridge's MCP thread) and returns its id. */
+export function appendMessageTo(id: string, msg: Message): Promise<string> {
+  return serialized(() => appendTo(id, msg));
+}
+
+async function appendTo(id: string | null, msg: Message): Promise<string> {
+  const meta = id ? await ensureConversation(id) : await ensureActive();
   const item = messagesItem(meta.id);
   const messages = [...(await item.get()), stripTransientImages(msg)].slice(-MAX_MESSAGES);
   await item.set(messages);
@@ -189,14 +207,14 @@ async function append(msg: Message): Promise<string> {
 /**
  * Rewrites one stored message in place. The plan card is state, not an entry:
  * appending every revision would bury the transcript in stale checklists.
+ * Id-targeted — the writer replaces plan cards in whatever conversation the run
+ * lives in.
  */
-export function replaceMessage(msg: Message): Promise<void> {
-  return serialized(() => replace(msg));
+export function replaceMessageTo(id: string, msg: Message): Promise<void> {
+  return serialized(() => replaceTo(id, msg));
 }
 
-async function replace(msg: Message): Promise<void> {
-  const id = await activeItem.get();
-  if (!id) return;
+async function replaceTo(id: string, msg: Message): Promise<void> {
   const item = messagesItem(id);
   const messages = await item.get();
   if (!messages.some((m) => m.id === msg.id)) return;

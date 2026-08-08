@@ -10,10 +10,10 @@ import {
   getActiveId,
   getMessages,
   listConversations,
-  replaceMessage,
   setActiveConversation,
   watchConversations,
 } from "../conversations";
+import { TranscriptWriter, closingSummary } from "../transcript";
 import { toolVerbKey } from "./tool-labels";
 import type { PastedText } from "./paste-collapse";
 
@@ -84,40 +84,16 @@ let pingTimer: ReturnType<typeof setInterval> | null = null;
 let unwatchConversations: (() => void) | null = null;
 /** Did this run stream any prose? Governs done-summary dedup, never its display. */
 let sawAssistantText = false;
+/** Persists this run's events to storage — the display half stays in this store. */
+let writer: TranscriptWriter | null = null;
 
 function makeMsg(role: Message["role"], content: string, extra?: Partial<Message>): Message {
   return { id: crypto.randomUUID(), role, content, timestamp: Date.now(), ...extra };
 }
 
-/** Case/whitespace/trailing-punctuation-blind equality — enough to spot a
- * summary repeating streamed prose verbatim. Deliberately conservative: a
- * dedup that swallows a genuinely different summary re-creates the silence. */
-function sameText(a: string, b: string): boolean {
-  const norm = (s: string) =>
-    s
-      .trim()
-      .replace(/[.!?…,:;]+$/, "")
-      .replace(/\s+/g, " ")
-      .toLowerCase();
-  return norm(a) === norm(b);
-}
-
-/**
- * The done summary is the run's closing word — the user must never be left
- * without one. Dropping it whenever ANY prose streamed (the old gate) made
- * runs end silent the moment the model spent a one-liner mid-way; only a
- * verbatim repeat of prose already shown adds nothing.
- */
-export function closingSummary(
-  sawProse: boolean,
-  lastProse: string | undefined,
-  summary: string | undefined,
-): string | null {
-  const text = summary?.trim();
-  if (!text) return null;
-  if (sawProse && lastProse !== undefined && sameText(lastProse, text)) return null;
-  return text;
-}
+// The dedup helper lives in the background-safe transcript writer — both the
+// panel and the bridge close runs the same way.
+export { closingSummary };
 
 export const useConversationStore = create<ConversationState>((set, get) => {
   /** Resolves once the message is stored — awaited only where ordering matters. */
@@ -127,6 +103,11 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     return appendMessage(msg).then((id) => {
       if (get().activeId !== id) set({ activeId: id });
     });
+  };
+
+  /** Display-only append — run events persist through the shared writer. */
+  const pushDisplay = (msg: Message): void => {
+    set({ messages: [...get().messages, msg] });
   };
 
   /** Transcript-independent state — reset whenever the panel switches transcripts. */
@@ -162,7 +143,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     const reasoning = get().reasoningText.trim();
     const startedAt = get().reasoningStartedAt;
     if (reasoning) {
-      pushMsg(
+      pushDisplay(
         makeMsg(
           "reasoning",
           reasoning,
@@ -177,7 +158,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     const text = get().streamingText.trim();
     if (text) {
       sawAssistantText = true;
-      pushMsg(makeMsg("assistant", text));
+      pushDisplay(makeMsg("assistant", text));
     }
     set({ streamingText: "" });
   };
@@ -189,7 +170,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
    * The one run-end transition — error, done, and a lost port all land here.
    * runStartedAt survives so the summary line can still say how long it went.
    */
-  const settleRun = (status: AgentStatus) =>
+  const settleRun = (status: AgentStatus) => {
+    writer = null;
     set((st) => ({
       messages: settleLive(st.messages),
       streamingText: "",
@@ -200,6 +182,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       pendingStepId: null,
       drivingTab: null,
     }));
+  };
 
   /** Recall a text into the composer, preserving anything already there. */
   const mergeIntoDraft = (text: string) => {
@@ -227,6 +210,10 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
   const startRun = (p: chrome.runtime.Port, task: string, images?: string[]) => {
     sawAssistantText = false;
+    // The writer persists this run's events to storage — the task message was
+    // already appended (and its id adopted) before the run was sent.
+    const activeId = get().activeId;
+    writer = activeId ? new TranscriptWriter(activeId) : null;
     set({
       status: "running",
       streamingText: "",
@@ -285,6 +272,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
   const handleEvent = (event: Event) => {
     const s = get();
+    // Persistence happens in the shared transcript writer; this store only renders.
+    writer?.apply(event);
     switch (event.type) {
       case "driving":
         // The event payload IS the chip's data — see DrivingPayload in protocol.
@@ -330,13 +319,13 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         };
         const pending = get().pendingStepId;
         if (pending) {
-          // Settle the live row in place, then persist the finished step.
-          const msgs = get().messages.map((m) => (m.id === pending ? { ...m, ...settled } : m));
-          set({ messages: msgs, pendingStepId: null });
-          const finished = msgs.find((m) => m.id === pending);
-          if (finished) void appendMessage(finished);
+          // Settle the live row in place — persistence is the writer's job now.
+          set({
+            messages: get().messages.map((m) => (m.id === pending ? { ...m, ...settled } : m)),
+            pendingStepId: null,
+          });
         } else {
-          pushMsg(makeMsg("step", event.summary, { tool: event.tool, ...settled }));
+          pushDisplay(makeMsg("step", event.summary, { tool: event.tool, ...settled }));
         }
         break;
       }
@@ -349,14 +338,13 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         if (existing) {
           // Rewritten in place, so the card stays where the agent first drew it
           // instead of a new copy sliding in on every completed step.
-          const msgs = get().messages.map((m) => (m.id === existing ? { ...m, ...plan } : m));
-          set({ messages: msgs });
-          const updated = msgs.find((m) => m.id === existing);
-          if (updated) void replaceMessage(updated);
+          set({
+            messages: get().messages.map((m) => (m.id === existing ? { ...m, ...plan } : m)),
+          });
         } else {
           const msg = makeMsg("plan", "", plan);
           set({ planMsgId: msg.id });
-          pushMsg(msg);
+          pushDisplay(msg);
         }
         break;
       }
@@ -365,7 +353,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         // The loop consumed a queued message at a tool boundary — the pending
         // line becomes a real transcript entry in the order the model saw it.
         set({ queued: get().queued.filter((q) => q.id !== event.id) });
-        pushMsg(makeMsg("user", event.text));
+        pushDisplay(makeMsg("user", event.text));
         break;
 
       case "usage":
@@ -381,7 +369,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         recallQueue();
         // A stop redirect must never auto-fire into an error — hand it back.
         returnPending();
-        pushMsg(makeMsg("error", event.message));
+        pushDisplay(makeMsg("error", event.message));
         settleRun("error");
         break;
       }
@@ -395,7 +383,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
           .reverse()
           .find((m) => m.role === "assistant")?.content;
         const closing = closingSummary(sawAssistantText, lastProse, event.summary);
-        if (closing) pushMsg(makeMsg("assistant", closing));
+        if (closing) pushDisplay(makeMsg("assistant", closing));
         recallQueue();
         settleRun("idle");
         // The stop was a redirect, not just a halt: the queued text runs as the

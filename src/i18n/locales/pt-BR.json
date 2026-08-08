@@ -223,6 +223,8 @@
   },
   "errors": {
     "alreadyRunning": "Uma tarefa já está em execução. Pare-a primeiro.",
+    "alreadyRunningMCP": "Uma tarefa de um cliente MCP externo já está em execução. Pare-a pelo cliente (regentry.stop) ou aguarde terminar.",
+    "alreadyRunningPanel": "Uma tarefa já está em execução no painel do Regentry. Abra o painel e pare-a, ou aguarde terminar.",
     "noActiveProvider": "Nenhum provedor ativo — escolha um no seletor do painel ou adicione um nas Configurações.",
     "noActiveTab": "Nenhuma aba ativa encontrada.",
     "panelClosed": "Painel lateral fechado — a execução foi interrompida",

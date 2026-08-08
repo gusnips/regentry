@@ -223,6 +223,8 @@
   },
   "errors": {
     "alreadyRunning": "Ya hay una tarea en ejecución. Deténla primero.",
+    "alreadyRunningMCP": "Ya hay una tarea de un cliente MCP externo en ejecución. Detenla desde el cliente (regentry.stop) o espera a que termine.",
+    "alreadyRunningPanel": "Ya hay una tarea ejecutándose en el panel de Regentry. Abre el panel y detenla, o espera a que termine.",
     "noActiveProvider": "No hay proveedor activo — elige uno en el selector del panel o añade uno en Configuración.",
     "noActiveTab": "No se encontró ninguna pestaña activa.",
     "panelClosed": "Panel lateral cerrado — la ejecución se detuvo",

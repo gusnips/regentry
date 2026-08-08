@@ -17,7 +17,17 @@ export default defineConfig({
       96: "icon/96.png",
       128: "icon/128.png",
     },
-    permissions: ["debugger", "storage", "scripting", "sidePanel", "tabs", "activeTab", "notifications"],
+    permissions: [
+      "debugger",
+      "storage",
+      "scripting",
+      "sidePanel",
+      "tabs",
+      "activeTab",
+      "notifications",
+      // The MCP bridge's reconcile alarm — wakes a suspended worker to reconnect.
+      "alarms",
+    ],
     host_permissions: ["<all_urls>"],
     side_panel: {
       default_path: "/sidepanel.html",

@@ -1,0 +1,81 @@
+import { describe, it, expect } from "vitest";
+
+import { TranscriptWriter } from "../transcript";
+import { getMessages } from "../conversations";
+import type { Event } from "@/shared/protocol";
+
+/**
+ * The writer appends fire-and-forget through the serialized storage chain, and
+ * the in-memory storage stub settles entirely in microtasks — so one macrotask
+ * turn is enough for every queued write to have landed.
+ */
+const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+async function replay(id: string, events: Event[]) {
+  const writer = new TranscriptWriter(id);
+  events.forEach((e) => writer.apply(e));
+  await settled();
+  return (await getMessages(id)).map((m) => [m.role, m.content] as const);
+}
+
+describe("TranscriptWriter", () => {
+  it("writes a run the way the panel renders it: thoughts, tools, prose, close", async () => {
+    const rows = await replay("run-1", [
+      { type: "reasoning", text: "inbox first" },
+      // Prose closes the reasoning segment — a run reads in the order it happened.
+      { type: "token", text: "Opening the inbox" },
+      { type: "step_start", tool: "navigate" },
+      { type: "step", tool: "navigate", summary: "Navigated successfully", ok: true },
+      { type: "usage", input: 10, output: 4 },
+      { type: "done", summary: "Two unread invoices." },
+    ]);
+
+    expect(rows).toEqual([
+      ["reasoning", "inbox first"],
+      ["step", "Navigated successfully"],
+      // Streamed prose is held until the turn ends, so it sits after the work.
+      ["assistant", "Opening the inbox"],
+      ["assistant", "Two unread invoices."],
+    ]);
+  });
+
+  it("rewrites the plan card in place instead of stacking copies", async () => {
+    const writer = new TranscriptWriter("run-2");
+    writer.apply({ type: "plan", steps: ["open", "read"], current: 0 });
+    writer.apply({ type: "plan", steps: ["open", "read"], current: 1 });
+    await settled();
+
+    const stored = await getMessages("run-2");
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({ role: "plan", current: 1 });
+  });
+
+  it("flushes a partial stream before the error, so no prose is lost", async () => {
+    const rows = await replay("run-3", [
+      { type: "token", text: "Checking the cart" },
+      { type: "error", message: "Provider error: 429" },
+    ]);
+
+    expect(rows).toEqual([
+      ["assistant", "Checking the cart"],
+      ["error", "Provider error: 429"],
+    ]);
+  });
+
+  it("drops a done summary that only repeats the prose already shown", async () => {
+    const rows = await replay("run-4", [
+      { type: "token", text: "The invoice is paid." },
+      { type: "done", summary: "The invoice is paid" },
+    ]);
+
+    expect(rows).toEqual([["assistant", "The invoice is paid."]]);
+  });
+
+  it("keeps each run in its own conversation", async () => {
+    await replay("thread-a", [{ type: "done", summary: "a" }]);
+    await replay("thread-b", [{ type: "done", summary: "b" }]);
+
+    expect((await getMessages("thread-a")).map((m) => m.content)).toEqual(["a"]);
+    expect((await getMessages("thread-b")).map((m) => m.content)).toEqual(["b"]);
+  });
+});
