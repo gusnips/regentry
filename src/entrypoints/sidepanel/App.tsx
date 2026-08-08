@@ -21,6 +21,11 @@ export default function App() {
   const disconnect = useConversationStore((s) => s.disconnect);
   const status = useConversationStore((s) => s.status);
   const stop = useConversationStore((s) => s.stop);
+  // Stays empty until the first message names the conversation — a placeholder
+  // here would just be filler above a transcript that says the same thing.
+  const chatTitle = useConversationStore(
+    (s) => s.conversations.find((c) => c.id === s.activeId)?.title ?? "",
+  );
   const providers = useProvidersStore((s) => s.providers);
   const loaded = useProvidersStore((s) => s.loaded);
   const load = useProvidersStore((s) => s.load);
@@ -60,15 +65,18 @@ export default function App() {
   return (
     <div className="flex h-screen flex-col bg-white dark:bg-neutral-950">
       <header className="border-b border-neutral-200 px-3 pt-2 dark:border-neutral-800">
-        {/* Row 1: brand, then the rare utilities quiet, then the hot action
-            labeled at the row's end. Row 2: who answers and with what, as
-            quiet chips — the header is read a hundred times per change. */}
+        {/* Row 1: the open chat's title, then the rare utilities quiet, then the
+            hot action labeled at the row's end. No brand mark: the browser's own
+            side-panel header already sits directly above with our icon and name,
+            and a second wordmark is duplicate chrome. Row 2: who answers and with
+            what, as quiet chips — the header is read a hundred times per change. */}
         <div className="flex items-center gap-1 pb-1">
-          <img src="/icon.svg" className="h-5 w-5 shrink-0" alt="" aria-hidden />
-          <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            Regentry
+          <span
+            className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-neutral-700 dark:text-neutral-200"
+            title={chatTitle || undefined}
+          >
+            {historyOpen ? "" : chatTitle}
           </span>
-          <div className="min-w-0 flex-1" />
           {!needsProvider && (
             <HistoryToggle open={historyOpen} onToggle={() => setHistoryOpen((v) => !v)} />
           )}
