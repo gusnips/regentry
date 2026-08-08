@@ -49,14 +49,20 @@ export function ChatInput() {
   /** Caret a token insert asked for, applied on the next paint. */
   const pendingCaret = useRef<number | null>(null);
 
-  // Autogrow with content, capped at ~6 rows; also restores the caret a token
-  // insert asked for (a plain effect would flash it at the end of the value first).
+  // Autogrow with content, capped at ~6 rows.
   useLayoutEffect(() => {
     const el = areaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
-    if (pendingCaret.current !== null) {
+  }, [text]);
+
+  // Restore the caret a token insert asked for — a layout effect, so it lands
+  // before the browser paints the value (a plain effect would flash it at the
+  // end of the text first).
+  useLayoutEffect(() => {
+    const el = areaRef.current;
+    if (el && pendingCaret.current !== null) {
       el.setSelectionRange(pendingCaret.current, pendingCaret.current);
       pendingCaret.current = null;
     }
@@ -159,9 +165,9 @@ export function ChatInput() {
       const el = areaRef.current;
       const caret = el?.selectionStart;
       if (el && caret !== undefined && caret === el.selectionEnd) {
-        const token = pastedTexts
-          .filter((p) => text.slice(0, caret).endsWith(p.token))
-          .sort((a, b) => b.token.length - a.token.length)[0]?.token;
+        // Tokens are mutually non-suffix (see nextToken), so at most one can
+        // sit right before the caret — no longest-match needed.
+        const token = pastedTexts.find((p) => text.slice(0, caret).endsWith(p.token))?.token;
         if (token) {
           e.preventDefault();
           const newCaret = caret - token.length;

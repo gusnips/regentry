@@ -211,14 +211,18 @@ export const useConversationStore = create<ConversationState>((set, get) => {
   const recallQueue = () => {
     const q = get().queued;
     if (q.length === 0) return;
-    set({ queued: [], draft: mergeIntoDraft(q.map((x) => x.text).join("\n")) });
+    set({
+      queued: [],
+      draft: mergeIntoDraft(q.map((x) => x.text).join("\n")),
+      collapseDisabled: false,
+    });
   };
 
   /** A stop's pending redirect that errored instead of unwinding cleanly returns to the composer. */
   const returnPending = () => {
     const pending = get().pendingSend;
     if (pending === null) return;
-    set({ pendingSend: null, draft: mergeIntoDraft(pending) });
+    set({ pendingSend: null, draft: mergeIntoDraft(pending), collapseDisabled: false });
   };
 
   const startRun = (p: chrome.runtime.Port, task: string, images?: string[]) => {
@@ -507,21 +511,19 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       const queued = get().queued;
       const last = queued[queued.length - 1];
       if (!last) return;
-      set({ queued: queued.slice(0, -1), draft: last.text });
+      set({ queued: queued.slice(0, -1), draft: last.text, collapseDisabled: false });
       post({ type: "unqueue", id: last.id });
     },
 
-    // The single composer writer (ChatInput routes every edit here), so a
-    // collapse whose token left the text drops its content — and, per draft,
-    // teaches the input to paste inline: the fold is only ever a surprise once.
+    // The single user-edit writer (ChatInput routes every edit here): a collapse
+    // whose token left the text drops its content — and, per draft, teaches the
+    // input to paste inline: the fold is only ever a surprise once. Store-side
+    // draft writers re-arm it — a recalled text is a fresh draft.
     setDraft: (text) =>
       set((st) => {
         const kept = st.pastedTexts.filter((p) => text.includes(p.token));
         const dropped = kept.length < st.pastedTexts.length;
-        // Most edits drop nothing — return only the draft so the collapse state
-        // array keeps its identity and the hint doesn't re-render per keystroke.
-        if (!dropped) return { draft: text };
-        return { draft: text, pastedTexts: kept, collapseDisabled: true };
+        return { draft: text, pastedTexts: kept, collapseDisabled: dropped || st.collapseDisabled };
       }),
     addPastedText: (entry) => set((st) => ({ pastedTexts: [...st.pastedTexts, entry] })),
     clearPastedTexts: () => set({ pastedTexts: [], collapseDisabled: false }),

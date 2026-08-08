@@ -1,12 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  expandText,
-  insertToken,
-  nextToken,
-  orphanedTexts,
-  pasteToken,
-  shouldCollapse,
-} from "../ui/paste-collapse";
+import { expandText, insertToken, nextToken, shouldCollapse } from "../ui/paste-collapse";
 
 const lbl = (n: number) => `Pasted ${n} lines`;
 
@@ -18,12 +11,18 @@ describe("shouldCollapse", () => {
   });
 });
 
-describe("pasteToken / nextToken", () => {
+describe("nextToken", () => {
   it("is clean the first time, bumps on reuse so two same-size pastes stay distinct", () => {
-    expect(pasteToken(lbl(5), 1)).toBe("[Pasted 5 lines]");
-    expect(pasteToken(lbl(5), 2)).toBe("[Pasted 5 lines (2)]");
+    expect(nextToken(new Set(), lbl(5))).toBe("[Pasted 5 lines]");
     const used = new Set(["[Pasted 5 lines]"]);
     expect(nextToken(used, lbl(5))).toBe("[Pasted 5 lines (2)]");
+  });
+
+  it("collided tokens are mutually non-suffix — backspace and expand both rely on it", () => {
+    const first = nextToken(new Set(), lbl(5));
+    const second = nextToken(new Set([first]), lbl(5));
+    expect(second.endsWith(first)).toBe(false);
+    expect(first.endsWith(second)).toBe(false);
   });
 });
 
@@ -35,16 +34,6 @@ describe("insertToken", () => {
     const over = insertToken("abc", 0, 3, "[Pasted 5 lines]");
     expect(over.text).toBe("[Pasted 5 lines]");
     expect(over.caret).toBe(16);
-  });
-});
-
-describe("orphanedTexts", () => {
-  it("flags collapses whose token is no longer in the text", () => {
-    const pasted = [
-      { token: "[Pasted 5 lines]", content: "x" },
-      { token: "[Pasted 7 lines]", content: "y" },
-    ];
-    expect(orphanedTexts("[Pasted 5 lines]", pasted)).toEqual([pasted[1]]);
   });
 });
 

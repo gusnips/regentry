@@ -6,7 +6,7 @@
  */
 
 /** Collapse pastes with more than this many lines into a token. */
-export const PASTE_LINE_THRESHOLD = 4;
+const PASTE_LINE_THRESHOLD = 4;
 
 /** A collapsed paste — its token in the input and the full text it stands for. */
 export interface PastedText {
@@ -24,21 +24,18 @@ export function shouldCollapse(text: string): boolean {
 }
 
 /**
- * The token for a collapse. `label` is the translated "Pasted 5 lines" wording;
- * `duplicate` is how many earlier collapses already used it, so two same-size
- * pastes stay distinct: [Pasted 5 lines] then [Pasted 5 lines (2)].
+ * The next free token for a collapse. `label` is the translated "Pasted 5
+ * lines" wording; a label already in use gets a duplicate number, so two
+ * same-size pastes stay distinct: [Pasted 5 lines] then [Pasted 5 lines (2)].
+ * The "(N)]" suffix keeps tokens mutually non-suffix, so a shorter token never
+ * matches inside a collided one — backspace and expand both rely on that.
  */
-export function pasteToken(label: string, duplicate: number): string {
-  return duplicate > 1 ? `[${label} (${duplicate})]` : `[${label}]`;
-}
-
-/** The next free token for a paste — bumps the duplicate number on reuse. */
 export function nextToken(used: Set<string>, label: string): string {
   let n = 1;
-  let token = pasteToken(label, n);
+  let token = `[${label}]`;
   while (used.has(token)) {
     n += 1;
-    token = pasteToken(label, n);
+    token = `[${label} (${n})]`;
   }
   return token;
 }
@@ -54,11 +51,6 @@ export function insertToken(
     text: text.slice(0, caretStart) + token + text.slice(caretEnd),
     caret: caretStart + token.length,
   };
-}
-
-/** Collapses whose token is no longer in the text — the user dropped them. */
-export function orphanedTexts(text: string, pasted: PastedText[]): PastedText[] {
-  return pasted.filter((p) => !text.includes(p.token));
 }
 
 /**
