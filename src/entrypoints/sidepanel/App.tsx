@@ -36,7 +36,12 @@ export default function App() {
   // Esc-to-close wins: with a dialog/menu open, Esc never halts a run by surprise.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (document.querySelector('[role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"]')) return;
+      if (
+        document.querySelector(
+          '[role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"]',
+        )
+      )
+        return;
       if (e.key === "Escape" && status === "running") {
         e.preventDefault();
         stop();

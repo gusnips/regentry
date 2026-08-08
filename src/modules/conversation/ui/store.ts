@@ -549,7 +549,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       // stop during the unwind must preserve the pending text, not wipe it.
       const pending =
         get().queued.length > 0
-          ? get().queued.map((x) => x.text).join("\n")
+          ? get()
+              .queued.map((x) => x.text)
+              .join("\n")
           : get().pendingSend;
       post({ type: "stop" });
       // Deliberately NOT settleRun: the loop's done event arrives as the worker

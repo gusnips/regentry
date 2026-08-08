@@ -160,7 +160,13 @@ function BridgeActiveBand({ active }: { active: BridgeActive }) {
           ? t("run.bridgeDriving", { client: active.client })
           : t("run.bridgeTask", { client: active.client })}
       </span>
-      <Button size="sm" variant="ghost" className="shrink-0" onClick={stop} title={t("run.bridgeStopTitle")}>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="shrink-0"
+        onClick={stop}
+        title={t("run.bridgeStopTitle")}
+      >
         {t("chat.stop")}
       </Button>
     </div>

@@ -151,7 +151,7 @@ Paste into the **Permission justification** section. (CWS shows this to reviewer
 | `activeTab`                     | Grants access to the tab the user submits a task from, per action.                                                                                                                 |
 | `storage`                       | Persists provider configs and conversation history locally in `chrome.storage`.                                                                                                    |
 | `notifications`                 | Alerts the user when the agent needs their input while Chrome is not focused.                                                                                                      |
-| `alarms`                        | Wakes a suspended service worker for the MCP bridge's periodic reconnect check — armed only while the bridge is enabled.                                                            |
+| `alarms`                        | Wakes a suspended service worker for the MCP bridge's periodic reconnect check — armed only while the bridge is enabled.                                                           |
 | Host permissions (`<all_urls>`) | The agent must be able to navigate, read, and interact with any site the user asks it to use. No network calls are made beyond the user's configured provider and the site itself. |
 
 **Single-purpose disclosure:** the extension exists solely to let a user's chosen LLM drive their

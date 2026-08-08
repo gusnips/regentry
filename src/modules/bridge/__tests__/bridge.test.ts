@@ -127,7 +127,9 @@ describe("Bridge activity", () => {
       method: "browserStart",
       params: { goal: "find the invoice", agent: "Claude Code" },
     });
-    await vi.waitFor(() => expect(bridge.activity).toEqual({ mode: "direct", client: "Claude Code" }));
+    await vi.waitFor(() =>
+      expect(bridge.activity).toEqual({ mode: "direct", client: "Claude Code" }),
+    );
     expect(seen).toEqual([{ mode: "direct", client: "Claude Code" }]);
 
     socketHandlers.onMessage?.({

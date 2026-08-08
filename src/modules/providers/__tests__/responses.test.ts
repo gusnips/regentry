@@ -40,11 +40,20 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("buildResponsesBody", () => {
   it("splits the system message into instructions and maps the rest to items", () => {
-    const body = buildResponsesBody(makeConfig(), [
-      { role: "system", content: "You are an agent." },
-      { role: "user", content: "Do the thing." },
-    ], []);
-    expect(body).toMatchObject({ model: "gpt-5.4-mini", instructions: "You are an agent.", stream: true, store: false });
+    const body = buildResponsesBody(
+      makeConfig(),
+      [
+        { role: "system", content: "You are an agent." },
+        { role: "user", content: "Do the thing." },
+      ],
+      [],
+    );
+    expect(body).toMatchObject({
+      model: "gpt-5.4-mini",
+      instructions: "You are an agent.",
+      stream: true,
+      store: false,
+    });
     expect(body.input).toEqual([
       { type: "message", role: "user", content: [{ type: "input_text", text: "Do the thing." }] },
     ]);
@@ -114,9 +123,9 @@ describe("buildResponsesBody", () => {
 
   it("omits the reasoning knob by default and with effort 'none', maps the rest", () => {
     expect(buildResponsesBody(makeConfig(), [], [])).not.toHaveProperty("reasoning");
-    expect(
-      buildResponsesBody(makeConfig({ reasoningEffort: "none" }), [], []),
-    ).not.toHaveProperty("reasoning");
+    expect(buildResponsesBody(makeConfig({ reasoningEffort: "none" }), [], [])).not.toHaveProperty(
+      "reasoning",
+    );
     const body = buildResponsesBody(makeConfig({ reasoningEffort: "high" }), [], []);
     expect(body.reasoning).toEqual({ effort: "high" });
   });
@@ -125,10 +134,21 @@ describe("buildResponsesBody", () => {
     const body = buildResponsesBody(
       makeConfig(),
       [{ role: "user", content: "hi" }],
-      [{ name: "click", description: "Click an element", params: { type: "object", properties: {} } }],
+      [
+        {
+          name: "click",
+          description: "Click an element",
+          params: { type: "object", properties: {} },
+        },
+      ],
     );
     expect(body.tools).toEqual([
-      { type: "function", name: "click", description: "Click an element", parameters: { type: "object", properties: {} } },
+      {
+        type: "function",
+        name: "click",
+        description: "Click an element",
+        parameters: { type: "object", properties: {} },
+      },
     ]);
   });
 });
@@ -143,7 +163,10 @@ describe("ChatGPT provider SSE parsing", () => {
           frame({ type: "response.reasoning_text.delta", delta: " look at" }),
           frame({ type: "response.output_text.delta", delta: "Hello" }),
           frame({ type: "response.output_text.delta", delta: " world" }),
-          frame({ type: "response.completed", response: { usage: { input_tokens: 10, output_tokens: 5 } } }),
+          frame({
+            type: "response.completed",
+            response: { usage: { input_tokens: 10, output_tokens: 5 } },
+          }),
         ]),
         { status: 200, headers: { "content-type": "text/event-stream" } },
       ),
@@ -166,10 +189,36 @@ describe("ChatGPT provider SSE parsing", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
         sseStream([
-          frame({ type: "response.output_item.added", item: { type: "function_call", id: "fc_1", call_id: "call_1", name: "click", arguments: "" } }),
-          frame({ type: "response.function_call_arguments.delta", item_id: "fc_1", delta: '{"ref":' }),
-          frame({ type: "response.function_call_arguments.delta", item_id: "fc_1", delta: '"e1"}' }),
-          frame({ type: "response.output_item.done", item: { type: "function_call", id: "fc_1", call_id: "call_1", name: "click", arguments: '{"ref":"e1"}' } }),
+          frame({
+            type: "response.output_item.added",
+            item: {
+              type: "function_call",
+              id: "fc_1",
+              call_id: "call_1",
+              name: "click",
+              arguments: "",
+            },
+          }),
+          frame({
+            type: "response.function_call_arguments.delta",
+            item_id: "fc_1",
+            delta: '{"ref":',
+          }),
+          frame({
+            type: "response.function_call_arguments.delta",
+            item_id: "fc_1",
+            delta: '"e1"}',
+          }),
+          frame({
+            type: "response.output_item.done",
+            item: {
+              type: "function_call",
+              id: "fc_1",
+              call_id: "call_1",
+              name: "click",
+              arguments: '{"ref":"e1"}',
+            },
+          }),
           frame({ type: "response.completed", response: {} }),
         ]),
         { status: 200, headers: { "content-type": "text/event-stream" } },
@@ -189,7 +238,16 @@ describe("ChatGPT provider SSE parsing", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
         sseStream([
-          frame({ type: "response.output_item.added", item: { type: "function_call", id: "fc_1", call_id: "call_1", name: "click", arguments: '{"ref":"e1"}' } }),
+          frame({
+            type: "response.output_item.added",
+            item: {
+              type: "function_call",
+              id: "fc_1",
+              call_id: "call_1",
+              name: "click",
+              arguments: '{"ref":"e1"}',
+            },
+          }),
           frame({ type: "response.completed", response: {} }),
         ]),
         { status: 200, headers: { "content-type": "text/event-stream" } },
@@ -199,7 +257,12 @@ describe("ChatGPT provider SSE parsing", () => {
     const deltas = [];
     for await (const d of provider.stream([], [], new AbortController().signal)) deltas.push(d);
 
-    expect(deltas).toContainEqual({ type: "tool_use", id: "call_1", name: "click", args: { ref: "e1" } });
+    expect(deltas).toContainEqual({
+      type: "tool_use",
+      id: "call_1",
+      name: "click",
+      args: { ref: "e1" },
+    });
     expect(deltas[deltas.length - 1]).toEqual({ type: "done" });
   });
 
@@ -208,7 +271,10 @@ describe("ChatGPT provider SSE parsing", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
         sseStream([
-          frame({ type: "response.incomplete", response: { incomplete_details: { reason: "max_output_tokens" } } }),
+          frame({
+            type: "response.incomplete",
+            response: { incomplete_details: { reason: "max_output_tokens" } },
+          }),
         ]),
         { status: 200, headers: { "content-type": "text/event-stream" } },
       ),
@@ -224,10 +290,10 @@ describe("ChatGPT provider SSE parsing", () => {
   it("sends the bearer token and the ChatGPT-Account-Id header to the responses endpoint", async () => {
     const provider = createResponsesProvider(makeConfig());
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(
-        sseStream([frame({ type: "response.completed", response: {} })]),
-        { status: 200, headers: { "content-type": "text/event-stream" } },
-      ),
+      new Response(sseStream([frame({ type: "response.completed", response: {} })]), {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      }),
     );
 
     for await (const delta of provider.stream([], [], new AbortController().signal)) {
