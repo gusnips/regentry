@@ -230,6 +230,7 @@
     "tabClosed": "The tab this task was driving ({{title}}) was closed — the run stopped. Regent needs the tab to stay open; reopen the page and send the task again.",
     "providerError": "Provider error: {{message}}",
     "outputLimit": "Model hit its output limit mid-response — answer may be incomplete",
+    "textOnlyImages": "This model can't receive images — the images you attached weren't sent to it. It works from text snapshots of the page.",
     "taskComplete": "Task complete",
     "stepBudgetExhausted": "Step budget exhausted",
     "retrying": "Connection hiccup — retrying ({{attempt}}/{{max}})",

@@ -230,6 +230,7 @@
     "tabClosed": "A aba que esta tarefa estava dirigindo ({{title}}) foi fechada — a execução parou. O Regent precisa que a aba fique aberta; reabra a página e envie a tarefa de novo.",
     "providerError": "Erro do provedor: {{message}}",
     "outputLimit": "O modelo atingiu seu limite de saída no meio da resposta — a resposta pode estar incompleta",
+    "textOnlyImages": "Este modelo não recebe imagens — as imagens que você anexou não foram enviadas. Ele trabalha com snapshots de texto da página.",
     "taskComplete": "Tarefa concluída",
     "stepBudgetExhausted": "Limite de etapas esgotado",
     "retrying": "Instabilidade de conexão — tentando de novo ({{attempt}}/{{max}})",

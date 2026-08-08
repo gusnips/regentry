@@ -48,17 +48,22 @@ export function pickLatestModel(models: ModelInfo[]): ModelInfo | undefined {
 export async function resolveProviderModel(
   config: ProviderConfig,
 ): Promise<ResolvedProviderConfig> {
-  if (config.model) return { ...config, model: config.model };
+  // Image support is a property of the family, not the model — no endpoint
+  // ships per-model vision flags, so the preset is the single source.
+  const preset = PRESETS.find((p) => p.id === config.id);
+  const supportsImages = preset?.supportsImages ?? true;
+
+  if (config.model) return { ...config, model: config.model, supportsImages };
 
   try {
     const latest = pickLatestModel(await listModels(config));
-    if (latest) return { ...config, model: latest.id };
+    if (latest) return { ...config, model: latest.id, supportsImages };
   } catch {
     // Endpoint has no list route (or is unreachable) — fall through to preset.
   }
 
-  const presetFallback = PRESETS.find((p) => p.id === config.id)?.models[0];
-  if (presetFallback) return { ...config, model: presetFallback };
+  const presetFallback = preset?.models[0];
+  if (presetFallback) return { ...config, model: presetFallback, supportsImages };
 
   throw new ProviderError(i18n.t("errors.noModel", { name: config.name }), 0);
 }

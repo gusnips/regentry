@@ -59,6 +59,12 @@ export interface LoopOptions {
   /** Data-URL images the user attached to the task, referenced in the text as "[Image #1]". */
   images?: string[];
   /**
+   * Whether the provider's model can receive images. Text-only models (DeepSeek)
+   * get no screenshot tool and never see user-attached images — putting an
+   * image_url on their wire is a hard 400. Absent = capable.
+   */
+  supportsImages?: boolean;
+  /**
    * The tabs the conversation's earlier runs drove — set only for ones this run
    * is not on, so a continuation typed elsewhere can still find its way back.
    */
@@ -159,32 +165,40 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     driver,
     task,
     images,
+    supportsImages: supportsImagesOpt,
     previousTabs,
     history,
     drainInjected,
     signal,
     callbacks,
   } = opts;
+  const supportsImages = supportsImagesOpt ?? true;
   log.info("run started:", truncate(task, 120));
 
   // AGENTS.md / MEMORY.md are read once, here: a run keeps the context it started
   // with, so editing a doc mid-run never rewrites the instructions under the model.
   // The snapshot is independent of the docs — both run concurrently.
   const [context, initial] = await Promise.all([loadAgentContext(), driver.snapshot()]);
-  const tools = buildToolDefs(context.memoryOn);
+  const tools = buildToolDefs(context.memoryOn, supportsImages);
 
   // Auto-snapshot merged into the task message — Anthropic rejects consecutive user messages
   const messages: ChatMessage[] = [
-    { role: "system", content: buildSystemPrompt(context, currentLanguageName()) },
+    { role: "system", content: buildSystemPrompt(context, currentLanguageName(), supportsImages) },
     ...(history ?? []),
     {
       role: "user",
       content: buildTaskMessage(task, initial.pageContent, previousTabs),
       // The user's own attachments are the subject of the task — unlike screenshots
       // they are never pruned, or a long run would forget what it was asked about.
-      ...(images?.length ? { images } : {}),
+      // A text-only model can't receive them; dropping the whole field keeps the wire valid.
+      ...(images?.length && supportsImages ? { images } : {}),
     },
   ];
+
+  // The user's attachment silently vanished — make it a visible step, not a mystery.
+  if (images?.length && !supportsImages) {
+    callbacks.onStep?.({ tool: "warn", summary: i18n.t("errors.textOnlyImages") });
+  }
 
   for (let step = 0; step < MAX_STEPS; step++) {
     if (signal.aborted) {
@@ -300,7 +314,9 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
           content: JSON.stringify(
             result.ok ? (result.data ?? { ok: true }) : { error: result.error },
           ),
-          ...(result.images?.length ? { images: result.images } : {}),
+          // The screenshot tool is withheld from text-only models, so images can't
+          // normally get here — the guard keeps any future image tool off the wire.
+          ...(result.images?.length && supportsImages ? { images: result.images } : {}),
         });
       }
     }

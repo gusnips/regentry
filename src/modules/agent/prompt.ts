@@ -70,8 +70,22 @@ ${memory || "(empty — nothing remembered yet)"}
 Call "remember" when a run teaches you something that will still be true next time: a stable fact about the user, or a site quirk you had to discover the hard way ("the real login on this site is the email link, not the SSO button"). Do NOT remember one-off task details, anything already written above, or — ever — passwords, API keys, card numbers, or other secrets. This file is sent to the model provider on every run.`;
 }
 
-export function buildSystemPrompt(ctx: AgentContext, language: string): string {
-  const sections = [BASE_PROMPT, languageSection(language)];
+/**
+ * A text-only model can't receive the screenshot tool's output, so the prompt
+ * must say the image path is gone outright — otherwise it spends turns asking
+ * for something that can never arrive. Sits right after the base prompt so it
+ * corrects the "Take screenshots" capability line.
+ */
+const TEXT_ONLY_NOTE = `Your model is text-only: it cannot receive images, so there is no screenshot tool. You see the page only through accessibility snapshots — rely on them for everything, and when a task needs something visual you cannot verify from structure and attributes, say so plainly in your final summary.`;
+
+export function buildSystemPrompt(
+  ctx: AgentContext,
+  language: string,
+  supportsImages = true,
+): string {
+  const sections = [BASE_PROMPT];
+  if (!supportsImages) sections.push(TEXT_ONLY_NOTE);
+  sections.push(languageSection(language));
   if (ctx.instructions) sections.push(instructionsSection(ctx.instructions));
   if (ctx.memoryOn) sections.push(memorySection(ctx.memory));
   return sections.join("\n\n");
@@ -296,6 +310,11 @@ const REMEMBER_TOOL: ToolDef = {
   },
 };
 
-export function buildToolDefs(memoryOn: boolean): ToolDef[] {
-  return memoryOn ? [...TOOL_DEFS, REMEMBER_TOOL] : TOOL_DEFS;
+/**
+ * The screenshot tool is withheld from text-only models — its output is an image
+ * the wire would reject, so offering it would make the model waste turns.
+ */
+export function buildToolDefs(memoryOn: boolean, supportsImages = true): ToolDef[] {
+  const defs = supportsImages ? TOOL_DEFS : TOOL_DEFS.filter((t) => t.name !== "screenshot");
+  return memoryOn ? [...defs, REMEMBER_TOOL] : defs;
 }

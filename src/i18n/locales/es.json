@@ -230,6 +230,7 @@
     "tabClosed": "La pestaña que manejaba esta tarea ({{title}}) se cerró — la ejecución se detuvo. Regent necesita que la pestaña siga abierta; reabre la página y envía la tarea de nuevo.",
     "providerError": "Error del proveedor: {{message}}",
     "outputLimit": "El modelo alcanzó su límite de salida a mitad de la respuesta — la respuesta puede estar incompleta",
+    "textOnlyImages": "Este modelo no recibe imágenes — las imágenes que adjuntaste no se enviaron. Trabaja con instantáneas de texto de la página.",
     "taskComplete": "Tarea completada",
     "stepBudgetExhausted": "Límite de pasos agotado",
     "retrying": "Problema de conexión — reintentando ({{attempt}}/{{max}})",

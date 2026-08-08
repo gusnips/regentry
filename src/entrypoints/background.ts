@@ -9,6 +9,7 @@ import {
   clearAgentWait,
 } from "@/modules/browser";
 import { createProvider, getActiveProvider, resolveProviderModel } from "@/modules/providers";
+import type { ResolvedProviderConfig } from "@/modules/providers/types";
 import {
   appendMessage,
   getActiveId,
@@ -64,8 +65,10 @@ export default defineBackground(() => {
           // Resolve "auto" model to a concrete id at run start — mid-task
           // changes to the stored config never affect a run in flight.
           let provider;
+          let resolvedProvider: ResolvedProviderConfig | undefined;
           try {
-            provider = createProvider(await resolveProviderModel(providerConfig));
+            resolvedProvider = await resolveProviderModel(providerConfig);
+            provider = createProvider(resolvedProvider);
           } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
             log.error("provider setup failed:", message);
@@ -147,6 +150,7 @@ export default defineBackground(() => {
               driver,
               task: msg.task,
               images: msg.images,
+              supportsImages: resolvedProvider?.supportsImages,
               history: history.length > 0 ? history : undefined,
               previousTabs: previousTabs.length > 0 ? previousTabs : undefined,
               drainInjected: () => injectedQueue.splice(0, injectedQueue.length),

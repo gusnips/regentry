@@ -12,6 +12,12 @@ export interface ProviderPreset {
   color: string;
   /** Key into the icon set in ui/ProviderIcon */
   icon: IconKey;
+  /**
+   * Whether this family's models can receive images. Absent = capable. Only
+   * DeepSeek is text-only. No provider ships per-model vision in its listing,
+   * so the family flag is the single source of truth.
+   */
+  supportsImages?: boolean;
 }
 
 export type IconKey =
@@ -95,6 +101,8 @@ export const PRESETS: ProviderPreset[] = [
     apiKeyUrl: "https://platform.deepseek.com/api_keys",
     color: "#4D6BFE",
     icon: "deepseek",
+    // Text-only API — a screenshot (image_url) in the body is a hard 400.
+    supportsImages: false,
   },
   {
     id: "gemini",

@@ -32,6 +32,12 @@ export interface ProviderConfig {
 /** A config whose model has been resolved to a concrete id — what adapters accept. */
 export interface ResolvedProviderConfig extends ProviderConfig {
   model: string;
+  /**
+   * Whether the resolved model can receive images. Absent = capable: the flag
+   * is only ever false for a known text-only family (DeepSeek preset). No
+   * provider ships per-model vision in its listing, so the preset is the source.
+   */
+  supportsImages?: boolean;
 }
 
 /** One entry from a provider's model listing. `created` is epoch ms when the endpoint reports it. */

@@ -147,6 +147,25 @@ describe("resolveProviderModel", () => {
     });
     const resolved = await resolveProviderModel(anthropicConfig);
     expect(resolved.model).toBe("k3");
+    expect(resolved.supportsImages).toBe(true);
+  });
+
+  it("marks the DeepSeek preset text-only, even on a persisted model", async () => {
+    const resolved = await resolveProviderModel({
+      id: "deepseek",
+      name: "DeepSeek",
+      shape: "openai",
+      baseUrl: "https://api.deepseek.com",
+      apiKey: "sk-test",
+      model: "deepseek-chat",
+      createdAt: 0,
+    });
+    expect(resolved.supportsImages).toBe(false);
+  });
+
+  it("defaults to image-capable for families without a text-only flag", async () => {
+    const resolved = await resolveProviderModel({ ...anthropicConfig, model: "k3" });
+    expect(resolved.supportsImages).toBe(true);
   });
 
   it("falls back to the preset's first model when the endpoint can't list", async () => {
