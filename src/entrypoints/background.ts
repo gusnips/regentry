@@ -137,7 +137,7 @@ export default defineBackground(() => {
           // Tell the page itself it is being driven — the side panel may be
           // scrolled away or on another window.
           await clearAgentWait();
-          chrome.notifications.clear("regent-question");
+          chrome.notifications.clear("regentry-question");
           void showAgentIndicator(drivenTabId, i18n.t("indicator.driving"));
 
           // The stored conversation as wire turns — "continue" lands on a model
@@ -282,10 +282,10 @@ async function notifyIfAway(question: string): Promise<void> {
   try {
     const windows = await chrome.windows.getAll({ windowTypes: ["normal"] });
     if (windows.some((w) => w.focused)) return;
-    void chrome.notifications.create("regent-question", {
+    void chrome.notifications.create("regentry-question", {
       type: "basic",
       iconUrl: "icon/128.png",
-      title: "Regent",
+      title: "Regentry",
       message: truncate(question, 256),
     });
   } catch {
@@ -295,8 +295,8 @@ async function notifyIfAway(question: string): Promise<void> {
 
 // Notification click opens the panel so the user can answer.
 chrome.notifications.onClicked.addListener((id) => {
-  if (id === "regent-question") {
-    chrome.notifications.clear("regent-question");
+  if (id === "regentry-question") {
+    chrome.notifications.clear("regentry-question");
     void chrome.windows.getLastFocused({ windowTypes: ["normal"] }).then((win) => {
       if (win.id) void chrome.sidePanel.open({ windowId: win.id });
     });

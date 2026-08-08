@@ -2,7 +2,7 @@ import type { ToolDef } from "@/modules/providers/types";
 import type { AgentContext } from "@/modules/memory";
 import { SUPPORTED_KEYS } from "@/modules/browser";
 
-const BASE_PROMPT = `You are Regent, a browser automation agent. You control the user's real browser via tools.
+const BASE_PROMPT = `You are Regentry, a browser automation agent. You control the user's real browser via tools.
 
 Your capabilities:
 - Navigate to URLs
@@ -47,7 +47,7 @@ ${instructions}`;
 
 /**
  * Plan steps and the done summary land in the panel verbatim — the one
- * user-visible surface Regent cannot localize itself, so the language is named
+ * user-visible surface Regentry cannot localize itself, so the language is named
  * outright. "Mirror the task's language" guesses wrong on short or English tasks.
  * The second sentence matters: without it the model translates what it types
  * into search boxes and forms too.

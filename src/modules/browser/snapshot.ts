@@ -45,8 +45,8 @@ export async function resolveRefRect(
   const [result] = await chrome.scripting.executeScript({
     target: { tabId },
     func: (refId: string) => {
-      const w = window as unknown as { __regentRefs?: Map<string, WeakRef<HTMLElement>> };
-      const entry = w.__regentRefs?.get(refId);
+      const w = window as unknown as { __regentryRefs?: Map<string, WeakRef<HTMLElement>> };
+      const entry = w.__regentryRefs?.get(refId);
       const el = entry?.deref();
       if (!el) return null;
       el.scrollIntoView({ block: "center", inline: "center" });

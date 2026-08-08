@@ -419,7 +419,7 @@ function formatSuccessSummary(tool: string, data: unknown): string {
   }
   if (tool === "remember" && data && typeof data === "object") {
     // The fact itself is the summary — "Saved to memory" tells the user nothing
-    // about what Regent now knows, which is the only interesting part.
+    // about what Regentry now knows, which is the only interesting part.
     return (data as { fact: string }).fact;
   }
   if (tool === "ask_user" && data && typeof data === "object") {

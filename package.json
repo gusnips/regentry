@@ -1,5 +1,5 @@
 {
-  "name": "regent",
+  "name": "regentry",
   "description": "Provider-agnostic browser agent extension",
   "private": true,
   "version": "0.0.0",

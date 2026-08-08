@@ -15,7 +15,7 @@ export interface StorageItem<T> {
  * Each domain module defines its own items using this helper.
  */
 export function defineItem<T>(key: string, fallback: T): StorageItem<T> {
-  const item = storage.defineItem<T>(`local:regent:${key}`, { fallback });
+  const item = storage.defineItem<T>(`local:regentry:${key}`, { fallback });
   return {
     fallback,
     get: () => item.getValue(),

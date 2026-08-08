@@ -8,14 +8,14 @@
     "hideKey": "Hide key"
   },
   "onboarding": {
-    "title": "Welcome to Regent",
+    "title": "Welcome to Regentry",
     "tagline": "An AI agent that drives this browser — your tabs, your sessions, your logins — to get tasks done.",
-    "connectPrompt": "To start, connect a provider. Your API key stays on this device and goes straight to the provider — there is no Regent server.",
+    "connectPrompt": "To start, connect a provider. Your API key stays on this device and goes straight to the provider — there is no Regentry server.",
     "addProvider": "Add a provider",
     "presetsNote": "{{count}} presets — Anthropic, OpenAI, Kimi, Z.ai, Ollama… — or any compatible endpoint."
   },
   "settings": {
-    "pageTitle": "Regent settings",
+    "pageTitle": "Regentry settings",
     "appearance": "Appearance",
     "themeSystem": "System — follow the OS",
     "themeLight": "Light",
@@ -30,14 +30,14 @@
   },
   "memory": {
     "title": "Memory",
-    "subtitle": "Two markdown files loaded into every run — your standing instructions, and what Regent has learned.",
+    "subtitle": "Two markdown files loaded into every run — your standing instructions, and what Regentry has learned.",
     "enable": "Memory",
     "fileTabs": "Agent files",
-    "offNotice": "Memory is off. MEMORY.md is not loaded into runs and Regent will not write to it. Turn it back on to resume, or clear the file below.",
-    "instructionsHelp": "Yours to write. Anything here applies to every task and takes precedence over Regent's own defaults.",
-    "memoryHelp": "Regent's. It appends a line here when a run teaches it something durable — edit or delete any of them.",
+    "offNotice": "Memory is off. MEMORY.md is not loaded into runs and Regentry will not write to it. Turn it back on to resume, or clear the file below.",
+    "instructionsHelp": "Yours to write. Anything here applies to every task and takes precedence over Regentry's own defaults.",
+    "memoryHelp": "Regentry's. It appends a line here when a run teaches it something durable — edit or delete any of them.",
     "instructionsPlaceholder": "- Always confirm with me before submitting a payment or sending an email.\n- My work account is me@acme.com — use it for anything on acme.com.\n- Prefer keyboard navigation over clicking when a page supports it.",
-    "memoryPlaceholder": "Nothing remembered yet. Regent writes here as it learns — you can add facts yourself too, one per line.",
+    "memoryPlaceholder": "Nothing remembered yet. Regentry writes here as it learns — you can add facts yourself too, one per line.",
     "saved": "Saved",
     "chars_one": "{{count}} character",
     "chars_other": "{{count}} characters",
@@ -122,7 +122,7 @@
     "delete": "Delete",
     "deleteAria": "Delete conversation: {{title}}",
     "deleteTitle": "Delete this conversation?",
-    "deleteBody": "The transcript is removed from this device. Anything Regent saved to MEMORY.md stays — clear that separately under Memory.",
+    "deleteBody": "The transcript is removed from this device. Anything Regentry saved to MEMORY.md stays — clear that separately under Memory.",
     "emptyTitle": "No conversations yet",
     "emptyBody": "Every task you send is kept here as a transcript — open one to reread what the agent did, or delete the ones you're done with.",
     "emptyAction": "Start a task",
@@ -138,7 +138,7 @@
     "emptyBody": "Describe a task and I'll drive this browser tab — navigate, read pages, click, type. Uses your existing logins.",
     "emptyExample": "Example: \"go to news.ycombinator.com and summarize the top 3 headlines\"",
     "portLost": "Connection to the agent was lost — the run stopped. Send the task again to retry.",
-    "reloaded": "Regent was reloaded — close and reopen this panel to keep going.",
+    "reloaded": "Regentry was reloaded — close and reopen this panel to keep going.",
     "working": "Working",
     "jumpToLatest": "Jump to latest ↓",
     "hint": {
@@ -194,7 +194,7 @@
     }
   },
   "indicator": {
-    "driving": "Regent is controlling this tab"
+    "driving": "Regentry is controlling this tab"
   },
   "plan": {
     "title": "Plan",
@@ -220,14 +220,14 @@
     "idle": ["Thinking", "Working", "Pondering", "Reasoning", "Contemplating"],
     "tokens": "{{count}} tokens",
     "finished": "Done",
-    "drivingTabTip": "Show the tab Regent is controlling"
+    "drivingTabTip": "Show the tab Regentry is controlling"
   },
   "errors": {
     "alreadyRunning": "A task is already running. Stop it first.",
     "noActiveProvider": "No active provider — pick one in the panel dropdown, or add one in Settings.",
     "noActiveTab": "No active tab found.",
     "panelClosed": "Side panel closed — the run was stopped",
-    "tabClosed": "The tab this task was driving ({{title}}) was closed — the run stopped. Regent needs the tab to stay open; reopen the page and send the task again.",
+    "tabClosed": "The tab this task was driving ({{title}}) was closed — the run stopped. Regentry needs the tab to stay open; reopen the page and send the task again.",
     "providerError": "Provider error: {{message}}",
     "outputLimit": "Model hit its output limit mid-response — answer may be incomplete",
     "textOnlyImages": "This model can't receive images — the images you attached weren't sent to it. It works from text snapshots of the page.",
@@ -257,7 +257,7 @@
     "kindRate": "{{provider}} is rate-limiting requests — try again in a moment",
     "kindOverload": "{{provider}} is overloaded right now — try again in a few minutes",
     "noResponseBody": "No response body",
-    "restrictedPage": "Regent can't read this page — Chrome blocks extensions on chrome:// and Web Store pages. Navigate the tab to a regular page and resend the task.",
+    "restrictedPage": "Regentry can't read this page — Chrome blocks extensions on chrome:// and Web Store pages. Navigate the tab to a regular page and resend the task.",
     "snapshotFailed": "Snapshot failed: the page may have navigated or be a restricted URL (chrome://, Web Store).",
     "refNotFound": "Element ref \"{{ref}}\" not found. Run snapshot first to get fresh refs.",
     "noTabAttached": "No tab attached. Call attach first.",

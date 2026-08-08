@@ -6,7 +6,7 @@
  *   bun run release major   # 0.1.0 → 1.0.0
  *
  * package.json `version` is the single source of truth: the git tag (`v0.1.0`)
- * and the artifact name (`dist/regent-0.1.0-chrome.zip`) both derive from it.
+ * and the artifact name (`dist/regentry-0.1.0-chrome.zip`) both derive from it.
  * Never pushes — pushing stays an explicit act; the final line names the command.
  */
 import { $ } from "bun";
@@ -33,9 +33,13 @@ if (bump !== "patch" && bump !== "minor" && bump !== "major") {
 // unrelated in-progress edits.
 const status = (await $`git status --porcelain`.quiet()).stdout.toString().trim();
 if (status) {
-  console.error("Working tree is not clean — commit, stash (`git stash -u`), or remove these first:");
+  console.error(
+    "Working tree is not clean — commit, stash (`git stash -u`), or remove these first:",
+  );
   console.error(status);
-  console.error("If package.json is the only change, a previous release was interrupted — discard it:");
+  console.error(
+    "If package.json is the only change, a previous release was interrupted — discard it:",
+  );
   console.error("  git restore --staged --worktree package.json — then re-run.");
   process.exit(1);
 }
@@ -59,7 +63,9 @@ const pkgPath = new URL("../package.json", import.meta.url);
 const pkg = (await Bun.file(pkgPath).json()) as { version: string };
 const parts = /^(\d+)\.(\d+)\.(\d+)$/.exec(pkg.version);
 if (!parts) {
-  console.error(`Version "${pkg.version}" is not x.y.z — edit package.json by hand, then tag to match.`);
+  console.error(
+    `Version "${pkg.version}" is not x.y.z — edit package.json by hand, then tag to match.`,
+  );
   process.exit(1);
 }
 const [major, minor, patch] = [Number(parts[1]), Number(parts[2]), Number(parts[3])];
@@ -74,7 +80,9 @@ const next =
 // committed — check while nothing has been written yet.
 if ((await $`git rev-parse -q --verify ${`v${next}`}`.quiet().nothrow()).exitCode === 0) {
   console.error(`Tag v${next} already exists — nothing was changed.`);
-  console.error(`  If it's stale: git tag -d v${next} — then re-run. Otherwise release a level up.`);
+  console.error(
+    `  If it's stale: git tag -d v${next} — then re-run. Otherwise release a level up.`,
+  );
   process.exit(1);
 }
 
@@ -85,7 +93,9 @@ try {
   await $`git add package.json`;
   await $`git commit -m ${`Release v${next}`}`;
 } catch {
-  console.error(`✗ Commit failed — the v${next} bump is written to package.json but not committed.`);
+  console.error(
+    `✗ Commit failed — the v${next} bump is written to package.json but not committed.`,
+  );
   console.error("  Unwind: git restore --staged --worktree package.json");
   process.exit(1);
 }
@@ -93,25 +103,33 @@ try {
 try {
   await $`git tag -a ${`v${next}`} -m ${`v${next}`}`;
 } catch {
-  console.error(`✗ Tag v${next} failed, but its release commit exists. Do NOT re-run release — it bumps again.`);
-  console.error(`  Finish: git tag -a v${next} -m v${next}   ·   or abandon: git reset --hard HEAD~1`);
+  console.error(
+    `✗ Tag v${next} failed, but its release commit exists. Do NOT re-run release — it bumps again.`,
+  );
+  console.error(
+    `  Finish: git tag -a v${next} -m v${next}   ·   or abandon: git reset --hard HEAD~1`,
+  );
   process.exit(1);
 }
 
 try {
   await $`bun run zip`;
 } catch {
-  console.error(`✗ Zip failed, but v${next} is already committed and tagged. Do NOT re-run release — it bumps again.`);
+  console.error(
+    `✗ Zip failed, but v${next} is already committed and tagged. Do NOT re-run release — it bumps again.`,
+  );
   console.error("  Fix the build, then finish by hand: bun run zip");
   process.exit(1);
 }
 
-const artifact = [...new Bun.Glob(`regent-${next}-*.zip`).scanSync("dist")][0];
+const artifact = [...new Bun.Glob(`regentry-${next}-*.zip`).scanSync("dist")][0];
 console.log(`\n✔ Released v${next}`);
 if (artifact) {
   console.log(`  artifact  dist/${artifact}`);
   console.log(`  tag       v${next}`);
-  console.log(`  publish   git push --follow-tags — then upload dist/${artifact} to the Chrome Web Store`);
+  console.log(
+    `  publish   git push --follow-tags — then upload dist/${artifact} to the Chrome Web Store`,
+  );
 } else {
   console.log(`  tag       v${next}`);
   console.log(`  publish   git push --follow-tags — zip name unexpected, check dist/`);

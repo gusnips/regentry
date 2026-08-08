@@ -44,7 +44,7 @@ export default function App() {
         <div className="flex items-center gap-1 pb-1">
           <img src="/icon.svg" className="h-5 w-5 shrink-0" alt="" aria-hidden />
           <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            Regent
+            Regentry
           </span>
           <div className="min-w-0 flex-1" />
           {!needsProvider && (

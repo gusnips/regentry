@@ -3,7 +3,7 @@
 /* Class strategy — a stored light/dark choice must be able to override the OS. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Regent brand — royal purple (violet scale), used via brand-* utilities */
+/* Regentry brand — royal purple (violet scale), used via brand-* utilities */
 @theme {
   --color-brand-50: #f5f3ff;
   --color-brand-100: #ede9fe;
@@ -35,7 +35,7 @@ body {
  * the agent is still working rather than wedged. Text-clipped rather than a
  * spinner so it reads as the word itself being alive.
  */
-@keyframes regent-shimmer {
+@keyframes regentry-shimmer {
   from {
     background-position: 150% center;
   }
@@ -54,7 +54,7 @@ body {
   background-size: 250% auto;
   background-clip: text;
   color: transparent;
-  animation: regent-shimmer 2.4s linear infinite;
+  animation: regentry-shimmer 2.4s linear infinite;
 }
 
 :where(.dark) .shimmer-text {

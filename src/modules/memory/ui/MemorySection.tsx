@@ -135,7 +135,7 @@ function DocEditor({ name, inert }: { name: DocName; inert: boolean }) {
 /**
  * The agent's two documents, presented as the files they model. Tabs rather
  * than two stacked editors: they are read the same way but written by different
- * people — you own AGENTS.md, Regent owns MEMORY.md — and only one is ever
+ * people — you own AGENTS.md, Regentry owns MEMORY.md — and only one is ever
  * being edited at a time.
  */
 export function MemorySection() {

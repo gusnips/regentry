@@ -1,5 +1,5 @@
 /**
- * The Regent brand mark — a crown, for the one who rules in your stead.
+ * The Regentry brand mark — a crown, for the one who rules in your stead.
  * Single source of truth for the extension icons and the OG card:
  * `bun run icons` (scripts/gen-icons.ts) rasterizes these into public/icon/.
  *

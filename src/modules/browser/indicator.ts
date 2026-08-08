@@ -2,10 +2,10 @@ import type { TabId } from "@/shared/types";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("indicator");
-const HOST_ID = "regent-agent-indicator";
-const FAVICON_LINK_ID = "regent-agent-favicon";
+const HOST_ID = "regentry-agent-indicator";
+const FAVICON_LINK_ID = "regentry-agent-favicon";
 /** The link that hands the favicon back to the page when the run lets go. */
-const RESTORE_LINK_ID = "regent-agent-favicon-restore";
+const RESTORE_LINK_ID = "regentry-agent-favicon-restore";
 
 /**
  * Driving marks on the tab an agent is driving — two halves, one lifecycle:

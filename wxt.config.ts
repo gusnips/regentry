@@ -9,7 +9,7 @@ export default defineConfig({
     name: "__MSG_extName__",
     description: "__MSG_extDescription__",
     default_locale: "en",
-    homepage_url: "https://github.com/gusnips/regent",
+    homepage_url: "https://github.com/gusnips/regentry",
     icons: {
       16: "icon/16.png",
       32: "icon/32.png",

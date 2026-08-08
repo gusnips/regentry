@@ -1,21 +1,21 @@
-# Regent
+# Regentry
 
 <p>
-  <img src="public/icon/128.png" width="64" height="64" alt="Regent crown mark" align="left" />
+  <img src="public/icon/128.png" width="64" height="64" alt="Regentry crown mark" align="left" />
   <strong>Your browser, commanded.</strong><br/>
   A Chromium extension that lets an LLM drive your <em>real</em> browser — your tabs, your
   sessions, your logged-in accounts — through any provider you choose. You describe a task in the
-  side panel; Regent reads pages, clicks, types, and navigates until the job is done.
+  side panel; Regentry reads pages, clicks, types, and navigates until the job is done.
 </p>
 
 <br/>
 
-> Named for the one who rules in your stead: Regent acts with your authority, in your browser,
+> Named for the one who rules in your stead: Regentry acts with your authority, in your browser,
 > while you watch.
 
 ## Why
 
-Most browser agents run in a sandboxed, logged-out browser. Regent runs in **yours** — so it can
+Most browser agents run in a sandboxed, logged-out browser. Regentry runs in **yours** — so it can
 act on the sites you're actually logged into. And it's provider-agnostic by construction: no
 vendor lock-in, no relay, no account with us. Your API key goes straight from the extension to
 your provider.
@@ -36,13 +36,13 @@ your provider.
   Claude Code-style.
 - **Reasoning effort control** — optional per-provider effort (`none` → `max`), mapped to each
   wire format; omitted entirely when you want provider defaults.
-- **Auto model resolution** — leave the model on Auto and Regent runs the newest model the
+- **Auto model resolution** — leave the model on Auto and Regentry runs the newest model the
   endpoint lists, showing you which one that is; pin a model and effort per task from the panel
   header.
 - **Speaks your language, matches your theme** — English, Português (Brasil), and Español; light,
   dark, or follow the OS.
 - **Your data stays local** — provider configs and history live in `chrome.storage`. There is no
-  Regent server.
+  Regentry server.
 
 ## Install
 
@@ -52,7 +52,7 @@ bun run build
 ```
 
 Then `chrome://extensions` → **Developer mode** → **Load unpacked** → select
-`dist/chrome-mv3`. Click the Regent toolbar icon to open the side panel, add a provider
+`dist/chrome-mv3`. Click the Regentry toolbar icon to open the side panel, add a provider
 (options page), and describe a task.
 
 Works on Chrome, Brave, Edge, Arc, Opera, and Vivaldi. Chromium-only by design: Firefox has no

@@ -1,7 +1,7 @@
 import { defineItem } from "@/lib/storage";
 
 /**
- * The two markdown documents Regent loads into every run, mirroring the
+ * The two markdown documents Regentry loads into every run, mirroring the
  * AGENTS.md / MEMORY.md convention coding agents settled on:
  *
  * - `AGENTS.md` is yours. Standing instructions that outlive any one task

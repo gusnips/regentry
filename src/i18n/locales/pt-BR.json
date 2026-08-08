@@ -8,14 +8,14 @@
     "hideKey": "Ocultar chave"
   },
   "onboarding": {
-    "title": "Bem-vindo ao Regent",
+    "title": "Bem-vindo ao Regentry",
     "tagline": "Um agente de IA que dirige este navegador — suas abas, suas sessões, seus logins — para concluir tarefas.",
-    "connectPrompt": "Para começar, conecte um provedor. Sua chave de API fica neste dispositivo e vai direto para o provedor — não existe servidor do Regent.",
+    "connectPrompt": "Para começar, conecte um provedor. Sua chave de API fica neste dispositivo e vai direto para o provedor — não existe servidor do Regentry.",
     "addProvider": "Adicionar provedor",
     "presetsNote": "{{count}} presets — Anthropic, OpenAI, Kimi, Z.ai, Ollama… — ou qualquer endpoint compatível."
   },
   "settings": {
-    "pageTitle": "Configurações do Regent",
+    "pageTitle": "Configurações do Regentry",
     "appearance": "Aparência",
     "themeSystem": "Sistema — seguir o SO",
     "themeLight": "Claro",
@@ -30,14 +30,14 @@
   },
   "memory": {
     "title": "Memória",
-    "subtitle": "Dois arquivos markdown carregados em toda execução — suas instruções permanentes e o que o Regent aprendeu.",
+    "subtitle": "Dois arquivos markdown carregados em toda execução — suas instruções permanentes e o que o Regentry aprendeu.",
     "enable": "Memória",
     "fileTabs": "Arquivos do agente",
-    "offNotice": "A memória está desligada. O MEMORY.md não é carregado nas execuções e o Regent não escreve nele. Ligue de novo para retomar, ou limpe o arquivo abaixo.",
-    "instructionsHelp": "Seu para escrever. Tudo aqui vale para todas as tarefas e prevalece sobre os padrões do Regent.",
-    "memoryHelp": "Do Regent. Ele acrescenta uma linha aqui quando uma execução ensina algo duradouro — edite ou apague à vontade.",
+    "offNotice": "A memória está desligada. O MEMORY.md não é carregado nas execuções e o Regentry não escreve nele. Ligue de novo para retomar, ou limpe o arquivo abaixo.",
+    "instructionsHelp": "Seu para escrever. Tudo aqui vale para todas as tarefas e prevalece sobre os padrões do Regentry.",
+    "memoryHelp": "Do Regentry. Ele acrescenta uma linha aqui quando uma execução ensina algo duradouro — edite ou apague à vontade.",
     "instructionsPlaceholder": "- Sempre confirme comigo antes de enviar um pagamento ou um e-mail.\n- Minha conta de trabalho é eu@acme.com — use ela em qualquer coisa da acme.com.\n- Prefira navegar pelo teclado quando a página permitir.",
-    "memoryPlaceholder": "Nada memorizado ainda. O Regent escreve aqui conforme aprende — você também pode adicionar fatos, um por linha.",
+    "memoryPlaceholder": "Nada memorizado ainda. O Regentry escreve aqui conforme aprende — você também pode adicionar fatos, um por linha.",
     "saved": "Salvo",
     "chars_one": "{{count}} caractere",
     "chars_other": "{{count}} caracteres",
@@ -122,7 +122,7 @@
     "delete": "Excluir",
     "deleteAria": "Excluir conversa: {{title}}",
     "deleteTitle": "Excluir esta conversa?",
-    "deleteBody": "A transcrição é removida deste dispositivo. O que o Regent salvou no MEMORY.md permanece — limpe esse arquivo em Memória.",
+    "deleteBody": "A transcrição é removida deste dispositivo. O que o Regentry salvou no MEMORY.md permanece — limpe esse arquivo em Memória.",
     "emptyTitle": "Nenhuma conversa ainda",
     "emptyBody": "Cada tarefa que você envia fica guardada aqui como histórico — abra uma para reler o que o agente fez, ou exclua as que não precisa mais.",
     "emptyAction": "Começar uma tarefa",
@@ -138,7 +138,7 @@
     "emptyBody": "Descreva uma tarefa e eu dirijo esta aba do navegador — navegar, ler páginas, clicar, digitar. Usa seus logins existentes.",
     "emptyExample": "Exemplo: \"vá a news.ycombinator.com e resuma as 3 principais manchetes\"",
     "portLost": "A conexão com o agente foi perdida — a execução parou. Envie a tarefa novamente para tentar de novo.",
-    "reloaded": "O Regent foi recarregado — feche e reabra este painel para continuar.",
+    "reloaded": "O Regentry foi recarregado — feche e reabra este painel para continuar.",
     "working": "Trabalhando",
     "jumpToLatest": "Ir para o final ↓",
     "hint": {
@@ -194,7 +194,7 @@
     }
   },
   "indicator": {
-    "driving": "O Regent está controlando esta aba"
+    "driving": "O Regentry está controlando esta aba"
   },
   "plan": {
     "title": "Plano",
@@ -220,14 +220,14 @@
     "idle": ["Pensando", "Trabalhando", "Refletindo", "Raciocinando", "Contemplando"],
     "tokens": "{{count}} tokens",
     "finished": "Concluído",
-    "drivingTabTip": "Mostrar a aba que o Regent está controlando"
+    "drivingTabTip": "Mostrar a aba que o Regentry está controlando"
   },
   "errors": {
     "alreadyRunning": "Uma tarefa já está em execução. Pare-a primeiro.",
     "noActiveProvider": "Nenhum provedor ativo — escolha um no seletor do painel ou adicione um nas Configurações.",
     "noActiveTab": "Nenhuma aba ativa encontrada.",
     "panelClosed": "Painel lateral fechado — a execução foi interrompida",
-    "tabClosed": "A aba que esta tarefa estava dirigindo ({{title}}) foi fechada — a execução parou. O Regent precisa que a aba fique aberta; reabra a página e envie a tarefa de novo.",
+    "tabClosed": "A aba que esta tarefa estava dirigindo ({{title}}) foi fechada — a execução parou. O Regentry precisa que a aba fique aberta; reabra a página e envie a tarefa de novo.",
     "providerError": "Erro do provedor: {{message}}",
     "outputLimit": "O modelo atingiu seu limite de saída no meio da resposta — a resposta pode estar incompleta",
     "textOnlyImages": "Este modelo não recebe imagens — as imagens que você anexou não foram enviadas. Ele trabalha com snapshots de texto da página.",
@@ -257,7 +257,7 @@
     "kindRate": "{{provider}} está limitando as requisições — tente de novo em instantes",
     "kindOverload": "{{provider}} está sobrecarregado agora — tente de novo em alguns minutos",
     "noResponseBody": "Resposta sem corpo",
-    "restrictedPage": "O Regent não consegue ler esta página — o Chrome bloqueia extensões em páginas chrome:// e da Web Store. Navegue a aba para uma página comum e reenvie a tarefa.",
+    "restrictedPage": "O Regentry não consegue ler esta página — o Chrome bloqueia extensões em páginas chrome:// e da Web Store. Navegue a aba para uma página comum e reenvie a tarefa.",
     "snapshotFailed": "Falha na captura: a página pode ter navegado ou ser uma URL restrita (chrome://, Web Store).",
     "refNotFound": "Referência de elemento \"{{ref}}\" não encontrada. Execute a captura primeiro para obter referências atualizadas.",
     "noTabAttached": "Nenhuma aba anexada. Chame attach primeiro.",

@@ -1,4 +1,4 @@
-# Regent — Agent Guide
+# Regentry — Agent Guide
 
 Provider-agnostic browser agent extension — lets an LLM drive your real browser with existing
 logged-in sessions. Chromium-only (`chrome.debugger` has no Firefox/Safari equivalent).
@@ -15,7 +15,7 @@ bun run format     # prettier
 bun run deadcode   # knip (deadcode:fix to auto-fix)
 bun run i18n:check # locale parity + every static t() key resolves (--unused for orphans)
 bun run icons      # regenerate public/icon/* + docs/og.png from src/shared/logo.ts
-bun run zip        # build + pack dist/regent-<version>-chrome.zip
+bun run zip        # build + pack dist/regentry-<version>-chrome.zip
 bun run release    # bun run release <patch|minor|major> — gates, bump, commit, tag, zip
 ```
 
@@ -27,7 +27,7 @@ Before submitting work: `compile`, `lint`, `test`, `deadcode`, `i18n:check` — 
 ## Releasing
 
 The `version` in `package.json` is the single source of truth — the git tag (`v0.1.0`) and the
-artifact (`dist/regent-0.1.0-chrome.zip`) both derive from it.
+artifact (`dist/regentry-0.1.0-chrome.zip`) both derive from it.
 
 ```bash
 bun run release minor   # gates → bump → commit "Release vX" → tag vX → zip; never pushes
@@ -59,7 +59,7 @@ never reach the service-worker bundle.
   tool: the run ends on a question the panel renders as a card with tappable choices, and
   the answer arrives as the next message. Background-only.
 - `browser/` — accessibility-tree snapshot (injected script), CDP driver (trusted input),
-  unified driver seam, on-page "Regent is controlling this tab" badge plus a purple dot over
+  unified driver seam, on-page "Regentry is controlling this tab" badge plus a purple dot over
   the driven tab's favicon so the strip shows where a run is working — the dot pulses via
   frames pushed from the worker, because Chrome throttles hidden-tab timers and hidden is
   exactly when the strip signal matters. Background-only.
@@ -125,7 +125,7 @@ their way back via list_tabs/switch_tab.
   `reasoning_effort` on OpenAI-shape; `thinking: {type:"adaptive"}` + `output_config: {effort}`
   on Anthropic-shape (`none` = adaptive only, Anthropic has no off switch). Unsupported levels
   come back as a clean provider 400, surfaced in chat — we never sniff model names.
-- **Images are data URLs everywhere inside Regent**, split per wire format at the adapter edge.
+- **Images are data URLs everywhere inside Regentry**, split per wire format at the adapter edge.
   Anthropic nests image blocks inside the `tool_result` itself; an OpenAI-shape `role:"tool"`
   message is text-only, so that adapter trails a `user` message carrying the images. The agent
   loop keeps only the newest `MAX_ATTACHED_IMAGES` screenshots attached (every image is re-sent

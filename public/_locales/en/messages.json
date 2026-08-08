@@ -1,6 +1,6 @@
 {
   "extName": {
-    "message": "Regent",
+    "message": "Regentry",
     "description": "Extension name"
   },
   "extDescription": {
@@ -8,7 +8,7 @@
     "description": "Extension description shown in chrome://extensions and the Web Store"
   },
   "actionTitle": {
-    "message": "Open Regent",
+    "message": "Open Regentry",
     "description": "Toolbar action tooltip"
   }
 }

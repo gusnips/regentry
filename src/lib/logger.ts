@@ -13,9 +13,9 @@ export interface Logger {
   error: (...args: unknown[]) => void;
 }
 
-/** Create a logger whose lines are prefixed `[regent:<scope>]`. */
+/** Create a logger whose lines are prefixed `[regentry:<scope>]`. */
 export function createLogger(scope: string): Logger {
-  const prefix = `[regent:${scope}]`;
+  const prefix = `[regentry:${scope}]`;
   return {
     debug: (...args) => console.debug(prefix, ...args),
     info: (...args) => console.info(prefix, ...args),

@@ -77,4 +77,4 @@ export type Event =
 
 // ── Port name ────────────────────────────────────────────────────────
 
-export const PORT_NAME = "regent";
+export const PORT_NAME = "regentry";

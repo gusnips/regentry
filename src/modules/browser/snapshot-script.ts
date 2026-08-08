@@ -217,24 +217,24 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
 
   // Ref management on window — persists across calls
   const w = window as unknown as {
-    __regentRefs?: Map<string, WeakRef<HTMLElement>>;
-    __regentReverse?: WeakMap<HTMLElement, string>;
-    __regentCounter?: number;
+    __regentryRefs?: Map<string, WeakRef<HTMLElement>>;
+    __regentryReverse?: WeakMap<HTMLElement, string>;
+    __regentryCounter?: number;
   };
   function getOrCreateRef(el: HTMLElement): string {
-    if (!w.__regentRefs) {
-      w.__regentRefs = new Map();
-      w.__regentReverse = new WeakMap();
-      w.__regentCounter = 0;
+    if (!w.__regentryRefs) {
+      w.__regentryRefs = new Map();
+      w.__regentryReverse = new WeakMap();
+      w.__regentryCounter = 0;
     }
-    const existing = w.__regentReverse!.get(el);
+    const existing = w.__regentryReverse!.get(el);
     if (existing) {
-      const r = w.__regentRefs!.get(existing);
+      const r = w.__regentryRefs!.get(existing);
       if (r && r.deref() === el) return existing;
     }
-    const ref = `e${++w.__regentCounter!}`;
-    w.__regentRefs!.set(ref, new WeakRef(el));
-    w.__regentReverse!.set(el, ref);
+    const ref = `e${++w.__regentryCounter!}`;
+    w.__regentryRefs!.set(ref, new WeakRef(el));
+    w.__regentryReverse!.set(el, ref);
     return ref;
   }
 
@@ -307,8 +307,8 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
   }
 
   // GC dead refs
-  if (w.__regentRefs) {
-    for (const [key, ref] of w.__regentRefs) if (!ref.deref()) w.__regentRefs.delete(key);
+  if (w.__regentryRefs) {
+    for (const [key, ref] of w.__regentryRefs) if (!ref.deref()) w.__regentryRefs.delete(key);
   }
 
   if (document.body) walk(document.body, 0);
