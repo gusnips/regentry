@@ -309,10 +309,15 @@ async function postForm(
   const body: unknown = await res.json().catch(() => null);
   const record = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
 
+  // A vendor can hand back a usable credential on a non-200 — if the body
+  // carries real tokens, the sign-in succeeded; only fall through to error
+  // handling when it doesn't.
+  if (isCredentialBody(record)) return record;
+
   if (!res.ok) {
-    // A 429 at the token exchange means the account authenticated but the plan
-    // is over its usage limit — not a failed sign-in, so it gets its own
-    // message instead of a bare "sign-in failed: 429".
+    // A 429 with no token means the account authenticated but the plan is over
+    // its usage limit — not a failed sign-in, so it gets its own message
+    // instead of a bare "sign-in failed: 429".
     if (res.status === 429) {
       throw new ProviderError(i18n.t("errors.signInRateLimited"), res.status);
     }
@@ -324,6 +329,18 @@ async function postForm(
     );
   }
   return record;
+}
+
+/** Whether the body holds a full token pair — the sign of a successful exchange. */
+function isCredentialBody(body: Record<string, unknown>): boolean {
+  return (
+    typeof body.access_token === "string" &&
+    body.access_token.length > 0 &&
+    typeof body.refresh_token === "string" &&
+    body.refresh_token.length > 0 &&
+    typeof body.expires_in === "number" &&
+    Number.isFinite(body.expires_in)
+  );
 }
 
 /**
