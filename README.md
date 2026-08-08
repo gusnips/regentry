@@ -22,9 +22,9 @@ your provider.
 
 ## Features
 
-- **Bring your own provider** — 12 presets (Anthropic, OpenAI, DeepSeek, Kimi Coding, Z.ai Coding,
-  Qwen, Gemini, OpenRouter, Groq, Mistral, xAI, Ollama) plus any custom endpoint speaking the
-  OpenAI or Anthropic wire format.
+- **Bring your own provider** — 15 presets (Anthropic, OpenAI, ChatGPT, Kimi, Z.ai, Qwen, DeepSeek,
+  Gemini, OpenRouter, Groq, Mistral, xAI, Ollama; Claude and Kimi sign in with a subscription) plus
+  any custom endpoint speaking the OpenAI or Anthropic wire format.
 - **Real trusted input** — clicks and keystrokes go through the Chrome DevTools Protocol, so they
   are genuine trusted events, not synthetic JS dispatches that sites can ignore.
 - **Accessibility-tree snapshots** — the model sees a compact semantic tree
