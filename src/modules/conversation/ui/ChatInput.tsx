@@ -135,9 +135,9 @@ export function ChatInput() {
           {queued.map((q) => (
             <div
               key={q.id}
-              className="flex items-center gap-1.5 rounded-lg border border-dashed border-brand-300 bg-brand-50/60 px-2 py-1 text-xs text-brand-800 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-200"
+              className="flex items-center gap-1.5 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-2 py-1 text-xs text-neutral-600 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-300"
             >
-              <span className="shrink-0 rounded border border-brand-300 px-1 py-px text-[10px] font-medium dark:border-brand-800">
+              <span className="shrink-0 rounded border border-neutral-300 px-1 py-px text-[10px] font-medium dark:border-neutral-600">
                 {t("chat.queuedBadge")}
               </span>
               <span className="min-w-0 flex-1 truncate">{q.text}</span>
@@ -145,7 +145,7 @@ export function ChatInput() {
                 type="button"
                 onClick={() => unqueueMessage(q.id)}
                 aria-label={t("chat.unqueueAria")}
-                className="shrink-0 rounded px-1 text-brand-700 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-brand-300 dark:hover:bg-brand-900"
+                className="shrink-0 rounded px-1 text-neutral-500 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
               >
                 ✕
               </button>
