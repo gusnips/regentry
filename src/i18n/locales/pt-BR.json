@@ -11,7 +11,7 @@
   "onboarding": {
     "title": "Bem-vindo ao Regentry",
     "tagline": "Um agente de IA que dirige este navegador — suas abas, suas sessões, seus logins — para concluir tarefas.",
-    "connectPrompt": "Para começar, conecte um provedor. Sua chave de API fica neste dispositivo e vai direto para o provedor — não existe servidor do Regentry.",
+    "connectPrompt": "Para começar, conecte um provedor — entre com uma assinatura que você já paga ou cole uma chave de API. Dos dois jeitos, ela fica neste dispositivo e vai direto para o provedor — não existe servidor do Regentry.",
     "addProvider": "Adicionar provedor",
     "presetsNote": "{{count}} presets — Anthropic, OpenAI, Kimi, Z.ai, Ollama… — ou qualquer endpoint compatível."
   },
@@ -46,7 +46,7 @@
   },
   "addProvider": {
     "title": "Adicionar provedor",
-    "description": "As chaves ficam armazenadas neste dispositivo e são enviadas apenas ao provedor."
+    "description": "Entre com sua conta ou cole uma chave — os dois ficam neste dispositivo e são enviados só para o provedor."
   },
   "providerForm": {
     "provider": "Provedor",
@@ -76,6 +76,7 @@
     "update": "Atualizar {{name}}",
     "signInAgain": "Entrar novamente",
     "signInWaiting": "Aguardando aprovação…",
+    "signInStarting": "Abrindo a página de entrada…",
     "signInDone": "Conectado como {{account}}",
     "signInDoneAnon": "Conectado",
     "signInCancel": "Cancelar",
@@ -100,8 +101,8 @@
     "auto": "auto",
     "effort": "esforço {{effort}}",
     "removeTitle": "Remover {{name}}?",
-    "removeActiveBody": "Este é seu provedor ativo — o próximo da lista se tornará ativo. A chave de API armazenada será excluída.",
-    "removeBody": "A chave de API armazenada para este provedor será excluída. Você pode adicioná-lo novamente a qualquer momento.",
+    "removeActiveBody": "Este é seu provedor ativo — o próximo da lista se tornará ativo. O que o Regentry guardou para ele, chave de API ou entrada, será excluído.",
+    "removeBody": "O Regentry exclui o que guardou para este provedor — a chave de API ou a entrada. Você pode adicioná-lo novamente a qualquer momento.",
     "statusConnected": "Conectado",
     "statusNoKey": "Sem chave de API",
     "statusNoSignIn": "Não conectado",
@@ -169,6 +170,7 @@
     "jumpToLatest": "Ir para o final ↓",
     "hint": {
       "badKey": "Provavelmente uma chave de API inválida ou ausente — atualize-a e tente novamente.",
+      "signedOut": "A entrada deste provedor não vale mais — entre novamente e tente de novo.",
       "quota": "A cota de uso do seu plano acabou — faça uma recarga no provedor ou troque para outro e tente de novo.",
       "rateLimited": "Limite de requisições atingido — aguarde um momento e envie novamente.",
       "rejected": "O provedor rejeitou a requisição — geralmente um modelo ou nível de esforço de raciocínio não suportado. O detalhe acima diz qual.",
@@ -177,6 +179,7 @@
     },
     "cta": {
       "updateKey": "Atualizar chave de API →",
+      "signIn": "Entrar novamente →",
       "checkUrl": "Verificar URL base →",
       "addProvider": "Adicionar um provedor →"
     },
@@ -287,6 +290,7 @@
     "kindEntitlement": "{{provider}} aceitou a chave, mas seu plano não inclui esta API — faça upgrade do plano na sua conta {{provider}}",
     "kindQuota": "{{provider}} esgotou o uso — aguarde o limite reiniciar ou recarregue na sua conta {{provider}}",
     "kindAuth": "{{provider}} rejeitou a chave de API — confira ou substitua a chave nas configurações do provedor",
+    "kindAuthSignedIn": "{{provider}} não aceitou a entrada — entre novamente nas configurações do provedor",
     "kindModel": "{{provider}} não reconhece este modelo — ele pode ter sido renomeado ou removido; escolha outro",
     "kindRate": "{{provider}} está limitando as requisições — tente de novo em instantes",
     "kindOverload": "{{provider}} está sobrecarregado agora — tente de novo em alguns minutos",

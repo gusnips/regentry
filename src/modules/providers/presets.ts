@@ -43,21 +43,16 @@ export type IconKey =
 /**
  * Built-in presets. Users can also add custom OpenAI-compatible endpoints.
  *
+ * Order is the picker's order, and the first entry is what the add form opens
+ * on: the subscriptions lead, because a plan someone already pays for is the
+ * shortest path to a working provider — an API key means a console, a credit
+ * card, and a billing decision before the first task ever runs.
+ *
  * The "coding plan" endpoints (Kimi, Z.ai, QwenCloud) speak the Anthropic wire
  * format at custom base URLs — that's why they're anthropic-shaped presets,
  * not custom configs.
  */
 export const PRESETS: ProviderPreset[] = [
-  {
-    id: "anthropic",
-    name: "Anthropic (API)",
-    shape: "anthropic",
-    baseUrl: "https://api.anthropic.com",
-    models: ["claude-fable-5", "claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
-    apiKeyUrl: "https://console.anthropic.com/settings/keys",
-    color: "#D97757",
-    icon: "anthropic",
-  },
   {
     // The same API as `anthropic`, reached with a Claude subscription (Pro/Max)
     // sign-in instead of a key. One row per way to pay — a user with both a key
@@ -70,16 +65,6 @@ export const PRESETS: ProviderPreset[] = [
     auth: "oauth",
     color: "#D97757",
     icon: "anthropic",
-  },
-  {
-    id: "openai",
-    name: "OpenAI (API)",
-    shape: "openai",
-    baseUrl: "https://api.openai.com/v1",
-    models: ["gpt-5", "gpt-5-mini", "gpt-4o"],
-    apiKeyUrl: "https://platform.openai.com/api-keys",
-    color: "#000000",
-    icon: "openai",
   },
   {
     // The Codex agent backend behind a ChatGPT Plus/Pro sign-in instead of a
@@ -96,16 +81,6 @@ export const PRESETS: ProviderPreset[] = [
     icon: "openai",
   },
   {
-    id: "kimi",
-    name: "Kimi Coding (API)",
-    shape: "anthropic",
-    baseUrl: "https://api.kimi.com/coding",
-    models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],
-    apiKeyUrl: "https://platform.moonshot.ai/console/api-keys",
-    color: "#0F172A",
-    icon: "kimi",
-  },
-  {
     // The same coding endpoint as `kimi`, reached with a subscription sign-in
     // instead of a key. Kimi bills the two separately, so they stay separate
     // rows — a user with both always knows which quota a run spends.
@@ -115,6 +90,36 @@ export const PRESETS: ProviderPreset[] = [
     baseUrl: "https://api.kimi.com/coding",
     models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],
     auth: "oauth",
+    color: "#0F172A",
+    icon: "kimi",
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic (API)",
+    shape: "anthropic",
+    baseUrl: "https://api.anthropic.com",
+    models: ["claude-fable-5", "claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
+    apiKeyUrl: "https://console.anthropic.com/settings/keys",
+    color: "#D97757",
+    icon: "anthropic",
+  },
+  {
+    id: "openai",
+    name: "OpenAI (API)",
+    shape: "openai",
+    baseUrl: "https://api.openai.com/v1",
+    models: ["gpt-5", "gpt-5-mini", "gpt-4o"],
+    apiKeyUrl: "https://platform.openai.com/api-keys",
+    color: "#000000",
+    icon: "openai",
+  },
+  {
+    id: "kimi",
+    name: "Kimi Coding (API)",
+    shape: "anthropic",
+    baseUrl: "https://api.kimi.com/coding",
+    models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],
+    apiKeyUrl: "https://platform.moonshot.ai/console/api-keys",
     color: "#0F172A",
     icon: "kimi",
   },

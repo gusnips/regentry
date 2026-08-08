@@ -1,6 +1,5 @@
 import type { ChatProvider, ChatMessage, Delta, ResolvedProviderConfig, ToolDef } from "./types";
 import { anthropicHeaders, anthropicOAuthHeaders, apiUrl, parseToolArgs, streamSse } from "./http";
-import { providerDisplayName } from "./presets";
 
 /**
  * Claude Code identities the subscription token as theirs, so OAuth traffic
@@ -26,7 +25,7 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
           ? anthropicOAuthHeaders(config.apiKey)
           : anthropicHeaders(config.apiKey),
         body: JSON.stringify(buildAnthropicBody(config, messages, tools)),
-        label: providerDisplayName(config),
+        provider: config,
         signal,
         meta: {
           model: config.model,

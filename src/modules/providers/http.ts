@@ -1,9 +1,14 @@
+import type { ProviderConfig } from "./types";
 import { ProviderError } from "./types";
 import { classifyProviderError, type ErrorKind } from "./error-classify";
+import { providerDisplayName } from "./presets";
 import { createLogger, truncate } from "@/lib/logger";
 import { i18n } from "@/i18n";
 
 const log = createLogger("providers");
+
+/** Enough of a provider to name it and to know how it authenticates. */
+type ProviderIdentity = Pick<ProviderConfig, "id" | "name" | "auth">;
 
 /** Actionable lead line per failure kind — the raw body still rides along for Details. */
 const ERROR_KIND_KEYS = {
@@ -19,16 +24,22 @@ const ERROR_KIND_KEYS = {
  * Classified errors lead with what fixes them ("rejected the API key — check
  * it…") and keep the raw body after a colon, so splitErrorDetail still lifts
  * the provider's own line into the summary and the JSON behind Details.
+ *
+ * A signed-in provider holds no key, so the auth line names the fix it
+ * actually has — signing in again.
  */
 function providerErrorMessage(
-  label: string,
+  provider: ProviderIdentity,
   status: number,
   text: string,
   fallbackDetail: string,
 ): { message: string; kind?: ErrorKind } {
+  const label = providerDisplayName(provider);
   const kind = classifyProviderError(status, text);
   if (kind) {
-    const line = i18n.t(ERROR_KIND_KEYS[kind], { provider: label });
+    const key =
+      kind === "auth" && provider.auth ? "errors.kindAuthSignedIn" : ERROR_KIND_KEYS[kind];
+    const line = i18n.t(key, { provider: label });
     return { message: text ? `${line}: ${text}` : line, kind };
   }
   return {
@@ -102,13 +113,13 @@ export async function* streamSse(opts: {
   url: string;
   headers: Record<string, string>;
   body: string;
-  /** Provider label for the error envelope and the request log, e.g. "Anthropic". */
-  label: string;
+  /** Names the provider in the error envelope, and says how it authenticates. */
+  provider: ProviderIdentity;
   signal: AbortSignal;
   /** Request metadata merged into the debug log (model, message/tool counts). */
   meta?: Record<string, unknown>;
 }): AsyncGenerator<string> {
-  const { url, headers, body, label, signal, meta } = opts;
+  const { url, headers, body, provider, signal, meta } = opts;
   log.debug("request", { url, bytes: body.length, ...meta });
 
   const res = await fetch(url, {
@@ -121,7 +132,7 @@ export async function* streamSse(opts: {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     log.error(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
-    const { message, kind } = providerErrorMessage(label, res.status, text, res.statusText);
+    const { message, kind } = providerErrorMessage(provider, res.status, text, res.statusText);
     throw new ProviderError(message, res.status, kind);
   }
 

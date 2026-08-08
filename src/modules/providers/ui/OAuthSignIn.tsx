@@ -1,50 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
-import { signInWithClaude } from "../claude-oauth";
-import { signInWithChatGPT } from "../chatgpt-oauth";
-import { pollForToken, requestDeviceCode } from "../kimi-oauth";
+import { OAUTH_FLOWS } from "../oauth-flows";
+import type { SignInPrompt } from "../oauth-flows";
 import { SignInError } from "../types";
 import type { OAuthCredential, SignInFailure } from "../types";
 
 /** How long the "connected" card stays up before the dialog closes over it. */
-export const SIGN_IN_DONE_MS = 1600;
-
-/** What the user must do on the vendor's page to finish. */
-interface Prompt {
-  /** The approval page — opened in a tab, and offered as a link if that was blocked. */
-  url: string;
-  /** Device-code flows only: the code that page asks for. */
-  userCode?: string;
-}
-
-type SignInFlow = (
-  signal: AbortSignal,
-  onPrompt: (prompt: Prompt) => void,
-) => Promise<OAuthCredential>;
-
-/**
- * Every vendor's sign-in, as the only two things that actually differ: the
- * flow, and whether it hands back a code as well as a URL. Adding an OAuth
- * provider is one entry here — no new component and no new strings.
- */
-const FLOWS: Record<string, SignInFlow> = {
-  claude: (signal, onPrompt) => signInWithClaude(signal, (url) => onPrompt({ url })),
-  chatgpt: (signal, onPrompt) => signInWithChatGPT(signal, (url) => onPrompt({ url })),
-  "kimi-plan": async (signal, onPrompt) => {
-    const prompt = await requestDeviceCode();
-    onPrompt({ url: prompt.verificationUrl, userCode: prompt.userCode });
-    // Pre-filled approval page. If the browser blocks it, the code stays on
-    // screen as the fallback — that's why it's shown while we wait.
-    void chrome.tabs.create({ url: prompt.verificationUrl });
-    return pollForToken(prompt, signal);
-  },
-};
+export const SIGN_IN_DONE_MS = 1800;
 
 type Phase =
   | { step: "idle" }
   | { step: "starting" }
-  | { step: "waiting"; prompt: Prompt }
+  | { step: "waiting"; prompt: SignInPrompt }
   | { step: "done"; account?: string }
   | { step: "failed"; reason: SignInFailure }
   | { step: "error"; message: string };
@@ -80,15 +48,15 @@ export function OAuthSignIn({
   useEffect(() => () => abort.current?.abort(), []);
 
   const start = useCallback(async () => {
-    const flow = FLOWS[presetId];
-    if (!flow) return;
+    const flow = OAUTH_FLOWS[presetId];
+    if (!flow) return; // Unreachable: only `auth: "oauth"` presets render this card.
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
     setPhase({ step: "starting" });
 
     try {
-      const credential = await flow(controller.signal, (prompt) =>
+      const credential = await flow.signIn(controller.signal, (prompt) =>
         setPhase({ step: "waiting", prompt }),
       );
       if (controller.signal.aborted) return;
@@ -130,13 +98,16 @@ export function OAuthSignIn({
         </p>
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
           {t("providerForm.signInBlocked")}{" "}
+          {/* The href is a 400-character PKCE URL — nobody reads that, so the
+              link wears the host it goes to and keeps the URL in its tooltip. */}
           <a
-            className="text-brand-600 break-all hover:underline dark:text-brand-400"
+            className="font-medium text-brand-600 hover:underline dark:text-brand-400"
             href={phase.prompt.url}
+            title={phase.prompt.url}
             target="_blank"
             rel="noreferrer"
           >
-            {phase.prompt.url}
+            {host} ↗
           </a>
         </p>
         <div className="flex items-center justify-between gap-2 pt-1">
@@ -222,8 +193,10 @@ export function OAuthSignIn({
         disabled={phase.step === "starting"}
         onClick={() => void start()}
       >
+        {/* Nothing is open yet at "starting" — saying "waiting for approval"
+            there would name a page the user hasn't been shown. */}
         {phase.step === "starting"
-          ? t("providerForm.signInWaiting")
+          ? t("providerForm.signInStarting")
           : signedIn
             ? t("providerForm.signInAgain")
             : t("providerForm.signInStart", { provider })}

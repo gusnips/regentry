@@ -8,7 +8,6 @@ import type {
 } from "./types";
 import { ProviderError } from "./types";
 import { apiUrl, parseToolArgs, streamSse } from "./http";
-import { providerDisplayName } from "./presets";
 
 /**
  * Responses-shape adapter — the only consumer is the ChatGPT subscription
@@ -43,7 +42,12 @@ export function createResponsesProvider(config: ResolvedProviderConfig): ChatPro
         for (const call of pending.values()) {
           if (!call.callId) continue;
           sawToolUse = true;
-          out.push({ type: "tool_use", id: call.callId, name: call.name, args: parseToolArgs(call.args) });
+          out.push({
+            type: "tool_use",
+            id: call.callId,
+            name: call.name,
+            args: parseToolArgs(call.args),
+          });
         }
         pending.clear();
         return out;
@@ -53,7 +57,7 @@ export function createResponsesProvider(config: ResolvedProviderConfig): ChatPro
         url: apiUrl(config.baseUrl, "/responses"),
         headers,
         body: JSON.stringify(buildResponsesBody(config, messages, tools)),
-        label: providerDisplayName(config),
+        provider: config,
         signal,
         meta: {
           model: config.model,
@@ -153,7 +157,9 @@ export function createResponsesProvider(config: ResolvedProviderConfig): ChatPro
           case "response.incomplete": {
             for (const d of flushPending()) yield d;
             const response = isRec(frame.response) ? frame.response : undefined;
-            const details = isRec(response?.incomplete_details) ? response.incomplete_details : undefined;
+            const details = isRec(response?.incomplete_details)
+              ? response.incomplete_details
+              : undefined;
             const reason = details?.reason === "max_output_tokens" ? "length" : "unknown";
             const usage = response?.usage;
             if (isRec(usage)) {
@@ -170,14 +176,18 @@ export function createResponsesProvider(config: ResolvedProviderConfig): ChatPro
 
           case "response.failed": {
             const error = isRec(frame.response) ? frame.response.error : undefined;
-            throw streamError(str(isRec(error) ? error.message : undefined) ?? "upstream stream failed");
+            throw streamError(
+              str(isRec(error) ? error.message : undefined) ?? "upstream stream failed",
+            );
           }
 
           case "error":
           case "response.error": {
             const error = isRec(frame.error) ? frame.error : frame;
             throw streamError(
-              str(isRec(error) ? error.message : undefined) ?? str(frame.message) ?? "upstream stream error",
+              str(isRec(error) ? error.message : undefined) ??
+                str(frame.message) ??
+                "upstream stream error",
             );
           }
         }

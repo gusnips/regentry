@@ -17,8 +17,8 @@
 
 Most browser agents run in a sandboxed, logged-out browser. Regentry runs in **yours** — so it can
 act on the sites you're actually logged into. And it's provider-agnostic by construction: no
-vendor lock-in, no relay, no account with us. Your API key goes straight from the extension to
-your provider.
+vendor lock-in, no relay, no account with us. Your API key — or the subscription you sign in with
+— goes straight from the extension to your provider.
 
 ## Features
 

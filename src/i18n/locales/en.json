@@ -11,7 +11,7 @@
   "onboarding": {
     "title": "Welcome to Regentry",
     "tagline": "An AI agent that drives this browser — your tabs, your sessions, your logins — to get tasks done.",
-    "connectPrompt": "To start, connect a provider. Your API key stays on this device and goes straight to the provider — there is no Regentry server.",
+    "connectPrompt": "To start, connect a provider — sign in with a subscription you already pay for, or paste an API key. Either way it stays on this device and goes straight to the provider — there is no Regentry server.",
     "addProvider": "Add a provider",
     "presetsNote": "{{count}} presets — Anthropic, OpenAI, Kimi, Z.ai, Ollama… — or any compatible endpoint."
   },
@@ -46,7 +46,7 @@
   },
   "addProvider": {
     "title": "Add provider",
-    "description": "Keys are stored on this device and sent only to the provider."
+    "description": "Sign in, or paste a key — either one stays on this device and is sent only to the provider."
   },
   "providerForm": {
     "provider": "Provider",
@@ -76,6 +76,7 @@
     "update": "Update {{name}}",
     "signInAgain": "Sign in again",
     "signInWaiting": "Waiting for approval…",
+    "signInStarting": "Opening the sign-in page…",
     "signInDone": "Signed in as {{account}}",
     "signInDoneAnon": "Signed in",
     "signInCancel": "Cancel",
@@ -100,8 +101,8 @@
     "auto": "auto",
     "effort": "{{effort}} effort",
     "removeTitle": "Remove {{name}}?",
-    "removeActiveBody": "This is your active provider — the next one in the list becomes active. The stored API key will be deleted.",
-    "removeBody": "The API key stored for this provider will be deleted. You can add it again at any time.",
+    "removeActiveBody": "This is your active provider — the next one in the list becomes active. What Regentry stored for it, API key or sign-in, is deleted.",
+    "removeBody": "Regentry deletes what it stored for this provider — the API key or the sign-in. You can add it again at any time.",
     "statusConnected": "Connected",
     "statusNoKey": "No API key",
     "statusNoSignIn": "Not signed in",
@@ -169,6 +170,7 @@
     "jumpToLatest": "Jump to latest ↓",
     "hint": {
       "badKey": "Likely a bad or missing API key — update it and try again.",
+      "signedOut": "The sign-in for this provider is no longer valid — sign in again and retry.",
       "quota": "Your plan's usage quota is spent — top up with the provider, or switch to another one and retry.",
       "rateLimited": "Rate limited — wait a moment, then send again.",
       "rejected": "The provider rejected the request — often an unsupported model or reasoning effort level. The detail above says which.",
@@ -177,6 +179,7 @@
     },
     "cta": {
       "updateKey": "Update API key →",
+      "signIn": "Sign in again →",
       "checkUrl": "Check base URL →",
       "addProvider": "Add a provider →"
     },
@@ -287,6 +290,7 @@
     "kindEntitlement": "{{provider}} accepted the key, but your plan doesn't include this API — upgrade the plan on your {{provider}} account",
     "kindQuota": "{{provider}} is out of usage — wait for the limit to reset, or top up on your {{provider}} account",
     "kindAuth": "{{provider}} rejected the API key — check it or replace it in the provider settings",
+    "kindAuthSignedIn": "{{provider}} didn't accept the sign-in — sign in again in the provider settings",
     "kindModel": "{{provider}} doesn't recognize this model — it may have been renamed or removed; pick another one",
     "kindRate": "{{provider}} is rate-limiting requests — try again in a moment",
     "kindOverload": "{{provider}} is overloaded right now — try again in a few minutes",

@@ -119,8 +119,10 @@ export function ProviderList() {
                       : oauth
                         ? t("providerList.statusNoSignIn")
                         : t("providerList.statusNoKey")}{" "}
-                    · {p.model ?? t("providerList.auto")} · {p.shape}
-                    {host ? ` · ${host}` : ""}
+                    · {p.model ?? t("providerList.auto")}
+                    {/* Wire shape and host are facts about an endpoint the user
+                        typed in themselves; on a preset they're trivia. */}
+                    {host ? ` · ${p.shape} · ${host}` : ""}
                     {p.reasoningEffort
                       ? ` · ${t("providerList.effort", { effort: p.reasoningEffort })}`
                       : ""}

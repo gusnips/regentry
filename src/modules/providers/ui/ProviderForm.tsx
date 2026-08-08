@@ -196,7 +196,10 @@ export function ProviderForm({
             { value: CUSTOM, label: t("providerForm.customEndpoint") },
           ]}
         />
-        {preset && (
+        {/* The endpoint is worth showing where the user is about to hand over a
+            key — it says where that key goes. A sign-in reveals its own
+            destination on the vendor's page, so the URL is just noise there. */}
+        {preset && !isOAuth && (
           <span className="text-xs text-neutral-400 dark:text-neutral-500">{preset.baseUrl}</span>
         )}
       </div>

@@ -72,14 +72,20 @@ never reach the service-worker bundle.
 - `providers/` — OpenAI/Anthropic/Responses adapters, presets, storage, config UI (add/edit
   dialog, list, per-task header picker, first-run onboarding). Adding a provider is a data change
   in `presets.ts` — never a code change elsewhere. (A new WIRE SHAPE is the exception: adapter +
-  factory case + `ProviderShape` union.) Sign-in is shared too: `oauth.ts` owns PKCE, the redirect
-  capture, and the token POST; the per-vendor files own only client ids, authorize params, and
-  which claim names the account; `ui/OAuthSignIn` is the one card for all of them, its copy
+  factory case + `ProviderShape` union.) Preset ORDER is the picker's order and its first entry is
+  the add form's default, so the subscription rows lead: a plan the user already pays for beats
+  sending them to a billing console before their first task. Sign-in is shared too: `oauth.ts` owns
+  PKCE, the redirect capture, and the token POST; the per-vendor files own only client ids,
+  authorize params, and which claim names the account; `oauth-flows.ts` is the ONE registry
+  (`signIn` + `refresh` per preset id) that both the sign-in card and the credential seam read, so
+  a provider can't be half-wired; `ui/OAuthSignIn` is the one card for all of them, its copy
   parameterized on the display name and the vendor's host. **A token in the body — not a 2xx —
   is what makes a sign-in successful**: vendors answer 429 with a usable credential (a plan over
   its usage limit), and discarding it would force a pointless re-login. A pasted key is verified
   before it's stored (`isKeyRejected`, one model listing); only a flat rejection blocks the save,
-  since a 404 (no list route) or an offline endpoint proves nothing about the key.
+  since a 404 (no list route) or an offline endpoint proves nothing about the key. Credential-shaped
+  copy is credential-aware end to end — a signed-in provider never gets told to fix an API key it
+  doesn't have (`errors.kindAuthSignedIn`, `chat.hint.signedOut`).
 - `conversation/` — stored conversations, message types, chat UI (MessageList, ChatInput,
   RunStatus, ConversationList). `transcript.ts` is the persistence half of the panel store's
   event handling, background-safe: one `TranscriptWriter` per run turns run events into stored

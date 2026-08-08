@@ -1,6 +1,5 @@
 import type { ChatProvider, ChatMessage, ToolDef, Delta, ResolvedProviderConfig } from "./types";
 import { apiUrl, parseToolArgs, streamSse } from "./http";
-import { providerDisplayName } from "./presets";
 
 /**
  * OpenAI-shape adapter — works with any OpenAI-compatible endpoint.
@@ -16,7 +15,7 @@ export function createOpenAIProvider(config: ResolvedProviderConfig): ChatProvid
         url: apiUrl(config.baseUrl, "/chat/completions"),
         headers: { Authorization: `Bearer ${config.apiKey}` },
         body: JSON.stringify(buildOpenAIBody(config, messages, tools)),
-        label: providerDisplayName(config),
+        provider: config,
         signal,
         meta: {
           model: config.model,

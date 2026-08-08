@@ -25,11 +25,13 @@ import {
 import { ZoomableImage } from "@/components/ZoomableImage";
 import { useStoredItem } from "@/components/useStoredItem";
 
-type HintKey = "badKey" | "quota" | "rateLimited" | "rejected" | "network" | "noProvider";
-type CtaKey = "updateKey" | "checkUrl" | "addProvider";
+type HintKey =
+  "badKey" | "signedOut" | "quota" | "rateLimited" | "rejected" | "network" | "noProvider";
+type CtaKey = "updateKey" | "signIn" | "checkUrl" | "addProvider";
 
 const HINT_KEYS = {
   badKey: "chat.hint.badKey",
+  signedOut: "chat.hint.signedOut",
   quota: "chat.hint.quota",
   rateLimited: "chat.hint.rateLimited",
   rejected: "chat.hint.rejected",
@@ -39,6 +41,7 @@ const HINT_KEYS = {
 
 const CTA_KEYS = {
   updateKey: "chat.cta.updateKey",
+  signIn: "chat.cta.signIn",
   checkUrl: "chat.cta.checkUrl",
   addProvider: "chat.cta.addProvider",
 } as const;
@@ -47,15 +50,19 @@ const CTA_KEYS = {
  * Raw provider/agent error → likely-cause key + fix (house rule: never a bare error).
  * Regexes match the raw English provider text — provider errors arrive in English
  * regardless of UI locale. `cta` opens the provider setup dialog in place.
+ *
+ * `signedIn` swaps the credential advice: a subscription provider holds no key,
+ * so "update your API key" would send that user looking for something that
+ * doesn't exist — the fix there is signing in again.
  */
-function errorHint(message: string): { key: HintKey; cta?: CtaKey } | null {
+function errorHint(message: string, signedIn: boolean): { key: HintKey; cta?: CtaKey } | null {
   const m = message.toLowerCase();
   // Quota first: a 403/429 body that talks about billing is not a bad key, and
   // telling the user to re-enter a working key would send them the wrong way.
   if (/usage limit|quota|out of credit|insufficient (balance|credit|funds)|billing/.test(m))
     return { key: "quota", cta: "addProvider" };
-  if (/401|403|unauthorized|forbidden|invalid api key|authentication/.test(m))
-    return { key: "badKey", cta: "updateKey" };
+  if (/401|403|unauthorized|forbidden|invalid api key|authentication|sign-in/.test(m))
+    return signedIn ? { key: "signedOut", cta: "signIn" } : { key: "badKey", cta: "updateKey" };
   if (/429|rate limit/.test(m)) return { key: "rateLimited" };
   if (/400|invalid/.test(m)) return { key: "rejected" };
   if (/failed to fetch|networkerror|network/.test(m)) return { key: "network", cta: "checkUrl" };
@@ -490,7 +497,7 @@ function MessageBubble({
     case "plan":
       return msg.steps?.length ? <PlanCard steps={msg.steps} current={msg.current ?? 0} /> : null;
     case "error": {
-      const hint = errorHint(msg.content);
+      const hint = errorHint(msg.content, Boolean(activeProvider?.auth));
       const { summary, detail } = splitErrorDetail(msg.content);
       return (
         <Bubble variant="destructive">

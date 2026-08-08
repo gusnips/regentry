@@ -11,7 +11,7 @@
   "onboarding": {
     "title": "Bienvenido a Regentry",
     "tagline": "Un agente de IA que maneja este navegador — tus pestañas, tus sesiones, tus inicios de sesión — para completar tareas.",
-    "connectPrompt": "Para empezar, conecta un proveedor. Tu clave de API se queda en este dispositivo y va directo al proveedor — no hay ningún servidor de Regentry.",
+    "connectPrompt": "Para empezar, conecta un proveedor — inicia sesión con una suscripción que ya pagas o pega una clave de API. En ambos casos se queda en este dispositivo y va directo al proveedor — no hay ningún servidor de Regentry.",
     "addProvider": "Añadir un proveedor",
     "presetsNote": "{{count}} presets — Anthropic, OpenAI, Kimi, Z.ai, Ollama… — o cualquier endpoint compatible."
   },
@@ -46,7 +46,7 @@
   },
   "addProvider": {
     "title": "Añadir proveedor",
-    "description": "Las claves se guardan en este dispositivo y solo se envían al proveedor."
+    "description": "Inicia sesión o pega una clave — ambas se quedan en este dispositivo y se envían solo al proveedor."
   },
   "providerForm": {
     "provider": "Proveedor",
@@ -76,6 +76,7 @@
     "update": "Actualizar {{name}}",
     "signInAgain": "Iniciar sesión de nuevo",
     "signInWaiting": "Esperando aprobación…",
+    "signInStarting": "Abriendo la página de inicio de sesión…",
     "signInDone": "Sesión iniciada como {{account}}",
     "signInDoneAnon": "Sesión iniciada",
     "signInCancel": "Cancelar",
@@ -100,8 +101,8 @@
     "auto": "auto",
     "effort": "esfuerzo {{effort}}",
     "removeTitle": "¿Eliminar {{name}}?",
-    "removeActiveBody": "Este es tu proveedor activo — el siguiente de la lista pasará a serlo. La clave de API guardada se eliminará.",
-    "removeBody": "La clave de API guardada para este proveedor se eliminará. Puedes añadirlo de nuevo en cualquier momento.",
+    "removeActiveBody": "Este es tu proveedor activo — el siguiente de la lista pasará a serlo. Lo que Regentry guardó para él, clave de API o sesión, se eliminará.",
+    "removeBody": "Regentry elimina lo que guardó para este proveedor — la clave de API o la sesión. Puedes añadirlo de nuevo en cualquier momento.",
     "statusConnected": "Conectado",
     "statusNoKey": "Sin clave de API",
     "statusNoSignIn": "Sin sesión",
@@ -169,6 +170,7 @@
     "jumpToLatest": "Ir al final ↓",
     "hint": {
       "badKey": "Probablemente una clave de API incorrecta o ausente — actualízala y vuelve a intentarlo.",
+      "signedOut": "El inicio de sesión de este proveedor ya no vale — inicia sesión de nuevo y reintenta.",
       "quota": "La cuota de uso de tu plan se agotó — recarga con el proveedor o cambia a otro y vuelve a intentarlo.",
       "rateLimited": "Límite de peticiones alcanzado — espera un momento y envía de nuevo.",
       "rejected": "El proveedor rechazó la petición — a menudo un modelo o nivel de esfuerzo de razonamiento no soportado. El detalle de arriba indica cuál.",
@@ -177,6 +179,7 @@
     },
     "cta": {
       "updateKey": "Actualizar clave de API →",
+      "signIn": "Iniciar sesión de nuevo →",
       "checkUrl": "Revisar URL base →",
       "addProvider": "Añadir un proveedor →"
     },
@@ -287,6 +290,7 @@
     "kindEntitlement": "{{provider}} aceptó la clave, pero tu plan no incluye esta API — mejora el plan en tu cuenta de {{provider}}",
     "kindQuota": "{{provider}} agotó el uso — espera a que se reinicie el límite o recarga saldo en tu cuenta de {{provider}}",
     "kindAuth": "{{provider}} rechazó la clave de API — revísala o reemplázala en la configuración del proveedor",
+    "kindAuthSignedIn": "{{provider}} no aceptó el inicio de sesión — inicia sesión de nuevo en la configuración del proveedor",
     "kindModel": "{{provider}} no reconoce este modelo — puede haber sido renombrado o eliminado; elige otro",
     "kindRate": "{{provider}} está limitando las solicitudes — inténtalo de nuevo en un momento",
     "kindOverload": "{{provider}} está sobrecargado ahora mismo — inténtalo de nuevo en unos minutos",

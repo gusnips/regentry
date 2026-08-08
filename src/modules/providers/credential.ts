@@ -1,23 +1,11 @@
-import type { OAuthCredential, ProviderConfig } from "./types";
+import type { ProviderConfig } from "./types";
 import { ProviderError } from "./types";
-import { refreshCredential as refreshKimi } from "./kimi-oauth";
-import { refreshCredential as refreshClaude } from "./claude-oauth";
-import { refreshCredential as refreshChatGPT } from "./chatgpt-oauth";
+import { OAUTH_FLOWS } from "./oauth-flows";
 import { saveProvider } from "./storage";
 import { createLogger } from "@/lib/logger";
 import { i18n } from "@/i18n";
 
 const log = createLogger("credential");
-
-/**
- * Which vendor refreshes a signed-in provider's tokens. Every preset marked
- * `auth: "oauth"` must register here — one line per provider, never new logic.
- */
-const REFRESHERS: Record<string, (c: OAuthCredential) => Promise<OAuthCredential>> = {
-  "kimi-plan": refreshKimi,
-  claude: refreshClaude,
-  chatgpt: refreshChatGPT,
-};
 
 /**
  * In-flight refreshes, keyed by provider id. A run start and a model listing
@@ -42,17 +30,17 @@ export async function ensureProviderCredential(config: ProviderConfig): Promise<
 
   const task = (async () => {
     try {
-      const refresh = REFRESHERS[config.id];
-      if (!refresh) {
-        // A preset marked `auth` without a refresher is a wiring bug; route it
-        // through the same "sign in again" recovery as an expired token.
+      const flow = OAUTH_FLOWS[config.id];
+      if (!flow) {
+        // A preset marked `auth` with no registered flow is a wiring bug; route
+        // it through the same "sign in again" recovery as an expired token.
         throw new ProviderError(
           i18n.t("errors.oauthRefreshExpired", { name: config.name }),
           401,
           "auth",
         );
       }
-      const refreshed = await refresh(config.auth!);
+      const refreshed = await flow.refresh(config.auth!);
       // Persist before use: the old refresh token is spent, so losing the new
       // pair here would strand the user at a forced sign-in.
       await saveProvider({ ...config, auth: refreshed });
