@@ -15,6 +15,7 @@ import {
   watchConversations,
 } from "../conversations";
 import { toolVerbKey } from "./tool-labels";
+import type { PastedText } from "./paste-collapse";
 
 interface ConversationState {
   messages: Message[];
@@ -46,6 +47,10 @@ interface ConversationState {
   pendingSend: string | null;
   /** The composer's text, so a recalled queue or an ending run can hand text back to it. */
   draft: string;
+  /** Collapsed pastes — token in the input, content spliced back in on send. */
+  pastedTexts: PastedText[];
+  /** A removed collapse teaches this draft to paste inline — the fold is only a surprise once. */
+  collapseDisabled: boolean;
   /** The tab the current run is driving; null when idle. */
   drivingTab: DrivingPayload | null;
 
@@ -57,6 +62,10 @@ interface ConversationState {
   /** ↑-arrow recall: the newest queued message goes back to the composer. */
   recallQueued: () => void;
   setDraft: (text: string) => void;
+  /** Stash a collapsed paste's content behind its token. */
+  addPastedText: (entry: PastedText) => void;
+  /** Fresh draft after a send — the fold is fair game again. */
+  clearPastedTexts: () => void;
   retry: () => void;
   stop: () => void;
   /** Start a fresh transcript — the current one stays in history */
@@ -135,6 +144,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     queued: [],
     pendingSend: null,
     draft: "",
+    pastedTexts: [],
+    collapseDisabled: false,
     drivingTab: null,
   });
 
@@ -451,6 +462,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     queued: [],
     pendingSend: null,
     draft: "",
+    pastedTexts: [],
+    collapseDisabled: false,
     drivingTab: null,
 
     connect: () => {
@@ -498,7 +511,20 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       post({ type: "unqueue", id: last.id });
     },
 
-    setDraft: (text) => set({ draft: text }),
+    // The single composer writer (ChatInput routes every edit here), so a
+    // collapse whose token left the text drops its content — and, per draft,
+    // teaches the input to paste inline: the fold is only ever a surprise once.
+    setDraft: (text) =>
+      set((st) => {
+        const kept = st.pastedTexts.filter((p) => text.includes(p.token));
+        const dropped = kept.length < st.pastedTexts.length;
+        // Most edits drop nothing — return only the draft so the collapse state
+        // array keeps its identity and the hint doesn't re-render per keystroke.
+        if (!dropped) return { draft: text };
+        return { draft: text, pastedTexts: kept, collapseDisabled: true };
+      }),
+    addPastedText: (entry) => set((st) => ({ pastedTexts: [...st.pastedTexts, entry] })),
+    clearPastedTexts: () => set({ pastedTexts: [], collapseDisabled: false }),
 
     retry: () => {
       const last = get().lastRun;

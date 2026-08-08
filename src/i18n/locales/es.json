@@ -164,6 +164,8 @@
     "queuedHint": "En cola — entra entre las próximas llamadas a herramientas; detener los envía como la siguiente tarea. Con el input vacío, ↑ edita el último; ✕ lo descarta.",
     "unqueueAria": "Descartar mensaje en cola",
     "queueNoImages": "Las imágenes no pueden unirse a una tarea en curso — encola el texto ahora y pega la imagen con la próxima tarea.",
+    "pasteToken": "Pegado {{count}} líneas",
+    "pasteHint": "El texto largo pegado se pliega en una nota para mantener la entrada ordenada — el texto completo se envía igualmente. Retroceso lo elimina.",
     "askUserHint": "Toca una opción o escribe la tuya",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensó durante {{duration}}",

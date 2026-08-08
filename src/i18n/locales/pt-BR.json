@@ -164,6 +164,8 @@
     "queuedHint": "Na fila — entra entre as próximas chamadas de ferramenta; parar as envia como a próxima tarefa. Com o campo vazio, ↑ edita a última; ✕ descarta.",
     "unqueueAria": "Descartar mensagem enfileirada",
     "queueNoImages": "Imagens não podem entrar numa tarefa em andamento — enfileire o texto agora e cole a imagem na próxima tarefa.",
+    "pasteToken": "Colado {{count}} linhas",
+    "pasteHint": "Texto longo colado vira uma nota para manter o campo organizado — o texto completo ainda é enviado. Backspace apaga.",
     "askUserHint": "Toque numa opção ou escreva a sua",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensou por {{duration}}",

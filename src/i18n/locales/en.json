@@ -164,6 +164,8 @@
     "queuedHint": "Queued — lands between the next tool calls; stopping sends them as the next task. ↑ with an empty input edits the newest; ✕ drops it.",
     "unqueueAria": "Drop queued message",
     "queueNoImages": "Images can't join a running task — queue the text now and paste the image with the next task.",
+    "pasteToken": "Pasted {{count}} lines",
+    "pasteHint": "Long pasted text is folded into a note to keep things tidy — the full text is still sent. Backspace deletes it.",
     "askUserHint": "Tap one, or write your own",
     "thinkingFor": "Thinking · {{duration}}",
     "thoughtFor": "Thought for {{duration}}",

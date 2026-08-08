@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { toAttachment } from "./image";
 import { recallStep, sentMessages } from "./history-recall";
+import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
 import { ZoomableImage } from "@/components/ZoomableImage";
@@ -38,13 +39,27 @@ export function ChatInput() {
   const sentHistory = useMemo(() => sentMessages(messages), [messages]);
 
   const running = status === "running";
+  // Composer sub-state lives in the store alongside the draft: the draft itself
+  // has store-side writers (recalls, conversation resets), and those must reset
+  // the collapse state too — two copies would drift.
+  const pastedTexts = useConversationStore((s) => s.pastedTexts);
+  const collapseDisabled = useConversationStore((s) => s.collapseDisabled);
+  const addPastedText = useConversationStore((s) => s.addPastedText);
+  const clearPastedTexts = useConversationStore((s) => s.clearPastedTexts);
+  /** Caret a token insert asked for, applied on the next paint. */
+  const pendingCaret = useRef<number | null>(null);
 
-  // Autogrow with content, capped at ~6 rows
-  useEffect(() => {
+  // Autogrow with content, capped at ~6 rows; also restores the caret a token
+  // insert asked for (a plain effect would flash it at the end of the value first).
+  useLayoutEffect(() => {
     const el = areaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+    if (pendingCaret.current !== null) {
+      el.setSelectionRange(pendingCaret.current, pendingCaret.current);
+      pendingCaret.current = null;
+    }
   }, [text]);
 
   /**
@@ -55,27 +70,49 @@ export function ChatInput() {
    */
   const onPaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
     const files = [...e.clipboardData.files].filter((f) => f.type.startsWith("image/"));
-    if (files.length === 0) return;
-    e.preventDefault();
-    if (running) {
-      setAttachError(t("chat.queueNoImages"));
+    if (files.length > 0) {
+      e.preventDefault();
+      if (running) {
+        setAttachError(t("chat.queueNoImages"));
+        return;
+      }
+      setAttachError(null);
+      try {
+        // Tokens number in paste order (assigned before the first await); the
+        // downscale/encode work itself races — an N-image paste is not N× slower.
+        const added = await Promise.all(
+          files.map(async (file) => ({
+            token: `[Image #${++imageCount.current}]`,
+            dataUrl: await toAttachment(file),
+          })),
+        );
+        setAttachments((prev) => [...prev, ...added]);
+        setText([text.trimEnd(), ...added.map((a) => a.token)].filter(Boolean).join(" "));
+      } catch {
+        setAttachError(t("chat.attachFailed"));
+      }
       return;
     }
-    setAttachError(null);
-    try {
-      // Tokens number in paste order (assigned before the first await); the
-      // downscale/encode work itself races — an N-image paste is not N× slower.
-      const added = await Promise.all(
-        files.map(async (file) => ({
-          token: `[Image #${++imageCount.current}]`,
-          dataUrl: await toAttachment(file),
-        })),
-      );
-      setAttachments((prev) => [...prev, ...added]);
-      setText([text.trimEnd(), ...added.map((a) => a.token)].filter(Boolean).join(" "));
-    } catch {
-      setAttachError(t("chat.attachFailed"));
-    }
+
+    // Text paste: a big block folds into a token at the caret, its full text
+    // spliced back in on send (see paste-collapse.ts). Short pastes fall
+    // through to the browser's normal inline paste.
+    const pasted = e.clipboardData.getData("text/plain");
+    if (!pasted || collapseDisabled || !shouldCollapse(pasted)) return;
+    e.preventDefault();
+    const el = areaRef.current;
+    const caretStart = el?.selectionStart ?? text.length;
+    const caretEnd = el?.selectionEnd ?? caretStart;
+    const token = nextToken(
+      new Set(pastedTexts.map((p) => p.token)),
+      t("chat.pasteToken", { count: linesOf(pasted) }),
+    );
+    // The entry lands before the text write, so setDraft's prune sees the token
+    // already present and keeps it.
+    addPastedText({ token, content: pasted });
+    const { text: newText, caret } = insertToken(text, caretStart, caretEnd, token);
+    setText(newText);
+    pendingCaret.current = caret;
   };
 
   const removeAttachment = (token: string) => {
@@ -84,7 +121,9 @@ export function ChatInput() {
   };
 
   const submit = () => {
-    const task = text.trim();
+    // Collapse tokens expand to their full text before the message goes out —
+    // the model never sees a "[Pasted 5 lines]" placeholder.
+    const task = expandText(text, pastedTexts).trim();
     if (!task) return;
     if (running) {
       // Inserted between the next tool batches, never mid-stream.
@@ -97,6 +136,9 @@ export function ChatInput() {
       setAttachments([]);
     }
     setText("");
+    // setDraft("") above pruned everything and armed the inline override; a sent
+    // message is a fresh draft, so the fold is fair game again.
+    clearPastedTexts();
     setAttachError(null);
   };
 
@@ -111,6 +153,23 @@ export function ChatInput() {
       e.preventDefault();
       submit();
       return;
+    }
+    // One backspace deletes a whole collapse token, not just its last bracket.
+    if (e.key === "Backspace") {
+      const el = areaRef.current;
+      const caret = el?.selectionStart;
+      if (el && caret !== undefined && caret === el.selectionEnd) {
+        const token = pastedTexts
+          .filter((p) => text.slice(0, caret).endsWith(p.token))
+          .sort((a, b) => b.token.length - a.token.length)[0]?.token;
+        if (token) {
+          e.preventDefault();
+          const newCaret = caret - token.length;
+          setText(text.slice(0, newCaret) + text.slice(caret));
+          pendingCaret.current = newCaret;
+          return;
+        }
+      }
     }
     if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
     // ↑ recalls the newest queued line first: it is still unsent, so it is the
@@ -214,6 +273,11 @@ export function ChatInput() {
           </Button>
         )}
       </div>
+      {pastedTexts.some((p) => text.includes(p.token)) && (
+        <p className="text-[11px] italic text-neutral-400 dark:text-neutral-500">
+          {t("chat.pasteHint")}
+        </p>
+      )}
     </div>
   );
 }
