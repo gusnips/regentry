@@ -29,6 +29,10 @@ function isLocalUrl(url: string): boolean {
  * per-task choices made in the side panel, where the stored key lets us
  * list the endpoint's live models; they don't belong at setup time.
  *
+ * OAuth presets save on sign-in itself — approving the vendor page writes the
+ * provider (re-signing-in on the edit path refreshes the credential), so the
+ * OAuth path has no submit button.
+ *
  * Picking an already-configured preset is the edit path: the CTA becomes
  * "Update …", model/effort choices are preserved, and an empty key keeps
  * the saved one (key rotation = paste a new one). Pass `initialProvider` to
@@ -62,16 +66,53 @@ export function ProviderForm({
 
   const preset = presetId === CUSTOM ? undefined : PRESETS.find((p) => p.id === presetId);
   const existing = providers.find((p) => p.id === (preset ? preset.id : initialProvider?.id));
-  // Signed in during this form's lifetime, before Save writes it through.
-  const [pendingAuth, setPendingAuth] = useState<OAuthCredential | undefined>();
   const isOAuth = preset?.auth === "oauth";
-  const auth = pendingAuth ?? existing?.auth;
+  const auth = existing?.auth;
 
   const fail = (message: string) => setError(message);
+
+  /**
+   * Write the provider row. For OAuth this IS the flow — signing in saves
+   * immediately, so approving the vendor page is the only step (re-signing-in
+   * on the edit path updates the stored credential). For keyed providers it's
+   * the submit button's job.
+   */
+  const save = async (authOverride?: OAuthCredential) => {
+    const resolvedName = preset ? preset.name : name.trim();
+    const resolvedUrl = preset ? preset.baseUrl : baseUrl.trim();
+    const key = apiKey.trim();
+    setSaving(true);
+    try {
+      await add({
+        // Unseeded custom → undefined → the store assigns custom-<ts>.
+        id: preset?.id ?? existing?.id,
+        name: resolvedName,
+        shape: preset ? preset.shape : shape,
+        baseUrl: resolvedUrl,
+        apiKey: key || (existing?.apiKey ?? ""),
+        ...(authOverride ? { auth: authOverride } : {}),
+        // Not asked at setup — preserved across an update, picked per task in the panel.
+        model: existing?.model,
+        reasoningEffort: existing?.reasoningEffort,
+      });
+      setApiKey("");
+      setName("");
+      setBaseUrl("");
+      onSaved?.();
+    } catch (err) {
+      fail(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // OAuth providers save from the sign-in flow itself — the submit button
+    // isn't rendered on their path, so this never runs for them.
+    if (isOAuth) return;
 
     const resolvedName = preset ? preset.name : name.trim();
     const resolvedUrl = preset ? preset.baseUrl : baseUrl.trim();
@@ -93,47 +134,12 @@ export function ProviderForm({
         return;
       }
     }
-    // OAuth providers carry a credential instead of a key — sign-in is the gate.
-    if (isOAuth) {
-      if (!auth) {
-        // Each vendor's sign-in is a different flow, so the message names its own.
-        const requiredKey =
-          preset.id === "claude"
-            ? "providerForm.claudeSignInRequired"
-            : preset.id === "chatgpt"
-              ? "providerForm.chatgptSignInRequired"
-              : "providerForm.kimiSignInRequired";
-        fail(t(requiredKey));
-        return;
-      }
-    } else if (!key && !existing && !isLocalUrl(resolvedUrl)) {
+    if (!key && !existing && !isLocalUrl(resolvedUrl)) {
       fail(t("providerForm.apiKeyRequired"));
       return;
     }
 
-    setSaving(true);
-    try {
-      await add({
-        // Unseeded custom → undefined → the store assigns custom-<ts>.
-        id: preset?.id ?? existing?.id,
-        name: resolvedName,
-        shape: preset ? preset.shape : shape,
-        baseUrl: resolvedUrl,
-        apiKey: key || (existing?.apiKey ?? ""),
-        ...(auth ? { auth } : {}),
-        // Not asked at setup — preserved across an update, picked per task in the panel.
-        model: existing?.model,
-        reasoningEffort: existing?.reasoningEffort,
-      });
-      setApiKey("");
-      setName("");
-      setBaseUrl("");
-      onSaved?.();
-    } catch (err) {
-      fail(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSaving(false);
-    }
+    await save();
   };
 
   const keyHint = isLocalUrl(preset ? preset.baseUrl : baseUrl.trim()) ? (
@@ -208,11 +214,11 @@ export function ProviderForm({
 
       {isOAuth ? (
         preset.id === "claude" ? (
-          <ClaudeSignIn signedIn={auth} onSignedIn={setPendingAuth} />
+          <ClaudeSignIn signedIn={auth} onSignedIn={(cred) => void save(cred)} />
         ) : preset.id === "chatgpt" ? (
-          <ChatGPTSignIn signedIn={auth} onSignedIn={setPendingAuth} />
+          <ChatGPTSignIn signedIn={auth} onSignedIn={(cred) => void save(cred)} />
         ) : (
-          <KimiSignIn signedIn={auth} onSignedIn={setPendingAuth} />
+          <KimiSignIn signedIn={auth} onSignedIn={(cred) => void save(cred)} />
         )
       ) : (
         <PasswordField
@@ -242,13 +248,15 @@ export function ProviderForm({
         </div>
       )}
 
-      <Button type="submit" disabled={saving}>
-        {saving
-          ? t("providerForm.saving")
-          : existing
-            ? t("providerForm.update", { name: existing.name })
-            : t("providerForm.add")}
-      </Button>
+      {!isOAuth && (
+        <Button type="submit" disabled={saving}>
+          {saving
+            ? t("providerForm.saving")
+            : existing
+              ? t("providerForm.update", { name: existing.name })
+              : t("providerForm.add")}
+        </Button>
+      )}
     </form>
   );
 }

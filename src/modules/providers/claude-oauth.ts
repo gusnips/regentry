@@ -267,14 +267,37 @@ async function postJson(
   const record = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
 
   if (!res.ok) {
+    // A 429 at the token exchange means the account authenticated but the plan
+    // is over its usage limit (5h rolling / weekly) — not a failed sign-in, so
+    // it gets its own message instead of a bare "sign-in failed: 429".
+    if (res.status === 429) {
+      throw new ProviderError(i18n.t("errors.signInRateLimited"), res.status);
+    }
     throw new ProviderError(
       i18n.t("errors.claudeSignInFailed", {
-        detail: str(record.error_description) ?? str(record.error) ?? String(res.status),
+        detail: oauthErrorDetail(record) ?? String(res.status),
       }),
       res.status,
     );
   }
   return record;
+}
+
+/**
+ * Pull a human reason out of an OAuth error body — RFC 6749 (`error` /
+ * `error_description`) or a nested object (`error.message` / `error.type`),
+ * which Anthropic and OpenAI both use.
+ */
+function oauthErrorDetail(record: Record<string, unknown>): string | undefined {
+  const description = str(record.error_description);
+  if (description) return description;
+  const error = record.error;
+  if (typeof error === "string") return error;
+  if (typeof error === "object" && error !== null) {
+    const nested = error as Record<string, unknown>;
+    return str(nested.message) ?? str(nested.type);
+  }
+  return undefined;
 }
 
 const str = (v: unknown): string | undefined =>
