@@ -293,7 +293,13 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       } else {
         results.push({
           id: call.id,
-          content: JSON.stringify(result.ok ? result.data : { error: result.error }),
+          // JSON.stringify(undefined) is undefined, and a tool message whose
+          // `content` key drops out of the body is a 400 on strict deserializers
+          // (DeepSeek: "missing field content"). No-data tools (type, keys,
+          // scroll) still report success as {ok:true}.
+          content: JSON.stringify(
+            result.ok ? (result.data ?? { ok: true }) : { error: result.error },
+          ),
           ...(result.images?.length ? { images: result.images } : {}),
         });
       }

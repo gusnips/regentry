@@ -57,6 +57,33 @@ describe("buildOpenAIBody", () => {
     expect(msgs[1]?.tool_calls).toHaveLength(1);
   });
 
+  it("never omits `content` on tool messages (strict deserializers 400 otherwise)", () => {
+    // A no-data tool (type, press_key, scroll) can produce content: undefined —
+    // serializing that drops the key and DeepSeek rejects the body. The adapter
+    // must always emit `content`, even when the result carried none.
+    const body = buildOpenAIBody(
+      base,
+      [
+        { role: "user", content: "Do the thing." },
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [{ id: "c1", name: "type", args: { text: "hi" } }],
+        },
+        {
+          role: "tool_results",
+          content: "",
+          // as unknown as string: reproducing the runtime hole the type misses.
+          toolResults: [{ id: "c1", content: undefined as unknown as string }],
+        },
+      ],
+      [],
+    );
+    const msgs = body.messages as Record<string, unknown>[];
+    expect(msgs[2]).toMatchObject({ role: "tool", tool_call_id: "c1", content: "" });
+    expect(JSON.stringify(msgs[2])).toContain('"content"');
+  });
+
   it("omits reasoning_content when the turn had no reasoning", () => {
     const body = buildOpenAIBody(base, [{ role: "assistant", content: "done" }], []);
     const msgs = body.messages as Record<string, unknown>[];

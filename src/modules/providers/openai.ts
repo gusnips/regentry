@@ -171,7 +171,9 @@ export function toOpenAIMessages(msg: ChatMessage): OpenAIMessage[] {
     const results = msg.toolResults ?? [];
     const messages: OpenAIMessage[] = results.map((r) => ({
       role: "tool" as const,
-      content: r.content,
+      // A `content` key that drops out of the JSON is a 400 on strict
+      // deserializers (DeepSeek: "missing field content") — always emit it.
+      content: r.content ?? "",
       tool_call_id: r.id,
     }));
     // A role:tool message may only carry text, so screenshots ride along in a
