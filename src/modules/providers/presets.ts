@@ -1,4 +1,5 @@
 import type { ProviderShape } from "./types";
+import { i18n } from "@/i18n";
 
 /** Preset provider — just data, no code. Adding a provider starts here. */
 export interface ProviderPreset {
@@ -62,7 +63,7 @@ export const PRESETS: ProviderPreset[] = [
     // sign-in instead of a key. One row per way to pay — a user with both a key
     // and a plan always knows which quota a run spends.
     id: "claude",
-    name: "Anthropic (Subscription)",
+    name: "Anthropic",
     shape: "anthropic",
     baseUrl: "https://api.anthropic.com",
     models: ["claude-fable-5", "claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
@@ -86,7 +87,7 @@ export const PRESETS: ProviderPreset[] = [
     // Responses wire format at a backend with no public model-list route, so
     // the preset models ARE the picker's list.
     id: "chatgpt",
-    name: "OpenAI (Subscription)",
+    name: "OpenAI",
     shape: "responses",
     baseUrl: "https://chatgpt.com/backend-api/codex",
     models: ["gpt-5.4-mini", "gpt-5.5", "gpt-5.3-codex", "gpt-5.1-codex-max"],
@@ -109,7 +110,7 @@ export const PRESETS: ProviderPreset[] = [
     // instead of a key. Kimi bills the two separately, so they stay separate
     // rows — a user with both always knows which quota a run spends.
     id: "kimi-plan",
-    name: "Kimi Coding (Subscription)",
+    name: "Kimi Coding",
     shape: "anthropic",
     baseUrl: "https://api.kimi.com/coding",
     models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],
@@ -216,5 +217,12 @@ export const PRESETS: ProviderPreset[] = [
  * without asking the user to re-save.
  */
 export function providerDisplayName(provider: { id: string; name: string }): string {
-  return PRESETS.find((p) => p.id === provider.id)?.name ?? provider.name;
+  const preset = PRESETS.find((p) => p.id === provider.id);
+  if (!preset) return provider.name;
+  // OAuth rows append a localized payment-method label — the preset name stays
+  // clean so the plan word reads in the user's language. "(API)" is the same
+  // acronym in every language, so keyed rows keep it baked into the name.
+  return preset.auth === "oauth"
+    ? `${preset.name} (${i18n.t("common.subscription")})`
+    : preset.name;
 }

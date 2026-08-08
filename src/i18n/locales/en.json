@@ -5,7 +5,8 @@
     "close": "Close",
     "selectPlaceholder": "Select…",
     "showKey": "Show key",
-    "hideKey": "Hide key"
+    "hideKey": "Hide key",
+    "subscription": "Subscription"
   },
   "onboarding": {
     "title": "Welcome to Regentry",

@@ -6,7 +6,7 @@ import { ProviderIcon } from "./ProviderIcon";
 import { KimiSignIn } from "./KimiSignIn";
 import { ClaudeSignIn } from "./ClaudeSignIn";
 import { ChatGPTSignIn } from "./ChatGPTSignIn";
-import { PRESETS } from "../presets";
+import { PRESETS, providerDisplayName } from "../presets";
 import type { OAuthCredential, ProviderConfig, ProviderShape } from "../types";
 import { Select } from "@/components/Select";
 import { TextField } from "@/components/TextField";
@@ -170,8 +170,8 @@ export function ProviderForm({
             ...PRESETS.map((p) => ({
               value: p.id,
               label: providers.some((cp) => cp.id === p.id)
-                ? t("providerForm.configured", { name: p.name })
-                : p.name,
+                ? t("providerForm.configured", { name: providerDisplayName(p) })
+                : providerDisplayName(p),
               icon: <ProviderIcon icon={p.icon} size={20} />,
             })),
             { value: CUSTOM, label: t("providerForm.customEndpoint") },

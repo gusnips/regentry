@@ -5,7 +5,8 @@
     "close": "Cerrar",
     "selectPlaceholder": "Seleccionar…",
     "showKey": "Mostrar clave",
-    "hideKey": "Ocultar clave"
+    "hideKey": "Ocultar clave",
+    "subscription": "Suscripción"
   },
   "onboarding": {
     "title": "Bienvenido a Regentry",
