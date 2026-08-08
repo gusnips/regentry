@@ -145,6 +145,8 @@
     "title": "Histórico",
     "newChat": "Nova conversa",
     "untitled": "Tarefa sem título",
+    "drivenBy": "Conduzida por {{agent}} via MCP",
+    "unknownAgent": "Um cliente MCP",
     "messages_one": "{{count}} mensagem",
     "messages_other": "{{count}} mensagens",
     "delete": "Excluir",

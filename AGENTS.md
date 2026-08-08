@@ -149,8 +149,28 @@ from the panel's.
   truth) and `daemon/src/protocol.ts`. The daemon is a standalone bun package and must not import
   from the extension bundle. Change them together, then `bun run bridge:check`.
 - **MV3 timing.** `BridgeSocket.start()` is synchronous: a listener registered after an `await`
-  is silently dropped by Chrome, and the reconcile alarm is the whole point of the class. Config
-  is read at connect time instead.
+  is silently dropped by Chrome, and the reconcile alarm is the whole point of the class. One
+  `reconcile()` owns the whole decision — it arms the alarm when enabled and clears it when not,
+  so a disabled bridge costs nothing. Only a WS that actually opened earns the 2s fast retry; a
+  refused connect (the normal case — almost nobody runs the daemon) waits for the alarm.
+
+**Direct control** (`bridge/direct.ts`) is the other half: a client that would rather drive than
+delegate calls `browser_start(goal)` and then the `browser_*` verbs.
+
+- **Same `executeTool`, same driver.** The MCP verbs map 1:1 onto agent tool names, so there is
+  one browser implementation and no second catalog. Discrete tools at the MCP surface (the shape
+  models know), one `browserAct` method on the wire.
+- **A session holds the run slot**, so direct driving and an agent run can never fight over a tab.
+  It expires after 5 idle minutes rather than locking the user out of their own panel.
+- **Mutating actions re-snapshot.** A ref belongs to the snapshot that produced it, so acting on a
+  stale ref is a correctness bug — every mutating verb returns the fresh page with its result.
+- **No ask_user.** The consequential-action policy lives in the system prompt, which direct control
+  bypasses; the client carries it (tool descriptions + SKILL.md), and PRIVACY.md says so plainly.
+  The compensations are visibility: badge, tab dot, and a stored transcript.
+- **The thread is the goal.** `browser_start` opens its own conversation and writes the goal as its
+  first user message, so the existing "title = first user message" rule names it. `ConversationMeta.agent`
+  carries the client name (from MCP `initialize`), which history shows as a chip — a transcript the
+  user never started must say where it came from.
 
 ## Provider wire contracts (the load-bearing details)
 

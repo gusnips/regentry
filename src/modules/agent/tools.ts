@@ -2,9 +2,12 @@ import type { BrowserDriver } from "@/modules/browser";
 import type { ToolCall } from "@/modules/providers/types";
 import { remember } from "@/modules/memory";
 import { i18n } from "@/i18n";
+import { truncate } from "@/lib/logger";
 
 /** Longer than this and the plan card stops being scannable in a side panel. */
 const MAX_PLAN_STEPS = 20;
+/** Result payloads are a drill-down, never a whole page inlined into the row. */
+const MAX_DETAIL = 2000;
 
 export interface ToolResult {
   ok: boolean;
@@ -106,4 +109,54 @@ export async function executeTool(call: ToolCall, driver: BrowserDriver): Promis
     const message = e instanceof Error ? e.message : String(e);
     return { ok: false, error: message };
   }
+}
+
+/** Result payload for the panel's expandable row — bounded, never a whole page. */
+export function formatDetail(tool: string, result: ToolResult): string | undefined {
+  if (!result.ok) return result.error;
+  if (tool === "snapshot") {
+    const snapshot = result.data as { pageContent?: string } | undefined;
+    return snapshot?.pageContent ? truncate(snapshot.pageContent, MAX_DETAIL) : undefined;
+  }
+  if (result.data === undefined) return undefined;
+  const json = JSON.stringify(result.data, null, 2);
+  return json && json !== "{}" ? truncate(json, MAX_DETAIL) : undefined;
+}
+
+export function formatSuccessSummary(tool: string, data: unknown): string {
+  if (tool === "snapshot" && data && typeof data === "object") {
+    const snap = data as { pageContent?: string };
+    const lines = snap.pageContent?.split("\n").length ?? 0;
+    return i18n.t("errors.capturedElements", { count: lines });
+  }
+  if (tool === "click" && data && typeof data === "object") {
+    const pos = data as { x: number; y: number };
+    return i18n.t("errors.clickedAt", { x: pos.x, y: pos.y });
+  }
+  if (tool === "press_key") {
+    return i18n.t("errors.keyPressed");
+  }
+  if (tool === "navigate") {
+    return i18n.t("errors.navigated");
+  }
+  if (tool === "switch_tab" && data && typeof data === "object") {
+    return i18n.t("errors.switchedTo", { title: (data as { title?: string }).title ?? "" });
+  }
+  if (tool === "list_tabs" && data && typeof data === "object") {
+    const tabs = (data as { tabs?: unknown[] }).tabs;
+    return i18n.t("errors.tabsListed", { count: Array.isArray(tabs) ? tabs.length : 0 });
+  }
+  if (tool === "screenshot") {
+    return i18n.t("errors.screenshotCaptured");
+  }
+  if (tool === "remember" && data && typeof data === "object") {
+    // The fact itself is the summary — "Saved to memory" tells the user nothing
+    // about what Regentry now knows, which is the only interesting part.
+    return (data as { fact: string }).fact;
+  }
+  if (tool === "ask_user" && data && typeof data === "object") {
+    // The question is the summary — the card renders it as the headline.
+    return (data as { question?: string }).question ?? "";
+  }
+  return i18n.t("errors.toolCompleted", { tool });
 }

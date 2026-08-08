@@ -94,9 +94,14 @@ data.
 
 ## 6. Guardrails
 
-- **Ask before acting.** Consequential actions — paying, sending, deleting — stop the run and ask
-  for your explicit confirmation before they execute: in the panel, or relayed to you by whichever
-  client started the task.
+- **Ask before acting.** When Regentry's own model is driving, consequential actions — paying,
+  sending, deleting — stop the run and ask for your explicit confirmation before they execute: in
+  the panel, or relayed to you by whichever client started the task.
+- **Direct control is the exception, and it is visible.** An MCP client you connect can also drive
+  the browser step by step, without Regentry's model in the loop — and therefore without that
+  confirmation rule, which lives in Regentry's own prompt. Regentry does not let this happen
+  quietly: the driven page carries the "being controlled" badge, the tab shows the purple dot, and
+  every action is written to a conversation in your history, labelled with the client that did it.
 - **No background surveillance.** Regentry reads and acts on pages only while a task you started is
   running, and only on the tabs that task touches.
 

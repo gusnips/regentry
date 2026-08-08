@@ -2,7 +2,8 @@ import { i18n } from "@/i18n";
 import { getActiveRun, releaseRun } from "@/modules/agent/active-runs";
 import { startAgentRun } from "@/modules/agent/start-run";
 import { captureVisibleTab } from "@/modules/browser";
-import { appendMessageTo } from "@/modules/conversation";
+import { appendMessageTo, openAgentConversation } from "@/modules/conversation";
+import { DirectSession } from "./direct";
 import { TranscriptWriter } from "@/modules/conversation/transcript";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Event } from "@/shared/protocol";
@@ -25,6 +26,8 @@ export class Bridge {
   private conversationId: string | null = null;
   private writer: TranscriptWriter | null = null;
   private status: BridgeStatus = emptyStatus();
+  /** Direct browser control, for a client that drives instead of delegating. */
+  private readonly direct = new DirectSession();
 
   /** Synchronous — the socket registers MV3 event listeners in this same turn. */
   start(): void {
@@ -64,7 +67,7 @@ export class Bridge {
         this.respond(requestId, this.status);
         break;
       case "run":
-        await this.beginRun(requestId, str(params.task), images(params.images));
+        await this.beginRun(requestId, str(params.task), images(params.images), str(params.agent));
         break;
       case "answer":
         await this.answer(requestId, str(params.text));
@@ -73,13 +76,28 @@ export class Bridge {
         this.steer(requestId, str(params.text));
         break;
       case "stop":
-        this.stopRun(requestId);
+        await this.stopRun(requestId);
         break;
       case "screenshot":
         await this.screenshot(requestId);
         break;
+      // Direct driving: the daemon exposes a conventional browser_* tool per
+      // verb, but they all arrive here as one method — the wire stays small
+      // while the MCP surface stays the shape models already know.
+      case "browserStart":
+        await this.guard(requestId, () =>
+          this.direct.start(str(params.goal), str(params.agent) || i18n.t("history.unknownAgent")),
+        );
+        break;
+      case "browserAct":
+        await this.guard(requestId, () => this.direct.act(str(params.tool), args(params.args)));
+        break;
+      case "browserEnd":
+        await this.direct.end();
+        this.respond(requestId, { ok: true });
+        break;
       case "newConversation":
-        this.newConversation(requestId);
+        await this.newConversation(requestId);
         break;
       default:
         this.fail(requestId, "unknown-method", `Unknown bridge method: ${method}`);
@@ -88,7 +106,12 @@ export class Bridge {
 
   // ── Commands ──────────────────────────────────────────────────────
 
-  private async beginRun(requestId: string, task: string, attached?: string[]): Promise<void> {
+  private async beginRun(
+    requestId: string,
+    task: string,
+    attached?: string[],
+    agent?: string,
+  ): Promise<void> {
     if (!task) {
       this.fail(requestId, "empty-task", "Task can't be empty.");
       return;
@@ -110,6 +133,8 @@ export class Bridge {
     log.info("bridge run queued", { runId, task: truncate(task, 120) });
     // Claim the slot optimistically so a getStatus right after run() sees a live run.
     this.status = newRunStatus(conversationId, runId);
+    // Stamp the thread with the client that drove it, so history can say which.
+    await openAgentConversation(conversationId, agent || i18n.t("history.unknownAgent"));
     // The task must be stored before the run starts — history is rebuilt from
     // the transcript, so a fire-and-forget write loses that race every time.
     await appendMessageTo(conversationId, {
@@ -150,10 +175,13 @@ export class Bridge {
     this.respond(requestId, { ok: true });
   }
 
-  private stopRun(requestId: string): void {
+  private async stopRun(requestId: string): Promise<void> {
     const run = getActiveRun();
     const mine = run?.owner === "bridge";
-    if (run && mine) {
+    // A direct session holds the slot too — stop has to close it, or the slot
+    // stays claimed by a session that believes it is still driving.
+    if (this.direct.open) await this.direct.end();
+    else if (run && mine) {
       run.controller.abort();
       run.injectedQueue.length = 0;
       releaseRun(run);
@@ -166,17 +194,20 @@ export class Bridge {
   /** What the browser looks like right now — the model's eyes between steps. */
   private async screenshot(requestId: string): Promise<void> {
     try {
+      // A direct session drives the tab it opened on; a delegated run reports
+      // its own. Either way "driven" must mean "this is the tab being worked".
+      const driving = this.direct.drivenTab ?? this.status.driving?.tabId;
       const shot = await captureVisibleTab(this.status.driving?.windowId);
-      this.respond(requestId, { ...shot, driven: shot.tabId === this.status.driving?.tabId });
+      this.respond(requestId, { ...shot, driven: shot.tabId === driving });
     } catch (e) {
       this.fail(requestId, "capture-failed", e instanceof Error ? e.message : String(e));
     }
   }
 
-  private newConversation(requestId: string): void {
+  private async newConversation(requestId: string): Promise<void> {
     // Only our own run blocks the reset — a panel run has nothing to do with
     // this thread, and refusing over it would be a dead end with no way out.
-    if (getActiveRun()?.owner === "bridge") {
+    if (!this.direct.open && getActiveRun()?.owner === "bridge") {
       this.fail(
         requestId,
         "run-in-progress",
@@ -184,9 +215,24 @@ export class Bridge {
       );
       return;
     }
+    // A direct session is its own thread; resetting means closing it.
+    await this.direct.end();
     this.conversationId = null;
     this.status = emptyStatus();
     this.respond(requestId, { ok: true });
+  }
+
+  /**
+   * Runs an op that throws its own oriented message (the direct session's do)
+   * and answers the daemon either way — an exception here would otherwise
+   * leave the client waiting out its request timeout for no reason.
+   */
+  private async guard(requestId: string, op: () => Promise<unknown>): Promise<void> {
+    try {
+      this.respond(requestId, await op());
+    } catch (e) {
+      this.fail(requestId, "direct-failed", e instanceof Error ? e.message : String(e));
+    }
   }
 
   // ── Run plumbing ──────────────────────────────────────────────────
@@ -262,6 +308,13 @@ export class Bridge {
 /** Wire params are unknown until proven otherwise — the daemon is not trusted input. */
 function str(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+/** Tool arguments arrive as an opaque object — take it only if it is one. */
+function args(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function images(value: unknown): string[] | undefined {

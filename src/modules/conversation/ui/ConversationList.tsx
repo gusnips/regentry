@@ -141,9 +141,25 @@ function ConversationRow({
         >
           {title}
         </div>
-        <div className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
-          {t("history.messages", { count: conversation.messageCount })} ·{" "}
-          {relativeTime(conversation.updatedAt, i18n.language)}
+        <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-neutral-500 dark:text-neutral-400">
+          {conversation.agent && (
+            <>
+              {/* Purple is this product's "an agent is working" language — the
+                  same colour as the on-page badge and the tab-strip dot. */}
+              <span className="sr-only">
+                {t("history.drivenBy", { agent: conversation.agent })}
+              </span>
+              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-brand-400" />
+              <span aria-hidden className="shrink-0 font-medium text-brand-600 dark:text-brand-400">
+                {conversation.agent}
+              </span>
+              <span aria-hidden>·</span>
+            </>
+          )}
+          <span className="truncate">
+            {t("history.messages", { count: conversation.messageCount })} ·{" "}
+            {relativeTime(conversation.updatedAt, i18n.language)}
+          </span>
         </div>
       </button>
       <ConfirmDialog

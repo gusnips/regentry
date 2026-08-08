@@ -41,8 +41,9 @@ your provider.
   header.
 - **Drivable over MCP** — Claude Code, Claude Desktop, or any Model Context Protocol client can
   hand Regentry a task and follow it to the answer, using the same browser and the same logins.
-  Not a pile of low-level browser tools: the client says what it wants done, Regentry does it.
-  See [docs/mcp.md](docs/mcp.md).
+  The client says what it wants done and Regentry's own model does it — or, when the job is small
+  and exact, the client takes the wheel and clicks through the page itself. Either way it lands in
+  your history, labelled with which client did it. See [docs/mcp.md](docs/mcp.md).
 - **Speaks your language, matches your theme** — English, Português (Brasil), and Español; light,
   dark, or follow the OS.
 - **Your data stays local** — provider configs and history live in `chrome.storage`. There is no

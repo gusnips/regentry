@@ -12,6 +12,22 @@ task and it drives**. It plans, navigates, reads pages, clicks, types, and repor
 That distinction shapes everything below. Ask for the outcome ("find the Q3 invoice in my email and
 download it"), not the mechanics ("navigate to gmail, click search, type invoice…").
 
+## Delegate, or drive?
+
+Two ways to use Regentry. Pick deliberately:
+
+**Delegate — `run`. The default.** You state the goal; Regentry's own model plans and executes it.
+One MCP turn per real event instead of one per click, and it stops to ask the user before anything
+consequential. Right for anything long, open-ended, or on a site you'd have to explore.
+
+**Drive — `browser_start` and the `browser_*` tools.** You read the page, click, and type yourself.
+Right when the job is small and exact ("open this URL and read me the price"), when you need one
+specific element, or when each step decides the next. Costs one MCP turn per action, so it gets
+expensive fast on a real task — and it takes Regentry's own model, and its permission rule, out of
+the loop.
+
+When in doubt, `run`. It's the reason this thing exists.
+
 ## The tools
 
 | Tool                              | Use it for                                                                                         |
@@ -24,6 +40,28 @@ download it"), not the mechanics ("navigate to gmail, click search, type invoice
 | `stop()`                          | End the run. Not an error.                                                                         |
 | `screenshot()`                    | See the browser yourself. Works whether or not a task is running.                                  |
 | `new_conversation()`              | Start a fresh thread when the next task is unrelated to the last.                                  |
+
+Driving yourself:
+
+| Tool                                 | Use it for                                                                                |
+| ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `browser_start(goal)`                | Take the wheel. Returns the first snapshot; the goal names what the user sees in history. |
+| `browser_snapshot()`                 | Read the page — an accessibility tree with a `ref` on every interactive element.          |
+| `browser_navigate(url)`              | Go somewhere.                                                                             |
+| `browser_click(ref)`                 | Click by ref, as a real trusted event.                                                    |
+| `browser_type(text)`                 | Type into whatever is focused — click the field first.                                    |
+| `browser_press_key(key)`             | `Enter`, `Escape`, `Tab`, an arrow.                                                       |
+| `browser_scroll(direction, amount?)` | Below the fold isn't in a snapshot until you scroll to it.                                |
+| `browser_tabs()` / `switch_tab(id)`  | Find another tab and re-target every later action at it.                                  |
+| `browser_end()`                      | Hand the browser back. Always call it when you're done.                                   |
+
+**Refs belong to the snapshot that made them.** Every action returns the page it produced — act on
+that, never on a ref you read two actions ago.
+
+**Driving means the guardrail is yours.** Regentry stops to ask before paying, sending on the
+user's behalf, deleting, or submitting — but that rule lives in _its_ model, which you have just
+taken out of the loop. When driving, put those to the user yourself before you click. If you'd
+rather not carry that, use `run`.
 
 ## The loop
 

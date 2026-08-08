@@ -12,8 +12,7 @@ import { createLogger, truncate } from "@/lib/logger";
 import { i18n, currentLanguageName } from "@/i18n";
 import { loadAgentContext } from "@/modules/memory";
 import type { ToolDef } from "@/modules/providers/types";
-import { executeTool } from "./tools";
-import type { ToolResult } from "./tools";
+import { executeTool, formatDetail, formatSuccessSummary } from "./tools";
 import { buildSystemPrompt, buildTaskMessage, buildToolDefs, type PreviousTab } from "./prompt";
 
 const log = createLogger("agent");
@@ -24,7 +23,6 @@ const MAX_STREAM_ATTEMPTS = 3;
 const BASE_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 15_000;
 /** Result payload kept for the panel's expandable step row — a page snapshot is far larger. */
-const MAX_DETAIL = 2000;
 /**
  * Images are the most expensive thing in a request body: every one is re-sent on
  * every later turn, so an unbounded run would grow quadratically. Only the newest
@@ -389,54 +387,4 @@ function pruneImages(messages: ChatMessage[]): void {
       else delete result.images;
     }
   }
-}
-
-/** Result payload for the panel's expandable row — bounded, never a whole page. */
-function formatDetail(tool: string, result: ToolResult): string | undefined {
-  if (!result.ok) return result.error;
-  if (tool === "snapshot") {
-    const snapshot = result.data as { pageContent?: string } | undefined;
-    return snapshot?.pageContent ? truncate(snapshot.pageContent, MAX_DETAIL) : undefined;
-  }
-  if (result.data === undefined) return undefined;
-  const json = JSON.stringify(result.data, null, 2);
-  return json && json !== "{}" ? truncate(json, MAX_DETAIL) : undefined;
-}
-
-function formatSuccessSummary(tool: string, data: unknown): string {
-  if (tool === "snapshot" && data && typeof data === "object") {
-    const snap = data as { pageContent?: string };
-    const lines = snap.pageContent?.split("\n").length ?? 0;
-    return i18n.t("errors.capturedElements", { count: lines });
-  }
-  if (tool === "click" && data && typeof data === "object") {
-    const pos = data as { x: number; y: number };
-    return i18n.t("errors.clickedAt", { x: pos.x, y: pos.y });
-  }
-  if (tool === "press_key") {
-    return i18n.t("errors.keyPressed");
-  }
-  if (tool === "navigate") {
-    return i18n.t("errors.navigated");
-  }
-  if (tool === "switch_tab" && data && typeof data === "object") {
-    return i18n.t("errors.switchedTo", { title: (data as { title?: string }).title ?? "" });
-  }
-  if (tool === "list_tabs" && data && typeof data === "object") {
-    const tabs = (data as { tabs?: unknown[] }).tabs;
-    return i18n.t("errors.tabsListed", { count: Array.isArray(tabs) ? tabs.length : 0 });
-  }
-  if (tool === "screenshot") {
-    return i18n.t("errors.screenshotCaptured");
-  }
-  if (tool === "remember" && data && typeof data === "object") {
-    // The fact itself is the summary — "Saved to memory" tells the user nothing
-    // about what Regentry now knows, which is the only interesting part.
-    return (data as { fact: string }).fact;
-  }
-  if (tool === "ask_user" && data && typeof data === "object") {
-    // The question is the summary — the card renders it as the headline.
-    return (data as { question?: string }).question ?? "";
-  }
-  return i18n.t("errors.toolCompleted", { tool });
 }

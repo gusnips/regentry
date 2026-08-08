@@ -183,6 +183,7 @@ server.registerTool(
     withLink(async () => {
       const result = await link.request<{ runId: string; conversationId: string }>("run", {
         task,
+        agent: clientName(),
         ...(images?.length
           ? { images: images.map((i) => `data:${i.mimeType};base64,${i.data}`) }
           : {}),
@@ -320,6 +321,176 @@ server.registerTool(
       await link.request("newConversation");
       link.reset();
       return text("New thread — the next run starts with no history.");
+    }),
+);
+
+// ── Direct control ──────────────────────────────────────────────────
+//
+// The other half of the bridge: for a client that would rather drive than
+// delegate. Discrete browser_* tools because that is the shape models already
+// know cold — but they all cross the wire as one `browserAct` method, so the
+// extension keeps a single browser implementation and nothing can drift.
+//
+// The catch worth stating in every description: driving directly means
+// Regentry's own model is not in the loop, and neither is its policy of
+// stopping to ask before consequential actions. That rule is the client's to
+// keep here.
+
+/** What the client calls itself, from MCP initialize — history shows this. */
+function clientName(): string {
+  const info = server.server.getClientVersion();
+  return info?.name ? `${info.name}` : "An MCP client";
+}
+
+async function act(tool: string, toolArgs: Record<string, unknown> = {}) {
+  return withLink(async () => {
+    const result = await link.request<{ data?: unknown; error?: string }>("browserAct", {
+      tool,
+      args: toolArgs,
+    });
+    return text(renderToolResult(tool, result));
+  });
+}
+
+/** The page as the model needs to read it, plus whatever the action returned. */
+function renderToolResult(tool: string, result: { data?: unknown; error?: string }): string {
+  const data = (result.data ?? {}) as { pageContent?: string; tabs?: unknown[]; url?: string };
+  const parts: string[] = [`${tool}: ok`];
+  if (data.url) parts.push(`url: ${data.url}`);
+  if (data.tabs) parts.push(JSON.stringify(data.tabs, null, 2));
+  if (data.pageContent) {
+    parts.push(
+      "",
+      "page (refs are valid only for THIS snapshot — act on them before the page changes):",
+      data.pageContent,
+    );
+  }
+  return parts.join("\n");
+}
+
+server.registerTool(
+  "browser_start",
+  {
+    title: "Start driving the browser yourself",
+    description:
+      "Open a direct-control session and get the first page snapshot. Use this instead of run when you want to drive step by step rather than hand Regentry the whole task — run is still the better choice for anything long or open-ended, because Regentry's own model plans it. State the goal: it names the conversation the user will see in Regentry's history, and every action you take is recorded under it. IMPORTANT: driving directly bypasses Regentry's own model and its rule of stopping to ask before consequential actions — so paying, sending on the user's behalf, deleting, or submitting is yours to put to the user first.",
+    inputSchema: {
+      goal: z
+        .string()
+        .describe("What you're setting out to do, in the user's terms. Titles the conversation."),
+    },
+  },
+  async ({ goal }) =>
+    withLink(async () => {
+      const result = await link.request<{ data?: unknown }>("browserStart", {
+        goal,
+        agent: clientName(),
+      });
+      return text(
+        `Driving directly. The user sees this as "${goal}" in Regentry's history, with every action under it.\n\n${renderToolResult("snapshot", result)}`,
+      );
+    }),
+);
+
+server.registerTool(
+  "browser_snapshot",
+  {
+    title: "Read the page",
+    description:
+      "The current page as an accessibility tree with a ref on every interactive element — this is how you see, and where every ref you click comes from. Refs belong to the snapshot that produced them: after anything changes the page, re-read before acting.",
+  },
+  async () => act("snapshot"),
+);
+
+server.registerTool(
+  "browser_navigate",
+  {
+    title: "Go to a URL",
+    description: "Navigate the driven tab and return the new page's snapshot.",
+    inputSchema: { url: z.string().describe("Absolute URL, including the scheme.") },
+  },
+  async ({ url }) => act("navigate", { url }),
+);
+
+server.registerTool(
+  "browser_click",
+  {
+    title: "Click an element",
+    description:
+      "Click by ref, as a real trusted event — not a synthetic dispatch a site can ignore. Returns the resulting page. Take the ref from the most recent snapshot.",
+    inputSchema: { ref: z.string().describe('A ref from the latest snapshot, e.g. "e12".') },
+  },
+  async ({ ref }) => act("click", { ref }),
+);
+
+server.registerTool(
+  "browser_type",
+  {
+    title: "Type text",
+    description:
+      "Type into whatever is focused — click the field first. Real keystrokes, so a site's own handlers fire. Returns the resulting page.",
+    inputSchema: { text: z.string().describe("The text to type.") },
+  },
+  async ({ text: body }) => act("type", { text: body }),
+);
+
+server.registerTool(
+  "browser_press_key",
+  {
+    title: "Press a key",
+    description:
+      'A single key press — "Enter" to submit, "Escape" to dismiss, "Tab" to move on. Returns the resulting page.',
+    inputSchema: { key: z.string().describe('e.g. "Enter", "Escape", "Tab", "ArrowDown".') },
+  },
+  async ({ key }) => act("press_key", { key }),
+);
+
+server.registerTool(
+  "browser_scroll",
+  {
+    title: "Scroll the page",
+    description:
+      "Scroll the driven tab and return what is now in view. Content below the fold is not in a snapshot until you scroll to it.",
+    inputSchema: {
+      direction: z.enum(["down", "up"]).describe("Which way to scroll."),
+      amount: z.number().optional().describe("Pixels; defaults to about one screenful."),
+    },
+  },
+  async ({ direction, amount }) =>
+    act(direction === "up" ? "scroll_up" : "scroll_down", amount === undefined ? {} : { amount }),
+);
+
+server.registerTool(
+  "browser_tabs",
+  {
+    title: "List open tabs",
+    description: "Every open tab with its id, title and URL — find the one you need, then switch.",
+  },
+  async () => act("list_tabs"),
+);
+
+server.registerTool(
+  "browser_switch_tab",
+  {
+    title: "Switch tabs",
+    description:
+      "Point every later action at another tab and bring it to the front. Trusted input needs the tab on screen, so this focuses it.",
+    inputSchema: { tab_id: z.number().describe("A tab id from browser_tabs.") },
+  },
+  async ({ tab_id }) => act("switch_tab", { tab_id }),
+);
+
+server.registerTool(
+  "browser_end",
+  {
+    title: "Stop driving",
+    description:
+      "Close the direct-control session, drop the on-page 'being controlled' badge, and hand the browser back. Call it when you're done — it also frees Regentry's panel to run tasks again. A session left open expires on its own after a few idle minutes.",
+  },
+  async () =>
+    withLink(async () => {
+      await link.request("browserEnd");
+      return text("Done driving — the browser is the user's again.");
     }),
 );
 

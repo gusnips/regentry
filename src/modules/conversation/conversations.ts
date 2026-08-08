@@ -21,6 +21,13 @@ export interface ConversationMeta {
   messageCount: number;
   /** Tabs this conversation's runs drove, most recently worked first. */
   tabs?: LastTab[];
+  /**
+   * The external client that drove this conversation ("Claude Code"), when it
+   * wasn't the user's own panel. History shows it: a transcript the user never
+   * started, with nothing saying where it came from, reads as a stranger in
+   * their own browser.
+   */
+  agent?: string;
 }
 
 // ponytail: fixed caps keep chrome.storage.local under quota — unbounded
@@ -91,6 +98,15 @@ export async function recordDrivenTabFor(id: string, tab: LastTab): Promise<void
   );
 }
 
+/**
+ * Creates the thread an external MCP client is about to drive, stamped with
+ * which client it was. Called once when the bridge opens a thread; the goal or
+ * task it writes next becomes the title, exactly as a panel task does.
+ */
+export async function openAgentConversation(id: string, agent: string): Promise<void> {
+  await serialized(() => ensureConversation(id, agent));
+}
+
 /** First line of the task, trimmed to fit a list row. */
 export function conversationTitle(text: string): string {
   const line = (text.trim().split("\n", 1)[0] ?? "").trim();
@@ -103,7 +119,7 @@ export function conversationTitle(text: string): string {
  * active item: id-targeted writers (the bridge's MCP thread) use this without
  * disturbing the panel's open conversation.
  */
-async function ensureConversation(id: string): Promise<ConversationMeta> {
+async function ensureConversation(id: string, agent?: string): Promise<ConversationMeta> {
   const list = await indexItem.get();
   const existing = list.find((c) => c.id === id);
   if (existing) return existing;
@@ -115,6 +131,7 @@ async function ensureConversation(id: string): Promise<ConversationMeta> {
     createdAt: now,
     updatedAt: now,
     messageCount: 0,
+    ...(agent ? { agent } : {}),
   };
   const kept = [meta, ...list].slice(0, MAX_CONVERSATIONS);
   const evicted = list.slice(MAX_CONVERSATIONS - 1);

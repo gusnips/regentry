@@ -5,9 +5,13 @@ AI client — Claude Code, Claude Desktop, ChatGPT desktop, anything speaking th
 [Model Context Protocol](https://modelcontextprotocol.io) — drive **the same agent, in the same
 browser, with the same logins**.
 
-The client doesn't get a pile of low-level browser tools. It gets one instruction: _do this in the
-browser_. Regentry plans, clicks, reads, and reports back — with its own model, its own memory,
-and its own permission rules.
+The main way in is one instruction: _do this in the browser_. Regentry plans, clicks, reads, and
+reports back — with its own model, its own memory, and its own permission rules. That's `run`, and
+it's the right default: you pay one MCP turn per real event instead of one per click.
+
+When the job is small and exact, the client can also take the wheel and click through the page
+itself — see [Driving it yourself](#driving-it-yourself). Same browser, same logins, same stored
+transcript; what it gives up is Regentry's model, and with it the rule about asking first.
 
 ## How it fits together
 
@@ -67,6 +71,42 @@ The daemon starts when your client starts it; there's nothing to leave running. 
 | `stop()`                          | End the run. Stopping is normal control flow, not an error.                                                                                          |
 | `screenshot()`                    | A picture of what the browser is showing right now, as an image the model can actually look at. Works run or no run.                                 |
 | `new_conversation()`              | Forget the thread and start clean.                                                                                                                   |
+
+### Driving it yourself
+
+Delegating is the better path for anything long or open-ended — Regentry's own model plans it, and
+you pay one MCP turn instead of one per click. But sometimes you want the clicks. `browser_start`
+opens a direct-control session, and every `browser_*` tool drives the real tab:
+
+| Tool                                        | What it does                                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `browser_start(goal)`                       | Take the wheel, and get the first snapshot. The goal names the conversation the user sees. |
+| `browser_snapshot()`                        | The page as an accessibility tree, with a `ref` on every interactive element.              |
+| `browser_navigate(url)`                     | Go somewhere.                                                                              |
+| `browser_click(ref)`                        | Click by ref — a real trusted event, not a synthetic dispatch.                             |
+| `browser_type(text)`                        | Type into whatever is focused (click the field first).                                     |
+| `browser_press_key(key)`                    | `Enter`, `Escape`, `Tab`, an arrow.                                                        |
+| `browser_scroll(direction, amount?)`        | Content below the fold isn't in a snapshot until you scroll to it.                         |
+| `browser_tabs()` / `browser_switch_tab(id)` | Find another tab, re-target every later action at it.                                      |
+| `browser_end()`                             | Hand the browser back.                                                                     |
+
+Every verb goes through the **same `executeTool` the agent loop uses** — one browser
+implementation, no second catalog to drift. On the wire they all arrive as a single `browserAct`
+method; they are discrete only at the MCP surface, because that is the shape models know.
+
+**Refs belong to the snapshot that produced them.** Anything that changes the page invalidates
+them, so every mutating action returns the fresh snapshot alongside its result — act on that, never
+on a ref you read two actions ago.
+
+**Direct control has no ask_user.** Regentry's policy of stopping before consequential actions
+lives in its system prompt, and driving directly takes that prompt out of the loop. Paying, sending
+on the user's behalf, deleting, submitting — those become **yours** to put to the user first.
+Regentry doesn't hide that this is happening: the badge and the tab dot stay up for the whole
+session, and every action is recorded in a conversation labelled with your client's name.
+
+**One driver at a time.** A session holds the same run slot a task does, so direct control and an
+agent run can never fight over a tab. A session left open expires after a few idle minutes rather
+than locking the user out of their own panel.
 
 ### The shape of a session
 

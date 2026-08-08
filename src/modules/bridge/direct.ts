@@ -1,0 +1,201 @@
+import { i18n } from "@/i18n";
+import { acquireRun, getActiveRun, releaseRun } from "@/modules/agent/active-runs";
+import type { ActiveRun } from "@/modules/agent/active-runs";
+import { executeTool, formatDetail, formatSuccessSummary } from "@/modules/agent/tools";
+import type { ToolResult } from "@/modules/agent/tools";
+import { createDriver, hideAgentIndicator, showAgentIndicator } from "@/modules/browser";
+import type { BrowserDriver } from "@/modules/browser";
+import { appendMessageTo, openAgentConversation } from "@/modules/conversation";
+import { createLogger, truncate } from "@/lib/logger";
+import type { TabId } from "@/shared/types";
+
+const log = createLogger("bridge");
+
+/**
+ * Direct browser control, for an external agent that would rather drive than
+ * delegate: it calls snapshot/click/type itself instead of handing Regentry a
+ * task. Every verb goes through the same `executeTool` the agent loop uses, so
+ * there is exactly one browser implementation and no second catalog to drift.
+ *
+ * What a direct session does NOT get is the agent loop, and with it the
+ * consequential-action policy — that lives in Regentry's system prompt, which
+ * no longer sits between the client and the page. The client carries the rule
+ * instead (the MCP tool descriptions and the skill say so), and the session is
+ * loud about it: the on-page badge and favicon dot are up the whole time, and
+ * every action lands in a stored transcript the user can read afterwards.
+ *
+ * A session holds the single run slot, so direct driving and an agent run can
+ * never fight over the same tab — whoever asks second is told where the other
+ * one is.
+ */
+
+/** Actions that change the page, and therefore invalidate every existing ref. */
+const MUTATING = new Set(["navigate", "click", "type", "press_key", "scroll_down", "scroll_up"]);
+
+/**
+ * ponytail: a session left open would hold the run slot against the panel
+ * forever, so it expires on its own. The ceiling is that a client pausing more
+ * than this between actions finds its session closed and must start again;
+ * worker suspension also drops the timer, but that clears the slot too, so it
+ * fails safe.
+ */
+const IDLE_MS = 5 * 60_000;
+
+export class DirectSession {
+  private conversationId: string | null = null;
+  private tabId: TabId | null = null;
+  private claim: ActiveRun | null = null;
+  private idle: ReturnType<typeof setTimeout> | null = null;
+  private agent = "";
+
+  get open(): boolean {
+    return this.claim !== null;
+  }
+
+  /** The thread this session is writing to — the bridge's current one. */
+  get conversation(): string | null {
+    return this.conversationId;
+  }
+
+  /** The tab being driven, so a screenshot can say whether it caught it. */
+  get drivenTab(): TabId | null {
+    return this.tabId;
+  }
+
+  /**
+   * Opens a session on the active tab. The goal is written as the thread's
+   * first message, which makes it the conversation's title — a stated goal is
+   * a subject, so each session gets its own thread rather than appending to a
+   * previous one whose heading would then be a lie.
+   */
+  async start(goal: string, agent: string): Promise<ToolResult> {
+    const active = getActiveRun();
+    if (active) throw new Error(alreadyRunning(active));
+
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) throw new Error(i18n.t("errors.noActiveTab"));
+
+    const claim = acquireRun(crypto.randomUUID(), "bridge");
+    if (!claim.ok) throw new Error(alreadyRunning(claim.active));
+
+    this.claim = claim.run;
+    this.tabId = tab.id;
+    this.agent = agent;
+    this.conversationId = claim.run.conversationId;
+    await openAgentConversation(this.conversationId, agent);
+    await appendMessageTo(this.conversationId, {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: goal,
+      timestamp: Date.now(),
+    });
+
+    log.info("direct session opened", { agent, task: truncate(goal, 120) });
+    void showAgentIndicator(tab.id, i18n.t("indicator.driving"));
+    this.touch();
+    // The opening snapshot: a session's first move is always to look, so
+    // handing it back here saves a round trip and gives the client its refs.
+    return this.run("snapshot", {});
+  }
+
+  /**
+   * Runs one tool against the driven tab and records it. Mutating actions come
+   * back with a fresh snapshot attached: every ref belongs to the snapshot that
+   * produced it, so acting on stale refs is a correctness bug, not a slow path.
+   */
+  async act(tool: string, args: Record<string, unknown>): Promise<ToolResult> {
+    if (!this.claim || this.tabId === null) {
+      throw new Error(
+        "No direct session is open. Call browser_start with what you're trying to do, then drive.",
+      );
+    }
+    this.touch();
+    const result = await this.run(tool, args);
+    if (!result.ok || !MUTATING.has(tool)) return result;
+
+    const snapshot = await this.run("snapshot", {}, { record: false });
+    if (!snapshot.ok) return result;
+    return { ...result, data: { ...asRecord(result.data), ...asRecord(snapshot.data) } };
+  }
+
+  /** Closes the session: releases the slot, drops the marks, ends the thread. */
+  async end(): Promise<void> {
+    if (!this.claim) return;
+    if (this.idle) clearTimeout(this.idle);
+    this.idle = null;
+    releaseRun(this.claim);
+    this.claim = null;
+    const tabId = this.tabId;
+    this.tabId = null;
+    log.info("direct session closed");
+    if (tabId !== null) await hideAgentIndicator(tabId);
+  }
+
+  // ── Internals ─────────────────────────────────────────────────────
+
+  /** One tool call against the current tab, optionally written to the thread. */
+  private async run(
+    tool: string,
+    args: Record<string, unknown>,
+    opts: { record?: boolean } = {},
+  ): Promise<ToolResult> {
+    const result = await executeTool({ id: crypto.randomUUID(), name: tool, args }, this.driver());
+    if (opts.record !== false) await this.record(tool, args, result);
+    return result;
+  }
+
+  /**
+   * A fresh driver per call, targeting the session's current tab. Cheap (it is
+   * a closure over a tab id) and stateless, so a switch_tab that re-targets it
+   * cannot leave a stale target behind.
+   */
+  private driver(): BrowserDriver {
+    const tabId = this.tabId;
+    if (tabId === null) throw new Error(i18n.t("errors.noActiveTab"));
+    return createDriver(tabId, (tab) => {
+      this.tabId = tab.id;
+      void hideAgentIndicator(tabId);
+      void showAgentIndicator(tab.id, i18n.t("indicator.driving"));
+    });
+  }
+
+  /** The step row, worded exactly as the agent loop words its own. */
+  private async record(
+    tool: string,
+    args: Record<string, unknown>,
+    result: ToolResult,
+  ): Promise<void> {
+    if (!this.conversationId) return;
+    await appendMessageTo(this.conversationId, {
+      id: crypto.randomUUID(),
+      role: "step",
+      tool,
+      content: result.ok
+        ? formatSuccessSummary(tool, result.data)
+        : i18n.t("errors.failed", { error: result.error }),
+      args,
+      ok: result.ok,
+      timestamp: Date.now(),
+      ...(formatDetail(tool, result) ? { detail: formatDetail(tool, result) } : {}),
+    });
+  }
+
+  /** Restarts the idle countdown — an active session never expires under itself. */
+  private touch(): void {
+    if (this.idle) clearTimeout(this.idle);
+    this.idle = setTimeout(() => {
+      log.info("direct session expired");
+      void this.end();
+    }, IDLE_MS);
+  }
+}
+
+function alreadyRunning(run: ActiveRun): string {
+  return run.owner === "panel"
+    ? i18n.t("errors.alreadyRunningPanel")
+    : i18n.t("errors.alreadyRunning");
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}

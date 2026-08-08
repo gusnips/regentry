@@ -165,6 +165,16 @@ check(
     "stop",
     "screenshot",
     "new_conversation",
+    "browser_start",
+    "browser_snapshot",
+    "browser_navigate",
+    "browser_click",
+    "browser_type",
+    "browser_press_key",
+    "browser_scroll",
+    "browser_tabs",
+    "browser_switch_tab",
+    "browser_end",
   ].every((t) => tools.includes(t)),
   `got ${tools.join(", ")}`,
 );
@@ -285,6 +295,52 @@ const stoppedOurs = rpc("tools/call", { name: "stop", arguments: {} });
 const realStop = await awaitRequest("stop");
 reply(realStop.requestId, { stopped: false, panelBusy: false });
 check("an idle stop is still not an error", bodyOf(await stoppedOurs).includes("Nothing to stop"));
+
+// Direct control: the goal names the thread, and the opening snapshot rides
+// back with it so the client's first move isn't a wasted round trip.
+const driving = rpc("tools/call", {
+  name: "browser_start",
+  arguments: { goal: "find the Q3 invoice" },
+});
+const startRequest = await awaitRequest("browserStart");
+check(
+  "browser_start carries the goal and names the client from MCP initialize",
+  startRequest.params.goal === "find the Q3 invoice" && startRequest.params.agent === "smoke",
+);
+reply(startRequest.requestId, { ok: true, data: { pageContent: '[ref=e1] link "Invoices"' } });
+const drivingBody = bodyOf(await driving);
+check(
+  "browser_start returns the opening snapshot under the stated goal",
+  drivingBody.includes("find the Q3 invoice") && drivingBody.includes('[ref=e1] link "Invoices"'),
+);
+
+// Every raw verb crosses as one browserAct method — the MCP surface is wide,
+// the wire is narrow, and the extension keeps one browser implementation.
+const clicking = rpc("tools/call", { name: "browser_click", arguments: { ref: "e1" } });
+const clickRequest = await awaitRequest("browserAct");
+check(
+  "browser_click crosses the wire as browserAct with the agent tool name",
+  clickRequest.params.tool === "click" &&
+    (clickRequest.params.args as Record<string, unknown>).ref === "e1",
+);
+reply(clickRequest.requestId, { ok: true, data: { pageContent: '[ref=e7] link "invoice-q3"' } });
+check(
+  "an action hands back the page it produced, with the staleness warning",
+  bodyOf(await clicking).includes("valid only for THIS snapshot"),
+);
+
+const scrolling = rpc("tools/call", {
+  name: "browser_scroll",
+  arguments: { direction: "up", amount: 200 },
+});
+const scrollRequest = await awaitRequest("browserAct");
+check(
+  "scroll direction picks the right underlying tool",
+  scrollRequest.params.tool === "scroll_up" &&
+    (scrollRequest.params.args as Record<string, unknown>).amount === 200,
+);
+reply(scrollRequest.requestId, { ok: true, data: {} });
+await scrolling;
 
 // An extension-side refusal reaches the model as an oriented error, not a crash.
 const steered = rpc("tools/call", { name: "steer", arguments: { text: "use the search box" } });
