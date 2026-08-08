@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { i18n } from "@/i18n";
-import type { Command, DrivingPayload, Event } from "@/shared/protocol";
+import type { BridgeActive, Command, DrivingPayload, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
 import type { Message, AgentStatus } from "../types";
 import type { ConversationMeta } from "../conversations";
@@ -53,6 +53,8 @@ interface ConversationState {
   collapseDisabled: boolean;
   /** The tab the current run is driving; null when idle. */
   drivingTab: DrivingPayload | null;
+  /** An external client working in the browser (a bridge run or direct session) */
+  bridgeActive: BridgeActive | null;
 
   connect: () => void;
   disconnect: () => void;
@@ -280,6 +282,10 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         set({ drivingTab: event });
         break;
 
+      case "run_active":
+        set({ bridgeActive: event.active });
+        break;
+
       case "token":
         flushReasoning();
         set({ streamingText: get().streamingText + event.text });
@@ -416,6 +422,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     p.onMessage.addListener(handleEvent);
     p.onDisconnect.addListener(() => {
       port = null;
+      // The worker died with its state — nothing can be in the browser now; the
+      // next connect re-asks and gets the fresh answer.
+      set({ bridgeActive: null });
       if (pingTimer) {
         clearInterval(pingTimer);
         pingTimer = null;
@@ -434,6 +443,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       settleRun("idle");
     });
     pingTimer ??= setInterval(() => post({ type: "ping" }), 25_000);
+    // Ask on connect: the broadcast may have happened while the panel was
+    // closed, and a stale state must never read as "the browser is idle".
+    post({ type: "query_run" });
     return p;
   };
 
@@ -457,6 +469,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     pastedTexts: [],
     collapseDisabled: false,
     drivingTab: null,
+    bridgeActive: null,
 
     connect: () => {
       if (port) return;

@@ -73,6 +73,37 @@ describe("DirectSession", () => {
     expect(acquireRun("panel-conversation", "panel").ok).toBe(true);
   });
 
+  it("fires onClose when the session ends", async () => {
+    const onClose = vi.fn();
+    const session = new DirectSession(onClose);
+    await session.start("a goal", "Claude Code");
+    await session.end();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("fires onClose when an idle session expires, so the browser is not claimed forever", async () => {
+    vi.useFakeTimers();
+    try {
+      const onClose = vi.fn();
+      const session = new DirectSession(onClose);
+      await session.start("a goal", "Claude Code");
+      expect(onClose).not.toHaveBeenCalled();
+
+      // 5 minutes of silence — the expiry calls end() asynchronously; flush the
+      // microtask queue for the hide-indicator await before asserting.
+      vi.advanceTimersByTime(5 * 60_000 + 1);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(session.open).toBe(false);
+      expect(getActiveRun()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("tells a client that never opened a session what to do", async () => {
     const session = new DirectSession();
     await expect(session.act("click", { ref: "e1" })).rejects.toThrow(/browser_start/);

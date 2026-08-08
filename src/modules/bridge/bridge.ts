@@ -6,7 +6,7 @@ import { appendMessageTo, openAgentConversation } from "@/modules/conversation";
 import { DirectSession } from "./direct";
 import { TranscriptWriter } from "@/modules/conversation/transcript";
 import { createLogger, truncate } from "@/lib/logger";
-import type { Event } from "@/shared/protocol";
+import type { BridgeActive, Event } from "@/shared/protocol";
 import type { BridgeStatus, DaemonMessage, ExtensionMessage } from "./protocol";
 import { applyQuestion, applyStatusEvent, emptyStatus, newRunStatus } from "./status";
 import { BridgeSocket } from "./ws-client";
@@ -21,13 +21,22 @@ const log = createLogger("bridge");
  * startAgentRun — this is only the adapter between WS commands and it.
  */
 export class Bridge {
+  /**
+   * @param onActivity Fired whenever "an external client is working in the
+   * browser" changes — the worker broadcasts it to every open panel, so the
+   * panel can show the same run that is already blinking the driven tab.
+   */
+  constructor(private readonly onActivity?: (active: BridgeActive | null) => void) {}
+
   private socket: BridgeSocket | null = null;
   /** The dedicated MCP thread — created lazily on the first run, reset by newConversation. */
   private conversationId: string | null = null;
   private writer: TranscriptWriter | null = null;
   private status: BridgeStatus = emptyStatus();
+  /** Who is in the browser right now — the panel's run_active answer. */
+  private active: BridgeActive | null = null;
   /** Direct browser control, for a client that drives instead of delegating. */
-  private readonly direct = new DirectSession();
+  private readonly direct = new DirectSession(() => this.clearActivity());
 
   /** Synchronous — the socket registers MV3 event listeners in this same turn. */
   start(): void {
@@ -85,9 +94,14 @@ export class Bridge {
       // verb, but they all arrive here as one method — the wire stays small
       // while the MCP surface stays the shape models already know.
       case "browserStart":
-        await this.guard(requestId, () =>
-          this.direct.start(str(params.goal), str(params.agent) || i18n.t("history.unknownAgent")),
-        );
+        await this.guard(requestId, async () => {
+          const client = str(params.agent) || i18n.t("history.unknownAgent");
+          const result = await this.direct.start(str(params.goal), client);
+          // Only after the session actually opened — a refusal (already running,
+          // no tab) must not claim the browser.
+          this.setActivity("direct", client);
+          return result;
+        });
         break;
       case "browserAct":
         await this.guard(requestId, () => this.direct.act(str(params.tool), args(params.args)));
@@ -133,8 +147,11 @@ export class Bridge {
     log.info("bridge run queued", { runId, task: truncate(task, 120) });
     // Claim the slot optimistically so a getStatus right after run() sees a live run.
     this.status = newRunStatus(conversationId, runId);
-    // Stamp the thread with the client that drove it, so history can say which.
-    await openAgentConversation(conversationId, agent || i18n.t("history.unknownAgent"));
+    // Stamp the thread with the client that drove it, so history can say which —
+    // and say it to the panel too, whose band mirrors the driven tab's favicon.
+    const client = agent || i18n.t("history.unknownAgent");
+    this.setActivity("run", client);
+    await openAgentConversation(conversationId, client);
     // The task must be stored before the run starts — history is rebuilt from
     // the transcript, so a fire-and-forget write loses that race every time.
     await appendMessageTo(conversationId, {
@@ -180,17 +197,47 @@ export class Bridge {
   private async stopRun(requestId: string): Promise<void> {
     const run = getActiveRun();
     const mine = run?.owner === "bridge";
-    // A direct session holds the slot too — stop has to close it, or the slot
-    // stays claimed by a session that believes it is still driving.
-    if (this.direct.open) await this.direct.end();
-    else if (run && mine) {
+    this.stopFromPanel();
+    // Stop is not an error — a no-op stop still succeeds. But say which no-op
+    // it was: a panel run left untouched must never read as "browser is idle".
+    this.respond(requestId, { stopped: mine, panelBusy: !mine && run?.owner === "panel" });
+  }
+
+  /**
+   * The panel's Stop routed here — same mechanics as the WS stop, no response.
+   * A direct session holds the slot too, so stopping it closes the session, or
+   * the slot stays claimed by something that believes it is still driving.
+   */
+  stopFromPanel(): void {
+    if (this.direct.open) {
+      void this.direct.end();
+      return;
+    }
+    const run = getActiveRun();
+    if (run?.owner === "bridge") {
       run.controller.abort();
       run.injectedQueue.length = 0;
       releaseRun(run);
     }
-    // Stop is not an error — a no-op stop still succeeds. But say which no-op
-    // it was: a panel run left untouched must never read as "browser is idle".
-    this.respond(requestId, { stopped: mine, panelBusy: !mine && run?.owner === "panel" });
+  }
+
+  /**
+   * Who an external client is in the browser right now — the panel's answer to
+   * query_run, and null once the browser is the user's again.
+   */
+  get activity(): BridgeActive | null {
+    return this.active;
+  }
+
+  private setActivity(mode: BridgeActive["mode"], client: string): void {
+    this.active = { mode, client };
+    this.onActivity?.(this.active);
+  }
+
+  private clearActivity(): void {
+    if (!this.active) return;
+    this.active = null;
+    this.onActivity?.(null);
   }
 
   /** What the browser looks like right now — the model's eyes between steps. */
@@ -269,7 +316,11 @@ export class Bridge {
     const compact = applyStatusEvent(this.status, event);
     if (compact) this.socket?.send({ type: "event", event: compact });
     // done/error is the last event of a run — the next one opens its own writer.
-    if (event.type === "done" || event.type === "error") this.writer = null;
+    // The run is no longer in the browser either, so the panel band clears.
+    if (event.type === "done" || event.type === "error") {
+      this.writer = null;
+      this.clearActivity();
+    }
   }
 
   /**

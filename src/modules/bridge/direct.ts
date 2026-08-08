@@ -42,6 +42,13 @@ const MUTATING = new Set(["navigate", "click", "type", "press_key", "scroll_down
 const IDLE_MS = 5 * 60_000;
 
 export class DirectSession {
+  /**
+   * Fired whenever a session actually closes — end, stop, expiry. The bridge
+   * uses it to clear its "an external agent is driving" state, so an idle
+   * session timing out can't leave the panel claiming the browser is busy.
+   */
+  constructor(private readonly onClose?: () => void) {}
+
   private conversationId: string | null = null;
   private tabId: TabId | null = null;
   private claim: ActiveRun | null = null;
@@ -122,6 +129,7 @@ export class DirectSession {
     this.tabId = null;
     log.info("direct session closed");
     if (tabId !== null) await hideAgentIndicator(tabId);
+    this.onClose?.();
   }
 
   // ── Internals ─────────────────────────────────────────────────────

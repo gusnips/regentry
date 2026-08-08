@@ -261,12 +261,16 @@
     "idle": ["Pensando", "Trabalhando", "Refletindo", "Raciocinando", "Contemplando"],
     "tokens": "{{count}} tokens",
     "finished": "Concluído",
-    "drivingTabTip": "Mostrar a aba que o Regentry está controlando"
+    "drivingTabTip": "Mostrar a aba que o Regentry está controlando",
+    "bridgeTask": "{{client}} está executando uma tarefa no seu navegador",
+    "bridgeDriving": "{{client}} está controlando seu navegador",
+    "bridgeStopTitle": "Para a tarefa e devolve o navegador"
   },
   "errors": {
     "alreadyRunning": "Uma tarefa já está em execução. Pare-a primeiro.",
     "alreadyRunningMCP": "Uma tarefa de um cliente MCP externo já está em execução. Pare-a pelo cliente (regentry.stop) ou aguarde terminar.",
     "alreadyRunningPanel": "Uma tarefa já está em execução no painel do Regentry. Abra o painel e pare-a, ou aguarde terminar.",
+    "alreadyRunningBridge": "Um agente externo está usando seu navegador. Pare-o aqui no painel ou aguarde terminar.",
     "noActiveProvider": "Nenhum provedor ativo — escolha um no seletor do painel ou adicione um nas Configurações.",
     "noActiveTab": "Nenhuma aba ativa encontrada.",
     "panelClosed": "Painel lateral fechado — a execução foi interrompida",

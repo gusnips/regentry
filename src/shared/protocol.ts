@@ -18,6 +18,8 @@ export type Command =
   | { type: "inject"; id: string; text: string }
   /** The user edited or dropped a queued message before it was consumed. */
   | { type: "unqueue"; id: string }
+  /** Ask what an external agent is doing in the browser — answered with run_active. */
+  | { type: "query_run" }
   /** Heartbeat — receiving it resets the worker's idle timer during long silences */
   | { type: "ping" };
 
@@ -60,6 +62,18 @@ export interface PlanPayload {
   current: number;
 }
 
+/**
+ * An external client working in the browser — the bridge's delegated run, or a
+ * direct-driving session. The panel shows this as a status band, because the
+ * run it represents is already blinking the driven tab's favicon.
+ */
+export interface BridgeActive {
+  /** run = a delegated task; direct = the client clicking through itself. */
+  mode: "run" | "direct";
+  /** The MCP client's name — the same label history shows on the thread. */
+  client: string;
+}
+
 export type Event =
   | ({ type: "driving" } & DrivingPayload)
   | { type: "token"; text: string }
@@ -73,7 +87,9 @@ export type Event =
   | { type: "usage"; input: number; output: number }
   | { type: "error"; message: string }
   /** summary is the done tool's final answer — present when the model ends on a tool-only turn */
-  | { type: "done"; summary?: string };
+  | { type: "done"; summary?: string }
+  /** Who an external agent is in the browser — null when the browser is yours again */
+  | { type: "run_active"; active: BridgeActive | null };
 
 // ── Port name ────────────────────────────────────────────────────────
 

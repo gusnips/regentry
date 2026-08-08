@@ -261,12 +261,16 @@
     "idle": ["Pensando", "Trabajando", "Reflexionando", "Razonando", "Contemplando"],
     "tokens": "{{count}} tokens",
     "finished": "Listo",
-    "drivingTabTip": "Mostrar la pestaña que Regentry está controlando"
+    "drivingTabTip": "Mostrar la pestaña que Regentry está controlando",
+    "bridgeTask": "{{client}} está ejecutando una tarea en tu navegador",
+    "bridgeDriving": "{{client}} está controlando tu navegador",
+    "bridgeStopTitle": "Detiene la tarea y devuelve el navegador"
   },
   "errors": {
     "alreadyRunning": "Ya hay una tarea en ejecución. Deténla primero.",
     "alreadyRunningMCP": "Ya hay una tarea de un cliente MCP externo en ejecución. Detenla desde el cliente (regentry.stop) o espera a que termine.",
     "alreadyRunningPanel": "Ya hay una tarea ejecutándose en el panel de Regentry. Abre el panel y detenla, o espera a que termine.",
+    "alreadyRunningBridge": "Un agente externo está usando tu navegador. Detenlo aquí en el panel o espera a que termine.",
     "noActiveProvider": "No hay proveedor activo — elige uno en el selector del panel o añade uno en Configuración.",
     "noActiveTab": "No se encontró ninguna pestaña activa.",
     "panelClosed": "Panel lateral cerrado — la ejecución se detuvo",

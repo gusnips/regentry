@@ -4,6 +4,8 @@ import { useConversationStore } from "./store";
 import { DrivenTabChip } from "./DrivenTabChip";
 import { planGlyph } from "./plan";
 import { useNow } from "./hooks";
+import { Button } from "@/components/Button";
+import type { BridgeActive } from "@/shared/protocol";
 import { formatDuration, formatTokens } from "@/lib/format";
 
 export function RunStatus() {
@@ -12,6 +14,7 @@ export function RunStatus() {
   const runStartedAt = useConversationStore((s) => s.runStartedAt);
   const runEndedAt = useConversationStore((s) => s.runEndedAt);
   const usage = useConversationStore((s) => s.usage);
+  const bridgeActive = useConversationStore((s) => s.bridgeActive);
   // Selecting only the plan message (reference-stable until rewritten) keeps
   // this bar from re-rendering on every unrelated message churn mid-run.
   const plan = useConversationStore((s) => s.messages.findLast((m) => m.role === "plan"));
@@ -48,6 +51,10 @@ export function RunStatus() {
   // What the last run cost, kept up after it ends: while it streams the numbers
   // move too fast to read, and they are gone by the time you look.
   if (!running) {
+    // An external agent's work outranks the last run's summary — it is
+    // happening now, and the browser is not the user's while it does. This is
+    // the same run already blinking the driven tab's favicon, named here.
+    if (bridgeActive) return <BridgeActiveBand active={bridgeActive} />;
     if (runStartedAt === null || runEndedAt === null) return null;
     return (
       <div className="flex items-center gap-2 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
@@ -124,6 +131,38 @@ function PlanPeek({ steps, current }: { steps: string[]; current: number }) {
           {t("plan.peekMore", { done, pending: steps.length - done })}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * An external client is working in the browser and this panel is not the one
+ * doing it — a bridge run or a direct-driving session. The driven tab already
+ * carries the mark (blinking favicon dot, on-page badge); this band is the
+ * panel's view of the same run: who it is, and that the user can take the
+ * browser back.
+ */
+function BridgeActiveBand({ active }: { active: BridgeActive }) {
+  const { t } = useTranslation();
+  const stop = useConversationStore((s) => s.stop);
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex items-center gap-2 border-t border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-900 dark:bg-brand-950/60"
+    >
+      {/* The one motion — a breathing dot. Nothing is streaming, so the copy is
+          still; the dot carries the "alive" signal the live band gives its
+          shimmering verb. */}
+      <span className="inline-block h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-brand-500" />
+      <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">
+        {active.mode === "direct"
+          ? t("run.bridgeDriving", { client: active.client })
+          : t("run.bridgeTask", { client: active.client })}
+      </span>
+      <Button size="sm" variant="ghost" className="shrink-0" onClick={stop} title={t("run.bridgeStopTitle")}>
+        {t("chat.stop")}
+      </Button>
     </div>
   );
 }

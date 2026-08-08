@@ -7,21 +7,27 @@ import { refreshAgentIndicator } from "@/modules/browser";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
-import { startBridge } from "@/modules/bridge";
+import { getBridge, startBridge } from "@/modules/bridge";
 
 const log = createLogger("bg");
+/** Every open panel — an external agent starting work must reach them all. */
+const panelPorts = new Set<chrome.runtime.Port>();
 
 export default defineBackground(() => {
   void initI18n();
   // The MCP bridge — a WS client to the local daemon so external AI clients can
   // drive the same loop. Reconnects on its own reconcile alarm; harmless when
-  // no daemon is listening.
-  startBridge();
+  // no daemon is listening. Activity changes are broadcast to open panels: the
+  // run is already blinking the driven tab's favicon, the panel just names it.
+  startBridge((active) => {
+    for (const p of panelPorts) send(p, { type: "run_active", active });
+  });
   log.debug("background initialized");
 
   chrome.runtime.onConnect.addListener((port) => {
     if (port.name !== PORT_NAME) return;
     log.debug("side panel connected");
+    panelPorts.add(port);
 
     port.onMessage.addListener(async (msg: Command) => {
       switch (msg.type) {
@@ -64,10 +70,21 @@ export default defineBackground(() => {
             run.controller.abort();
             run.injectedQueue.length = 0;
             releaseRun(run);
+          } else if (run?.owner === "bridge") {
+            // The panel's Stop on an external run — the same mechanics as the
+            // bridge's own stop, routed here so the user can reclaim the browser.
+            getBridge()?.stopFromPanel();
           }
           // Flush the partial stream immediately — the loop's own done arrives
           // as it unwinds and is a harmless no-op in the panel.
           send(port, { type: "done" });
+          break;
+        }
+
+        case "query_run": {
+          // Answer fresh on connect — the broadcast may have happened while the
+          // panel was closed, and stale state must never read as "browser idle".
+          send(port, { type: "run_active", active: getBridge()?.activity ?? null });
           break;
         }
 
@@ -80,6 +97,7 @@ export default defineBackground(() => {
     });
 
     port.onDisconnect.addListener(() => {
+      panelPorts.delete(port);
       const run = getActiveRun();
       if (run?.owner === "panel") {
         run.controller.abort();
@@ -125,7 +143,7 @@ function send(port: chrome.runtime.Port, event: Event) {
 /** alreadyRunning text naming who holds the slot — the panel reader needs to know. */
 function alreadyRunningMessage(run: ActiveRun): string {
   return run.owner === "bridge"
-    ? i18n.t("errors.alreadyRunningMCP")
+    ? i18n.t("errors.alreadyRunningBridge")
     : i18n.t("errors.alreadyRunning");
 }
 
