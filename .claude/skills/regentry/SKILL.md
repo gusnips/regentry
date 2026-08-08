@@ -12,6 +12,11 @@ task and it drives**. It plans, navigates, reads pages, clicks, types, and repor
 That distinction shapes everything below. Ask for the outcome ("find the Q3 invoice in my email and
 download it"), not the mechanics ("navigate to gmail, click search, type invoice…").
 
+Regentry is provider-agnostic — any MCP agent can drive it the same way. This file lives in
+`.claude/skills/` only because that is the directory Claude Code searches for skills; the playbook
+itself is agent-neutral and works verbatim for ChatGPT, Kimi, or any other MCP client.
+`docs/mcp.md` is the canonical, human-facing reference.
+
 ## Delegate, or drive?
 
 Two ways to use Regentry. Pick deliberately:
