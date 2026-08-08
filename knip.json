@@ -10,7 +10,8 @@
         "src/**/__tests__/**/*.test.ts"
       ],
       "project": ["src/**/*.{ts,tsx,css}", "*.{ts,js,mjs}"],
-      "ignoreDependencies": ["@types/chrome"]
+      "ignoreDependencies": ["@types/chrome"],
+      "ignoreBinaries": ["openssl"]
     },
     "daemon": {
       "entry": ["smoke.ts"],
