@@ -67,7 +67,7 @@ describe("listModels", () => {
     expect(models.map((m) => m.id)).toEqual(["gpt-5", "gpt-4o"]);
   });
 
-  it("hides Google's non-chat families (Live, image, tts) from the OpenAI-compat list", async () => {
+  it("hides Google's non-chat families (Live, image, tts, veo, robotics, research) from the list", async () => {
     stubFetch(200, {
       data: [
         { id: "gemini-3.6-flash", created: 1790000000 },
@@ -77,10 +77,15 @@ describe("listModels", () => {
         { id: "gemini-3.1-flash-tts-preview", created: 1788000000 },
         { id: "gemini-3.1-flash-image", created: 1787000000 },
         { id: "imagen-3", created: 1786000000 },
+        { id: "veo-3.1-generate-preview", created: 1785000000 },
+        { id: "gemini-robotics-er-1.5-preview", created: 1784000000 },
+        { id: "deep-research-pro-preview-12-2025", created: 1783000000 },
+        { id: "gemini-2.5-computer-use-preview-10-2025", created: 1782000000 },
+        { id: "gemma-3-27b-it", created: 1781000000 },
       ],
     });
     const models = await listModels(openaiConfig);
-    expect(models.map((m) => m.id)).toEqual(["gemini-3.6-flash"]);
+    expect(models.map((m) => m.id)).toEqual(["gemini-3.6-flash", "gemma-3-27b-it"]);
   });
 
   it("keeps the endpoint's human label (anthropic display_name, openrouter name)", async () => {

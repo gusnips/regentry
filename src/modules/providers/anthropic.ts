@@ -1,5 +1,6 @@
 import type { ChatProvider, ChatMessage, Delta, ResolvedProviderConfig, ToolDef } from "./types";
 import { anthropicHeaders, apiUrl, parseToolArgs, streamSse } from "./http";
+import { providerDisplayName } from "./presets";
 
 /** Anthropic-shape adapter — streams SSE from POST /v1/messages. */
 export function createAnthropicProvider(config: ResolvedProviderConfig): ChatProvider {
@@ -12,7 +13,7 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
         url: apiUrl(config.baseUrl, "/v1/messages"),
         headers: anthropicHeaders(config.apiKey),
         body: JSON.stringify(buildAnthropicBody(config, messages, tools)),
-        label: "Anthropic",
+        label: providerDisplayName(config),
         signal,
         meta: {
           model: config.model,

@@ -7,7 +7,11 @@ import { truncate } from "@/lib/logger";
  * into the summary and the full JSON stays behind the Details disclosure.
  */
 export function splitErrorDetail(message: string): { summary: string; detail?: string } {
-  const start = message.indexOf("{");
+  // The body may be an object ({...}) or an array ([{...}] — Google wraps its
+  // error bodies in an array), so start at whichever delimiter lands first.
+  const brace = message.indexOf("{");
+  const bracket = message.indexOf("[");
+  const start = bracket === -1 || (brace !== -1 && brace < bracket) ? brace : bracket;
   if (start === -1) return { summary: message };
 
   const candidate = message.slice(start).trim();
@@ -33,6 +37,8 @@ export function splitErrorDetail(message: string): { summary: string; detail?: s
  * innermost real text is found.
  */
 function findReason(body: unknown, depth = 0): string | undefined {
+  // Array-wrapped error bodies (Google) carry the real error in the first element.
+  if (Array.isArray(body) && body.length > 0) body = body[0];
   if (!isRecord(body) || depth > 3) return undefined;
   const source = isRecord(body.error) ? body.error : body;
   const candidates = [

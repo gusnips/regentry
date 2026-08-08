@@ -18,6 +18,15 @@ describe("splitErrorDetail", () => {
     });
   });
 
+  it("unwraps an array-wrapped body (Google's error format)", () => {
+    const body =
+      '[{"error":{"code":429,"message":"You exceeded your current quota","status":"RESOURCE_EXHAUSTED"}}]';
+    expect(splitErrorDetail(`Provider error: OpenAI API error 429: ${body}`)).toEqual({
+      summary: "Provider error: OpenAI API error 429 — You exceeded your current quota",
+      detail: body,
+    });
+  });
+
   it("unwraps a gateway envelope whose message embeds the upstream error", () => {
     const inner =
       '{"error":{"code":"invalid_parameter_error","param":null,"message":"max_completion_tokens [4096] must be greater than thinking_budget [32768]","type":"invalid_request_error"},"id":"chatcmpl-1"}';

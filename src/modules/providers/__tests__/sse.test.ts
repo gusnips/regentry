@@ -138,7 +138,8 @@ describe("OpenAI provider SSE parsing", () => {
 
     expect(error).toBeInstanceOf(ProviderError);
     expect((error as ProviderError).kind).toBe("auth");
-    expect((error as ProviderError).message).toContain("rejected the API key");
+    // The provider's own name leads the message, not the wire shape ("OpenAI").
+    expect((error as ProviderError).message).toContain("Test rejected the API key");
     // The raw body still rides along for the Details disclosure.
     expect((error as ProviderError).message).toContain("Unauthorized");
     expect(isRetryable(error)).toBe(false);
