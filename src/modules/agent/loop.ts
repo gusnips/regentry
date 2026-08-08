@@ -152,8 +152,17 @@ async function streamTurn(
  * Agent loop: snapshot → prompt → stream → execute tools → repeat until done or max steps.
  */
 export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
-  const { provider, driver, task, images, previousTabs, history, drainInjected, signal, callbacks } =
-    opts;
+  const {
+    provider,
+    driver,
+    task,
+    images,
+    previousTabs,
+    history,
+    drainInjected,
+    signal,
+    callbacks,
+  } = opts;
   log.info("run started:", truncate(task, 120));
 
   // AGENTS.md / MEMORY.md are read once, here: a run keeps the context it started

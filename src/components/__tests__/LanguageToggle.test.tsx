@@ -44,9 +44,7 @@ const pressed = (container: HTMLElement) =>
 
 const clickButton = (container: HTMLElement, label: string) =>
   act(async () => {
-    [...container.querySelectorAll("button")]
-      .find((b) => b.textContent === label)!
-      .click();
+    [...container.querySelectorAll("button")].find((b) => b.textContent === label)!.click();
   });
 
 describe("LanguageToggle", () => {

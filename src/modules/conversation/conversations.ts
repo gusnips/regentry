@@ -83,7 +83,13 @@ export async function recordDrivenTab(tab: LastTab): Promise<void> {
   await indexItem.set(
     list.map((c) =>
       c.id === activeId
-        ? { ...c, tabs: [tab, ...(c.tabs ?? []).filter((t) => t.url !== tab.url)].slice(0, MAX_CONVERSATION_TABS) }
+        ? {
+            ...c,
+            tabs: [tab, ...(c.tabs ?? []).filter((t) => t.url !== tab.url)].slice(
+              0,
+              MAX_CONVERSATION_TABS,
+            ),
+          }
         : c,
     ),
   );

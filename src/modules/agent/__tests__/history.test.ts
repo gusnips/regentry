@@ -76,7 +76,10 @@ describe("buildConversationHistory", () => {
     const transcript: Message[] = [];
     for (let i = 1; i <= 60; i++) {
       // 1k each — 120k total, far past the budget.
-      transcript.push(msg("user", `task ${i} `.padEnd(1000, ".")), msg("assistant", `outcome ${i} `.padEnd(1000, ".")));
+      transcript.push(
+        msg("user", `task ${i} `.padEnd(1000, ".")),
+        msg("assistant", `outcome ${i} `.padEnd(1000, ".")),
+      );
     }
     // A run-start transcript always ends on the fresh task.
     transcript.push(msg("user", "current task"));

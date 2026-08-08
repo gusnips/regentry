@@ -254,7 +254,7 @@ const TOOL_DEFS: ToolDef[] = [
         choices: {
           type: "array",
           description:
-            "Short replies the user can tap instead of typing (2-4). Always include the safe option, e.g. \"Not now\".",
+            'Short replies the user can tap instead of typing (2-4). Always include the safe option, e.g. "Not now".',
           items: { type: "string" },
         },
       },
