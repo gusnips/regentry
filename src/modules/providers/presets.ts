@@ -81,6 +81,20 @@ export const PRESETS: ProviderPreset[] = [
     icon: "openai",
   },
   {
+    // The Codex agent backend behind a ChatGPT Plus/Pro sign-in instead of a
+    // key — the same quota your ChatGPT subscription pays for. It speaks the
+    // Responses wire format at a backend with no public model-list route, so
+    // the preset models ARE the picker's list.
+    id: "chatgpt",
+    name: "ChatGPT",
+    shape: "responses",
+    baseUrl: "https://chatgpt.com/backend-api/codex",
+    models: ["gpt-5.4-mini", "gpt-5.5", "gpt-5.3-codex", "gpt-5.1-codex-max"],
+    auth: "oauth",
+    color: "#10A37F",
+    icon: "openai",
+  },
+  {
     id: "kimi",
     name: "Kimi Coding",
     shape: "anthropic",

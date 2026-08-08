@@ -12,6 +12,9 @@ import { i18n } from "@/i18n";
 export async function listModels(
   config: Pick<ProviderConfig, "shape" | "baseUrl" | "apiKey" | "auth">,
 ): Promise<ModelInfo[]> {
+  // The ChatGPT backend (responses shape) exposes no model-list route — the
+  // preset's static models are the authoritative list.
+  if (config.shape === "responses") return [];
   const url = apiUrl(config.baseUrl, config.shape === "anthropic" ? "/v1/models" : "/models");
   // Signed-in providers list with their access token (OAuth-token mode); key
   // providers with x-api-key. Callers pass an ensureProviderCredential'd config.

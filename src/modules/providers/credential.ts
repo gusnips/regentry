@@ -2,6 +2,7 @@ import type { OAuthCredential, ProviderConfig } from "./types";
 import { ProviderError } from "./types";
 import { refreshCredential as refreshKimi } from "./kimi-oauth";
 import { refreshCredential as refreshClaude } from "./claude-oauth";
+import { refreshCredential as refreshChatGPT } from "./chatgpt-oauth";
 import { saveProvider } from "./storage";
 import { createLogger } from "@/lib/logger";
 import { i18n } from "@/i18n";
@@ -15,6 +16,7 @@ const log = createLogger("credential");
 const REFRESHERS: Record<string, (c: OAuthCredential) => Promise<OAuthCredential>> = {
   "kimi-plan": refreshKimi,
   claude: refreshClaude,
+  chatgpt: refreshChatGPT,
 };
 
 /**

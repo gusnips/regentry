@@ -1,7 +1,7 @@
 import type { ErrorKind } from "./error-classify";
 
 /** Provider shape — determines wire format for API calls. */
-export type ProviderShape = "openai" | "anthropic";
+export type ProviderShape = "openai" | "anthropic" | "responses";
 
 /**
  * Reasoning effort — how hard the model thinks before acting.
@@ -30,6 +30,13 @@ export interface OAuthCredential {
   expiresAt: number;
   /** Display only, decoded from the token — names the signed-in account in the UI. */
   account?: string;
+  /**
+   * The ChatGPT account the token belongs to, extracted from the JWT at sign-in.
+   * The Codex backend requires it as the `ChatGPT-Account-Id` header on every
+   * request; re-extracted on refresh (and kept from the old credential when the
+   * new token omits it), so the header can never go stale.
+   */
+  chatgptAccountId?: string;
 }
 
 /** Why a sign-in ended without a credential — each wording is a different fix. */

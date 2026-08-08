@@ -68,9 +68,10 @@ never reach the service-worker bundle.
   the driven tab's favicon so the strip shows where a run is working — the dot pulses via
   frames pushed from the worker, because Chrome throttles hidden-tab timers and hidden is
   exactly when the strip signal matters. Background-only.
-- `providers/` — OpenAI/Anthropic adapters, presets, storage, config UI (add/edit dialog,
-  list, per-task header picker, first-run onboarding). Adding a provider is a data change in
-  `presets.ts` — never a code change elsewhere.
+- `providers/` — OpenAI/Anthropic/Responses adapters, presets, storage, config UI (add/edit
+  dialog, list, per-task header picker, first-run onboarding). Adding a provider is a data change
+  in `presets.ts` — never a code change elsewhere. (A new WIRE SHAPE is the exception: adapter +
+  factory case + `ProviderShape` union.)
 - `conversation/` — stored conversations, message types, chat UI (MessageList, ChatInput,
   RunStatus, ConversationList). `transcript.ts` is the persistence half of the panel store's
   event handling, background-safe: one `TranscriptWriter` per run turns run events into stored
@@ -193,6 +194,15 @@ delegate calls `browser_start(goal)` and then the `browser_*` verbs.
   loop keeps only the newest `MAX_ATTACHED_IMAGES` screenshots attached (every image is re-sent
   on every later turn); a user's own attachment is never pruned. Screenshots are JPEG q80 from
   `Page.captureScreenshot` and are stripped before storage — user attachments persist.
+- **The ChatGPT subscription provider is a `responses` shape** (`responses.ts`), streaming the
+  Codex backend's `POST {base}/responses` — it exposes no chat-completions surface. Auth is a
+  Bearer access token PLUS the `ChatGPT-Account-Id` header (extracted from the JWT at sign-in as
+  `OAuthCredential.chatgptAccountId`; re-extracted on refresh, so it never goes stale).
+  Reasoning (`reasoning_summary_text`/`reasoning_text` deltas) is displayed but NEVER replayed —
+  the backend requires it blanked. Tool results with screenshots use the codex-rs content-array
+  form (`output: [{input_text, input_image}]`); text-only results stay a plain string.
+  `reasoningEffort` maps to `reasoning: {effort}` (`none` omits the knob — codex models have no
+  off switch).
 - **Stream retry** happens in place (agent loop) with full-jitter backoff, only while nothing
   has been emitted yet — the UI never sees replayed tokens.
 - **Stop is not an error.** User abort is normal control flow: the loop ends with `done`, never
@@ -202,7 +212,9 @@ delegate calls `browser_start(goal)` and then the `browser_*` verbs.
   `GET {base}/v1/models` (Anthropic-shape) or `GET {base}/models` (OpenAI-shape, non-chat ids
   filtered). `ProviderConfig.model` is optional — absent means auto, resolved at run start by
   `resolveProviderModel`: persisted choice → newest listed (by `created`) → preset's first →
-  clear error. QwenCloud has no list route; that's why presets keep model ids at all. Endpoints
+  clear error. QwenCloud has no list route; that's why presets keep model ids at all. The ChatGPT
+  backend (responses shape) has NO list route either — `listModels` short-circuits to `[]`, so
+  the preset models ARE the picker's list. Endpoints
   that ship a human label (Anthropic `display_name`, OpenRouter `name`) get it in `ModelInfo.name`
   and the picker shows it; the id stays the value on the wire and in the tooltip. Model and
   effort are per-task choices in the side-panel header selects, persisted per provider — never asked

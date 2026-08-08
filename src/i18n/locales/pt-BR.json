@@ -94,7 +94,15 @@
     "claudeSignInBlocked": "Se a aba não abrir, abra este link e aprove a entrada:",
     "claudeSignInExpiredTitle": "A janela de aprovação expirou",
     "claudeSignInExpiredBody": "O link de entrada vale apenas alguns minutos. Recomece para gerar um novo.",
-    "claudeSignInDeniedBody": "O pedido foi rejeitado no claude.ai. Recomece e aprove para conectar este provedor."
+    "claudeSignInDeniedBody": "O pedido foi rejeitado no claude.ai. Recomece e aprove para conectar este provedor.",
+    "chatgptSignInRequired": "Entre primeiro — este provedor usa sua assinatura ChatGPT em vez de uma chave de API.",
+    "chatgptSignInHint": "Usa sua assinatura ChatGPT (Plus ou Pro) — sem chave de API.",
+    "chatgptSignInStart": "Entrar com ChatGPT",
+    "chatgptSignInOpened": "Abrimos a página de entrada do ChatGPT em uma nova aba. Aprove a entrada lá para concluir.",
+    "chatgptSignInBlocked": "Se a aba não abrir, abra este link e aprove a entrada:",
+    "chatgptSignInExpiredTitle": "A janela de aprovação expirou",
+    "chatgptSignInExpiredBody": "O link de entrada vale apenas alguns minutos. Recomece para gerar um novo.",
+    "chatgptSignInDeniedBody": "O pedido foi rejeitado na página de entrada. Recomece e aprove para conectar este provedor."
   },
   "providerList": {
     "emptyTitle": "Nenhum provedor ainda",
@@ -297,6 +305,8 @@
     "oauthRefreshExpired": "Sua conexão com {{name}} expirou e não pôde ser renovada — entre novamente nas Configurações.",
     "claudeSignInFailed": "Falha ao entrar com a Claude: {{detail}}",
     "claudeTokenResponse": "A Claude retornou uma resposta de entrada incompleta. Tente entrar novamente.",
+    "chatgptSignInFailed": "Falha ao entrar com ChatGPT: {{detail}}",
+    "chatgptTokenResponse": "O ChatGPT retornou uma resposta de entrada incompleta. Tente entrar novamente.",
     "noResponseBody": "Resposta sem corpo",
     "restrictedPage": "O Regentry não consegue ler esta página — o Chrome bloqueia extensões em páginas chrome:// e da Web Store. Navegue a aba para uma página comum e reenvie a tarefa.",
     "snapshotFailed": "Falha na captura: a página pode ter navegado ou ser uma URL restrita (chrome://, Web Store).",

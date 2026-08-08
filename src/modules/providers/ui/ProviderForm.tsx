@@ -5,6 +5,7 @@ import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { KimiSignIn } from "./KimiSignIn";
 import { ClaudeSignIn } from "./ClaudeSignIn";
+import { ChatGPTSignIn } from "./ChatGPTSignIn";
 import { PRESETS } from "../presets";
 import type { OAuthCredential, ProviderConfig, ProviderShape } from "../types";
 import { Select } from "@/components/Select";
@@ -96,13 +97,13 @@ export function ProviderForm({
     if (isOAuth) {
       if (!auth) {
         // Each vendor's sign-in is a different flow, so the message names its own.
-        fail(
-          t(
-            preset.id === "claude"
-              ? "providerForm.claudeSignInRequired"
-              : "providerForm.kimiSignInRequired",
-          ),
-        );
+        const requiredKey =
+          preset.id === "claude"
+            ? "providerForm.claudeSignInRequired"
+            : preset.id === "chatgpt"
+              ? "providerForm.chatgptSignInRequired"
+              : "providerForm.kimiSignInRequired";
+        fail(t(requiredKey));
         return;
       }
     } else if (!key && !existing && !isLocalUrl(resolvedUrl)) {
@@ -208,6 +209,8 @@ export function ProviderForm({
       {isOAuth ? (
         preset.id === "claude" ? (
           <ClaudeSignIn signedIn={auth} onSignedIn={setPendingAuth} />
+        ) : preset.id === "chatgpt" ? (
+          <ChatGPTSignIn signedIn={auth} onSignedIn={setPendingAuth} />
         ) : (
           <KimiSignIn signedIn={auth} onSignedIn={setPendingAuth} />
         )

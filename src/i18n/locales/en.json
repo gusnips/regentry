@@ -94,7 +94,15 @@
     "claudeSignInBlocked": "If the tab didn't open, open this link and approve the sign-in:",
     "claudeSignInExpiredTitle": "The approval window expired",
     "claudeSignInExpiredBody": "The sign-in link is only valid for a few minutes. Start over to get a fresh one.",
-    "claudeSignInDeniedBody": "The request was rejected on claude.ai. Start over and approve it to connect this provider."
+    "claudeSignInDeniedBody": "The request was rejected on claude.ai. Start over and approve it to connect this provider.",
+    "chatgptSignInRequired": "Sign in first — this provider uses your ChatGPT subscription instead of an API key.",
+    "chatgptSignInHint": "Uses your ChatGPT Plus/Pro subscription — no API key needed.",
+    "chatgptSignInStart": "Sign in with ChatGPT",
+    "chatgptSignInOpened": "We opened the ChatGPT sign-in page in a new tab. Approve the sign-in there to finish.",
+    "chatgptSignInBlocked": "If the tab didn't open, open this link and approve the sign-in:",
+    "chatgptSignInExpiredTitle": "The approval window expired",
+    "chatgptSignInExpiredBody": "The sign-in link is only valid for a few minutes. Start over to get a fresh one.",
+    "chatgptSignInDeniedBody": "The request was rejected on the sign-in page. Start over and approve it to connect this provider."
   },
   "providerList": {
     "emptyTitle": "No providers yet",
@@ -297,6 +305,8 @@
     "oauthRefreshExpired": "Your {{name}} sign-in expired and couldn't be renewed — sign in again in Settings.",
     "claudeSignInFailed": "Claude sign-in failed: {{detail}}",
     "claudeTokenResponse": "Claude returned an incomplete sign-in response. Try signing in again.",
+    "chatgptSignInFailed": "ChatGPT sign-in failed: {{detail}}",
+    "chatgptTokenResponse": "ChatGPT returned an incomplete sign-in response. Try signing in again.",
     "noResponseBody": "No response body",
     "restrictedPage": "Regentry can't read this page — Chrome blocks extensions on chrome:// and Web Store pages. Navigate the tab to a regular page and resend the task.",
     "snapshotFailed": "Snapshot failed: the page may have navigated or be a restricted URL (chrome://, Web Store).",

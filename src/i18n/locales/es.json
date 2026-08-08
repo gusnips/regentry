@@ -94,7 +94,15 @@
     "claudeSignInBlocked": "Si la pestaña no se abrió, abre este enlace y aprueba el inicio de sesión:",
     "claudeSignInExpiredTitle": "La ventana de aprobación caducó",
     "claudeSignInExpiredBody": "El enlace de inicio de sesión solo vale unos minutos. Empieza de nuevo para obtener uno nuevo.",
-    "claudeSignInDeniedBody": "La solicitud se rechazó en claude.ai. Empieza de nuevo y apruébala para conectar este proveedor."
+    "claudeSignInDeniedBody": "La solicitud se rechazó en claude.ai. Empieza de nuevo y apruébala para conectar este proveedor.",
+    "chatgptSignInRequired": "Inicia sesión primero — este proveedor usa tu suscripción de ChatGPT en lugar de una clave de API.",
+    "chatgptSignInHint": "Usa tu suscripción de ChatGPT (Plus o Pro) — sin clave de API.",
+    "chatgptSignInStart": "Iniciar sesión con ChatGPT",
+    "chatgptSignInOpened": "Abrimos la página de inicio de sesión de ChatGPT en una pestaña nueva. Aprueba el inicio de sesión allí para terminar.",
+    "chatgptSignInBlocked": "Si la pestaña no se abrió, abre este enlace y aprueba el inicio de sesión:",
+    "chatgptSignInExpiredTitle": "La ventana de aprobación caducó",
+    "chatgptSignInExpiredBody": "El enlace de inicio de sesión solo vale unos minutos. Empieza de nuevo para obtener uno nuevo.",
+    "chatgptSignInDeniedBody": "La solicitud se rechazó en la página de inicio de sesión. Empieza de nuevo y apruébala para conectar este proveedor."
   },
   "providerList": {
     "emptyTitle": "Aún no hay proveedores",
@@ -297,6 +305,8 @@
     "oauthRefreshExpired": "Tu sesión de {{name}} caducó y no se pudo renovar — inicia sesión de nuevo en Configuración.",
     "claudeSignInFailed": "Error al iniciar sesión con Claude: {{detail}}",
     "claudeTokenResponse": "Claude devolvió una respuesta de inicio de sesión incompleta. Intenta iniciar sesión de nuevo.",
+    "chatgptSignInFailed": "Error al iniciar sesión con ChatGPT: {{detail}}",
+    "chatgptTokenResponse": "ChatGPT devolvió una respuesta de inicio de sesión incompleta. Intenta iniciar sesión de nuevo.",
     "noResponseBody": "Respuesta sin cuerpo",
     "restrictedPage": "Regentry no puede leer esta página — Chrome bloquea las extensiones en páginas chrome:// y de la Web Store. Navega la pestaña a una página normal y reenvía la tarea.",
     "snapshotFailed": "Error de captura: la página pudo haber navegado o ser una URL restringida (chrome://, Web Store).",
