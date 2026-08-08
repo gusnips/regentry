@@ -15,11 +15,27 @@ bun run format     # prettier
 bun run deadcode   # knip (deadcode:fix to auto-fix)
 bun run i18n:check # locale parity + every static t() key resolves (--unused for orphans)
 bun run icons      # regenerate public/icon/* + docs/og.png from src/shared/logo.ts
+bun run zip        # build + pack dist/regent-<version>-chrome.zip
+bun run release    # bun run release <patch|minor|major> — gates, bump, commit, tag, zip
 ```
 
 Load: `chrome://extensions` → Developer mode → Load unpacked → `dist/chrome-mv3`.
 
 Before submitting work: `compile`, `lint`, `test`, `deadcode`, `i18n:check` — all green.
+(`compile` IS the typecheck — `tsc --noEmit`.)
+
+## Releasing
+
+The `version` in `package.json` is the single source of truth — the git tag (`v0.1.0`) and the
+artifact (`dist/regent-0.1.0-chrome.zip`) both derive from it.
+
+```bash
+bun run release minor   # gates → bump → commit "Release vX" → tag vX → zip; never pushes
+```
+
+Runs the full gate set first, so a gate failure writes nothing — no bump, commit, or tag. Publishing is
+then manual: `git push --follow-tags`, upload the zip to the Chrome Web Store. The manifest
+`version` comes from `package.json` automatically (WXT), so a tagged build and its zip always agree.
 
 ## Architecture
 
