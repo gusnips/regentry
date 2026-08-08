@@ -4,7 +4,7 @@ Source of truth for the store submission. Copy-paste from the blocks below into 
 (`chrome.google.com/webstore/devconsole` → Regentry → **Store listing**). Everything here is kept in
 sync with the product; when a feature lands, update the matching block and re-submit.
 
-> Status: **draft for v0.1.0.** Screenshots pending (Gus captures them — see
+> Status: **draft for v0.1.0.** Screenshots captured (4 × 1280×800 — see
 > [Screenshots](#screenshots)). Permissions justification and privacy notes verified against
 > `wxt.config.ts` and `README.md`.
 
@@ -112,14 +112,15 @@ CWS requirements: **1280×800** or **640×400**, PNG or JPEG, 1–5 images, the 
 The panel and options pages are Regentry's own `chrome-extension://` pages, so they are never
 "debugged" and capture without any browser warning bar — no workaround needed.
 
-Recommended set (in this order):
+Captured set (in this order — the first is the card image):
 
-1. **Side panel over a neutral page** (hero) — the panel open on a real site you're logged into
-   (or Wikipedia), with a completed run visible. 1280×800.
-2. **Task running** — the panel mid-run: plan card, tool steps, token/elapsed live. 1280×800.
-3. **Provider settings** — the options page with the provider list. 1280×800.
-4. **Add-provider dialog** — the custom endpoint form (OpenAI/Anthropic shape picker). 640×400.
-5. **(Optional) Dark theme** — any of the above with dark mode on, to show theming. 640×400.
+1. **`01-side-panel.png`** — the side panel open over a neutral page (Wikipedia), before any
+   task — shows the panel itself is the product, not a browser takeover.
+2. **`02-chat.png`** — a chat in the side panel: the task, the plan, and the run's steps.
+3. **`03-providers.png`** — the options page with the provider list.
+4. **`04-chat-2.png`** — a second chat view.
+
+All four are **1280×800 PNG** (16:10), the CWS-required dimensions — no 16:9 crops.
 
 Capture recipe:
 
@@ -127,11 +128,10 @@ Capture recipe:
    `dist/chrome-mv3`.
 2. Click the **Regentry** toolbar icon to open the side panel.
 3. Set the window so the page + panel read well, then capture at exactly 1280×800. Preferred:
-   Brave's `--window-size=1280,800`, or crop a larger capture down.
-4. For dark-theme shots, toggle the theme in the panel's gear menu first.
+   Brave's `--window-size=1280,800`, or capture larger and center-crop to 16:10 + downscale.
 
-Saved in `docs/screenshots/` as `01-side-panel.png`, `02-running.png`, `03-providers.png`,
-`04-add-provider.png` — matching this order.
+Saved in `docs/screenshots/` as `01-side-panel.png`, `02-chat.png`, `03-providers.png`,
+`04-chat-2.png` — matching this order.
 
 ---
 
