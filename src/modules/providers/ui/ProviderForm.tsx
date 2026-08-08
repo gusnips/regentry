@@ -3,10 +3,9 @@ import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
-import { KimiSignIn } from "./KimiSignIn";
-import { ClaudeSignIn } from "./ClaudeSignIn";
-import { ChatGPTSignIn } from "./ChatGPTSignIn";
+import { OAuthSignIn, SIGN_IN_DONE_MS } from "./OAuthSignIn";
 import { PRESETS, providerDisplayName } from "../presets";
+import { isKeyRejected } from "../models";
 import type { OAuthCredential, ProviderConfig, ProviderShape } from "../types";
 import { Select } from "@/components/Select";
 import { TextField } from "@/components/TextField";
@@ -14,6 +13,9 @@ import { PasswordField } from "@/components/PasswordField";
 import { Button } from "@/components/Button";
 
 const CUSTOM = "custom";
+
+/** Cap on the add-time key check — an endpoint that never answers must not strand the button. */
+const KEY_CHECK_TIMEOUT_MS = 8000;
 
 function isLocalUrl(url: string): boolean {
   try {
@@ -29,7 +31,9 @@ function isLocalUrl(url: string): boolean {
  * per-task choices made in the side panel, where the stored key lets us
  * list the endpoint's live models; they don't belong at setup time.
  *
- * OAuth presets save on sign-in itself — approving the vendor page writes the
+ * A pasted key is spent once before it's stored, on a model listing: a key the
+ * endpoint refuses is caught here rather than halfway through a task. OAuth
+ * presets save on sign-in itself — approving the vendor page writes the
  * provider (re-signing-in on the edit path refreshes the credential), so the
  * OAuth path has no submit button.
  *
@@ -62,7 +66,7 @@ export function ProviderForm({
   );
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState<"checking" | "saving" | null>(null);
 
   const preset = presetId === CUSTOM ? undefined : PRESETS.find((p) => p.id === presetId);
   const existing = providers.find((p) => p.id === (preset ? preset.id : initialProvider?.id));
@@ -72,45 +76,32 @@ export function ProviderForm({
   const fail = (message: string) => setError(message);
 
   /**
-   * Write the provider row. For OAuth this IS the flow — signing in saves
-   * immediately, so approving the vendor page is the only step (re-signing-in
-   * on the edit path updates the stored credential). For keyed providers it's
-   * the submit button's job.
+   * Write the provider row. Throws — the sign-in card and the submit button
+   * each word their own failure.
    */
   const save = async (authOverride?: OAuthCredential) => {
-    const resolvedName = preset ? preset.name : name.trim();
-    const resolvedUrl = preset ? preset.baseUrl : baseUrl.trim();
-    const key = apiKey.trim();
-    setSaving(true);
-    try {
-      await add({
-        // Unseeded custom → undefined → the store assigns custom-<ts>.
-        id: preset?.id ?? existing?.id,
-        name: resolvedName,
-        shape: preset ? preset.shape : shape,
-        baseUrl: resolvedUrl,
-        apiKey: key || (existing?.apiKey ?? ""),
-        ...(authOverride ? { auth: authOverride } : {}),
-        // Not asked at setup — preserved across an update, picked per task in the panel.
-        model: existing?.model,
-        reasoningEffort: existing?.reasoningEffort,
-      });
-      setApiKey("");
-      setName("");
-      setBaseUrl("");
-      onSaved?.();
-    } catch (err) {
-      fail(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSaving(false);
-    }
+    await add({
+      // Unseeded custom → undefined → the store assigns custom-<ts>.
+      id: preset?.id ?? existing?.id,
+      name: preset ? preset.name : name.trim(),
+      shape: preset ? preset.shape : shape,
+      baseUrl: preset ? preset.baseUrl : baseUrl.trim(),
+      apiKey: apiKey.trim() || (existing?.apiKey ?? ""),
+      ...(authOverride ? { auth: authOverride } : {}),
+      // Not asked at setup — preserved across an update, picked per task in the panel.
+      model: existing?.model,
+      reasoningEffort: existing?.reasoningEffort,
+    });
+    setApiKey("");
+    setName("");
+    setBaseUrl("");
   };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // OAuth providers save from the sign-in flow itself — the submit button
+    // OAuth providers save from the sign-in card itself — the submit button
     // isn't rendered on their path, so this never runs for them.
     if (isOAuth) return;
 
@@ -139,7 +130,35 @@ export function ProviderForm({
       return;
     }
 
-    await save();
+    try {
+      // A key the endpoint refuses would otherwise only surface mid-task, so
+      // it's spent here instead — one listing call, and only a flat rejection
+      // stops the save.
+      setBusy("checking");
+      const rejected = await isKeyRejected(
+        {
+          shape: preset ? preset.shape : shape,
+          baseUrl: resolvedUrl,
+          apiKey: key || (existing?.apiKey ?? ""),
+        },
+        AbortSignal.timeout(KEY_CHECK_TIMEOUT_MS),
+      );
+      if (rejected) {
+        fail(
+          t("providerForm.keyRejected", {
+            name: preset ? providerDisplayName(preset) : resolvedName,
+          }),
+        );
+        return;
+      }
+      setBusy("saving");
+      await save();
+      onSaved?.();
+    } catch (err) {
+      fail(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
   };
 
   const keyHint = isLocalUrl(preset ? preset.baseUrl : baseUrl.trim()) ? (
@@ -213,13 +232,16 @@ export function ProviderForm({
       )}
 
       {isOAuth ? (
-        preset.id === "claude" ? (
-          <ClaudeSignIn signedIn={auth} onSignedIn={(cred) => void save(cred)} />
-        ) : preset.id === "chatgpt" ? (
-          <ChatGPTSignIn signedIn={auth} onSignedIn={(cred) => void save(cred)} />
-        ) : (
-          <KimiSignIn signedIn={auth} onSignedIn={(cred) => void save(cred)} />
-        )
+        <OAuthSignIn
+          presetId={preset.id}
+          provider={providerDisplayName(preset)}
+          signedIn={auth}
+          onSignedIn={async (credential) => {
+            await save(credential);
+            // The "connected" card gets its moment before the dialog closes over it.
+            setTimeout(() => onSaved?.(), SIGN_IN_DONE_MS);
+          }}
+        />
       ) : (
         <PasswordField
           label={t("providerForm.apiKey")}
@@ -249,12 +271,14 @@ export function ProviderForm({
       )}
 
       {!isOAuth && (
-        <Button type="submit" disabled={saving}>
-          {saving
-            ? t("providerForm.saving")
-            : existing
-              ? t("providerForm.update", { name: existing.name })
-              : t("providerForm.add")}
+        <Button type="submit" disabled={busy !== null}>
+          {busy === "checking"
+            ? t("providerForm.checkingKey")
+            : busy === "saving"
+              ? t("providerForm.saving")
+              : existing
+                ? t("providerForm.update", { name: providerDisplayName(existing) })
+                : t("providerForm.add")}
         </Button>
       )}
     </form>

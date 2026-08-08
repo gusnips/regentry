@@ -1,6 +1,7 @@
 import type { ModelInfo, ProviderConfig, ResolvedProviderConfig } from "./types";
 import { ProviderError } from "./types";
 import { PRESETS } from "./presets";
+import { classifyProviderError } from "./error-classify";
 import { anthropicHeaders, anthropicOAuthHeaders, apiUrl } from "./http";
 import { i18n } from "@/i18n";
 
@@ -11,6 +12,7 @@ import { i18n } from "@/i18n";
  */
 export async function listModels(
   config: Pick<ProviderConfig, "shape" | "baseUrl" | "apiKey" | "auth">,
+  signal?: AbortSignal,
 ): Promise<ModelInfo[]> {
   // The ChatGPT backend (responses shape) exposes no model-list route — the
   // preset's static models are the authoritative list.
@@ -25,7 +27,7 @@ export async function listModels(
         : anthropicHeaders(config.apiKey)
       : { Authorization: `Bearer ${config.apiKey}` };
 
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, { headers, ...(signal ? { signal } : {}) });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new ProviderError(
@@ -36,6 +38,28 @@ export async function listModels(
 
   const entries = parseModelEntries(await res.json());
   return config.shape === "openai" ? entries.filter((m) => !isNonChatModel(m.id)) : entries;
+}
+
+/**
+ * Does the endpoint refuse this credential? Checked when a provider is added,
+ * with the cheapest authenticated call there is, so a mistyped or wrong-vendor
+ * key fails in the form instead of halfway through the user's first task.
+ *
+ * Only an outright rejection counts as "no". An endpoint with no list route
+ * (QwenCloud 404s), an offline machine, or a timed-out check prove nothing
+ * about the key — those still add.
+ */
+export async function isKeyRejected(
+  config: Pick<ProviderConfig, "shape" | "baseUrl" | "apiKey" | "auth">,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  try {
+    await listModels(config, signal);
+    return false;
+  } catch (e) {
+    if (!(e instanceof ProviderError)) return false;
+    return classifyProviderError(e.status, e.message) === "auth";
+  }
 }
 
 /** Newest model wins; ties or missing timestamps fall back to list order. */

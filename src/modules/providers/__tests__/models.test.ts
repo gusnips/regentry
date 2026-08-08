@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { listModels, pickLatestModel, resolveProviderModel } from "../models";
+import { isKeyRejected, listModels, pickLatestModel, resolveProviderModel } from "../models";
 import { ProviderError } from "../types";
 import type { ProviderConfig } from "../types";
 
@@ -111,6 +111,26 @@ describe("listModels", () => {
     const err = await listModels(anthropicConfig).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ProviderError);
     expect((err as ProviderError).status).toBe(404);
+  });
+});
+
+describe("isKeyRejected", () => {
+  it("says yes only when the endpoint refuses the credential", async () => {
+    stubFetch(401, { error: { message: "invalid x-api-key" } });
+    expect(await isKeyRejected(anthropicConfig)).toBe(true);
+  });
+
+  it("keeps an endpoint with no list route addable — a 404 proves nothing about the key", async () => {
+    stubFetch(404, { message: "Not support" });
+    expect(await isKeyRejected(anthropicConfig)).toBe(false);
+  });
+
+  it("keeps an unreachable endpoint addable — offline is not a rejection", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
+    );
+    expect(await isKeyRejected(anthropicConfig)).toBe(false);
   });
 });
 

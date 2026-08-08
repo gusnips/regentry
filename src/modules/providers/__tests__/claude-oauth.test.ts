@@ -3,7 +3,6 @@ import {
   accountFromToken,
   buildAuthorizeUrl,
   exchangeCode,
-  generatePKCE,
   refreshCredential,
 } from "../claude-oauth";
 
@@ -19,21 +18,6 @@ function jwt(claims: Record<string, unknown>): string {
 }
 
 afterEach(() => vi.restoreAllMocks());
-
-describe("generatePKCE", () => {
-  it("produces a verifier whose S256 challenge matches, both base64url", async () => {
-    const { verifier, challenge } = await generatePKCE();
-    expect(verifier).toMatch(/^[A-Za-z0-9_-]{43,128}$/);
-    expect(challenge).toMatch(/^[A-Za-z0-9_-]{43}$/); // 32-byte digest, unpadded
-
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
-    const expected = btoa(String.fromCharCode(...new Uint8Array(digest)))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-    expect(challenge).toBe(expected);
-  });
-});
 
 describe("buildAuthorizeUrl", () => {
   it("carries the OAuth + PKCE params on the claude.ai authorize endpoint", () => {
