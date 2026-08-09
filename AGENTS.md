@@ -85,7 +85,17 @@ never reach the service-worker bundle.
   before it's stored (`isKeyRejected`, one model listing); only a flat rejection blocks the save,
   since a 404 (no list route) or an offline endpoint proves nothing about the key. Credential-shaped
   copy is credential-aware end to end — a signed-in provider never gets told to fix an API key it
-  doesn't have (`errors.kindAuthSignedIn`, `chat.hint.signedOut`).
+  doesn't have (`errors.kindAuthSignedIn`, `chat.hint.signedOut`). **A subscription token dies at
+  Anthropic's CORS gate unless the request carries no `Origin`** — a service worker is a document
+  context, so Chrome stamps `chrome-extension://<id>` on every fetch and the org gate 401s it.
+  `providers/origin.ts` strips `Origin`/`Referer` from our own calls to the preset hosts via a
+  declarativeNetRequest session rule; a user-typed custom endpoint keeps its Origin. This is the
+  sanctioned shape, not a hack: the official Claude for Chrome extension declares the same
+  `declarativeNetRequestWithHostAccess` permission and ships no static rule resources, so it too
+  does its header surgery with runtime rules. (It also holds `identity` and is
+  `externally_connectable` with claude.ai — first-party paths we don't get. `chrome.identity`
+  is closed to us for a different reason: it forces a `chromiumapp.org` redirect, and the CLI
+  client ids we reuse only accept `http://localhost:<port>/callback`.)
 - `conversation/` — stored conversations, message types, chat UI (MessageList, ChatInput,
   RunStatus, ConversationList). `transcript.ts` is the persistence half of the panel store's
   event handling, background-safe: one `TranscriptWriter` per run turns run events into stored
