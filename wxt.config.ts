@@ -38,5 +38,12 @@ export default defineConfig({
   },
   vite: () => ({
     plugins: [tailwindcss()],
+    build: {
+      // Extension pages load in an isolated world, so Chrome rejects Vite's
+      // <link rel="modulepreload"> for our own chunks as a "cross-world resource
+      // mismatch" and warns twice per chunk. The module graph is local and the
+      // script tag pulls it in anyway — the preload buys nothing here.
+      modulePreload: false,
+    },
   }),
 });
