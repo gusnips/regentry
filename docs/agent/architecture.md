@@ -193,12 +193,18 @@ starts clean; the only context that crosses chats is AGENTS.md / MEMORY.md. Step
 reasoning stay out of it; outcomes live in the assistant's own words, ask_user questions
 included. Conversations remain scrollback you can revisit and delete.
 
-A run that errors before writing any closing summary used to fall through that design —
+A run that ends before writing any closing summary used to fall through that design —
 no assistant words, so the work vanished from the replay and "continue" started blind.
-The writer closes the hole itself: on an `error` event it appends a deterministic
-progress note (`conversation/progress-note.ts`) built from the run's persisted step
-rows — deliberately NOT a model call, since the failures that reach there (a 429, a
-dead tab) are exactly the ones where asking the model to summarize would fail too. The
+The writer closes the hole itself: on an `error` event, and on the summary-less `done`
+a user stop unwinds into, it appends a deterministic progress note
+(`conversation/progress-note.ts`) built from the run's persisted step rows —
+deliberately NOT a model call, since the failures that reach there (a 429, a dead tab)
+are exactly the ones where asking the model to summarize would fail too. The two
+endings close differently: a failure tells the next run to resume, a stop hands the
+next move to the user and merely offers the history — stopping often means "do
+something else", and the work should be available, not mandatory. (A run that ends on
+`ask_user` writes no note; its question is its closing word. The note also consumes the
+steps it reports, so a closed tab — error, then abort — leaves one note, not two.) The
 note is an ordinary assistant message, so it replays like any other. When the model
 needs more than its outline, the `read_history` tool pages the stored transcript
 (user/assistant/error turns, plans, step rows with optional result extracts) by absolute

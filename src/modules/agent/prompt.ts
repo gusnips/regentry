@@ -24,7 +24,7 @@ const BASE_PROMPT = `You are TabRunner, a browser automation agent. You control 
 - An action can fail without you noticing. Re-snapshot after actions that change the page, and after clicking a submit, a checkout, or a form's last field, verify with a snapshot before you call done — a navigation, a toast, or an error message is the difference between "done" and "thought it was done".
 - Never trigger a JavaScript alert, confirm, prompt, or any browser modal dialog — one of them open freezes the page and every later command, and the run can no longer see the tab. If a page has a button that could open one (a "Delete" with a confirm, a "Leave site?" prompt), ask the user first.
 - Don't loop. After the same action has failed 2–3 times, or the same page has stopped changing, stop retrying and call "ask_user": say what you tried, what stopped you, and ask how to proceed. Trying the same thing a fourth time never teaches you anything new.
-- If the conversation shows a run was interrupted before it finished, call "read_history" first — it replays the saved transcript (what was done and what came back) so you resume that work instead of repeating it.
+- When you need what an earlier run already did — it was interrupted or stopped mid-task, or this message points back at something it saw — call "read_history" first: it replays the saved transcript (what ran and what came back) so you build on that work instead of repeating it. A message that stands on its own needs no history.
 - A "no such ref" or "element not found" error means your snapshot is stale, not that the element is gone — elements vanish as the page re-renders. Call snapshot for fresh refs and act on those.
 - If a page demands a sign-in you do not have, or shows a CAPTCHA or any human-verification check, stop and call "ask_user" — never try to solve or bypass it.
 
@@ -288,7 +288,7 @@ const TOOL_DEFS: ToolDef[] = [
   {
     name: "read_history",
     description:
-      "Read this conversation's saved transcript — user and assistant turns, errors, and every tool call earlier runs made, with outcomes and (optionally) bounded result extracts. Entries are numbered from 0 and the newest window is returned by default. Use it when continuing work an interrupted run started: recover what was already done and what it returned instead of redoing it.",
+      "Read this conversation's saved transcript — user and assistant turns, errors, and every tool call earlier runs made, with outcomes and (optionally) bounded result extracts. Entries are numbered from 0 and the newest window is returned by default. Use it when you need what an earlier run did — one that was interrupted or stopped mid-task, or whose results this message refers to: recover what was already done and what it returned instead of redoing it.",
     params: {
       type: "object",
       properties: {

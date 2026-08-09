@@ -110,6 +110,40 @@ describe("TranscriptWriter", () => {
     expect(note?.[1]).not.toContain("retrying");
   });
 
+  it("leaves a progress note when the user stops a run mid-work", async () => {
+    const rows = await replay("run-stop", [
+      { type: "step", tool: "snapshot", summary: "Captured 154 elements", ok: true },
+      // A stop unwinds the loop as a summary-less done.
+      { type: "done" },
+    ]);
+
+    expect(rows[0]).toEqual(["step", "Captured 154 elements"]);
+    expect(rows[1]?.[0]).toBe("assistant");
+    expect(rows[1]?.[1]).toContain("The user stopped this run");
+    expect(rows[1]?.[1]).toContain("Captured 154 elements");
+  });
+
+  it("writes no note for a run that ended on a question — the card is its closing word", async () => {
+    const rows = await replay("run-ask", [
+      { type: "step", tool: "ask_user", summary: "Which invoice?" },
+      { type: "done", question: true },
+    ]);
+
+    expect(rows).toEqual([["step", "Which invoice?"]]);
+  });
+
+  it("writes one note, not two, when the error that ends the run also aborts it", async () => {
+    const rows = await replay("run-tab-gone", [
+      { type: "step", tool: "snapshot", summary: "Captured 154 elements", ok: true },
+      { type: "error", message: "The tab “Cart” was closed" },
+      // The abort that error triggered unwinds the loop right behind it.
+      { type: "done" },
+    ]);
+
+    expect(rows.filter(([role]) => role === "assistant")).toHaveLength(1);
+    expect(rows[1]?.[1]).toContain("The tab “Cart” was closed");
+  });
+
   it("drops a done summary that only repeats the prose already shown", async () => {
     const rows = await replay("run-4", [
       { type: "token", text: "The invoice is paid." },

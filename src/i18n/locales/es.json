@@ -411,8 +411,10 @@
   },
   "progress": {
     "interrupted": "Esta ejecución se interrumpió antes de terminar. Lo que ya había hecho:",
+    "stopped": "El usuario detuvo esta ejecución antes de que terminara. Lo que ya había hecho:",
     "thenFailed": "Después falló: {{message}}",
     "resume": "Llama a read_history para ver los resultados completos de estos pasos y continúa donde se detuvo, en lugar de repetirlos.",
+    "resumeStopped": "El siguiente mensaje del usuario decide qué pasa con este trabajo: puede continuarlo o ir en otra dirección. Llama a read_history cuando necesites los resultados completos de estos pasos.",
     "omitted": "… {{count}} pasos anteriores"
   },
   "errors": {

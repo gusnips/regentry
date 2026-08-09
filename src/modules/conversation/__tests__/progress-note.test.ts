@@ -58,4 +58,14 @@ describe("buildProgressNote", () => {
     expect(note).toContain(`It then failed: ${"x".repeat(299)}…`);
     expect(note).toContain("read_history");
   });
+
+  it("names the user's stop instead of a failure, and leaves the next move to them", () => {
+    const note = buildProgressNote([step({})])!;
+
+    expect(note).toContain("The user stopped this run before it finished.");
+    expect(note).not.toContain("It then failed");
+    // Offered, not ordered — a stop often means "do something else".
+    expect(note).toContain("read_history");
+    expect(note).toContain("decides what happens");
+  });
 });

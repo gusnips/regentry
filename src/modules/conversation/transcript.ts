@@ -77,6 +77,19 @@ export class TranscriptWriter {
     });
   }
 
+  /**
+   * The closing word a run that never wrote one still owes the next run. The
+   * steps are consumed on the way out: a closed tab emits its error and then
+   * aborts the loop, so a summary-less `done` follows immediately — and must
+   * not repeat the note the error already left.
+   */
+  private writeProgressNote(errorMessage?: string): void {
+    const note = buildProgressNote(this.progressSteps, errorMessage);
+    if (!note) return;
+    this.progressSteps = [];
+    this.append(makeMsg("assistant", note));
+  }
+
   /** Reasoning and text close at the same points the display closes them. */
   private flushReasoning(): void {
     const text = this.reasoningText.trim();
@@ -177,10 +190,7 @@ export class TranscriptWriter {
         // The run died before writing its closing summary — leave a
         // deterministic one. The error message itself never replays into
         // history, so without the note the next run would start blind.
-        {
-          const note = buildProgressNote(this.progressSteps, event.message);
-          if (note) this.append(makeMsg("assistant", note));
-        }
+        this.writeProgressNote(event.message);
         this.append(makeMsg("error", event.message, { kind: event.kind }));
         break;
 
@@ -195,6 +205,12 @@ export class TranscriptWriter {
         if (closing) {
           this.lastAssistant = closing;
           this.append(makeMsg("assistant", closing));
+        } else if (!event.summary?.trim() && !event.question) {
+          // A stop ends the run as silently as a crash: the loop unwinds with a
+          // summary-less done (a question carries its own card; every other end
+          // carries a summary). The same note, so "continue" — or a redirect
+          // that reuses the work — doesn't start from nothing.
+          this.writeProgressNote();
         }
         break;
       }

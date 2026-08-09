@@ -74,9 +74,9 @@ never reach the service-worker bundle.
 - `providers/` — OpenAI/Anthropic/Responses adapters, presets, storage, config UI. Adding a
   provider is a data change in `presets.ts` — never a code change elsewhere.
 - `conversation/` — stored conversations, message types, chat UI. The worker owns transcript
-  persistence (`TranscriptWriter`); the panel store only renders. On a run error the writer
-  appends a deterministic progress note (`progress-note.ts`), so an interrupted run's work
-  still reaches the next run's history.
+  persistence (`TranscriptWriter`); the panel store only renders. Whenever a run ends without
+  a summary of its own — an error, or a user stop — the writer appends a deterministic progress
+  note (`progress-note.ts`), so the work still reaches the next run's history.
 - `bridge/` — the MCP bridge's extension half. Background-only.
 - `tips/` — the rotating "Tip: …" line; i18n data + cooldown scheduler (panel opens,
   least-recently-shown wins, re-picked on panel open / run end). Shows in the running run band,

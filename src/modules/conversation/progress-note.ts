@@ -32,8 +32,13 @@ function line(step: ProgressStep): string {
  * run's replayed history carries the progress and the failure, and the model
  * resumes instead of starting over. Returns null when nothing ran — an error
  * before the first step needs no note.
+ *
+ * Two endings reach here and they close differently. A failure (`errorMessage`)
+ * is work to pick back up. A user stop (no message) is the user taking the
+ * wheel: their next message decides what happens, so the note offers the
+ * history instead of ordering a resume.
  */
-export function buildProgressNote(steps: ProgressStep[], errorMessage: string): string | null {
+export function buildProgressNote(steps: ProgressStep[], errorMessage?: string): string | null {
   if (steps.length === 0) return null;
 
   // Consecutive repeats collapse — a read/navigate rhythm is one fact, not twelve.
@@ -56,9 +61,11 @@ export function buildProgressNote(steps: ProgressStep[], errorMessage: string): 
   }
 
   return [
-    i18n.t("progress.interrupted"),
+    i18n.t(errorMessage ? "progress.interrupted" : "progress.stopped"),
     ...lines.map((text, i) => `${i + 1}. ${text}`),
-    i18n.t("progress.thenFailed", { message: truncateTo(errorMessage, MAX_ERROR_CHARS) }),
-    i18n.t("progress.resume"),
+    ...(errorMessage
+      ? [i18n.t("progress.thenFailed", { message: truncateTo(errorMessage, MAX_ERROR_CHARS) })]
+      : []),
+    i18n.t(errorMessage ? "progress.resume" : "progress.resumeStopped"),
   ].join("\n");
 }

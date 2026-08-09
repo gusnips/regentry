@@ -411,8 +411,10 @@
   },
   "progress": {
     "interrupted": "Esta execução foi interrompida antes de terminar. O que ela já havia feito:",
+    "stopped": "O usuário interrompeu esta execução antes de ela terminar. O que ela já havia feito:",
     "thenFailed": "Em seguida, ela falhou: {{message}}",
     "resume": "Chame read_history para ver os resultados completos desses passos e continue de onde parou, em vez de repeti-los.",
+    "resumeStopped": "A próxima mensagem do usuário decide o que acontece com este trabalho — ela pode continuá-lo ou seguir outro rumo. Chame read_history quando precisar dos resultados completos desses passos.",
     "omitted": "… {{count}} passos anteriores"
   },
   "errors": {

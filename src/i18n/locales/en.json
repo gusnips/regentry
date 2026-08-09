@@ -411,8 +411,10 @@
   },
   "progress": {
     "interrupted": "This run was interrupted before it could finish. What it had already done:",
+    "stopped": "The user stopped this run before it finished. What it had already done:",
     "thenFailed": "It then failed: {{message}}",
     "resume": "Call read_history to see these steps' full results, then continue from where it stopped instead of repeating them.",
+    "resumeStopped": "The user's next message decides what happens to this work — it may continue it or go somewhere else. Call read_history when you need these steps' full results.",
     "omitted": "… {{count}} earlier steps"
   },
   "errors": {
