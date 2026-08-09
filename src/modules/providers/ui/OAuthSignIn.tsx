@@ -140,19 +140,19 @@ export function OAuthSignIn({
         role="status"
         aria-live="polite"
         // Clips the ring at the card's edge rather than letting it bleed past.
-        className="connected-card flex flex-col items-center gap-2 overflow-hidden rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-4 text-center dark:border-emerald-900 dark:bg-emerald-950"
+        className="connected-card flex flex-col items-center gap-2 overflow-hidden rounded-lg border border-brand-200 bg-brand-50 px-3 py-4 text-center dark:border-brand-900 dark:bg-brand-950"
       >
         <span className="relative inline-flex">
           <span
             aria-hidden
-            className="connected-ring absolute inset-0 rounded-full border-2 border-emerald-400 dark:border-emerald-500"
+            className="connected-ring absolute inset-0 rounded-full border-2 border-brand-400 dark:border-brand-500"
           />
           <span className="connected-tile inline-flex">
             <ProviderIcon icon={preset.icon} size={36} />
           </span>
           <span
             aria-hidden
-            className="connected-badge absolute -right-1.5 -bottom-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-emerald-50 dark:bg-emerald-400 dark:ring-emerald-950"
+            className="connected-badge absolute -right-1.5 -bottom-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 ring-2 ring-brand-50 dark:bg-brand-400 dark:ring-brand-950"
           >
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
               <path
@@ -167,13 +167,13 @@ export function OAuthSignIn({
             </svg>
           </span>
         </span>
-        <span className="connected-title text-sm font-medium text-emerald-900 dark:text-emerald-100">
+        <span className="connected-title text-sm font-medium text-brand-900 dark:text-brand-100">
           {t("providerForm.signInConnected", { provider })}
         </span>
         {/* Anonymous credentials skip the second line: "Signed in" under
             "Connected to X" is the same sentence twice. */}
         {phase.account && (
-          <span className="connected-account max-w-full truncate text-xs text-emerald-800 dark:text-emerald-200">
+          <span className="connected-account max-w-full truncate text-xs text-brand-800 dark:text-brand-200">
             {t("providerForm.signInDone", { account: phase.account })}
           </span>
         )}

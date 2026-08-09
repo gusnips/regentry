@@ -35,7 +35,7 @@ function useActiveProvider(): ProviderConfig | undefined {
  * read as a warning.
  */
 export function StatusDot({ tone }: { tone: "ok" | "waiting" | "off" }) {
-  const color = tone === "ok" ? "bg-emerald-500" : "bg-neutral-300 dark:bg-neutral-600";
+  const color = tone === "ok" ? "bg-brand-500" : "bg-neutral-300 dark:bg-neutral-600";
   return <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${color}`} aria-hidden />;
 }
 
