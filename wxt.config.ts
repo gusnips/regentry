@@ -57,6 +57,13 @@ export default defineConfig({
       // mismatch" and warns twice per chunk. The module graph is local and the
       // script tag pulls it in anyway — the preload buys nothing here.
       modulePreload: false,
+      // The shared UI chunk (React + Base UI + i18n, ~556 kB) trips Vite's
+      // 500 kB warning, which is tuned for pages shipped over a network.
+      // Extension pages load from disk, the service worker stays lean (the
+      // ESLint runtime boundary keeps UI out of it), and code-splitting the
+      // panel would buy nothing — 750 leaves headroom while still catching a
+      // genuinely accidental heavyweight import.
+      chunkSizeWarningLimit: 750,
     },
   }),
 });
