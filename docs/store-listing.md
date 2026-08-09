@@ -4,9 +4,10 @@ Source of truth for the store submission. Copy-paste from the blocks below into 
 (`chrome.google.com/webstore/devconsole` → Regentry → **Store listing**). Everything here is kept in
 sync with the product; when a feature lands, update the matching block and re-submit.
 
-> Status: **submitted to the Chrome Web Store (v0.1.0, 2026-08-08) — pending review.** All
-> checklist items in [§7](#7-pre-submit-checklist) are done. Permissions justification and privacy
-> notes verified against `wxt.config.ts` and `README.md`.
+> Status: **withdraw v0.1.0 from review and resubmit.** Subscription sign-in (Anthropic, OpenAI,
+> Kimi) needs one new permission — `declarativeNetRequestWithHostAccess` — and a submission in
+> review can't change its permission set. Pull it, ship a new version, resubmit with the §5
+> justifications below. Everything else in this doc is current.
 
 **Copy buttons.** Each block the dashboard takes has a copy button under it. In a Markdown
 preview they render as working buttons; in plain text they're `<button>` tags you can ignore —
@@ -202,25 +203,182 @@ Saved in `docs/screenshots/` as `01-side-panel.png`, `02-chat.png`, `03-provider
 
 ## 5. Permissions justification
 
-Paste into the **Permission justification** section. (CWS shows this to reviewers; be precise.)
+The dashboard gives you **one textarea per permission** — so this section is one block per
+field, in the order the form lists them. Each is written for a reviewer who has thirty seconds:
+what it does here, and why nothing narrower works.
 
-| Permission                                    | Justification                                                                                                                                                                                                                              |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `debugger`                                    | Required for trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol, the only way to produce real (trusted) events a site can't ignore.                                                                  |
-| `scripting`                                   | Injects the accessibility-tree snapshot script into the tab the agent reads.                                                                                                                                                               |
-| `sidePanel`                                   | Hosts the chat UI where the user writes tasks and watches the agent run.                                                                                                                                                                   |
-| `tabs`                                        | Reads the active tab's URL/title and switches tabs when a task references another open tab.                                                                                                                                                |
-| `activeTab`                                   | Grants access to the tab the user submits a task from, per action.                                                                                                                                                                         |
-| `storage`                                     | Persists provider configs and conversation history locally in `chrome.storage`.                                                                                                                                                            |
-| `notifications`                               | Alerts the user when the agent needs their input while Chrome is not focused.                                                                                                                                                              |
-| `alarms`                                      | Wakes a suspended service worker for the MCP bridge's periodic reconnect check — armed only while the bridge is enabled.                                                                                                                   |
-| `declarativeNetRequestWithHostAccess`         | Lets the agent's own calls to the user's configured provider present without a browser Origin. Subscription sign-in tokens (Anthropic, OpenAI, Kimi) are refused by the provider's CORS gate when they arrive with an extension Origin; removing that header from requests the extension itself makes to a provider it is configured for is the only way to use a sign-in at all. It never touches requests the page being driven makes — only the extension's own traffic to a provider the user added. |
-| Host permissions (`<all_urls>`)               | The agent must be able to navigate, read, and interact with any site the user asks it to use. No network calls are made beyond the user's configured provider and the site itself.                                                         |
+**`debugger`**
 
-**Single-purpose disclosure:** the extension exists solely to let a user's chosen LLM drive their
-browser on their behalf. It sends data only to the site being driven and to the user-configured
-provider (via their own API key or subscription sign-in). There is no Regentry server, no
-analytics, no third-party network activity.
+<div data-copy-block>
+
+```
+Regentry clicks and types on the user's behalf. Chrome only produces trusted input events through
+the DevTools Protocol; events dispatched from a content script are synthetic, and login forms,
+payment fields and most modern web apps ignore them. Regentry attaches to the single tab the
+user's task is running in and detaches when the task ends. Chrome's "started debugging" banner
+stays visible for the whole run, so the user always knows.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**`scripting`**
+
+<div data-copy-block>
+
+```
+Injects the script that turns the current page into a compact accessibility tree (roles, names and
+element references) for the AI model to read. This is what lets the model work without ever
+receiving the page's raw HTML.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**`sidePanel`**
+
+<div data-copy-block>
+
+```
+Hosts the extension's entire interface: the panel where the user writes a task, watches each step
+as it happens, answers the agent's questions, and stops the run.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**`tabs`**
+
+<div data-copy-block>
+
+```
+Reads the title and URL of the tab a task starts from, and switches to another open tab when the
+task refers to one ("archive the email I was just reading"). Without it the agent cannot tell
+which page it is working on, or return to a page the user already has open.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**`activeTab`**
+
+<div data-copy-block>
+
+```
+Grants access to the tab the user submits a task from, at the moment they submit it.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**`tabGroups`**
+
+<div data-copy-block>
+
+```
+A task the user sends to the background opens its own tab. Regentry puts that tab in a labelled
+tab group named after the task, so the user can see at a glance which tab the agent is working in
+and close it in one action. Only groups Regentry itself creates are touched.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**`storage`**
+
+<div data-copy-block>
+
+```
+Stores the user's AI provider settings and their conversation history locally, in chrome.storage on
+their own device. Nothing is uploaded — there is no Regentry server.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**`notifications`**
+
+<div data-copy-block>
+
+```
+A task can pause to ask the user a question (for example, before sending something on their
+behalf). If Chrome is not the focused window at that moment, a notification tells them the agent
+is waiting. Fired only when a run stops on a question.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**`alarms`**
+
+<div data-copy-block>
+
+```
+Regentry can optionally accept tasks from a local AI assistant on the user's own machine. Chrome
+suspends the extension's service worker when idle, so a periodic alarm wakes it to re-establish
+that local connection. The alarm is only scheduled while the user has that feature enabled.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**`declarativeNetRequestWithHostAccess`**
+
+<div data-copy-block>
+
+```
+Used only on Regentry's own network requests to the AI provider the user configured — never on
+pages the user visits or on the site being automated.
+
+Providers that the user signs in to (rather than pasting an API key) reject requests that arrive
+with a browser Origin header. Regentry removes that header from its own calls so a subscription
+sign-in works at all. The rule matches a fixed list of AI provider API hostnames, and modifies
+only request headers on those hosts. It blocks nothing, redirects nothing, and reads no page.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**Host permissions (`<all_urls>`)**
+
+<div data-copy-block>
+
+```
+The user decides which site the agent works on by typing a task in the side panel, so the set of
+sites cannot be known in advance — it is whatever the user asks for, on the sites they are already
+logged in to. The extension acts on a site only while a task is running on it. The only other
+network destination is the AI provider the user configured.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
+
+**Single-purpose description**
+
+<div data-copy-block>
+
+```
+Regentry lets an AI model the user chooses carry out tasks in their own browser: reading a page,
+clicking, typing and filling forms on the sites they are already signed in to, until the task they
+described is done. Data goes to exactly two places — the site being worked on, and the AI provider
+the user configured with their own credentials. There is no Regentry server, no account, no
+analytics, and no third-party network activity.
+```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
 
 ---
 
@@ -259,17 +417,24 @@ Draft single-purpose description (paste into the privacy form):
 
 ---
 
-## 7. Pre-submit checklist
+## 7. Resubmission checklist
 
-- [x] `bun run compile && bun run lint && bun run test && bun run deadcode && bun run i18n:check` — all green
-- [x] Screenshots captured at 1280×800 / 640×400, saved to `docs/screenshots/`, approved by Gus
-- [x] Short description verified ≤ 132 chars
-- [x] Privacy policy URL decided (see §6)
-- [x] Zip built from the exact release being submitted: `bun run release <patch|minor|major>`
-      → `dist/regentry-<version>-chrome.zip`
-- [x] The zip uploaded to CWS matches the git tag's artifact (same build, same version)
-- [x] Push and let the GitHub Action attach the zip to the release: `git push --follow-tags`
+A submission under review cannot change its permission set, so v0.1.0 comes out and a new
+version goes in.
 
-**Status: submitted to the Chrome Web Store 2026-08-08 — v0.1.0 pending review.** The extension
-ID is `gkblgkcofolbpcbafkdhiihfbpjhdpgh` and the Action-built artifact
-(`regentry-0.1.0-chrome.zip`, tag `v0.1.0` → `42196cb`) is what was uploaded.
+- [ ] **Withdraw v0.1.0**: dashboard → Regentry → Package → **Cancel submission** (the item
+      returns to Draft; the listing text, screenshots and store URL all survive)
+- [ ] Gates green: `bun run compile && bun run lint && bun run test && bun run deadcode && bun run i18n:check`
+- [ ] `bun run release minor` → bumps, commits, tags, and writes `dist/regentry-<version>-chrome.zip`
+- [ ] Upload that zip (it carries the new `declarativeNetRequestWithHostAccess` permission)
+- [ ] Paste the **§5** justification for every permission — the new one especially; a permission
+      added between submissions is the thing a reviewer looks at first
+- [ ] Re-confirm the single-purpose description (§5) and the privacy policy URL (§6) survived
+- [ ] Submit, then `git push --follow-tags` so the Action attaches the same zip to the release
+
+Unchanged since the first submission: title, descriptions, screenshots, privacy policy URL,
+extension ID `gkblgkcofolbpcbafkdhiihfbpjhdpgh`.
+
+**What changed in the product**, if a reviewer asks: providers the user _signs in to_ (their
+existing Anthropic, OpenAI or Kimi subscription) now work alongside pasted API keys. That is the
+whole reason for the new permission — see §5.
