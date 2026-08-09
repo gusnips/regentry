@@ -1,5 +1,5 @@
 import type { ToolDef } from "@/modules/providers/types";
-import type { AgentContext } from "@/modules/memory";
+import { DURABLE_FACT_RULES, type AgentContext } from "@/modules/memory";
 import { SUPPORTED_KEYS } from "@/modules/browser";
 
 const BASE_PROMPT = `You are TabRunner, a browser automation agent. You control the user's real browser via tools.
@@ -79,7 +79,11 @@ What you have learned about this user and the sites they use, carried over from 
 
 ${memory || "(empty — nothing remembered yet)"}
 
-Call "remember" when a run teaches you something that will still be true next time: a stable fact about the user, or a site quirk you hit a wall on and had to discover the hard way ("the real login on this site is the email link, not the SSO button"). Save the lesson, not the instance. Do NOT remember one-off task details, anything already written above, or — ever — passwords, API keys, card numbers, or other secrets. A run that taught you nothing durable should save nothing. This file is sent to the model provider on every run.`;
+Call "remember" only when this run teaches you something durable. Most runs teach nothing, and saving nothing is the right outcome — never reach for it just to have used it.
+
+${DURABLE_FACT_RULES}
+
+This file is sent to the model provider on every run.`;
 }
 
 /**
@@ -371,8 +375,9 @@ const TOOL_DEFS: ToolDef[] = [
 /** Offered only while memory is on — a tool whose result is discarded is worse than no tool. */
 const REMEMBER_TOOL: ToolDef = {
   name: "remember",
-  description:
-    "Save one durable fact to memory so future runs start knowing it. Save it when this run teaches you something a future run would want to know before it starts: a stable fact about the user (their accounts, how they prefer things done), or a site quirk you hit a wall on and had to figure out (the working login, a step a form needs). Write the lesson as a standalone sentence that makes sense with no task context — not the one-off instance ('To book on this site you must create an account first; there is no guest checkout.'). Never save secrets (passwords, API keys, card numbers).",
+  description: `Save one durable fact to memory so future runs start knowing it — one fact per call, and only when this run taught you something that outlives it.
+
+${DURABLE_FACT_RULES}`,
   params: {
     type: "object",
     properties: {

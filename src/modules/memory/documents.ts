@@ -22,6 +22,29 @@ export type DocName = (typeof DOC_NAMES)[number];
  */
 export const memoryEnabled = defineItem<boolean>("memoryEnabled", true);
 
+/**
+ * What earns a line in MEMORY.md. One definition, quoted verbatim by all three
+ * surfaces that write the file — the `remember` tool description, the in-run
+ * MEMORY.md section, and the post-run extraction prompt.
+ *
+ * They were three separate wordings once, and they drifted: only the tool
+ * description asked for a standalone sentence, and none of them named readings
+ * as a rejected class (their examples of "one-off" were all actions, which a run
+ * that just read a dashboard does not recognize itself in). The auto-save path
+ * duly saved "148 users, 135 active in 7d" — no subject, and stale within the
+ * hour. Shared text is what keeps a fix to the criteria from landing on one
+ * surface and missing the other two.
+ */
+export const DURABLE_FACT_RULES = `A durable fact is still true months from now, and a future run would want it before it starts:
+- A stable fact about the user — an account they use, an address, how they prefer something done.
+- A site quirk you could only learn the hard way — the login that actually works, a step a form silently requires, a page whose structure misleads.
+
+Never save a reading. Counts, metrics, prices, balances, statuses, dates, search results, message text — anything a page displayed today answers this task and belongs in your summary, not in memory, because it will be wrong the next time anyone looks. Save what the page taught, not what it showed: not "the dashboard showed 1,018 visitors in 7 days", but "this dashboard opens on a 7-day window".
+
+Write each fact to stand alone. It is read months later, beside unrelated facts, with nothing left of the task that produced it — so name what it is about: the site, the account, the thing. A fact that opens with a number and names no subject is unreadable later; do not save it.
+
+Never save secrets: passwords, API keys, card numbers, security answers. Never save anything already in the memory you were shown.`;
+
 const docItem = (name: DocName) => defineItem<string>(`doc:${name}`, "");
 
 /**

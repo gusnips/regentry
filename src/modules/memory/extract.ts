@@ -1,7 +1,7 @@
 import type { ChatMessage, ResolvedProviderConfig } from "@/modules/providers/types";
 import { createProvider } from "@/modules/providers";
 import { createLogger, truncate } from "@/lib/logger";
-import { getDoc, memoryEnabled, remember } from "./documents";
+import { DURABLE_FACT_RULES, getDoc, memoryEnabled, remember } from "./documents";
 
 const log = createLogger("memory");
 
@@ -23,19 +23,19 @@ const EXTRACTION_TIMEOUT_MS = 90_000;
  * `extractMemories` prompt in the minimum TabRunner needs: no taxonomy, one flat
  * memory list, a strict "what not to save". The current MEMORY.md rides along so
  * the model doesn't re-save what it already knows (`remember()` dedups anyway).
+ *
+ * The "most runs teach nothing" line is load-bearing. This turn is handed a
+ * transcript and asked for a list, and a model asked for a list produces one —
+ * the pull toward filling the quota with whatever the run happened to read is
+ * exactly how a page's numbers end up in memory. It needs telling that empty is
+ * the expected answer.
  */
 export function buildExtractionSystemPrompt(memory: string): string {
   return `Below is the transcript of a browser-automation run that just completed. Review it and identify durable facts worth remembering for future runs.
 
-A durable fact is something that will still be true next time and that a future run should know before it starts:
-- A stable fact about the user (their accounts, email, how they prefer things done).
-- A site quirk discovered the hard way (the working login on a site, a form that needs a specific step, a misleading page structure).
+${DURABLE_FACT_RULES}
 
-Do NOT save:
-- One-off task details ("archived the email", "the price was $50") — those belong to this task only.
-- Anything already in the memory below.
-- Secrets: passwords, API keys, card numbers, or login credentials.
-- More than 3 facts — save only what is clearly durable.
+Most runs teach nothing durable. That is the normal outcome and "none" is the right answer — a run that only looked something up almost always ends there. Never name more than 3 facts.
 
 Reply with only the facts, one per line, each starting with "- ". If nothing is durable, reply with exactly: none
 

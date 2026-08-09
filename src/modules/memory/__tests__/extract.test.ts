@@ -5,7 +5,7 @@ import {
   parseExtractedFacts,
   extractAndRemember,
 } from "../extract";
-import { getDoc, setDoc, memoryEnabled } from "../documents";
+import { getDoc, setDoc, memoryEnabled, DURABLE_FACT_RULES } from "../documents";
 import type { ChatMessage, ResolvedProviderConfig } from "@/modules/providers/types";
 
 // Storage stand-in and i18n come from src/test-setup.ts (vitest setupFiles).
@@ -47,6 +47,13 @@ function mockStreamReply(text: string) {
 }
 
 describe("buildExtractionSystemPrompt", () => {
+  it("carries the shared admission rules — this is the path that auto-saves", () => {
+    const prompt = buildExtractionSystemPrompt("");
+    expect(prompt).toContain(DURABLE_FACT_RULES);
+    // The counterweight to "here is a transcript, give me a list".
+    expect(prompt).toMatch(/most runs teach nothing durable/i);
+  });
+
   it("shows the current memory so the model does not re-save it", () => {
     const prompt = buildExtractionSystemPrompt("- The user's handle is gus.");
     expect(prompt).toContain("- The user's handle is gus.");

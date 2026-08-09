@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildSystemPrompt, buildToolDefs } from "../prompt";
-import type { AgentContext } from "@/modules/memory";
+import { DURABLE_FACT_RULES, type AgentContext } from "@/modules/memory";
 
 // i18n comes from src/test-setup.ts (vitest setupFiles).
 
@@ -27,6 +27,22 @@ describe("buildSystemPrompt", () => {
 
   it("omits the note for image-capable models", () => {
     expect(buildSystemPrompt(ctx, "English")).not.toContain("text-only");
+  });
+
+  // Both in-run writing surfaces quote the one definition; the extraction prompt
+  // is the third, checked in memory/__tests__/extract.test.ts. Restating the
+  // criteria per surface is what let them drift into saving stale page readings.
+  it("states MEMORY.md's admission rules once, on every surface that writes it", () => {
+    expect(buildSystemPrompt({ ...ctx, memoryOn: true }, "English")).toContain(DURABLE_FACT_RULES);
+
+    const remember = buildToolDefs(true).find((t) => t.name === "remember");
+    expect(remember?.description).toContain(DURABLE_FACT_RULES);
+  });
+
+  it("withholds MEMORY.md and its rules when memory is off", () => {
+    const prompt = buildSystemPrompt(ctx, "English");
+    expect(prompt).not.toContain("MEMORY.md");
+    expect(buildToolDefs(false).map((t) => t.name)).not.toContain("remember");
   });
 
   it("carries the operational rules the base prompt would otherwise never teach", () => {
