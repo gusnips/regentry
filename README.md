@@ -2,7 +2,7 @@
 
 <p>
   <img src="public/icon/128.png?v=2" width="64" height="64" alt="TabRunner comet mark" align="left" />
-  <strong>You decide. It does the legwork.</strong><br/>
+  <strong>You give the goal. It runs the tabs.</strong><br/>
   A Chromium extension that lets an LLM drive your <em>real</em> browser — your tabs, your
   sessions, your logged-in accounts — through any provider you choose. You describe a task in the
   side panel; TabRunner reads pages, clicks, types, and navigates until the job is done.
@@ -10,7 +10,7 @@
 
 <br/>
 
-> Named for what it does: it runs your tabs. You give it the goal, it does the legwork — in your
+> Named for what it does: it runs your tabs. You give the goal, it does the running — in your
 > browser, with your authority, while you watch.
 
 ## Why
