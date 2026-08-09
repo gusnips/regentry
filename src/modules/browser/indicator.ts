@@ -12,7 +12,7 @@ const RESTORE_LINK_ID = "tabrunner-agent-favicon-restore";
  *
  * - an on-page badge, because the only other signal lives in a side panel you
  *   may have scrolled away from, and a tab typing by itself looks possessed;
- * - a purple dot over the tab's favicon, because once the user switches to
+ * - an amber dot over the tab's favicon, because once the user switches to
  *   another tab the badge is invisible and the strip is all they have left.
  *   A still dot, not a blink: motion in a 16px favicon reads as a broken page.
  *
@@ -27,7 +27,7 @@ const RESTORE_LINK_ID = "tabrunner-agent-favicon-restore";
  * heartbeat sees to that).
  *
  * When a run ends on a question (ask_user), the dot does not vanish — that is
- * the moment the agent needs you most. It settles into a still purple "?":
+ * the moment the agent needs you most. It settles into a still amber "?":
  * working became waiting-on-you. Still, not pulsing — the pulse is the "alive"
  * language, and the agent is now blocked on the human. The on-page badge goes
  * away: "being controlled" is no longer true. The wait clears when the next
@@ -53,15 +53,15 @@ const markedTabs = new Set<TabId>();
  */
 let waitingTabId: TabId | null = null;
 
-/** Solid brand dot — the favicon the driven tab shows in the tab strip. */
+/** Solid amber dot — the favicon the driven tab shows in the tab strip. */
 const FAVICON_DATA_URL =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23a78bfa'/%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23fbbf24'/%3E%3C/svg%3E";
 /** The same dot at a quarter opacity — the heartbeat's low beat. */
 const FAVICON_DIM_URL =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23a78bfa' fill-opacity='0.25'/%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23fbbf24' fill-opacity='0.25'/%3E%3C/svg%3E";
 /** The dot with a knocked-out "?" — the run ended on a question for the user. */
 const FAVICON_WAITING_URL =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23a78bfa'/%3E%3Ctext x='8' y='11.3' font-size='9.5' font-weight='700' text-anchor='middle' fill='white' font-family='ui-sans-serif,system-ui,sans-serif'%3E%3F%3C/text%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23fbbf24'/%3E%3Ctext x='8' y='11.3' font-size='9.5' font-weight='700' text-anchor='middle' fill='%23451a03' font-family='ui-sans-serif,system-ui,sans-serif'%3E%3F%3C/text%3E%3C/svg%3E";
 const FAVICON_FRAMES = [FAVICON_DATA_URL, FAVICON_DIM_URL];
 /** Two beats make the badge's 1.4s breath — one motion language for "alive". */
 const PULSE_BEAT_MS = 700;
@@ -99,13 +99,13 @@ export function paintIndicator(
     .badge {
       display: flex; align-items: center; gap: 6px;
       padding: 6px 10px; border-radius: 9999px;
-      background: #2e1065ee; color: #ede9fe;
+      background: #0b1224ee; color: #e8eefb;
       font: 500 12px/1.2 ui-sans-serif, system-ui, sans-serif;
       box-shadow: 0 2px 12px #0000004d;
     }
     .dot {
       width: 6px; height: 6px; border-radius: 9999px;
-      background: #a78bfa; animation: pulse 1.4s ease-in-out infinite;
+      background: #fbbf24; animation: pulse 1.4s ease-in-out infinite;
     }
     @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
     @media (prefers-reduced-motion: reduce) { .dot { animation: none } }

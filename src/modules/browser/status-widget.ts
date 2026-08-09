@@ -72,32 +72,32 @@ export function paintWidget(
       display: flex; align-items: center; gap: 8px;
       max-width: calc(100vw - 24px);
       padding: 6px 8px 6px 10px; border-radius: 9999px;
-      background: #2e1065ee; color: #ede9fe;
+      background: #0b1224ee; color: #e8eefb;
       font: 500 12px/1.2 ui-sans-serif, system-ui, sans-serif;
       box-shadow: 0 2px 12px #0000004d;
     }
     .dot {
       width: 6px; height: 6px; border-radius: 9999px; flex: none;
-      background: #a78bfa; animation: pulse 1.4s ease-in-out infinite;
+      background: #fbbf24; animation: pulse 1.4s ease-in-out infinite;
     }
     .wait {
       width: 14px; height: 14px; border-radius: 9999px; flex: none;
       display: flex; align-items: center; justify-content: center;
-      background: #a78bfa; color: #2e1065; font-size: 10px; font-weight: 700;
+      background: #fbbf24; color: #451a03; font-size: 10px; font-weight: 700;
     }
     @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
     @media (prefers-reduced-motion: reduce) { .dot { animation: none } }
-    .brand { flex: none; color: #c4b5fd; }
+    .brand { flex: none; color: #67e8f9; }
     .task { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .queued {
       flex: none; padding: 1px 6px; border-radius: 9999px;
-      background: #a78bfa33; font-size: 11px;
+      background: #22d3ee33; font-size: 11px;
     }
     .btn {
       flex: none; border: 0; border-radius: 9999px; padding: 3px 8px;
-      background: transparent; color: #c4b5fd; font: inherit; cursor: pointer;
+      background: transparent; color: #67e8f9; font: inherit; cursor: pointer;
     }
-    .btn:hover { background: #a78bfa33; color: #ede9fe; }
+    .btn:hover { background: #22d3ee33; color: #e8eefb; }
   `;
 
   const pill = document.createElement("div");
@@ -111,7 +111,7 @@ export function paintWidget(
   } else {
     dot.className = "dot";
   }
-  // Self-identifying on unrelated pages — the badge's own purple language.
+  // Self-identifying on unrelated pages — the badge's own cyan language.
   const brand = document.createElement("span");
   brand.className = "brand";
   brand.textContent = "TabRunner ·";
