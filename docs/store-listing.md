@@ -181,11 +181,16 @@ The panel and options pages are TabRunner's own `chrome-extension://` pages, so 
 
 Captured set (in this order — the first is the card image):
 
-1. **`01-side-panel.png`** — the side panel open over a neutral page (Wikipedia), before any
-   task — shows the panel itself is the product, not a browser takeover.
-2. **`02-chat.png`** — a chat in the side panel: the task, the plan, and the run's steps.
-3. **`03-providers.png`** — the options page with the provider list.
-4. **`04-chat-2.png`** — a second chat view.
+1. **`01-side-panel.png`** — Wikipedia's "Web browser" article with the side panel beside it,
+   pre-task: the task typed in the composer, not yet sent. The panel is the product, not a
+   browser takeover.
+2. **`02-chat.png`** — Wikipedia's "Intelligent agent" with a finished run in the panel: user
+   bubble, plan card, tool trace, the agent's summary; the "controlling this tab" badge rides
+   the page's top-right.
+3. **`03-providers.png`** — the options page's Providers tab: subscription rows (Anthropic,
+   OpenAI) and an API-key row (DeepSeek), active provider highlighted.
+4. **`04-chat-2.png`** — Hacker News with a second conversation and the floating status widget
+   bottom-right (task · +1 queued · Open · Hide).
 
 All four are **1280×800 PNG** (16:10), the CWS-required dimensions — no 16:9 crops.
 

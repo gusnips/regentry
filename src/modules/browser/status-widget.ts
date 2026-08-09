@@ -87,17 +87,17 @@ export function paintWidget(
     }
     @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
     @media (prefers-reduced-motion: reduce) { .dot { animation: none } }
-    .brand { flex: none; color: #67e8f9; }
+    .brand { flex: none; color: #6ee7b7; }
     .task { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .queued {
       flex: none; padding: 1px 6px; border-radius: 9999px;
-      background: #22d3ee33; font-size: 11px;
+      background: #34d39933; font-size: 11px;
     }
     .btn {
       flex: none; border: 0; border-radius: 9999px; padding: 3px 8px;
-      background: transparent; color: #67e8f9; font: inherit; cursor: pointer;
+      background: transparent; color: #6ee7b7; font: inherit; cursor: pointer;
     }
-    .btn:hover { background: #22d3ee33; color: #e8eefb; }
+    .btn:hover { background: #34d39933; color: #e8eefb; }
   `;
 
   const pill = document.createElement("div");
@@ -111,7 +111,7 @@ export function paintWidget(
   } else {
     dot.className = "dot";
   }
-  // Self-identifying on unrelated pages — the badge's own cyan language.
+  // Self-identifying on unrelated pages — the badge's own emerald language.
   const brand = document.createElement("span");
   brand.className = "brand";
   brand.textContent = "TabRunner ·";

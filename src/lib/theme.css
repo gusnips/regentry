@@ -4,25 +4,26 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * TabRunner brand — comet-ice (2026-08 rebrand, same system as tabrunner.app):
- * ion cyan is the action/motion color, used via brand-* utilities. The scale is
- * Tailwind's cyan under the brand alias so every brand-* usage recolors from
- * here. Live measurement (running dots, the on-page pulse) is amber instead —
- * amber utilities come straight from the default palette; cyan never measures,
- * amber never acts.
+ * TabRunner brand — comet-burn (2026-08, third pass: cyan read cold, pink
+ * pulled the whole design language louder than the product is). Burn emerald
+ * is the action/motion color — the green a comet burns on entry, and the
+ * runner's "go". Tailwind's emerald under the brand alias so every brand-*
+ * usage recolors from here. Fills take DARK ink (brand-950 on brand-500 is
+ * ~6:1). Live measurement (running dots, the on-page pulse) stays amber;
+ * emerald never measures, amber never acts.
  */
 @theme {
-  --color-brand-50: #ecfeff;
-  --color-brand-100: #cffafe;
-  --color-brand-200: #a5f3fc;
-  --color-brand-300: #67e8f9;
-  --color-brand-400: #22d3ee;
-  --color-brand-500: #06b6d4;
-  --color-brand-600: #0891b2;
-  --color-brand-700: #0e7490;
-  --color-brand-800: #155e75;
-  --color-brand-900: #164e63;
-  --color-brand-950: #083344;
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-200: #a7f3d0;
+  --color-brand-300: #6ee7b7;
+  --color-brand-400: #34d399;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+  --color-brand-800: #065f46;
+  --color-brand-900: #064e3b;
+  --color-brand-950: #022c22;
 
   /*
    * Neutral, retinted to the deep-field grounds: cool starlight grays at the

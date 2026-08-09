@@ -279,13 +279,13 @@ async function injectWidget(page: Page, task: string, queued: string) {
       el.style.cssText = `position:fixed;bottom:12px;right:12px;z-index:2147483647;${css}`;
       el.innerHTML =
         `<span style="${dot}"></span>` +
-        `<span style="color:#67e8f9">TabRunner ·</span>` +
+        `<span style="color:#6ee7b7">TabRunner ·</span>` +
         `<span style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t}</span>` +
         (q
-          ? `<span style="padding:1px 6px;border-radius:9999px;background:#22d3ee33;font-size:11px">${q}</span>`
+          ? `<span style="padding:1px 6px;border-radius:9999px;background:#34d39933;font-size:11px">${q}</span>`
           : "") +
-        `<span style="color:#67e8f9;padding:3px 8px">Open</span>` +
-        `<span style="color:#67e8f9;padding:3px 8px">Hide</span>`;
+        `<span style="color:#6ee7b7;padding:3px 8px">Open</span>` +
+        `<span style="color:#6ee7b7;padding:3px 8px">Hide</span>`;
       document.body.appendChild(el);
     },
     BADGE_CSS,

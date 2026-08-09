@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 type Variant = "default" | "secondary" | "muted" | "destructive";
 
 const VARIANTS: Record<Variant, string> = {
-  default: "bg-brand-600 text-brand-950",
+  default: "bg-brand-500 text-brand-950",
   secondary: "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100",
   muted: "bg-neutral-100 dark:bg-neutral-800",
   destructive:

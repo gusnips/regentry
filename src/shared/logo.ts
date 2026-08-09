@@ -10,9 +10,9 @@
  */
 
 const TAB = "#e8eefb"; // starlight — the tab itself
-const DOT = "#06b6d4"; // favicon dot
-const TRAIL_NEAR = "#22d3ee"; // ion cyan — closest to the body
-const TRAIL_FAR = "#67e8f9"; // ice — trailing off
+const DOT = "#10b981"; // favicon dot
+const TRAIL_NEAR = "#34d399"; // burn emerald — closest to the body
+const TRAIL_FAR = "#6ee7b7"; // cooling — trailing off
 
 /**
  * Comet-tab glyph on a 48×48 canvas: tab silhouette, favicon dot, two speed
