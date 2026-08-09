@@ -2,6 +2,7 @@ import { Select as BaseSelect } from "@base-ui-components/react";
 import { Fragment } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { ChevronDownIcon } from "./Icon";
 
 export interface SelectOption {
   value: string;
@@ -106,7 +107,9 @@ export function Select({
             );
           }}
         </BaseSelect.Value>
-        <BaseSelect.Icon className="text-neutral-500 dark:text-neutral-400">▾</BaseSelect.Icon>
+        <BaseSelect.Icon className="flex shrink-0 text-neutral-500 dark:text-neutral-400">
+          <ChevronDownIcon />
+        </BaseSelect.Icon>
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
         {/* alignItemWithTrigger would center the SELECTED item on the trigger, pushing

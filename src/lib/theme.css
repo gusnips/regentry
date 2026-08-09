@@ -117,6 +117,34 @@ body {
 }
 
 /*
+ * Waiting on the first token — three dots breathing in sequence. Deliberately
+ * not a bounce: every other "alive" signal in the panel eases smoothly (the
+ * shimmer sweep, the amber pulse), and a bouncing dot made a fourth idiom for
+ * the one idea those already carry.
+ */
+@keyframes tabrunner-thinking {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+.thinking-dot {
+  animation: tabrunner-thinking 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/*
  * Sign-in connected — the one genuinely good moment in setup, so it gets a
  * beat rather than a static green box: the provider's own mark lands, a ring
  * breaks off it once, the check draws onto its corner, and the words follow.

@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { focusTab } from "./focus-tab";
 import { Button } from "@/components/Button";
-import { Icon } from "@/components/Icon";
+import { Icon, XIcon } from "@/components/Icon";
 
 function JumpIcon() {
   return (
@@ -17,14 +17,6 @@ function StopIcon() {
   return (
     <Icon>
       <rect x="6" y="6" width="12" height="12" rx="2" />
-    </Icon>
-  );
-}
-
-function XIcon() {
-  return (
-    <Icon>
-      <path d="M18 6 6 18M6 6l12 12" />
     </Icon>
   );
 }

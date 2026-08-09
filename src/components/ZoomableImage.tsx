@@ -1,4 +1,5 @@
 import { Dialog } from "@base-ui-components/react";
+import { XIcon } from "./Icon";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -48,7 +49,7 @@ export function ZoomableImage({
             aria-label={t("common.close")}
             className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-sm text-white hover:bg-black/80 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none"
           >
-            ✕
+            <XIcon size={16} />
           </Dialog.Close>
         </Dialog.Popup>
       </Dialog.Portal>

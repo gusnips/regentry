@@ -10,6 +10,7 @@ import { RunTargetToggle } from "./RunTargetToggle";
 import { TipLine } from "@/modules/tips/ui";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
+import { XIcon } from "@/components/Icon";
 import { ZoomableImage } from "@/components/ZoomableImage";
 
 interface Attachment {
@@ -231,9 +232,9 @@ export function ChatInput() {
                 type="button"
                 onClick={() => unqueueMessage(q.id)}
                 aria-label={t("chat.unqueueAria")}
-                className="shrink-0 rounded px-1 text-neutral-500 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
+                className="flex shrink-0 items-center rounded px-1 text-neutral-500 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
               >
-                ✕
+                <XIcon />
               </button>
             </div>
           ))}
@@ -254,9 +255,9 @@ export function ChatInput() {
             type="button"
             onClick={cancelQueuedRun}
             aria-label={t("queue.cancel")}
-            className="shrink-0 rounded px-1 text-brand-500 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-brand-400 dark:hover:bg-brand-900"
+            className="flex shrink-0 items-center rounded px-1 text-brand-500 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-brand-400 dark:hover:bg-brand-900"
           >
-            ✕
+            <XIcon />
           </button>
         </div>
       )}
@@ -276,7 +277,7 @@ export function ChatInput() {
                 aria-label={t("chat.removeAttachment", { token: a.token })}
                 className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-neutral-800 text-xs text-white shadow hover:bg-neutral-900 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white"
               >
-                ✕
+                <XIcon />
               </button>
               <span className="mt-0.5 block text-center text-[10px] text-neutral-500 dark:text-neutral-400">
                 {a.token.replace(/[[\]]/g, "")}

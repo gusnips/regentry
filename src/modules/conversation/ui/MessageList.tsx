@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { Markdown } from "./Markdown";
-import { planGlyph, planGlyphClass } from "./plan";
+import { PlanMark } from "./PlanMark";
 import { groupBursts, type Burst } from "./bursts";
 import { useNow } from "./hooks";
 import { toolVerbKey, toolHint } from "./tool-labels";
@@ -15,6 +15,7 @@ import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { Button } from "@/components/Button";
+import { CheckIcon, ChevronRightIcon, DotIcon, XIcon } from "@/components/Icon";
 import { Bubble, BubbleContent } from "@/components/Bubble";
 import {
   MessageScroller,
@@ -89,12 +90,14 @@ function StepIcon({ live, ok }: { live?: boolean; ok?: boolean }) {
     return (
       <span
         role="status"
-        className="h-2.5 w-2.5 shrink-0 animate-spin rounded-full border border-neutral-300 border-t-brand-500 dark:border-neutral-600 dark:border-t-brand-400"
+        /* 14px, like the marks it alternates with — at 10px the row's text
+           jumped sideways the instant a step finished. */
+        className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-neutral-300 border-t-brand-500 dark:border-neutral-600 dark:border-t-brand-400"
       />
     );
-  if (ok === false) return <span className="text-red-500 dark:text-red-400">✗</span>;
-  if (ok === true) return <span className="text-neutral-500 dark:text-neutral-400">✓</span>;
-  return <span className="text-neutral-400 dark:text-neutral-500">•</span>;
+  if (ok === false) return <XIcon className="shrink-0 text-red-500 dark:text-red-400" />;
+  if (ok === true) return <CheckIcon className="shrink-0 text-neutral-500 dark:text-neutral-400" />;
+  return <DotIcon filled className="shrink-0 text-neutral-400 dark:text-neutral-500" />;
 }
 
 /**
@@ -137,9 +140,7 @@ function StepRow({ msg }: { msg: Message }) {
     <details className="group max-w-full self-start px-1 text-xs text-neutral-500 dark:text-neutral-400">
       <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none hover:text-neutral-700 dark:hover:text-neutral-300">
         {line}
-        <span className="shrink-0 text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500">
-          ▸
-        </span>
+        <ChevronRightIcon className="shrink-0 text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500" />
       </summary>
       <div className="mt-1 ml-4 flex flex-col gap-1.5">
         {displaced && <div>{displaced}</div>}
@@ -341,9 +342,7 @@ function PlanCard({
       className="group max-w-[85%] self-start rounded-lg border border-neutral-200 px-3 py-1.5 text-xs dark:border-neutral-700"
     >
       <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none">
-        <span className="inline-block text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500">
-          ▸
-        </span>
+        <ChevronRightIcon className="shrink-0 text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500" />
         <span className="font-medium text-neutral-700 dark:text-neutral-200">
           {t("plan.title")}
         </span>
@@ -355,21 +354,22 @@ function PlanCard({
         )}
       </summary>
       <ol className="mt-1 flex flex-col gap-0.5">
+        {/* The strike belongs to the label, not the row — on the row it drew
+            straight through the check mark that says the step succeeded. */}
         {steps.map((step, i) => (
-          <li
-            key={i}
-            className={
-              i < current
-                ? "flex gap-1.5 text-neutral-400 line-through dark:text-neutral-500"
-                : i === current
-                  ? "flex gap-1.5 font-medium text-neutral-800 dark:text-neutral-100"
-                  : "flex gap-1.5 text-neutral-500 dark:text-neutral-400"
-            }
-          >
-            <span aria-hidden className={`shrink-0 ${planGlyphClass(i, current)}`}>
-              {planGlyph(i, current)}
+          <li key={i} className="flex items-start gap-1.5">
+            <PlanMark index={i} current={current} />
+            <span
+              className={
+                i < current
+                  ? "text-neutral-400 line-through dark:text-neutral-500"
+                  : i === current
+                    ? "font-medium text-neutral-800 dark:text-neutral-100"
+                    : "text-neutral-500 dark:text-neutral-400"
+              }
+            >
+              {step}
             </span>
-            <span>{step}</span>
           </li>
         ))}
       </ol>
@@ -420,9 +420,9 @@ function ReasoningBlock({
           <>
             <span
               aria-hidden
-              className={`inline-block transition-transform ${show ? "rotate-90" : ""}`}
+              className={`inline-flex transition-transform ${show ? "rotate-90" : ""}`}
             >
-              ▸
+              <ChevronRightIcon />
             </span>
             <span className="font-medium">{t("chat.thoughtFor", { duration })}</span>
           </>
@@ -443,9 +443,7 @@ function QuietThought({ msg, onToggle }: { msg: Message; onToggle: () => void })
       title={t("chat.reasoningToggle")}
       className="flex items-center gap-1.5 self-start rounded select-none hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:hover:text-neutral-300"
     >
-      <span aria-hidden className="text-neutral-400 dark:text-neutral-500">
-        ▸
-      </span>
+      <ChevronRightIcon className="shrink-0 text-neutral-400 dark:text-neutral-500" />
       <span className="font-medium">
         {t("chat.thoughtFor", { duration: formatDuration(msg.elapsed ?? 0) })}
       </span>
@@ -510,9 +508,7 @@ function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoni
       className="group max-w-full self-start px-1 text-xs text-neutral-500 dark:text-neutral-400"
     >
       <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none hover:text-neutral-700 dark:hover:text-neutral-300">
-        <span className="shrink-0 text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500">
-          ▸
-        </span>
+        <ChevronRightIcon className="shrink-0 text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500" />
         <StepIcon live={burst.live} ok={failed ? false : true} />
         <span className="truncate">{list}</span>
         <span className="shrink-0 text-neutral-500 dark:text-neutral-400">
@@ -675,10 +671,8 @@ function MessageBubble({
           <div className="whitespace-pre-wrap">{msg.kind ? lead : summary}</div>
           {detail && (
             <details className="group mt-1">
-              <summary className="cursor-pointer list-none text-xs text-red-500 select-none hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                <span className="mr-1 inline-block transition-transform group-open:rotate-90">
-                  ▸
-                </span>
+              <summary className="flex cursor-pointer list-none items-center gap-1 text-xs text-red-500 select-none hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                <ChevronRightIcon className="shrink-0 transition-transform group-open:rotate-90" />
                 {t("chat.details")}
               </summary>
               <pre className="mt-1 max-h-40 overflow-auto rounded bg-red-100/70 p-1.5 font-mono text-xs break-all whitespace-pre-wrap text-red-700 dark:bg-red-900/40 dark:text-red-300">
@@ -893,7 +887,7 @@ function Transcript() {
                     {[0, 150, 300].map((d) => (
                       <span
                         key={d}
-                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-400 dark:bg-neutral-500"
+                        className="thinking-dot h-1.5 w-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500"
                         style={{ animationDelay: `${d}ms` }}
                       />
                     ))}

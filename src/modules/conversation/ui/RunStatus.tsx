@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { DrivenTabChip } from "./DrivenTabChip";
-import { planGlyph, planGlyphClass } from "./plan";
+import { PlanMark } from "./PlanMark";
 import { pendingAskId } from "./ask-gate";
 import { useNow } from "./hooks";
 import { TipLine } from "@/modules/tips/ui";
@@ -165,10 +165,13 @@ function PlanPeek({ steps, current }: { steps: string[]; current: number }) {
       {peek.map((step, j) => {
         const i = from + j;
         return (
-          <div key={i} className={i === current ? "flex gap-1.5 font-medium" : "flex gap-1.5"}>
-            <span aria-hidden className={`shrink-0 ${planGlyphClass(i, current)}`}>
-              {planGlyph(i, current)}
-            </span>
+          <div
+            key={i}
+            className={
+              i === current ? "flex items-start gap-1.5 font-medium" : "flex items-start gap-1.5"
+            }
+          >
+            <PlanMark index={i} current={current} />
             <span className="truncate">{step}</span>
           </div>
         );

@@ -6,6 +6,7 @@ import { AddProviderDialog } from "./AddProviderDialog";
 import { PRESETS, providerDisplayName } from "../presets";
 import { byCredentialStatus, credentialStatus, isOAuthProvider } from "../status";
 import { Button } from "@/components/Button";
+import { DotIcon } from "@/components/Icon";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 function hostOf(url: string): string | null {
@@ -26,12 +27,10 @@ function StatusDot({ connected }: { connected: boolean }) {
     <span
       aria-hidden
       className={
-        connected
-          ? "text-emerald-600 dark:text-emerald-400"
-          : "text-neutral-500 dark:text-neutral-400"
+        connected ? "text-brand-700 dark:text-brand-400" : "text-neutral-500 dark:text-neutral-400"
       }
     >
-      {connected ? "●" : "○"}
+      <DotIcon filled={connected} />
     </span>
   );
 }
