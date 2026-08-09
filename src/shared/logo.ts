@@ -1,35 +1,49 @@
 /**
- * The TabRunner brand mark — a comet: a body in motion, with its trail behind.
- * Single source of truth for the extension icons and the OG card:
- * `bun run icons` (scripts/gen-icons.ts) rasterizes these into public/icon/.
- *
- * The wordmark carries "tab", so the glyph only has to carry "runner". Drawing
- * a literal tab was tried and abandoned: filled blocks side by side read as a
- * bar chart, and the window frame that makes a tab legible dissolves at 16px.
+ * The TabRunner brand mark — the comet-tab: a browser-tab silhouette in
+ * motion, ion trail behind it. Single source of truth for the extension icons
+ * and the OG card: `bun run icons` (scripts/gen-icons.ts) rasterizes these
+ * into public/icon/. Same geometry as the site's mark
+ * (site/src/components/CometMark.tsx) — the two must not drift.
  *
  * Pure string builders, no React — safe to import from scripts and from any
  * runtime context.
  */
 
-/** Comet glyph on a 48×48 canvas. Flat geometry: head + two speed trails. */
-export function cometSvg(fill = "#ffffff"): string {
+const TAB = "#e8eefb"; // starlight — the tab itself
+const DOT = "#06b6d4"; // favicon dot
+const TRAIL_NEAR = "#22d3ee"; // ion cyan — closest to the body
+const TRAIL_FAR = "#67e8f9"; // ice — trailing off
+
+/**
+ * Comet-tab glyph on a 48×48 canvas: tab silhouette, favicon dot, two speed
+ * trails. The "small" variant drops the trails and enlarges the tab — at 16px
+ * the trails merge into mush and the dot shrinks below a pixel, so the icon
+ * set renders the smallest size from this instead.
+ */
+export function cometSvg(variant: "full" | "small" = "full"): string {
+  const tab =
+    `<path d="M 23 30 L 23 20.5 Q 23 17 26.5 17 L 37.5 17 Q 41 17 41 20.5 L 41 30 Z" fill="${TAB}" />` +
+    `<circle cx="27" cy="21.5" r="1.8" fill="${DOT}" />`;
+  if (variant === "small") {
+    return `<g transform="translate(24 23.5) scale(1.35) translate(-32 -23.5)">${tab}</g>`;
+  }
   return (
-    `<circle fill="${fill}" cx="31" cy="24" r="7.5" />` +
-    `<rect fill="${fill}" x="8" y="18" width="14" height="3.25" rx="1.625" />` +
-    `<rect fill="${fill}" x="11" y="27.75" width="11" height="3.25" rx="1.625" />`
+    tab +
+    `<rect x="7" y="19.5" width="12" height="3.25" rx="1.625" fill="${TRAIL_NEAR}" />` +
+    `<rect x="10" y="26.25" width="9" height="3.25" rx="1.625" fill="${TRAIL_FAR}" />`
   );
 }
 
-/** Rounded brand tile with the comet — the extension icon. */
-export function tileIconSvg(): string {
+/** Rounded deep-field tile with the comet-tab — the extension icon. */
+export function tileIconSvg(variant: "full" | "small" = "full"): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#8b5cf6" />
-      <stop offset="1" stop-color="#6d28d9" />
+      <stop offset="0" stop-color="#0b1224" />
+      <stop offset="1" stop-color="#04060d" />
     </linearGradient>
   </defs>
   <rect width="48" height="48" rx="11" fill="url(#g)" />
-  ${cometSvg()}
+  ${cometSvg(variant)}
 </svg>`;
 }
