@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { DrivenTabChip } from "./DrivenTabChip";
-import { planGlyph } from "./plan";
+import { planGlyph, planGlyphClass } from "./plan";
 import { pendingAskId } from "./ask-gate";
 import { useNow } from "./hooks";
 import { TipLine } from "@/modules/tips/ui";
@@ -82,7 +82,7 @@ export function RunStatus() {
       <div className="flex flex-col gap-0.5 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
         <div className="flex items-center gap-2">
           <span>{awaitingAnswer ? t("run.awaitingAnswer") : t("run.finished")}</span>
-          <span>
+          <span className="telemetry">
             {formatDuration(runEndedAt - runStartedAt)}
             {tokenNote}
           </span>
@@ -119,7 +119,7 @@ export function RunStatus() {
         ) : (
           <span className="shimmer-text shrink-0 font-semibold">{verb}…</span>
         )}
-        <span className="ml-auto shrink-0 font-mono text-xs text-brand-700/70 dark:text-brand-300/70">
+        <span className="telemetry ml-auto shrink-0 text-xs">
           {formatDuration(now - runStartedAt)}
           {tokenNote}
         </span>
@@ -166,7 +166,7 @@ function PlanPeek({ steps, current }: { steps: string[]; current: number }) {
         const i = from + j;
         return (
           <div key={i} className={i === current ? "flex gap-1.5 font-medium" : "flex gap-1.5"}>
-            <span aria-hidden className="shrink-0 opacity-70">
+            <span aria-hidden className={`shrink-0 ${planGlyphClass(i, current)}`}>
               {planGlyph(i, current)}
             </span>
             <span className="truncate">{step}</span>

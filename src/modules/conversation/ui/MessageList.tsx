@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { Markdown } from "./Markdown";
-import { planGlyph } from "./plan";
+import { planGlyph, planGlyphClass } from "./plan";
 import { groupBursts, type Burst } from "./bursts";
 import { useNow } from "./hooks";
 import { toolVerbKey, toolHint } from "./tool-labels";
@@ -366,7 +366,7 @@ function PlanCard({
                   : "flex gap-1.5 text-neutral-500 dark:text-neutral-400"
             }
           >
-            <span aria-hidden className="shrink-0">
+            <span aria-hidden className={`shrink-0 ${planGlyphClass(i, current)}`}>
               {planGlyph(i, current)}
             </span>
             <span>{step}</span>

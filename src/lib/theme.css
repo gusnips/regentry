@@ -43,6 +43,19 @@
   --color-neutral-950: #070b16;
 }
 
+/*
+ * Telemetry gold — the site's second light, carried into the extension. Gold
+ * means the panel is *measuring* something (elapsed, tokens, the step in
+ * flight); emerald means it is acting. One class so the next measurement we
+ * ship lands on-brand without anyone picking a color: mono, tabular numerals
+ * (a ticking counter must not jitter), gold in both modes. The site is
+ * dark-only and uses amber-300 throughout; light mode drops to amber-700
+ * because amber-300 on white is unreadable.
+ */
+@utility telemetry {
+  @apply font-mono text-amber-700 tabular-nums dark:text-amber-300;
+}
+
 /* Native chrome (scrollbars, form controls) + the pre-render canvas follow the theme. */
 :root {
   color-scheme: light;
