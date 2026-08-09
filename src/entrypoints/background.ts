@@ -4,6 +4,7 @@ import { getActiveRun, releaseRun } from "@/modules/agent/active-runs";
 import type { ActiveRun } from "@/modules/agent/active-runs";
 import { appendMessage, getActiveId } from "@/modules/conversation";
 import { refreshAgentIndicator } from "@/modules/browser";
+import { initProviderOriginStrip } from "@/modules/providers/origin";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
@@ -15,6 +16,9 @@ const panelPorts = new Set<chrome.runtime.Port>();
 
 export default defineBackground(() => {
   void initI18n();
+  // Strip Origin from our own provider calls, or a subscription OAuth token is
+  // refused by Anthropic's CORS gate before any model code ever runs.
+  initProviderOriginStrip();
   // The MCP bridge — a WS client to the local daemon so external AI clients can
   // drive the same loop. Reconnects on its own reconcile alarm; harmless when
   // no daemon is listening. Activity changes are broadcast to open panels: the

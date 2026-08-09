@@ -60,16 +60,12 @@ export function apiUrl(baseUrl: string, path: string): string {
  * Anthropic dual-auth, shared by /v1/messages and /v1/models: Anthropic reads
  * x-api-key, coding-plan proxies (Kimi, Z.ai, QwenCloud) read Authorization:
  * Bearer — send both, each server picks its own.
- *
- * ponytail: MV3 host_permissions should bypass CORS already; the
- * direct-browser-access header is set defensively in case a gateway requires it.
  */
 export function anthropicHeaders(apiKey: string): Record<string, string> {
   return {
     "x-api-key": apiKey,
     Authorization: `Bearer ${apiKey}`,
     "anthropic-version": "2023-06-01",
-    "anthropic-dangerous-direct-browser-access": "true",
   };
 }
 
@@ -78,18 +74,23 @@ export function anthropicHeaders(apiKey: string): Record<string, string> {
  * x-api-key, and the beta header is what switches the API into OAuth-token
  * mode. Shared by /v1/messages and /v1/models.
  *
- * ponytail: omits Claude Code's X-Claude-Code-Session-Id and X-Stainless-*
- * fingerprint headers — they're rate-limit/telemetry granularity, not an auth
- * gate, and the Stainless ones advertise a Node runtime the extension isn't.
- * Ceiling: if Anthropic starts rejecting clean OAuth requests, add the full
- * fingerprint set (opencodex's client-fingerprint.ts).
+ * Origin is stripped from the request itself (see origin.ts): Anthropic's CORS
+ * gate refuses an OAuth token that arrives with any browser Origin, and the
+ * old `anthropic-dangerous-direct-browser-access` header was never honored at
+ * an extension one — it exists for first-party web callers. A CLI sends no
+ * Origin; our request now looks the same way.
+ *
+ * The two Claude Code fingerprint headers ride along for free. The full set
+ * (X-App, X-Stainless-*, Session-Id) is deliberately NOT impersonated — those
+ * advertise a Node runtime we don't have, and a token from a browser client is
+ * a first-party thing, not a leak. opencodex's client-fingerprint.ts is the
+ * upgrade path if Anthropic ever starts rejecting clean OAuth requests.
  */
 export function anthropicOAuthHeaders(accessToken: string): Record<string, string> {
   return {
     Authorization: `Bearer ${accessToken}`,
     "anthropic-version": "2023-06-01",
     "anthropic-beta": "claude-code-20250219,oauth-2025-04-20",
-    "anthropic-dangerous-direct-browser-access": "true",
     "x-client-request-id": crypto.randomUUID(),
   };
 }

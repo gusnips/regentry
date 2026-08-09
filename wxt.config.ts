@@ -27,6 +27,12 @@ export default defineConfig({
       "notifications",
       // The MCP bridge's reconcile alarm — wakes a suspended worker to reconnect.
       "alarms",
+      // Lets the browser strip Origin from our own provider calls: a subscription
+      // OAuth token is refused by Anthropic's per-organization CORS gate when it
+      // arrives with a browser Origin, which is exactly what the worker's fetch
+      // sends (an MV3 service worker is a document context). A CLI has no Origin
+      // at all; removing it makes our request look the same way.
+      "declarativeNetRequestWithHostAccess",
     ],
     host_permissions: ["<all_urls>"],
     side_panel: {
