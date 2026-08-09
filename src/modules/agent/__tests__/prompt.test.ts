@@ -28,4 +28,14 @@ describe("buildSystemPrompt", () => {
   it("omits the note for image-capable models", () => {
     expect(buildSystemPrompt(ctx, "English")).not.toContain("text-only");
   });
+
+  it("carries the four operational rules the base prompt would otherwise never teach", () => {
+    // Each guards a different real failure: an unverified submit, a frozen tab,
+    // a retry loop, and a stale ref. Losing one is a silent capability loss.
+    const prompt = buildSystemPrompt(ctx, "English");
+    expect(prompt).toMatch(/verify with a snapshot before you call done/i);
+    expect(prompt).toMatch(/alert, confirm, prompt/i);
+    expect(prompt).toMatch(/2–3 times/i);
+    expect(prompt).toMatch(/stale/i);
+  });
 });
