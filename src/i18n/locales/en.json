@@ -9,14 +9,14 @@
     "subscription": "Subscription"
   },
   "onboarding": {
-    "title": "Welcome to Regentry",
+    "title": "Welcome to TabRunner",
     "tagline": "An AI agent that drives this browser — your tabs, your sessions, your logins — to get tasks done.",
-    "connectPrompt": "To start, connect a provider — sign in with a subscription you already pay for, or paste an API key. Either way it stays on this device and goes straight to the provider — there is no Regentry server.",
+    "connectPrompt": "To start, connect a provider — sign in with a subscription you already pay for, or paste an API key. Either way it stays on this device and goes straight to the provider — there is no TabRunner server.",
     "addProvider": "Add a provider",
     "presetsNote": "{{count}} presets — Anthropic, OpenAI, Kimi, Z.ai, Ollama… — or any compatible endpoint."
   },
   "settings": {
-    "pageTitle": "Regentry settings",
+    "pageTitle": "TabRunner settings",
     "appearance": "Appearance",
     "themeSystem": "System — follow the OS",
     "themeLight": "Light",
@@ -27,20 +27,24 @@
     "addProvider": "Add provider",
     "menuTitle": "Settings",
     "allSettings": "All settings →",
+    "defaultStartUrl": "Default start page",
+    "defaultStartUrlHint": "Background tasks open a fresh tab here, unless the task names a site.",
+    "showWidget": "Floating status widget",
+    "showWidgetHint": "A small pill on your tabs while a task runs or waits in line.",
     "languageAutoShort": "Auto"
   },
   "instructions": {
     "title": "Instructions",
-    "help": "Things Regentry should always do — or never do — in every chat. Write them like plain sentences.",
+    "help": "Things TabRunner should always do — or never do — in every chat. Write them like plain sentences.",
     "placeholder": "Always ask me before sending an email or making a payment.\nMy work email is me@acme.com.",
     "autosave": "Changes save automatically and apply to every chat."
   },
   "memory": {
-    "title": "What Regentry remembers",
-    "help": "Facts Regentry has picked up from your tasks, so it doesn't have to ask twice. Delete anything that's wrong.",
+    "title": "What TabRunner remembers",
+    "help": "Facts TabRunner has picked up from your tasks, so it doesn't have to ask twice. Delete anything that's wrong.",
     "enable": "Remember what it learns",
-    "empty": "Nothing yet. When a task teaches Regentry something about you or a site you use, it will show up here.",
-    "off": "Memory is off — Regentry isn't saving what it learns. Turn it on above to resume.",
+    "empty": "Nothing yet. When a task teaches TabRunner something about you or a site you use, it will show up here.",
+    "off": "Memory is off — TabRunner isn't saving what it learns. Turn it on above to resume.",
     "saved": "Saved",
     "deleteMemory": "Delete this fact"
   },
@@ -97,12 +101,12 @@
     "emptyBody": "A provider is the AI that drives your browser — pick a preset or point at any OpenAI/Anthropic-compatible endpoint.",
     "addFirst": "Add your first provider",
     "active": "Active",
-    "setActive": "Set active",
+    "setActive": "Activate",
     "auto": "auto",
     "effort": "{{effort}} effort",
     "removeTitle": "Remove {{name}}?",
-    "removeActiveBody": "This is your active provider — the next one in the list becomes active. What Regentry stored for it, API key or sign-in, is deleted.",
-    "removeBody": "Regentry deletes what it stored for this provider — the API key or the sign-in. You can add it again at any time.",
+    "removeActiveBody": "This is your active provider — the next one in the list becomes active. What TabRunner stored for it, API key or sign-in, is deleted.",
+    "removeBody": "TabRunner deletes what it stored for this provider — the API key or the sign-in. You can add it again at any time.",
     "statusConnected": "Connected",
     "statusNoKey": "No API key",
     "statusNoSignIn": "Not signed in",
@@ -110,7 +114,7 @@
     "addKey": "Add key",
     "signOut": "Sign out",
     "signOutTitle": "Sign out of {{name}}?",
-    "signOutBody": "Regentry forgets this sign-in and stops using the subscription. The provider stays in your list — sign in again whenever you like."
+    "signOutBody": "TabRunner forgets this sign-in and stops using the subscription. The provider stays in your list — sign in again whenever you like."
   },
   "modelPicker": {
     "providerTitle": "Provider for the next task",
@@ -148,7 +152,7 @@
     "delete": "Delete",
     "deleteAria": "Delete conversation: {{title}}",
     "deleteTitle": "Delete this conversation?",
-    "deleteBody": "The transcript is removed from this device. What Regentry has learned stays in its memory — you can delete any of those in Settings.",
+    "deleteBody": "The transcript is removed from this device. What TabRunner has learned stays in its memory — you can delete any of those in Settings.",
     "emptyTitle": "No conversations yet",
     "emptyBody": "Every task you send is kept here as a transcript — open one to reread what the agent did, or delete the ones you're done with.",
     "emptyAction": "Start a task",
@@ -165,7 +169,7 @@
     "emptyBody": "Describe a task and I'll drive this browser tab — navigate, read pages, click, type. Uses your existing logins.",
     "emptyExample": "Example: \"go to news.ycombinator.com and summarize the top 3 headlines\"",
     "portLost": "Connection to the agent was lost — the run stopped. Send the task again to retry.",
-    "reloaded": "Regentry was reloaded — close and reopen this panel to keep going.",
+    "reloaded": "TabRunner was reloaded — close and reopen this panel to keep going.",
     "working": "Working",
     "jumpToLatest": "Jump to latest ↓",
     "hint": {
@@ -227,12 +231,16 @@
     }
   },
   "indicator": {
-    "driving": "Regentry is controlling this tab"
+    "driving": "TabRunner is controlling this tab"
   },
   "plan": {
     "title": "Plan",
     "progress": "{{done}}/{{total}}",
-    "peekMore": "{{done}} done · {{pending}} to go"
+    "peekMore": "{{done}} done · {{pending}} to go",
+    "approvalTitle": "Approve this plan?",
+    "reapprovalTitle": "The plan changed — approve the new one?",
+    "approve": "Approve",
+    "reject": "Reject"
   },
   "run": {
     "tool": {
@@ -250,23 +258,91 @@
       "warn": "Working",
       "interrupted": "Stopped"
     },
-    "idle": ["Thinking", "Working", "Pondering", "Reasoning", "Contemplating"],
+    "idle": [
+      "Thinking",
+      "Working",
+      "Pondering",
+      "Reasoning",
+      "Contemplating",
+      "Brewing",
+      "Percolating",
+      "Simmering",
+      "Marinating",
+      "Whisking",
+      "Kneading",
+      "Steeping",
+      "Zesting",
+      "Noodling",
+      "Puzzling",
+      "Mulling",
+      "Musing",
+      "Cogitating",
+      "Ruminating",
+      "Tinkering",
+      "Doodling",
+      "Scheming",
+      "Plotting",
+      "Conjuring",
+      "Concocting",
+      "Hatching",
+      "Wrangling",
+      "Finagling",
+      "Orchestrating",
+      "Snooping",
+      "Rummaging",
+      "Prowling",
+      "Spelunking",
+      "Perusing",
+      "Sleuthing",
+      "Scouring",
+      "Frizzling",
+      "Smooshing",
+      "Flummoxing",
+      "Lollygagging",
+      "Skedaddling",
+      "Gallivanting",
+      "Boondoggling",
+      "Razzmatazzing",
+      "Vibing"
+    ],
     "tokens": "{{count}} tokens",
     "finished": "Done",
-    "drivingTabTip": "Show the tab Regentry is controlling",
+    "drivingTabTip": "Show the tab TabRunner is controlling",
     "bridgeTask": "{{client}} is running a task in your browser",
     "bridgeDriving": "{{client}} is driving your browser",
-    "bridgeStopTitle": "Stops the task and hands the browser back"
+    "bridgeStopTitle": "Stops the task and hands the browser back",
+    "background": "Background",
+    "thisPage": "This page",
+    "targetTitle": "Where the task runs — its own background tab, or this page"
+  },
+  "queue": {
+    "position": "Queued · position {{position}}",
+    "queuedTitle": "Waiting for the current task to finish",
+    "cancel": "Cancel"
+  },
+  "widget": {
+    "queued": "+{{count}} queued",
+    "open": "Open",
+    "hide": "Hide"
+  },
+  "board": {
+    "title": "Tasks",
+    "jump": "Show the tab",
+    "stop": "Stop",
+    "cancel": "Cancel"
+  },
+  "notify": {
+    "doneFallback": "Task finished."
   },
   "errors": {
     "alreadyRunning": "A task is already running. Stop it first.",
-    "alreadyRunningMCP": "A task from an external MCP client is already running. Stop it from the client (regentry.stop), or wait for it to finish.",
-    "alreadyRunningPanel": "A task is already running in the Regentry panel. Open the panel and stop it, or wait for it to finish.",
+    "alreadyRunningMCP": "A task from an external MCP client is already running. Stop it from the client (tabrunner.stop), or wait for it to finish.",
+    "alreadyRunningPanel": "A task is already running in the TabRunner panel. Open the panel and stop it, or wait for it to finish.",
     "alreadyRunningBridge": "An external agent is using your browser. Stop it in this panel, or wait for it to finish.",
     "noActiveProvider": "No active provider — pick one in the panel dropdown, or add one in Settings.",
     "noActiveTab": "No active tab found.",
-    "panelClosed": "Side panel closed — the run was stopped",
-    "tabClosed": "The tab this task was driving ({{title}}) was closed — the run stopped. Regentry needs the tab to stay open; reopen the page and send the task again.",
+    "runCancelled": "The queued task was cancelled before it started",
+    "tabClosed": "The tab this task was driving ({{title}}) was closed — the run stopped. TabRunner needs the tab to stay open; reopen the page and send the task again.",
     "providerError": "Provider error: {{message}}",
     "outputLimit": "Model hit its output limit mid-response — answer may be incomplete",
     "textOnlyImages": "This model can't receive images — the images you attached weren't sent to it. It works from text snapshots of the page.",
@@ -301,14 +377,18 @@
     "signInRateLimited": "The provider's sign-in service is turning requests down right now — too many in a short window. This isn't about your plan's usage. Wait a minute, then start over.",
     "signInRateLimitedFor": "The provider's sign-in service is turning requests down right now — too many in a short window. This isn't about your plan's usage. Try again in about {{seconds}}s.",
     "signInTokenResponse": "The sign-in response came back incomplete — no usable token. Start over to try again.",
-    "signInDeviceResponse": "The sign-in service replied in a format Regentry didn't recognize. Try again in a moment.",
+    "signInDeviceResponse": "The sign-in service replied in a format TabRunner didn't recognize. Try again in a moment.",
     "noResponseBody": "No response body",
-    "restrictedPage": "Regentry can't read this page — Chrome blocks extensions on chrome:// and Web Store pages. Navigate the tab to a regular page and resend the task.",
+    "restrictedPage": "TabRunner can't read this page — Chrome blocks extensions on chrome:// and Web Store pages. Navigate the tab to a regular page and resend the task.",
+    "pageNavigating": "The page was still loading or navigating — wait for it to settle and retry.",
     "snapshotFailed": "Snapshot failed: the page may have navigated or be a restricted URL (chrome://, Web Store).",
     "refNotFound": "Element ref \"{{ref}}\" not found. Run snapshot first to get fresh refs.",
     "noTabAttached": "No tab attached. Call attach first.",
     "unsupportedKey": "Unsupported key: {{key}}. Supported: {{supported}}",
     "planEmpty": "The plan needs at least one step — pass a non-empty list of short phrases.",
+    "planRejected": "Plan rejected — stopped before any page action ran.",
+    "planGate": "Blocked — the plan needs your approval first",
+    "planGateModel": "Blocked: no plan is approved yet. Call the plan tool with your intended steps first; the user must approve the plan before any page action runs.",
     "memoryEmpty": "Nothing to remember — pass the fact as a sentence."
   }
 }

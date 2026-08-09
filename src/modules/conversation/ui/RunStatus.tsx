@@ -20,6 +20,7 @@ export function RunStatus() {
   // this bar from re-rendering on every unrelated message churn mid-run.
   const plan = useConversationStore((s) => s.messages.findLast((m) => m.role === "plan"));
 
+  const idleVerbs = t("run.idle", { returnObjects: true });
   const [verbIdx, setVerbIdx] = useState(0);
 
   const running = status === "running" && runStartedAt !== null;
@@ -35,7 +36,18 @@ export function RunStatus() {
       // keep the bar from feeling like a frozen frame.
       rotate = setTimeout(
         () => {
-          setVerbIdx((i) => i + 1);
+          // Index 0 is the plain opener every run starts on — a fresh task
+          // announcing itself as "Lollygagging" reads like the agent is
+          // slacking. After that the pick is random from the rest: walking the
+          // list in order means a ten-minute run only ever sees the first
+          // handful, so the tail may as well not be there. Never twice in a
+          // row — a repeat looks like the frozen frame this rotation exists
+          // to disprove.
+          setVerbIdx((i) => {
+            if (idleVerbs.length < 3) return i;
+            const next = 1 + Math.floor(Math.random() * (idleVerbs.length - 1));
+            return next !== i ? next : next === 1 ? idleVerbs.length - 1 : next - 1;
+          });
           schedule();
         },
         60_000 + Math.random() * 60_000,
@@ -43,7 +55,7 @@ export function RunStatus() {
     };
     schedule();
     return () => clearTimeout(rotate);
-  }, [running]);
+  }, [running, idleVerbs.length]);
 
   const totalTokens = usage.input + usage.output;
   const tokenNote =
@@ -71,7 +83,8 @@ export function RunStatus() {
     );
   }
 
-  const idleVerbs = t("run.idle", { returnObjects: true });
+  // Modulo, not a bare index: switching language mid-run swaps in a catalog
+  // that may be shorter than the index we are sitting on.
   const verb = idleVerbs[verbIdx % idleVerbs.length] ?? idleVerbs[0] ?? "";
 
   /**

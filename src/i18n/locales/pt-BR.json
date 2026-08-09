@@ -9,14 +9,14 @@
     "subscription": "Assinatura"
   },
   "onboarding": {
-    "title": "Bem-vindo ao Regentry",
+    "title": "Bem-vindo ao TabRunner",
     "tagline": "Um agente de IA que dirige este navegador — suas abas, suas sessões, seus logins — para concluir tarefas.",
-    "connectPrompt": "Para começar, conecte um provedor — entre com uma assinatura que você já paga ou cole uma chave de API. Dos dois jeitos, ela fica neste dispositivo e vai direto para o provedor — não existe servidor do Regentry.",
+    "connectPrompt": "Para começar, conecte um provedor — entre com uma assinatura que você já paga ou cole uma chave de API. Dos dois jeitos, ela fica neste dispositivo e vai direto para o provedor — não existe servidor do TabRunner.",
     "addProvider": "Adicionar provedor",
     "presetsNote": "{{count}} presets — Anthropic, OpenAI, Kimi, Z.ai, Ollama… — ou qualquer endpoint compatível."
   },
   "settings": {
-    "pageTitle": "Configurações do Regentry",
+    "pageTitle": "Configurações do TabRunner",
     "appearance": "Aparência",
     "themeSystem": "Sistema — seguir o SO",
     "themeLight": "Claro",
@@ -27,20 +27,24 @@
     "addProvider": "Adicionar provedor",
     "menuTitle": "Configurações",
     "allSettings": "Todas as configurações →",
+    "defaultStartUrl": "Página inicial padrão",
+    "defaultStartUrlHint": "Tarefas em segundo plano abrem uma aba nova aqui, a menos que a tarefa indique um site.",
+    "showWidget": "Widget flutuante de status",
+    "showWidgetHint": "Uma pílula pequena nas suas abas enquanto uma tarefa roda ou espera na fila.",
     "languageAutoShort": "Auto"
   },
   "instructions": {
     "title": "Instruções",
-    "help": "Coisas que o Regentry deve sempre fazer — ou nunca fazer — em todo chat. Escreva como frases simples.",
+    "help": "Coisas que o TabRunner deve sempre fazer — ou nunca fazer — em todo chat. Escreva como frases simples.",
     "placeholder": "Sempre me pergunte antes de enviar um e-mail ou fazer um pagamento.\nMeu e-mail de trabalho é eu@acme.com.",
     "autosave": "As mudanças são salvas automaticamente e valem para todo chat."
   },
   "memory": {
-    "title": "O que o Regentry lembra",
-    "help": "Fatos que o Regentry aprendeu com suas tarefas, para não ter que perguntar duas vezes. Apague o que estiver errado.",
+    "title": "O que o TabRunner lembra",
+    "help": "Fatos que o TabRunner aprendeu com suas tarefas, para não ter que perguntar duas vezes. Apague o que estiver errado.",
     "enable": "Lembrar o que aprende",
-    "empty": "Nada ainda. Quando uma tarefa ensinar algo ao Regentry sobre você ou um site que você usa, aparece aqui.",
-    "off": "A memória está desligada — o Regentry não está salvando o que aprende. Ligue acima para retomar.",
+    "empty": "Nada ainda. Quando uma tarefa ensinar algo ao TabRunner sobre você ou um site que você usa, aparece aqui.",
+    "off": "A memória está desligada — o TabRunner não está salvando o que aprende. Ligue acima para retomar.",
     "saved": "Salvo",
     "deleteMemory": "Excluir este fato"
   },
@@ -97,20 +101,20 @@
     "emptyBody": "Um provedor é a IA que dirige seu navegador — escolha um preset ou aponte para qualquer endpoint compatível com OpenAI/Anthropic.",
     "addFirst": "Adicionar seu primeiro provedor",
     "active": "Ativo",
-    "setActive": "Definir como ativo",
+    "setActive": "Ativar",
     "auto": "auto",
     "effort": "esforço {{effort}}",
     "removeTitle": "Remover {{name}}?",
-    "removeActiveBody": "Este é seu provedor ativo — o próximo da lista se tornará ativo. O que o Regentry guardou para ele, chave de API ou entrada, será excluído.",
-    "removeBody": "O Regentry exclui o que guardou para este provedor — a chave de API ou a entrada. Você pode adicioná-lo novamente a qualquer momento.",
+    "removeActiveBody": "Este é seu provedor ativo — o próximo da lista se tornará ativo. O que o TabRunner guardou para ele, chave de API ou entrada, será excluído.",
+    "removeBody": "O TabRunner exclui o que guardou para este provedor — a chave de API ou a entrada. Você pode adicioná-lo novamente a qualquer momento.",
     "statusConnected": "Conectado",
     "statusNoKey": "Sem chave de API",
     "statusNoSignIn": "Não conectado",
     "signIn": "Entrar",
     "addKey": "Adicionar chave",
-    "signOut": "Sair",
-    "signOutTitle": "Sair de {{name}}?",
-    "signOutBody": "O Regentry esquece esta conexão e para de usar a assinatura. O provedor continua na sua lista — entre novamente quando quiser."
+    "signOut": "Desconectar",
+    "signOutTitle": "Desconectar de {{name}}?",
+    "signOutBody": "O TabRunner esquece esta conexão e para de usar a assinatura. O provedor continua na sua lista — entre novamente quando quiser."
   },
   "modelPicker": {
     "providerTitle": "Provedor para a próxima tarefa",
@@ -148,7 +152,7 @@
     "delete": "Excluir",
     "deleteAria": "Excluir conversa: {{title}}",
     "deleteTitle": "Excluir esta conversa?",
-    "deleteBody": "A transcrição é removida deste dispositivo. O que o Regentry aprendeu fica na memória dele — você pode apagar isso nas Configurações.",
+    "deleteBody": "A transcrição é removida deste dispositivo. O que o TabRunner aprendeu fica na memória dele — você pode apagar isso nas Configurações.",
     "emptyTitle": "Nenhuma conversa ainda",
     "emptyBody": "Cada tarefa que você envia fica guardada aqui como histórico — abra uma para reler o que o agente fez, ou exclua as que não precisa mais.",
     "emptyAction": "Começar uma tarefa",
@@ -165,7 +169,7 @@
     "emptyBody": "Descreva uma tarefa e eu dirijo esta aba do navegador — navegar, ler páginas, clicar, digitar. Usa seus logins existentes.",
     "emptyExample": "Exemplo: \"vá a news.ycombinator.com e resuma as 3 principais manchetes\"",
     "portLost": "A conexão com o agente foi perdida — a execução parou. Envie a tarefa novamente para tentar de novo.",
-    "reloaded": "O Regentry foi recarregado — feche e reabra este painel para continuar.",
+    "reloaded": "O TabRunner foi recarregado — feche e reabra este painel para continuar.",
     "working": "Trabalhando",
     "jumpToLatest": "Ir para o final ↓",
     "hint": {
@@ -227,12 +231,16 @@
     }
   },
   "indicator": {
-    "driving": "O Regentry está controlando esta aba"
+    "driving": "O TabRunner está controlando esta aba"
   },
   "plan": {
     "title": "Plano",
     "progress": "{{done}}/{{total}}",
-    "peekMore": "{{done}} concluídos · {{pending}} restantes"
+    "peekMore": "{{done}} concluídos · {{pending}} restantes",
+    "approvalTitle": "Aprovar este plano?",
+    "reapprovalTitle": "O plano mudou — aprovar o novo?",
+    "approve": "Aprovar",
+    "reject": "Rejeitar"
   },
   "run": {
     "tool": {
@@ -250,23 +258,91 @@
       "warn": "Trabalhando",
       "interrupted": "Interrompido"
     },
-    "idle": ["Pensando", "Trabalhando", "Refletindo", "Raciocinando", "Contemplando"],
+    "idle": [
+      "Pensando",
+      "Trabalhando",
+      "Refletindo",
+      "Raciocinando",
+      "Contemplando",
+      "Fervendo",
+      "Cozinhando",
+      "Refogando",
+      "Marinando",
+      "Amassando",
+      "Temperando",
+      "Apurando",
+      "Assando",
+      "Matutando",
+      "Ruminando",
+      "Cismando",
+      "Elucubrando",
+      "Filosofando",
+      "Divagando",
+      "Ajeitando",
+      "Rabiscando",
+      "Bolando",
+      "Tramando",
+      "Maquinando",
+      "Arquitetando",
+      "Engendrando",
+      "Desenrolando",
+      "Aprontando",
+      "Armando",
+      "Fuçando",
+      "Vasculhando",
+      "Xeretando",
+      "Garimpando",
+      "Bisbilhotando",
+      "Farejando",
+      "Espiando",
+      "Sapecando",
+      "Chacoalhando",
+      "Zanzando",
+      "Cutucando",
+      "Perambulando",
+      "Embalando",
+      "Vadiando",
+      "Rodopiando",
+      "Gingando"
+    ],
     "tokens": "{{count}} tokens",
     "finished": "Concluído",
-    "drivingTabTip": "Mostrar a aba que o Regentry está controlando",
+    "drivingTabTip": "Mostrar a aba que o TabRunner está controlando",
     "bridgeTask": "{{client}} está executando uma tarefa no seu navegador",
     "bridgeDriving": "{{client}} está controlando seu navegador",
-    "bridgeStopTitle": "Para a tarefa e devolve o navegador"
+    "bridgeStopTitle": "Para a tarefa e devolve o navegador",
+    "background": "Em segundo plano",
+    "thisPage": "Esta página",
+    "targetTitle": "Onde a tarefa roda — uma aba própria em segundo plano, ou esta página"
+  },
+  "queue": {
+    "position": "Na fila · posição {{position}}",
+    "queuedTitle": "Esperando a tarefa atual terminar",
+    "cancel": "Cancelar"
+  },
+  "widget": {
+    "queued": "+{{count}} na fila",
+    "open": "Abrir",
+    "hide": "Ocultar"
+  },
+  "board": {
+    "title": "Tarefas",
+    "jump": "Mostrar a aba",
+    "stop": "Parar",
+    "cancel": "Cancelar"
+  },
+  "notify": {
+    "doneFallback": "Tarefa concluída."
   },
   "errors": {
     "alreadyRunning": "Uma tarefa já está em execução. Pare-a primeiro.",
-    "alreadyRunningMCP": "Uma tarefa de um cliente MCP externo já está em execução. Pare-a pelo cliente (regentry.stop) ou aguarde terminar.",
-    "alreadyRunningPanel": "Uma tarefa já está em execução no painel do Regentry. Abra o painel e pare-a, ou aguarde terminar.",
+    "alreadyRunningMCP": "Uma tarefa de um cliente MCP externo já está em execução. Pare-a pelo cliente (tabrunner.stop) ou aguarde terminar.",
+    "alreadyRunningPanel": "Uma tarefa já está em execução no painel do TabRunner. Abra o painel e pare-a, ou aguarde terminar.",
     "alreadyRunningBridge": "Um agente externo está usando seu navegador. Pare-o aqui no painel ou aguarde terminar.",
     "noActiveProvider": "Nenhum provedor ativo — escolha um no seletor do painel ou adicione um nas Configurações.",
     "noActiveTab": "Nenhuma aba ativa encontrada.",
-    "panelClosed": "Painel lateral fechado — a execução foi interrompida",
-    "tabClosed": "A aba que esta tarefa estava dirigindo ({{title}}) foi fechada — a execução parou. O Regentry precisa que a aba fique aberta; reabra a página e envie a tarefa de novo.",
+    "runCancelled": "A tarefa na fila foi cancelada antes de começar",
+    "tabClosed": "A aba que esta tarefa estava dirigindo ({{title}}) foi fechada — a execução parou. O TabRunner precisa que a aba fique aberta; reabra a página e envie a tarefa de novo.",
     "providerError": "Erro do provedor: {{message}}",
     "outputLimit": "O modelo atingiu seu limite de saída no meio da resposta — a resposta pode estar incompleta",
     "textOnlyImages": "Este modelo não recebe imagens — as imagens que você anexou não foram enviadas. Ele trabalha com snapshots de texto da página.",
@@ -301,14 +377,18 @@
     "signInRateLimited": "O serviço de entrada do provedor está recusando pedidos agora — muitos em pouco tempo. Isso não tem a ver com o uso do seu plano. Espere um minuto e recomece.",
     "signInRateLimitedFor": "O serviço de entrada do provedor está recusando pedidos agora — muitos em pouco tempo. Isso não tem a ver com o uso do seu plano. Tente de novo em cerca de {{seconds}}s.",
     "signInTokenResponse": "A resposta de entrada veio incompleta — sem um token utilizável. Recomece para tentar de novo.",
-    "signInDeviceResponse": "O serviço de entrada respondeu em um formato que o Regentry não reconheceu. Tente de novo em instantes.",
+    "signInDeviceResponse": "O serviço de entrada respondeu em um formato que o TabRunner não reconheceu. Tente de novo em instantes.",
     "noResponseBody": "Resposta sem corpo",
-    "restrictedPage": "O Regentry não consegue ler esta página — o Chrome bloqueia extensões em páginas chrome:// e da Web Store. Navegue a aba para uma página comum e reenvie a tarefa.",
+    "restrictedPage": "O TabRunner não consegue ler esta página — o Chrome bloqueia extensões em páginas chrome:// e da Web Store. Navegue a aba para uma página comum e reenvie a tarefa.",
+    "pageNavigating": "A página ainda estava carregando ou navegando — espere ela estabilizar e tente de novo.",
     "snapshotFailed": "Falha na captura: a página pode ter navegado ou ser uma URL restrita (chrome://, Web Store).",
     "refNotFound": "Referência de elemento \"{{ref}}\" não encontrada. Execute a captura primeiro para obter referências atualizadas.",
     "noTabAttached": "Nenhuma aba anexada. Chame attach primeiro.",
     "unsupportedKey": "Tecla não suportada: {{key}}. Suportadas: {{supported}}",
     "planEmpty": "O plano precisa de pelo menos um passo — envie uma lista não vazia de frases curtas.",
+    "planRejected": "Plano rejeitado — interrompido antes de qualquer ação na página.",
+    "planGate": "Bloqueado — o plano precisa da sua aprovação primeiro",
+    "planGateModel": "Blocked: no plan is approved yet. Call the plan tool with your intended steps first; the user must approve the plan before any page action runs.",
     "memoryEmpty": "Nada para memorizar — envie o fato como uma frase."
   }
 }

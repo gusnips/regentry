@@ -9,14 +9,14 @@
     "subscription": "Suscripción"
   },
   "onboarding": {
-    "title": "Bienvenido a Regentry",
+    "title": "Bienvenido a TabRunner",
     "tagline": "Un agente de IA que maneja este navegador — tus pestañas, tus sesiones, tus inicios de sesión — para completar tareas.",
-    "connectPrompt": "Para empezar, conecta un proveedor — inicia sesión con una suscripción que ya pagas o pega una clave de API. En ambos casos se queda en este dispositivo y va directo al proveedor — no hay ningún servidor de Regentry.",
+    "connectPrompt": "Para empezar, conecta un proveedor — inicia sesión con una suscripción que ya pagas o pega una clave de API. En ambos casos se queda en este dispositivo y va directo al proveedor — no hay ningún servidor de TabRunner.",
     "addProvider": "Añadir un proveedor",
     "presetsNote": "{{count}} presets — Anthropic, OpenAI, Kimi, Z.ai, Ollama… — o cualquier endpoint compatible."
   },
   "settings": {
-    "pageTitle": "Configuración de Regentry",
+    "pageTitle": "Configuración de TabRunner",
     "appearance": "Apariencia",
     "themeSystem": "Sistema — seguir el SO",
     "themeLight": "Claro",
@@ -27,20 +27,24 @@
     "addProvider": "Añadir proveedor",
     "menuTitle": "Ajustes",
     "allSettings": "Todos los ajustes →",
+    "defaultStartUrl": "Página de inicio predeterminada",
+    "defaultStartUrlHint": "Las tareas en segundo plano abren una pestaña nueva aquí, salvo que la tarea indique un sitio.",
+    "showWidget": "Widget flotante de estado",
+    "showWidgetHint": "Una píldora pequeña en tus pestañas mientras una tarea corre o espera en cola.",
     "languageAutoShort": "Auto"
   },
   "instructions": {
     "title": "Instrucciones",
-    "help": "Cosas que Regentry debería hacer siempre — o nunca hacer — en cada chat. Escríbelas como frases sencillas.",
+    "help": "Cosas que TabRunner debería hacer siempre — o nunca hacer — en cada chat. Escríbelas como frases sencillas.",
     "placeholder": "Confírmame siempre antes de enviar un correo o hacer un pago.\nMi correo de trabajo es yo@acme.com.",
     "autosave": "Los cambios se guardan automáticamente y se aplican a cada chat."
   },
   "memory": {
-    "title": "Lo que Regentry recuerda",
-    "help": "Datos que Regentry ha aprendido de tus tareas, para no tener que preguntar dos veces. Borra lo que esté mal.",
+    "title": "Lo que TabRunner recuerda",
+    "help": "Datos que TabRunner ha aprendido de tus tareas, para no tener que preguntar dos veces. Borra lo que esté mal.",
     "enable": "Recordar lo que aprende",
-    "empty": "Todavía nada. Cuando una tarea le enseñe a Regentry algo sobre ti o un sitio que usas, aparecerá aquí.",
-    "off": "La memoria está desactivada: Regentry no está guardando lo que aprende. Actívala arriba para retomarlo.",
+    "empty": "Todavía nada. Cuando una tarea le enseñe a TabRunner algo sobre ti o un sitio que usas, aparecerá aquí.",
+    "off": "La memoria está desactivada: TabRunner no está guardando lo que aprende. Actívala arriba para retomarlo.",
     "saved": "Guardado",
     "deleteMemory": "Eliminar este dato"
   },
@@ -97,12 +101,12 @@
     "emptyBody": "Un proveedor es la IA que maneja tu navegador — elige un preset o apunta a cualquier endpoint compatible con OpenAI/Anthropic.",
     "addFirst": "Añade tu primer proveedor",
     "active": "Activo",
-    "setActive": "Marcar como activo",
+    "setActive": "Activar",
     "auto": "auto",
     "effort": "esfuerzo {{effort}}",
     "removeTitle": "¿Eliminar {{name}}?",
-    "removeActiveBody": "Este es tu proveedor activo — el siguiente de la lista pasará a serlo. Lo que Regentry guardó para él, clave de API o sesión, se eliminará.",
-    "removeBody": "Regentry elimina lo que guardó para este proveedor — la clave de API o la sesión. Puedes añadirlo de nuevo en cualquier momento.",
+    "removeActiveBody": "Este es tu proveedor activo — el siguiente de la lista pasará a serlo. Lo que TabRunner guardó para él, clave de API o sesión, se eliminará.",
+    "removeBody": "TabRunner elimina lo que guardó para este proveedor — la clave de API o la sesión. Puedes añadirlo de nuevo en cualquier momento.",
     "statusConnected": "Conectado",
     "statusNoKey": "Sin clave de API",
     "statusNoSignIn": "Sin sesión",
@@ -110,7 +114,7 @@
     "addKey": "Añadir clave",
     "signOut": "Cerrar sesión",
     "signOutTitle": "¿Cerrar sesión en {{name}}?",
-    "signOutBody": "Regentry olvida esta sesión y deja de usar la suscripción. El proveedor sigue en tu lista — inicia sesión de nuevo cuando quieras."
+    "signOutBody": "TabRunner olvida esta sesión y deja de usar la suscripción. El proveedor sigue en tu lista — inicia sesión de nuevo cuando quieras."
   },
   "modelPicker": {
     "providerTitle": "Proveedor para la próxima tarea",
@@ -148,7 +152,7 @@
     "delete": "Eliminar",
     "deleteAria": "Eliminar conversación: {{title}}",
     "deleteTitle": "¿Eliminar esta conversación?",
-    "deleteBody": "La transcripción se elimina de este dispositivo. Lo que Regentry haya aprendido queda en su memoria — puedes eliminarlo en Configuración.",
+    "deleteBody": "La transcripción se elimina de este dispositivo. Lo que TabRunner haya aprendido queda en su memoria — puedes eliminarlo en Configuración.",
     "emptyTitle": "Aún no hay conversaciones",
     "emptyBody": "Cada tarea que envías se guarda aquí como historial — abre una para releer lo que hizo el agente, o elimina las que ya no necesites.",
     "emptyAction": "Empezar una tarea",
@@ -165,7 +169,7 @@
     "emptyBody": "Describe una tarea y yo manejo esta pestaña del navegador — navegar, leer páginas, hacer clic, escribir. Usa tus inicios de sesión existentes.",
     "emptyExample": "Ejemplo: \"ve a news.ycombinator.com y resume los 3 titulares principales\"",
     "portLost": "Se perdió la conexión con el agente — la ejecución se detuvo. Envía la tarea de nuevo para reintentar.",
-    "reloaded": "Regentry se recargó — cierra y vuelve a abrir este panel para continuar.",
+    "reloaded": "TabRunner se recargó — cierra y vuelve a abrir este panel para continuar.",
     "working": "Trabajando",
     "jumpToLatest": "Ir al final ↓",
     "hint": {
@@ -227,12 +231,16 @@
     }
   },
   "indicator": {
-    "driving": "Regentry está controlando esta pestaña"
+    "driving": "TabRunner está controlando esta pestaña"
   },
   "plan": {
     "title": "Plan",
     "progress": "{{done}}/{{total}}",
-    "peekMore": "{{done}} hechos · {{pending}} pendientes"
+    "peekMore": "{{done}} hechos · {{pending}} pendientes",
+    "approvalTitle": "¿Aprobar este plan?",
+    "reapprovalTitle": "El plan cambió — ¿aprobar el nuevo?",
+    "approve": "Aprobar",
+    "reject": "Rechazar"
   },
   "run": {
     "tool": {
@@ -250,23 +258,91 @@
       "warn": "Trabajando",
       "interrupted": "Detenido"
     },
-    "idle": ["Pensando", "Trabajando", "Reflexionando", "Razonando", "Contemplando"],
+    "idle": [
+      "Pensando",
+      "Trabajando",
+      "Reflexionando",
+      "Razonando",
+      "Contemplando",
+      "Hirviendo",
+      "Cocinando",
+      "Rehogando",
+      "Marinando",
+      "Amasando",
+      "Sazonando",
+      "Horneando",
+      "Macerando",
+      "Cavilando",
+      "Rumiando",
+      "Meditando",
+      "Elucubrando",
+      "Filosofando",
+      "Divagando",
+      "Cacharreando",
+      "Garabateando",
+      "Maquinando",
+      "Tramando",
+      "Urdiendo",
+      "Ideando",
+      "Conjurando",
+      "Enredando",
+      "Barruntando",
+      "Ingeniando",
+      "Fisgoneando",
+      "Hurgando",
+      "Rebuscando",
+      "Escarbando",
+      "Merodeando",
+      "Husmeando",
+      "Rastreando",
+      "Chispeando",
+      "Trasteando",
+      "Deambulando",
+      "Chapoteando",
+      "Retozando",
+      "Culebreando",
+      "Bailoteando",
+      "Remoloneando",
+      "Zumbando"
+    ],
     "tokens": "{{count}} tokens",
     "finished": "Listo",
-    "drivingTabTip": "Mostrar la pestaña que Regentry está controlando",
+    "drivingTabTip": "Mostrar la pestaña que TabRunner está controlando",
     "bridgeTask": "{{client}} está ejecutando una tarea en tu navegador",
     "bridgeDriving": "{{client}} está controlando tu navegador",
-    "bridgeStopTitle": "Detiene la tarea y devuelve el navegador"
+    "bridgeStopTitle": "Detiene la tarea y devuelve el navegador",
+    "background": "En segundo plano",
+    "thisPage": "Esta página",
+    "targetTitle": "Dónde corre la tarea — una pestaña propia en segundo plano, o esta página"
+  },
+  "queue": {
+    "position": "En cola · posición {{position}}",
+    "queuedTitle": "Esperando a que termine la tarea actual",
+    "cancel": "Cancelar"
+  },
+  "widget": {
+    "queued": "+{{count}} en cola",
+    "open": "Abrir",
+    "hide": "Ocultar"
+  },
+  "board": {
+    "title": "Tareas",
+    "jump": "Mostrar la pestaña",
+    "stop": "Detener",
+    "cancel": "Cancelar"
+  },
+  "notify": {
+    "doneFallback": "Tarea terminada."
   },
   "errors": {
     "alreadyRunning": "Ya hay una tarea en ejecución. Deténla primero.",
-    "alreadyRunningMCP": "Ya hay una tarea de un cliente MCP externo en ejecución. Detenla desde el cliente (regentry.stop) o espera a que termine.",
-    "alreadyRunningPanel": "Ya hay una tarea ejecutándose en el panel de Regentry. Abre el panel y detenla, o espera a que termine.",
+    "alreadyRunningMCP": "Ya hay una tarea de un cliente MCP externo en ejecución. Detenla desde el cliente (tabrunner.stop) o espera a que termine.",
+    "alreadyRunningPanel": "Ya hay una tarea ejecutándose en el panel de TabRunner. Abre el panel y detenla, o espera a que termine.",
     "alreadyRunningBridge": "Un agente externo está usando tu navegador. Detenlo aquí en el panel o espera a que termine.",
     "noActiveProvider": "No hay proveedor activo — elige uno en el selector del panel o añade uno en Configuración.",
     "noActiveTab": "No se encontró ninguna pestaña activa.",
-    "panelClosed": "Panel lateral cerrado — la ejecución se detuvo",
-    "tabClosed": "La pestaña que manejaba esta tarea ({{title}}) se cerró — la ejecución se detuvo. Regentry necesita que la pestaña siga abierta; reabre la página y envía la tarea de nuevo.",
+    "runCancelled": "La tarea en cola fue cancelada antes de empezar",
+    "tabClosed": "La pestaña que manejaba esta tarea ({{title}}) se cerró — la ejecución se detuvo. TabRunner necesita que la pestaña siga abierta; reabre la página y envía la tarea de nuevo.",
     "providerError": "Error del proveedor: {{message}}",
     "outputLimit": "El modelo alcanzó su límite de salida a mitad de la respuesta — la respuesta puede estar incompleta",
     "textOnlyImages": "Este modelo no recibe imágenes — las imágenes que adjuntaste no se enviaron. Trabaja con instantáneas de texto de la página.",
@@ -301,14 +377,18 @@
     "signInRateLimited": "El servicio de inicio de sesión del proveedor está rechazando peticiones ahora mismo — demasiadas en poco tiempo. No tiene que ver con el uso de tu plan. Espera un minuto y empieza de nuevo.",
     "signInRateLimitedFor": "El servicio de inicio de sesión del proveedor está rechazando peticiones ahora mismo — demasiadas en poco tiempo. No tiene que ver con el uso de tu plan. Inténtalo de nuevo en unos {{seconds}}s.",
     "signInTokenResponse": "La respuesta de inicio de sesión llegó incompleta — sin un token utilizable. Empieza de nuevo para reintentarlo.",
-    "signInDeviceResponse": "El servicio de inicio de sesión respondió en un formato que Regentry no reconoció. Inténtalo en un momento.",
+    "signInDeviceResponse": "El servicio de inicio de sesión respondió en un formato que TabRunner no reconoció. Inténtalo en un momento.",
     "noResponseBody": "Respuesta sin cuerpo",
-    "restrictedPage": "Regentry no puede leer esta página — Chrome bloquea las extensiones en páginas chrome:// y de la Web Store. Navega la pestaña a una página normal y reenvía la tarea.",
+    "restrictedPage": "TabRunner no puede leer esta página — Chrome bloquea las extensiones en páginas chrome:// y de la Web Store. Navega la pestaña a una página normal y reenvía la tarea.",
+    "pageNavigating": "La página aún estaba cargando o navegando — espera a que se estabilice y reintenta.",
     "snapshotFailed": "Error de captura: la página pudo haber navegado o ser una URL restringida (chrome://, Web Store).",
     "refNotFound": "Referencia de elemento \"{{ref}}\" no encontrada. Ejecuta primero la captura para obtener referencias actualizadas.",
     "noTabAttached": "No hay pestaña adjunta. Llama primero a attach.",
     "unsupportedKey": "Tecla no soportada: {{key}}. Soportadas: {{supported}}",
     "planEmpty": "El plan necesita al menos un paso — envía una lista no vacía de frases breves.",
+    "planRejected": "Plan rechazado — detenido antes de cualquier acción en la página.",
+    "planGate": "Bloqueado — el plan necesita tu aprobación primero",
+    "planGateModel": "Blocked: no plan is approved yet. Call the plan tool with your intended steps first; the user must approve the plan before any page action runs.",
     "memoryEmpty": "No hay nada que memorizar: envía el dato como una frase."
   }
 }
