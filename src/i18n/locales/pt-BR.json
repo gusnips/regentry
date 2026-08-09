@@ -368,12 +368,16 @@
     "awaitingApproval": "Aguardando sua aprovação",
     "awaitingAnswer": "Aguardando sua resposta",
     "drivingTabTip": "Mostrar a aba que o TabRunner está controlando",
+    "takeOver": "Assumir",
+    "takeOverTip": "Trazer para a frente a aba que o TabRunner está controlando, para você acompanhar",
+    "runInBackground": "Rodar em segundo plano",
+    "runInBackgroundTip": "Fechar este painel — a tarefa continua rodando e avisa quando terminar",
     "bridgeTask": "{{client}} está executando uma tarefa no seu navegador",
     "bridgeDriving": "{{client}} está controlando seu navegador",
     "bridgeStopTitle": "Para a tarefa e devolve o navegador",
     "background": "Em segundo plano",
     "thisPage": "Esta página",
-    "targetTitle": "Onde a tarefa roda — uma aba em segundo plano que abre nesta página, ou esta página mesmo"
+    "targetTitle": "Esta página mantém o chat aberto para você acompanhar; Em segundo plano o fecha após você aprovar o plano e trabalha sozinho"
   },
   "queue": {
     "position": "Na fila · nº {{position}}",
@@ -398,7 +402,7 @@
     "label": "Dica",
     "escStop": "Esc interrompe a tarefa em execução — o que você já digitou é enviado como a próxima.",
     "historyRecall": "Pressione ↑ quando quiser para percorrer o que você já enviou — ↓ avança de novo, com rascunho e tudo.",
-    "thisPage": "A tarefa age por padrão na aba que você está vendo — escolha “Em segundo plano” quando ela deve trabalhar numa aba própria enquanto você continua navegando.",
+    "thisPage": "A tarefa sempre age na aba que você está vendo — “Rodar nesta página” mantém o chat aberto para você acompanhar; “Rodar em segundo plano” o fecha após você aprovar o plano.",
     "queueSteer": "Você pode continuar digitando enquanto a tarefa roda — a mensagem entra na fila e a direciona entre os passos.",
     "pasteImage": "Cole uma captura de tela direto no campo — o agente consegue vê-la.",
     "pasteCollapse": "Um texto longo colado vira um token compacto — o texto completo ainda chega ao agente.",

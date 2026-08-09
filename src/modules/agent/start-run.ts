@@ -403,7 +403,11 @@ async function resolveRunTab(
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
-    return { tab };
+    // Every run is born backgrounded — even "this page" gets the task group, so
+    // walking away (closing the panel) leaves the same labeled, blinking marker
+    // a background run leaves. "Supervised" only ever meant the panel stays open.
+    const groupId = await labelRunTab(tab.id, opts.task);
+    return { tab, ...(groupId !== undefined ? { groupId } : {}) };
   }
 
   const reused = await reuseContinuationTab(continuation);

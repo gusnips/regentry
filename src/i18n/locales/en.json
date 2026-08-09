@@ -368,12 +368,16 @@
     "awaitingApproval": "Waiting for your approval",
     "awaitingAnswer": "Waiting for your answer",
     "drivingTabTip": "Show the tab TabRunner is controlling",
+    "takeOver": "Take over",
+    "takeOverTip": "Bring the tab TabRunner is driving to the front so you can watch",
+    "runInBackground": "Run in background",
+    "runInBackgroundTip": "Close this panel — the task keeps running and tells you when it's done",
     "bridgeTask": "{{client}} is running a task in your browser",
     "bridgeDriving": "{{client}} is driving your browser",
     "bridgeStopTitle": "Stops the task and hands the browser back",
-    "background": "Background",
+    "background": "In background",
     "thisPage": "This page",
-    "targetTitle": "Where the task runs — a background tab that opens on this page, or this page itself"
+    "targetTitle": "This page keeps the chat open so you watch; In background closes it after you approve the plan and works unattended"
   },
   "queue": {
     "position": "Queued · #{{position}}",
@@ -398,7 +402,7 @@
     "label": "Tip",
     "escStop": "Esc stops the running task — anything already typed is sent as the next one.",
     "historyRecall": "Press ↑ any time to walk back through what you've sent — ↓ comes forward, draft and all.",
-    "thisPage": "The task drives the tab you're looking at by default — pick “Background” when it should work in a tab of its own while you keep browsing.",
+    "thisPage": "The task always works the tab you're looking at — “Run in this page” keeps the chat open so you watch; “Run in background” closes it after you approve the plan.",
     "queueSteer": "You can keep typing while a task runs — the message queues and steers it between steps.",
     "pasteImage": "Paste a screenshot straight into the composer — the agent can see it.",
     "pasteCollapse": "A long pasted text folds into a neat token — the full text still reaches the agent.",
