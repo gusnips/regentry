@@ -103,7 +103,7 @@ data.
 - **Direct control is the exception, and it is visible.** An MCP client you connect can also drive
   the browser step by step, without TabRunner's model in the loop — and therefore without that
   confirmation rule, which lives in TabRunner's own prompt. TabRunner does not let this happen
-  quietly: the driven page carries the "being controlled" badge, the tab shows the purple dot, and
+  quietly: the driven page carries the "being controlled" badge, the tab shows the amber dot, and
   every action is written to a conversation in your history, labelled with the client that did it.
 - **No background surveillance.** TabRunner reads and acts on pages only while a task you started is
   running, and only on the tabs that task touches.

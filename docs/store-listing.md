@@ -119,7 +119,7 @@ sections. Paste as-is.
 <div data-copy-block>
 
 ```markdown
-## You decide. It does the legwork.
+## You give the goal. It runs the tabs.
 
 TabRunner is a browser agent that lives in your browser and works in it — not in a sandbox. It
 opens your tabs, uses your logged-in sessions, and reads, clicks and types on the sites you
