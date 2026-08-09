@@ -47,7 +47,8 @@ vendor lock-in, no relay, no account with us. Your API key — or the subscripti
 - **Speaks your language, matches your theme** — English, Português (Brasil), and Español; light,
   dark, or follow the OS.
 - **Your data stays local** — provider configs and history live in `chrome.storage`. There is no
-  TabRunner server. See [PRIVACY.md](PRIVACY.md) for the full picture.
+  TabRunner server. See [PRIVACY.md](PRIVACY.md) for the full picture, and
+  [TERMS.md](TERMS.md) for the terms of use.
 
 ## Install
 
