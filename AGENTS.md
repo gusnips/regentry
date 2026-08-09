@@ -72,7 +72,10 @@ never reach the service-worker bundle.
   chips/hint and the composer's placeholder on ONE shared rule (`ui/ask-gate.ts`): the
   newest question with no user reply after it. Not "the last message" — the sentence a
   model streams alongside its `ask_user` call lands after the card and would otherwise
-  hide the answer affordance on the one question that needs it. Background-only.
+  hide the answer affordance on the one question that needs it. The choices travel to
+  every surface that relays the question, the MCP bridge included — a client that sees
+  only the text invents its own wording for options the run is waiting on verbatim.
+  Background-only.
 - `browser/` — accessibility-tree snapshot (injected script), CDP driver (trusted input),
   unified driver seam, on-page "Regentry is controlling this tab" badge plus a purple dot over
   the driven tab's favicon so the strip shows where a run is working — the dot pulses via

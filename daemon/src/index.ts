@@ -109,9 +109,19 @@ function formatStatus(status: BridgeStatus): string {
 
   if (status.state === "question" && status.question) {
     lines.push("", `question: ${status.question}`);
-    lines.push(
-      "next: relay this question to the user and send their reply with answer. Regentry asks before consequential actions — paying, sending on someone's behalf, deleting, submitting — so never answer those yourself.",
-    );
+    // The options exist only when the answer really is one of a few — offer
+    // them verbatim, since the run is waiting on those exact words, and let
+    // the user say something else anyway.
+    if (status.choices?.length) {
+      for (const choice of status.choices) lines.push(`  - ${choice}`);
+      lines.push(
+        "next: relay this question AND its options to the user, then send their reply with answer — their own words if none of the options fit. Regentry asks before consequential actions — paying, sending on someone's behalf, deleting, submitting — so never answer those yourself.",
+      );
+    } else {
+      lines.push(
+        "next: relay this question to the user and send their reply with answer. Regentry asks before consequential actions — paying, sending on someone's behalf, deleting, submitting — so never answer those yourself.",
+      );
+    }
   }
   if (status.state === "done") {
     lines.push("", `answer: ${status.summary ?? "(the run ended without a closing summary)"}`);

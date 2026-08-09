@@ -257,13 +257,30 @@ check("a pushed step wakes the wait", woke && progress.includes("Navigated succe
 check("the driven tab is named", progress.includes("Inbox"));
 
 // ask_user: the question is the closing state, even though a done follows it.
-send({ type: "event", event: { type: "question", question: "Pay the $42 invoice?" } });
+send({
+  type: "event",
+  event: {
+    type: "question",
+    question: "Pay the $42 invoice?",
+    choices: ["Pay it now", "Not now"],
+  },
+});
 send({ type: "event", event: { type: "done", summary: "waiting on you" } });
 await Bun.sleep(50);
 const asked = bodyOf(await rpc("tools/call", { name: "get_status", arguments: { wait: false } }));
 check(
   "the question survives the done behind it",
   asked.includes("state: question") && asked.includes("$42"),
+);
+// The run is waiting on those exact words — a client that can't see them
+// invents its own wording for the options.
+check(
+  "the offered choices reach the client verbatim",
+  asked.includes("Pay it now") && asked.includes("Not now"),
+);
+check(
+  "the model is told to relay the options, not just the question",
+  asked.includes("relay this question AND its options"),
 );
 check(
   "the model is told not to decide consequential actions itself",

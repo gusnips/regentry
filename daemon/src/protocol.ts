@@ -58,7 +58,7 @@ export type CompactRunEvent =
   | { type: "driving"; tabId: number; windowId: number; title: string }
   | { type: "error"; message: string }
   | { type: "done"; summary?: string }
-  | { type: "question"; question: string };
+  | { type: "question"; question: string; choices?: string[] };
 
 /**
  * The model side of "can a task actually run", answered before one is sent.
@@ -86,6 +86,13 @@ export interface BridgeStatus {
   plan: { steps: string[]; current: number } | null;
   driving: { tabId: number; windowId: number; title: string } | null;
   question: string | null;
+  /**
+   * The tappable options the panel would show, when the answer is one of a few
+   * concrete ones — null for an open answer. A client relaying the question has
+   * to be able to relay what the model expects back, or it invents its own
+   * wording for options the run is waiting on verbatim.
+   */
+  choices: string[] | null;
   error: string | null;
   summary: string | null;
 }
@@ -101,6 +108,7 @@ export function emptyStatus(): BridgeStatus {
     plan: null,
     driving: null,
     question: null,
+    choices: null,
     error: null,
     summary: null,
   };
@@ -141,6 +149,7 @@ export function applyCompact(status: BridgeStatus, event: CompactRunEvent): bool
     case "question":
       status.state = "question";
       status.question = event.question;
+      status.choices = event.choices ?? null;
       status.finishedAt = Date.now();
       return true;
     case "error":

@@ -307,7 +307,7 @@ export class Bridge {
       task,
       images,
       emit: (event) => this.onRunEvent(event),
-      onAskUser: (question) => this.onQuestion(question),
+      onAskUser: (question, choices) => this.onQuestion(question, choices),
     });
     if (!result.ok) {
       // The preflight above already rejected the common case — this is the rare
@@ -335,9 +335,9 @@ export class Bridge {
    * `done` still follows, and its summary belongs in the transcript exactly as
    * it does for a panel run.
    */
-  private onQuestion(question: string): void {
-    applyQuestion(this.status, question);
-    this.socket?.send({ type: "event", event: { type: "question", question } });
+  private onQuestion(question: string, choices?: string[]): void {
+    applyQuestion(this.status, question, choices);
+    this.socket?.send({ type: "event", event: { type: "question", question, choices } });
   }
 
   // ── Plumbing ──────────────────────────────────────────────────────

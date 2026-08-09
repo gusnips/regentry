@@ -130,6 +130,10 @@ Regentry stops and asks before consequential actions — paying, sending on some
 deleting, submitting. When `get_status` comes back with `state: question`, that question is for the
 **user**, not for the model driving the bridge. Relay it, get a real answer, then call `answer`.
 
+Some questions come with options listed under them; the run is waiting on those exact words, so
+offer them to the user as they are. A question with no options is an open one — a file name, an
+address — and the user's own words are the answer.
+
 ## The conversation model
 
 The bridge keeps **one conversation of its own**, separate from whatever is open in the side panel.

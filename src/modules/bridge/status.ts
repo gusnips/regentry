@@ -18,6 +18,7 @@ export function emptyStatus(): BridgeStatus {
     plan: null,
     driving: null,
     question: null,
+    choices: null,
     error: null,
     summary: null,
   };
@@ -71,8 +72,9 @@ export function applyStatusEvent(status: BridgeStatus, event: Event): CompactRun
 }
 
 /** The run ended on an ask_user question — state "question" until answer() lands. */
-export function applyQuestion(status: BridgeStatus, question: string): void {
+export function applyQuestion(status: BridgeStatus, question: string, choices?: string[]): void {
   status.state = "question";
   status.question = question;
+  status.choices = choices ?? null;
   status.finishedAt = Date.now();
 }

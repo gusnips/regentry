@@ -34,7 +34,7 @@ export interface StartRunOptions {
   emit: (event: Event) => void;
   /** The run ended on an ask_user question; the client may want to react
    *  (the panel fires an OS notification, the bridge records a pending answer). */
-  onAskUser?: (question: string) => void;
+  onAskUser?: (question: string, choices?: string[]) => void;
 }
 
 export type StartRunResult = { ok: true } | { ok: false; active: ActiveRun };
@@ -164,9 +164,9 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
           onUsage: (input, output) => emit({ type: "usage", input, output }),
           onError: (message) => emit({ type: "error", message }),
           onDone: (summary) => emit({ type: "done", summary }),
-          onAskUser: (question) => {
+          onAskUser: (question, choices) => {
             endedOnQuestion = true;
-            onAskUser?.(question);
+            onAskUser?.(question, choices);
           },
         },
       });

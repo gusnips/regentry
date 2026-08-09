@@ -55,8 +55,13 @@ export interface LoopCallbacks {
   onUsage?: (input: number, output: number) => void;
   onError?: (message: string) => void;
   onDone?: (summary?: string) => void;
-  /** The run ended on a question for the user — not on error and not on done. */
-  onAskUser?: (question: string) => void;
+  /**
+   * The run ended on a question for the user — not on error and not on done.
+   * `choices` carries the tappable options when the answer is one of a few
+   * concrete ones (absent = an open answer), so every surface relaying the
+   * question can offer what the model actually expects back.
+   */
+  onAskUser?: (question: string, choices?: string[]) => void;
 }
 
 export interface LoopOptions {
@@ -323,7 +328,8 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
         // answer arrives as the next message, with this run replayed as history.
         taskDone = true;
         log.info("run paused on ask_user after step", step + 1);
-        callbacks.onAskUser?.((call.args.question as string) ?? "");
+        // Coerced here, once, so no consumer has to re-validate model output.
+        callbacks.onAskUser?.((call.args.question as string) ?? "", askChoices(call.args.choices));
         callbacks.onDone?.();
       } else {
         results.push({
@@ -366,6 +372,20 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
   // if the model ignored them, close out gracefully instead of hanging.
   callbacks.onDone?.(i18n.t("errors.stepBudgetExhausted"));
   return messages;
+}
+
+/**
+ * The model's `choices` argument, made safe to hand on: strings only, blanks
+ * and duplicates dropped, absent when nothing survives. Mirrors what the panel's
+ * QuestionCard does with the stored args — a relay should never have to guess
+ * whether an option is real.
+ */
+function askChoices(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const choices = [
+    ...new Set(raw.filter((c): c is string => typeof c === "string" && c.trim() !== "")),
+  ];
+  return choices.length > 0 ? choices : undefined;
 }
 
 function handleDelta(delta: Delta, callbacks: LoopCallbacks, toolCalls: ToolCall[]): string | null {
