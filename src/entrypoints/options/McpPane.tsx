@@ -8,7 +8,15 @@ import { useStoredItem } from "@/components/useStoredItem";
 import { LINKS } from "@/lib/links";
 import { StatusDot } from "./StatusStrip";
 
-const SETUP_COMMAND = "claude mcp add tabrunner -- bun /path/to/tabrunner/daemon/src/index.ts";
+/**
+ * The whole setup, paste-ready: fetch the single-file daemon to a conventional
+ * home, then register it. No placeholders — the release alias is stable and
+ * `~/.tabrunner-mcp.js` is a path we chose, so the command runs as copied.
+ * (bun runs the file as-is; the daemon's own id check defaults to the release
+ * build's extension id, so no env var is needed here.)
+ */
+const SETUP_COMMANDS = `curl -fsSL ${LINKS.mcpDaemon} -o ~/.tabrunner-mcp.js
+claude mcp add tabrunner -- bun ~/.tabrunner-mcp.js`;
 
 /** Copy with a moment of confirmation, then back to a quiet button. */
 function CopyButton({ text }: { text: string }) {
@@ -120,10 +128,10 @@ export function McpPane() {
             {t("settings.mcp.setupHelp")}
           </p>
           <div className="mt-2 flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-2 dark:bg-neutral-900/50">
-            <code className="min-w-0 flex-1 overflow-x-auto font-mono text-xs whitespace-nowrap text-neutral-800 dark:text-neutral-200">
-              {SETUP_COMMAND}
+            <code className="min-w-0 flex-1 overflow-x-auto font-mono text-xs whitespace-pre text-neutral-800 dark:text-neutral-200">
+              {SETUP_COMMANDS}
             </code>
-            <CopyButton text={SETUP_COMMAND} />
+            <CopyButton text={SETUP_COMMANDS} />
           </div>
           <p className="mt-2 text-xs">
             <a

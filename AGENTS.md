@@ -22,6 +22,7 @@ bun run crx        # build + sign the public CRX with tabrunner-test.pem (gitign
 bun run release    # bun run release <patch|minor|major> — gates, bump, commit, tag, zip
 bun run bridge     # run the MCP daemon by hand (clients spawn it themselves)
 bun run bridge:check # end-to-end check of the MCP bridge — no Chrome needed
+bun run bridge:bundle # single-file daemon → dist/tabrunner-<version>-mcp.js (what releases ship)
 ```
 
 `daemon/` is a bun workspace, so one `bun install` covers both packages and `compile` typechecks
@@ -42,7 +43,8 @@ bun run release minor   # gates → bump → commit "Release vX" → tag vX → 
 
 A gate failure writes nothing. Publishing is manual: `git push --follow-tags`, upload the zip to
 the Chrome Web Store. The pushed tag fires `.github/workflows/release.yml`, which attaches
-versioned artifacts plus `tabrunner-latest-*` aliases that tabrunner.app hotlinks. CI signs the
+versioned artifacts plus `tabrunner-latest-*` aliases that tabrunner.app hotlinks (and the MCP
+daemon bundle, `tabrunner-latest-mcp.js`, that Settings → MCP points users at). CI signs the
 CRX with the `CRX_SIGNING_KEY` secret, which must hold the local `tabrunner-test.pem` verbatim —
 a mismatched key splits installs across two extension IDs; the CI-built CRX is canonical. The
 website contract lives in `docs/website-brief.md` — change it and the site repo (`../site`)

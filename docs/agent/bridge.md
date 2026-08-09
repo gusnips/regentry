@@ -45,9 +45,11 @@ and can never drift from the panel's.
 - **MV3 timing.** `BridgeSocket.start()` is synchronous: a listener registered after an
   `await` is silently dropped by Chrome, and the reconcile alarm is the whole point of the
   class. One `reconcile()` owns the whole decision — it arms the alarm when enabled and
-  clears it when not, so a disabled bridge costs nothing. Only a WS that actually opened
-  earns the 2s fast retry; a refused connect (the normal case — almost nobody runs the
-  daemon) waits for the alarm.
+  clears it when not, so a disabled bridge costs nothing. Disabled is also the default:
+  Chromium logs a refused WebSocket from the network stack (no JS can silence it), so an
+  enabled-but-daemonless install spends a console error every reconcile and reads as broken
+  to a user who never wanted MCP. Only a WS that actually opened
+  earns the 2s fast retry; a refused connect waits for the alarm.
 - **Config and link state live in storage, not in the socket.** `bridge/config.ts` holds
   the `bridge` item (`enabled`, `port`) plus `bridgeConnected`, a mirror the socket writes
   on open/close/disable so UI contexts can show the link over the storage-watch channel.

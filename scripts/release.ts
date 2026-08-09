@@ -125,6 +125,18 @@ try {
   process.exit(1);
 }
 
+// The daemon bundle names itself after the new version, so it builds here,
+// after the bump — the Release workflow rebuilds it (canonical) on push.
+try {
+  await $`bun run bridge:bundle`;
+} catch {
+  console.error(
+    `✗ Daemon bundle failed, but v${next} is already committed and tagged. Do NOT re-run release — it bumps again.`,
+  );
+  console.error("  Fix the build, then finish by hand: bun run bridge:bundle");
+  process.exit(1);
+}
+
 // The CRX is a local convenience copy — the canonical one is built and signed
 // by the Release workflow from the CRX_SIGNING_KEY secret. A machine without
 // tabrunner-test.pem therefore warns here instead of blocking the release.
@@ -134,7 +146,7 @@ try {
   console.warn("▪ CRX skipped (see above) — the Release workflow will still build and sign it.");
 }
 
-const artifacts = [...new Bun.Glob(`tabrunner-${next}-*.{zip,crx}`).scanSync("dist")];
+const artifacts = [...new Bun.Glob(`tabrunner-${next}-*.{zip,crx,js}`).scanSync("dist")];
 console.log(`\n✔ Released v${next}`);
 for (const artifact of artifacts) console.log(`  artifact  dist/${artifact}`);
 console.log(`  tag       v${next}`);

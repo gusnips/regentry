@@ -15,6 +15,7 @@
     "release": "bun run scripts/release.ts",
     "bridge": "bun daemon/src/index.ts",
     "bridge:check": "bun daemon/smoke.ts",
+    "bridge:bundle": "bun run scripts/build-daemon.ts",
     "compile": "tsc --noEmit && tsc --noEmit -p daemon",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

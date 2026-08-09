@@ -34,24 +34,34 @@ the daemon is what your AI client talks to.
 
 ## Setup
 
-**1. Install the extension** and open its side panel once. That starts the service worker, which
-connects to the bridge. Add a provider first if you haven't — a subscription sign-in or an API key;
-the bridge uses whatever provider and model the panel is set to. `health` tells you whether that
-provider is ready before you send a task.
+**1. Install the extension** and add a provider if you haven't — a subscription sign-in or an API
+key; the bridge uses whatever provider and model the panel is set to. `health` tells you whether
+that provider is ready before you send a task.
 
-**2. Register the server** with your client:
+**2. Enable the bridge** in Settings → MCP. It's off by default — an extension that never uses MCP
+never dials the port at all.
+
+**3. Fetch the daemon.** It's one file, and [bun](https://bun.sh) runs it as-is:
 
 ```bash
-claude mcp add tabrunner -- bun /path/to/tabrunner/daemon/src/index.ts
+curl -fsSL https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest-mcp.js -o ~/.tabrunner-mcp.js
 ```
 
-Inside this repo, `.mcp.json` already does it — Claude Code picks it up automatically.
+**4. Register it** with your client:
 
-**3. Check the link** by calling `health`. It reports whether the extension is connected, and tells
+```bash
+claude mcp add tabrunner -- bun ~/.tabrunner-mcp.js
+```
+
+Developing on the repo instead? `.mcp.json` already points Claude Code at `daemon/src/index.ts` —
+no download needed.
+
+**5. Check the link** by calling `health`. It reports whether the extension is connected, and tells
 you exactly what to do if it isn't.
 
-The daemon starts when your client starts it; there's nothing to leave running. To run it by hand
-(to watch its log, say): `bun run bridge`.
+The daemon starts when your client starts it; there's nothing to leave running. Re-run the curl to
+update it. To run it by hand (to watch its log, say): `bun ~/.tabrunner-mcp.js` — inside this repo,
+`bun run bridge`.
 
 ### Configuration
 
@@ -154,7 +164,7 @@ Every failure comes back as text that says what happened, why, and what to do ne
 
 | Situation                          | What you get                                                                                                                                    |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Extension not connected            | How to install it and wake the worker. It reconnects on its own within ~30s.                                                                    |
+| Extension not connected            | How to enable the bridge (Settings → MCP), install the extension, and wake the worker. It reconnects on its own within ~30s.                             |
 | A different extension connected    | The id that connected, and the env var to accept it (a dev build has its own id).                                                               |
 | No provider configured             | `health` says so up front. Add one in TabRunner's settings and pick it in the panel header.                                                     |
 | Provider needs a sign-in or key    | `health` names it and which of the two it wants. Direct `browser_*` control keeps working without a provider.                                   |
@@ -179,6 +189,7 @@ stored in it, and it never talks to anything but the extension and your MCP clie
 ```bash
 bun run bridge        # run the daemon by hand, with its log on stderr
 bun run bridge:check  # end-to-end check: spawns the daemon, plays the extension, drives MCP
+bun run bridge:bundle # build the single-file daemon releases ship → dist/tabrunner-<version>-mcp.js
 ```
 
 `bridge:check` is the fastest way to know the wiring is intact — it exercises the hello/sync

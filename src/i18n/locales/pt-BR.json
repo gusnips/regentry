@@ -64,7 +64,7 @@
       "statusConnected": "Conectado ao daemon",
       "statusWaiting": "Aguardando o daemon — ele inicia quando o seu cliente MCP inicia",
       "setupTitle": "Conectar um cliente",
-      "setupHelp": "Registre o daemon no seu cliente MCP:",
+      "setupHelp": "Baixe o daemon, depois registre-o no seu cliente MCP:",
       "copy": "Copiar",
       "copied": "Copiado",
       "docsLink": "Guia completo de configuração →",

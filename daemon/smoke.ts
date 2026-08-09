@@ -9,6 +9,11 @@
  * request correlation, the long-poll waking on a pushed event, and the ask_user
  * question surviving the `done` that follows it. Exits non-zero on the first
  * failure; no framework, no fixtures.
+ *
+ * TABRUNNER_SMOKE_ENTRY points it at another daemon entry — the release bundle,
+ * so what ships is what was checked:
+ *
+ *   TABRUNNER_SMOKE_ENTRY=../dist/tabrunner-<version>-mcp.js bun run bridge:check
  */
 import type { DaemonMessage, ExtensionMessage } from "./src/protocol";
 import { emptyStatus } from "./src/protocol";
@@ -30,7 +35,7 @@ function check(label: string, ok: boolean, detail?: string): void {
 
 // ── The daemon under test ───────────────────────────────────────────
 
-const daemon = Bun.spawn(["bun", "src/index.ts"], {
+const daemon = Bun.spawn(["bun", process.env.TABRUNNER_SMOKE_ENTRY ?? "src/index.ts"], {
   cwd: import.meta.dir,
   env: {
     ...process.env,

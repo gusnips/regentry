@@ -20,8 +20,8 @@ export class BridgeError extends Error {
 
 export const NOT_CONNECTED =
   "TabRunner isn't connected to this bridge.\n" +
-  "Cause: the extension isn't installed, its service worker is asleep, or it's pointed at another port.\n" +
-  "Fix: install TabRunner in Chrome and open its side panel once to wake the worker. It reconnects on its own within ~30s — call health again then.";
+  "Cause: the bridge is off, the extension isn't installed, its service worker is asleep, or it's pointed at another port.\n" +
+  "Fix: enable the bridge under TabRunner's Settings → MCP, then open its side panel once to wake the worker. It reconnects on its own within ~30s — call health again then.";
 
 const WORKER_GONE =
   "The run stopped: Chrome suspended or restarted TabRunner's service worker while it was working.\n" +

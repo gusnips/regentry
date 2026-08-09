@@ -4,8 +4,9 @@ import { BridgeSocket } from "../ws-client";
 
 /**
  * The bridge's cost when nobody is using it is the thing worth pinning down:
- * almost every user runs no daemon, so "no daemon listening" is the normal
- * path, not the edge case. It must cost one alarm every 30s and nothing else.
+ * almost every user runs no daemon, so the bridge ships off and a fresh
+ * install must dial nothing at all. Once enabled, "no daemon listening" is the
+ * normal path — it costs one alarm every 30s and nothing else.
  */
 
 class FakeSocket {
@@ -63,8 +64,11 @@ beforeEach(() => {
 const settle = () => vi.advanceTimersByTimeAsync(0);
 
 describe("BridgeSocket", () => {
-  it("costs nothing at all while the bridge is switched off", async () => {
-    await bridgeItem.set({ enabled: false, port: 17_836 });
+  it("costs nothing at all out of the box — the bridge ships off", async () => {
+    // Nothing is stored on a fresh install, so this runs on the fallback: if
+    // the default ever flips back to enabled, this is the test that fails.
+    // A boot that dials nothing logs nothing — the refused-WebSocket error a
+    // daemonless install would otherwise show is Chromium's, and unsilenceable.
     new BridgeSocket(
       () => {},
       () => {},
@@ -89,6 +93,7 @@ describe("BridgeSocket", () => {
   });
 
   it("does not fast-retry a connection that never opened", async () => {
+    await bridgeItem.set({ enabled: true, port: 17_836 });
     new BridgeSocket(
       () => {},
       () => {},
@@ -103,6 +108,7 @@ describe("BridgeSocket", () => {
   });
 
   it("fast-retries a link that was established and then dropped", async () => {
+    await bridgeItem.set({ enabled: true, port: 17_836 });
     new BridgeSocket(
       () => {},
       () => {},
@@ -117,6 +123,7 @@ describe("BridgeSocket", () => {
   });
 
   it("mirrors the link state for UI contexts: up on open, down on close", async () => {
+    await bridgeItem.set({ enabled: true, port: 17_836 });
     new BridgeSocket(
       () => {},
       () => {},

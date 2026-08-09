@@ -30,6 +30,8 @@ jobs:
       # crx.ts finds a Chromium binary on its own — google-chrome is preinstalled
       # on the ubuntu-latest runner image.
       - run: bun run crx
+      # The single-file MCP daemon — what Settings → MCP tells users to curl.
+      - run: bun run bridge:bundle
       # Versioned names are the permanent record; the `latest` aliases give
       # tabrunner.app stable hotlinks (`releases/latest/download/<alias>`) that
       # never need a site deploy when a version ships.
@@ -37,6 +39,7 @@ jobs:
         run: |
           cp dist/tabrunner-*-chrome.zip dist/tabrunner-latest-chrome.zip
           cp dist/tabrunner-*.crx dist/tabrunner-latest.crx
+          cp dist/tabrunner-*-mcp.js dist/tabrunner-latest-mcp.js
       # Permanent record of the version's artifacts — public download links on
       # the tagged GitHub Release, with auto-generated notes. The CWS dashboard
       # itself never exposes a shareable artifact, so this is the storage seam.
@@ -46,4 +49,5 @@ jobs:
           files: |
             dist/tabrunner-*.zip
             dist/tabrunner-*.crx
+            dist/tabrunner-*.js
           generate_release_notes: true

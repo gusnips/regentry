@@ -1,12 +1,17 @@
 import { defineItem } from "@/lib/storage";
 
 /**
- * Bridge config — on by default; the port must match what `bun run bridge`
- * listens on. Lives apart from the socket so UI contexts (Settings → MCP) can
- * read and edit it without bundling the WebSocket client.
+ * Bridge config — off by default: almost nobody runs an MCP client, and an
+ * enabled bridge with no daemon listening pays a failed-WebSocket console
+ * error every reconcile, which on a fresh install reads as the extension being
+ * broken. Chromium logs a refused socket from the network stack — no JS can
+ * silence it — so not dialing is the only clean install. MCP users opt in at
+ * Settings → MCP; the port must match what `bun run bridge` listens on. Lives
+ * apart from the socket so UI contexts (Settings → MCP) can read and edit it
+ * without bundling the WebSocket client.
  */
 export const bridgeItem = defineItem<{ enabled: boolean; port: number }>("bridge", {
-  enabled: true,
+  enabled: false,
   port: 17_836,
 });
 
