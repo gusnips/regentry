@@ -25,5 +25,8 @@ web-ext.config.ts
 *.sln
 *.sw?
 
+# Local UI preview shots (scripts/shoot-ui.ts)
+preview
+
 # Extension signing key — never commit (tabrunner-test.pem)
 *.pem

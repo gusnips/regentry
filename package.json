@@ -25,6 +25,8 @@
     "i18n:check": "bun run scripts/check-i18n.ts",
     "deadcode:fix": "knip --fix --allow-remove-files",
     "icons": "bun run scripts/gen-icons.ts",
+    "shots": "bun run scripts/shoot-store.ts",
+    "shots:ui": "bun run scripts/shoot-ui.ts",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
@@ -52,6 +54,7 @@
     "jsdom": "^30.0.1",
     "knip": "^6",
     "prettier": "^3.9.6",
+    "puppeteer-core": "^25.5.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.66.0",

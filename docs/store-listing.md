@@ -189,13 +189,11 @@ Captured set (in this order — the first is the card image):
 
 All four are **1280×800 PNG** (16:10), the CWS-required dimensions — no 16:9 crops.
 
-Capture recipe:
-
-1. Build and load: `bun run build` → `chrome://extensions` → Developer mode → **Load unpacked** →
-   `dist/chrome-mv3`.
-2. Click the **TabRunner** toolbar icon to open the side panel.
-3. Set the window so the page + panel read well, then capture at exactly 1280×800. Preferred:
-   Brave's `--window-size=1280,800`, or capture larger and center-crop to 16:10 + downscale.
+Capture recipe: `bun run build && bun run shots` (scripts/shoot-store.ts). No extension API can
+raster the side panel, so the script seeds demo providers + conversations into Chrome for Testing,
+shoots the panel as its own page, and composites panel-over-page at exactly 1280×800 — badge and
+status widget included. It also refreshes the site's webp derivatives when `../site` is checked out.
+Rerun after any UI rebrand; eyeball the four before committing.
 
 Saved in `docs/screenshots/` as `01-side-panel.png`, `02-chat.png`, `03-providers.png`,
 `04-chat-2.png` — matching this order.
