@@ -199,6 +199,8 @@
     "pasteToken": "Colado {{count}} linhas",
     "pasteHint": "Texto longo colado vira uma nota para manter o campo organizado — o texto completo ainda é enviado. Backspace apaga.",
     "askUserHint": "Toque numa opção ou escreva a sua",
+    "askUserOpenHint": "Escreva a sua resposta abaixo",
+    "answerPlaceholder": "Escreva a sua resposta… (Enter para enviar)",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensou por {{duration}}",
     "reasoningToggle": "Mostrar ou ocultar o raciocínio do modelo (salvo para todas as conversas)",

@@ -33,7 +33,12 @@ export function MessageScrollerViewport({
   return (
     <Scroller.Viewport
       data-slot="message-scroller-viewport"
-      className={`min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 ${className}`}
+      // The explicit background is not decoration: under a short transcript the
+      // anchoring spacer leaves a tall transparent dead zone, and Chrome fills
+      // unpainted canvas there with the dark-scheme root grey — a featureless
+      // block swallowing the space under the last message. Painting the
+      // viewport leaves nothing for the root canvas to show through.
+      className={`min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white p-3 dark:bg-neutral-950 ${className}`}
       {...props}
     />
   );

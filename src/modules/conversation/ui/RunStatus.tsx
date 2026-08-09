@@ -15,6 +15,7 @@ export function RunStatus() {
   const runEndedAt = useConversationStore((s) => s.runEndedAt);
   const usage = useConversationStore((s) => s.usage);
   const bridgeActive = useConversationStore((s) => s.bridgeActive);
+  const drivingTab = useConversationStore((s) => s.drivingTab);
   // Selecting only the plan message (reference-stable until rewritten) keeps
   // this bar from re-rendering on every unrelated message churn mid-run.
   const plan = useConversationStore((s) => s.messages.findLast((m) => m.role === "plan"));
@@ -57,12 +58,15 @@ export function RunStatus() {
     if (bridgeActive) return <BridgeActiveBand active={bridgeActive} />;
     if (runStartedAt === null || runEndedAt === null) return null;
     return (
-      <div className="flex items-center gap-2 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
-        <span>{t("run.finished")}</span>
-        <span>
-          {formatDuration(runEndedAt - runStartedAt)}
-          {tokenNote}
-        </span>
+      <div className="flex flex-col gap-0.5 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
+        <div className="flex items-center gap-2">
+          <span>{t("run.finished")}</span>
+          <span>
+            {formatDuration(runEndedAt - runStartedAt)}
+            {tokenNote}
+          </span>
+        </div>
+        {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
       </div>
     );
   }
@@ -85,13 +89,19 @@ export function RunStatus() {
         {/* One motion only — the shimmering verb is the live signal, so the dot stays still. */}
         <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500" />
         <span className="shimmer-text shrink-0 font-semibold">{verb}…</span>
-        {/* The run's target names itself here, where the run is narrated. */}
-        <DrivenTabChip />
         <span className="ml-auto shrink-0 font-mono text-xs text-brand-700/70 dark:text-brand-300/70">
           {formatDuration(now - runStartedAt)}
           {tokenNote}
         </span>
       </div>
+      {/* The run's target gets its own row: squeezed between the verb and the
+          timer it truncated to a letter, and a chip you cannot read cannot be
+          clicked. The indent aligns it with the verb text (and the plan peek). */}
+      {drivingTab && (
+        <div className="pl-[0.75rem]">
+          <DrivenTabChip />
+        </div>
+      )}
       {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
     </div>
   );

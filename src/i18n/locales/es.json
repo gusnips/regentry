@@ -199,6 +199,8 @@
     "pasteToken": "Pegado {{count}} líneas",
     "pasteHint": "El texto largo pegado se pliega en una nota para mantener la entrada ordenada — el texto completo se envía igualmente. Retroceso lo elimina.",
     "askUserHint": "Toca una opción o escribe la tuya",
+    "askUserOpenHint": "Escribe tu respuesta abajo",
+    "answerPlaceholder": "Escribe tu respuesta… (Enter para enviar)",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensó durante {{duration}}",
     "reasoningToggle": "Mostrar u ocultar el razonamiento del modelo (se guarda para todas las conversaciones)",

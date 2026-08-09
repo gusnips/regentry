@@ -5,6 +5,7 @@ import { planGlyph } from "./plan";
 import { groupBursts, type Burst } from "./bursts";
 import { useNow } from "./hooks";
 import { toolVerbKey, toolHint } from "./tool-labels";
+import { pendingAskId } from "./ask-gate";
 import type { Message } from "../types";
 import { splitErrorDetail } from "../error-detail";
 import { formatDuration } from "@/lib/format";
@@ -152,9 +153,10 @@ function StepRow({ msg }: { msg: Message }) {
  * composer, in the same brand chip language as a queued message: tapping one
  * sends it verbatim, so it is a draft reply of yours, not a control of the
  * agent's. Answered questions keep the question and drop the chips — the reply
- * is already in the transcript right below. A question with no choices is just
- * the question: the composer below it is the answer, and saying so in a hint
- * under every one of them would be wallpaper.
+ * is already in the transcript right below. A question with no choices is an
+ * OPEN question: no chips to tap, so the card names where the answer goes —
+ * a hint while (and only while) the question still awaits one. Once answered,
+ * both hint and chips drop and the bare question stays.
  */
 function QuestionCard({ msg, onAnswer }: { msg: Message; onAnswer?: (text: string) => void }) {
   const { t } = useTranslation();
@@ -171,21 +173,23 @@ function QuestionCard({ msg, onAnswer }: { msg: Message; onAnswer?: (text: strin
       </BubbleContent>
     </Bubble>
   );
-  if (!onAnswer || choices.length === 0) return question;
+  if (!onAnswer) return question;
 
   return (
     <div className="flex flex-col gap-1.5">
       {question}
       <div className="flex flex-col items-end gap-1">
-        <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
-          {choices.map((c) => (
-            <Button key={c} variant="choice" size="sm" onClick={() => onAnswer(c)}>
-              {c}
-            </Button>
-          ))}
-        </div>
+        {choices.length > 0 && (
+          <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+            {choices.map((c) => (
+              <Button key={c} variant="choice" size="sm" onClick={() => onAnswer(c)}>
+                {c}
+              </Button>
+            ))}
+          </div>
+        )}
         <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
-          {t("chat.askUserHint")}
+          {t(choices.length > 0 ? "chat.askUserHint" : "chat.askUserOpenHint")}
         </span>
       </div>
     </div>
@@ -451,7 +455,7 @@ function MessageBubble({
   activeProvider?: ProviderConfig;
   /** Present only on the newest error while idle — retry re-sends the same task. */
   onRetry?: () => void;
-  /** Present only on the newest ask_user while idle — the answer starts the next run. */
+  /** Present only on the newest unanswered ask_user while idle — the answer starts the next run. */
   onAnswer?: (text: string) => void;
   showReasoningOn: boolean;
   onToggleReasoning: () => void;
@@ -594,6 +598,9 @@ function Transcript() {
   const showReasoningOn = useStoredItem(showReasoning);
   const toggleReasoning = () => void showReasoning.set(!showReasoningOn);
   const hasLiveStep = messages.some((m) => m.live);
+  // The newest unanswered question keeps its answer affordance — the gate is
+  // shared with the composer's answer placeholder (ask-gate.ts).
+  const tappableAskId = pendingAskId(messages, status);
   // User messages name their tab only once a conversation spans more than one —
   // with a single tab every message is obviously there, so the label is noise.
   const multiTab =
@@ -637,14 +644,7 @@ function Transcript() {
                       : undefined
                   }
                   onAnswer={
-                    // Only the newest question stays tappable — an older one was
-                    // already answered by whatever message came after it.
-                    item.msg.role === "step" &&
-                    item.msg.tool === "ask_user" &&
-                    item.msg.id === messages[messages.length - 1]?.id &&
-                    status !== "running"
-                      ? (text) => void sendTask(text)
-                      : undefined
+                    item.msg.id === tappableAskId ? (text) => void sendTask(text) : undefined
                   }
                 />
               </MessageScrollerItem>

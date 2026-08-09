@@ -273,7 +273,7 @@ const TOOL_DEFS: ToolDef[] = [
         choices: {
           type: "array",
           description:
-            'Short replies the user can tap instead of typing (2-4). Always include the safe option, e.g. "Not now".',
+            'Short replies the user can tap instead of typing (2-4) — only when the answer is one of a few concrete options, and then always include the safe option, e.g. "Not now". Omit entirely for open answers (names, free text, numbers): the user replies by typing, and a made-up "something else" chip is noise.',
           items: { type: "string" },
         },
       },

@@ -199,6 +199,8 @@
     "pasteToken": "Pasted {{count}} lines",
     "pasteHint": "Long pasted text is folded into a note to keep things tidy — the full text is still sent. Backspace deletes it.",
     "askUserHint": "Tap one, or write your own",
+    "askUserOpenHint": "Type your answer below",
+    "answerPlaceholder": "Write your answer… (Enter to send)",
     "thinkingFor": "Thinking · {{duration}}",
     "thoughtFor": "Thought for {{duration}}",
     "reasoningToggle": "Show or hide the model's reasoning (saved for all conversations)",

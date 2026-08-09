@@ -17,7 +17,16 @@ import { buildSystemPrompt, buildTaskMessage, buildToolDefs, type PreviousTab } 
 
 const log = createLogger("agent");
 
-export const MAX_STEPS = 150;
+/**
+ * One turn per step. The budget is a runaway backstop and a checkpoint cadence,
+ * not a task-size limit: the near-end nudge (below) offers the model a clean
+ * "ask the user whether to continue" exit whose answer starts a fresh run with
+ * history replayed. 150 turns was ~10 minutes of real work — a normal
+ * multi-part task (two lists, two file imports) hit it mid-job. 500 covers
+ * anything a user would reasonably sit through while still bounding a stuck
+ * loop's spend.
+ */
+export const MAX_STEPS = 500;
 /** Transient stream failures are retried in place this many times before surfacing. */
 const MAX_STREAM_ATTEMPTS = 3;
 const BASE_BACKOFF_MS = 1000;
@@ -259,11 +268,14 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     });
 
     if (turn.toolCalls.length === 0) {
-      // Model responded with text only — nudge it to use tools
+      // Model responded with text only — nudge it back to tools. The ask_user
+      // steer matters most: a question typed as prose does not pause the run,
+      // so without it the agent plows ahead on its own assumptions while the
+      // user stares at a question they cannot answer.
       messages.push({
         role: "user",
         content:
-          "Use a tool to make progress on the task. Call snapshot if you need to see the page.",
+          "Respond with a tool call, not plain text. If you just asked the user a question, call `ask_user` with that same question now — written-out questions do not pause the run, so the user never got to answer. Otherwise make progress on the task: call snapshot if you need to see the page, or `done` if the task is complete.",
       });
       continue;
     }

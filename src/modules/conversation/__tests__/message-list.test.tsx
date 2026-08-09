@@ -166,3 +166,78 @@ describe("transcript scroll on settle", () => {
     container.remove();
   });
 });
+
+describe("ask_user chips", () => {
+  // Regression: the chips gate used to require the question card to be the LAST
+  // message. The sentence the model streams alongside its ask_user call is
+  // flushed after the card at run end — landing between the card and the chips
+  // gate and dead-ending the one question that needed an answer.
+  const ASK: Message[] = [
+    { id: "u1", role: "user", content: "Import the files", timestamp: 0 },
+    {
+      id: "q1",
+      role: "step",
+      tool: "ask_user",
+      content: "Which files should I import?",
+      args: { choices: ["waitlist.csv", "users.csv"] },
+      timestamp: 1,
+    },
+  ];
+
+  async function renderAsk(messages: Message[]): Promise<HTMLElement> {
+    useConversationStore.setState({ messages, status: "idle", streamingText: "" });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<MessageList />));
+    return container;
+  }
+
+  const chip = (container: HTMLElement, label: string) =>
+    [...container.querySelectorAll("button")].find((b) => b.textContent === label);
+
+  it("stays tappable when the model's parting sentence landed after the card", async () => {
+    const container = await renderAsk([
+      ...ASK,
+      { id: "a1", role: "assistant", content: "Let me check which files you mean.", timestamp: 2 },
+    ]);
+    expect(chip(container, "waitlist.csv")).toBeDefined();
+  });
+
+  it("drops the chips once the user replied", async () => {
+    const container = await renderAsk([
+      ...ASK,
+      { id: "u2", role: "user", content: "waitlist.csv", timestamp: 2 },
+    ]);
+    expect(chip(container, "waitlist.csv")).toBeUndefined();
+  });
+
+  it("an open question (no choices) names where the answer goes, until answered", async () => {
+    const OPEN: Message[] = [
+      { id: "u1", role: "user", content: "Import the files", timestamp: 0 },
+      {
+        id: "q1",
+        role: "step",
+        tool: "ask_user",
+        content: "What are the exact file names?",
+        timestamp: 1,
+      },
+    ];
+    const awaiting = await renderAsk(OPEN);
+    expect(
+      [...awaiting.querySelectorAll("span")].find(
+        (s) => s.textContent === "Type your answer below",
+      ),
+    ).toBeDefined();
+
+    const answered = await renderAsk([
+      ...OPEN,
+      { id: "u2", role: "user", content: "waitlist.csv and users.csv", timestamp: 2 },
+    ]);
+    expect(
+      [...answered.querySelectorAll("span")].find(
+        (s) => s.textContent === "Type your answer below",
+      ),
+    ).toBeUndefined();
+  });
+});

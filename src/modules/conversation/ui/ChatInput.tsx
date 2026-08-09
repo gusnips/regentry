@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
+import { pendingAskId } from "./ask-gate";
 import { toAttachment } from "./image";
 import { recallStep, sentMessages } from "./history-recall";
 import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
@@ -25,6 +26,9 @@ export function ChatInput() {
   const [attachError, setAttachError] = useState<string | null>(null);
   const status = useConversationStore((s) => s.status);
   const messages = useConversationStore((s) => s.messages);
+  // An unanswered ask_user turns the composer into the answer field — the
+  // placeholder says so (the card's chips/hint use the same gate, ask-gate.ts).
+  const questionPending = pendingAskId(messages, status) !== undefined;
   const queued = useConversationStore((s) => s.queued);
   const sendTask = useConversationStore((s) => s.sendTask);
   const queueMessage = useConversationStore((s) => s.queueMessage);
@@ -258,7 +262,13 @@ export function ChatInput() {
           rows={2}
           autoFocus
           aria-label={t("chat.inputAria")}
-          placeholder={running ? t("chat.queuePlaceholder") : t("chat.placeholder")}
+          placeholder={
+            running
+              ? t("chat.queuePlaceholder")
+              : questionPending
+                ? t("chat.answerPlaceholder")
+                : t("chat.placeholder")
+          }
           value={text}
           onChange={(e) => onChangeText(e.target.value)}
           onKeyDown={onKeyDown}
