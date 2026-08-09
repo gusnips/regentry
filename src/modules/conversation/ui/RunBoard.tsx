@@ -57,13 +57,13 @@ export function RunBoard() {
             <span
               aria-hidden
               title={t("run.awaitingApproval")}
-              className="grid size-3.5 shrink-0 place-items-center rounded-full bg-brand-400 text-[10px] font-bold leading-none text-white"
+              className="grid size-3.5 shrink-0 place-items-center rounded-full bg-amber-400 text-[10px] font-bold leading-none text-amber-950"
             >
               ?
             </span>
           ) : (
-            /* The same pulsing purple the widget and the favicon dot speak. */
-            <span aria-hidden className="size-1.5 shrink-0 animate-pulse rounded-full bg-brand-400" />
+            /* The same pulsing amber the widget and the favicon dot speak. */
+            <span aria-hidden className="size-1.5 shrink-0 animate-pulse rounded-full bg-amber-400" />
           )}
           <span
             className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-800 dark:text-neutral-100"

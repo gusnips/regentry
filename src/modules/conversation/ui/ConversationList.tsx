@@ -144,12 +144,12 @@ function ConversationRow({
         <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-neutral-500 dark:text-neutral-400">
           {conversation.agent && (
             <>
-              {/* Purple is this product's "an agent is working" language — the
-                  same colour as the on-page badge and the tab-strip dot. */}
+              {/* Amber is this product's "an agent is working" language — the
+                  same colour as the on-page badge's dot and the favicon pulse. */}
               <span className="sr-only">
                 {t("history.drivenBy", { agent: conversation.agent })}
               </span>
-              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-brand-400" />
+              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-amber-400" />
               <span aria-hidden className="shrink-0 font-medium text-brand-600 dark:text-brand-400">
                 {conversation.agent}
               </span>
