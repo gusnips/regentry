@@ -347,6 +347,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     if (results.length > 0) {
       messages.push({ role: "tool_results", content: "", toolResults: results });
       pruneImages(messages);
+      pruneResultText(messages);
     }
 
     // Queued mid-run messages join here, after the tool results they comment on.
@@ -385,6 +386,41 @@ function handleDelta(delta: Delta, callbacks: LoopCallbacks, toolCalls: ToolCall
       return null;
   }
 }
+
+/**
+ * Bound the text side of the same problem images have: every tool result is
+ * re-sent on every later turn, and a page snapshot is the largest thing a run
+ * produces. Left alone, a long run grows its own request body until the
+ * provider rejects it — the failure lands as a raw context-length 400 mid-task,
+ * which is exactly the dead end the step budget's checkpoint exists to avoid.
+ *
+ * Only the newest results keep their payload. Older ones keep their id — the
+ * wire requires one result per call — and a line saying the content was
+ * dropped, so the model re-fetches instead of trusting a blank. A stale
+ * snapshot is the cheapest thing in the run to lose: it describes a page that
+ * has since been clicked, typed into, and navigated away from.
+ *
+ * ponytail: characters, not tokens, and no per-model ceiling — the same
+ * simplification buildConversationHistory makes, and the budgets are siblings
+ * (~30k tokens of results beside history's ~6k). The ceiling is a model that
+ * gathered data across many pages losing the oldest of it; the upgrade path is
+ * trimming against the resolved model's real context window.
+ */
+const MAX_RESULT_CHARS = 120_000;
+
+function pruneResultText(messages: ChatMessage[]): void {
+  let budget = MAX_RESULT_CHARS;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    for (const result of messages[i]?.toolResults ?? []) {
+      if (budget > 0) budget -= result.content.length;
+      else if (result.content !== TRIMMED_RESULT) result.content = TRIMMED_RESULT;
+    }
+  }
+}
+
+const TRIMMED_RESULT = JSON.stringify({
+  trimmed: "Older result dropped to save context. Re-run the tool if you still need it.",
+});
 
 /**
  * Drop every screenshot but the newest few, oldest first. Only tool results are

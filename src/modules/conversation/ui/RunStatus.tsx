@@ -96,7 +96,9 @@ export function RunStatus() {
       </div>
       {/* The run's target gets its own row: squeezed between the verb and the
           timer it truncated to a letter, and a chip you cannot read cannot be
-          clicked. The indent aligns it with the verb text (and the plan peek). */}
+          clicked. 0.75rem, not the plan peek's 1.125rem, because the chip is a
+          button carrying its own px-1.5 — the two indents differ so the TEXT
+          inside them lines up, with each other and with the verb above. */}
       {drivingTab && (
         <div className="pl-[0.75rem]">
           <DrivenTabChip />

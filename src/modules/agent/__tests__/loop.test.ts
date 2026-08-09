@@ -118,3 +118,53 @@ describe("runAgentLoop step budget", () => {
     expect(doneSummary).toBe(i18n.t("errors.stepBudgetExhausted"));
   });
 });
+
+describe("runAgentLoop context growth", () => {
+  // A long run re-sends every tool result on every turn, so an untrimmed
+  // transcript grows until the provider rejects the body — a raw
+  // context-length 400 mid-task, which is the dead end the step budget's
+  // checkpoint exists to avoid. Only the newest results keep their payload.
+  it("bounds accumulated tool-result text, keeping the newest intact", async () => {
+    const PAGE = "x".repeat(50_000); // one big page snapshot per step
+    const STEPS = 20; // 20 × 50k = 1MB untrimmed
+    let calls = 0;
+    let widest = 0;
+    const provider: ChatProvider = {
+      async *stream(messages) {
+        calls++;
+        const size = messages.reduce(
+          (sum, m) => sum + (m.toolResults ?? []).reduce((n, r) => n + r.content.length, 0),
+          0,
+        );
+        widest = Math.max(widest, size);
+        if (calls > STEPS)
+          yield { type: "tool_use", id: "c1", name: "done", args: { summary: "ok" } };
+        else yield { type: "tool_use", id: `c${calls}`, name: "snapshot", args: {} };
+        yield { type: "done" };
+      },
+    };
+    const bigDriver = {
+      snapshot: async (): Promise<SnapshotResult> => ({
+        pageContent: PAGE,
+        viewport: { width: 800, height: 600 },
+        url: "https://example.com",
+        title: "Example",
+      }),
+    } as unknown as BrowserDriver;
+
+    const wire = await runAgentLoop({
+      provider,
+      driver: bigDriver,
+      task: "Read many pages",
+      signal: new AbortController().signal,
+      callbacks: {},
+    });
+
+    // Bounded, not unbounded: well under the 1MB an untrimmed run would carry.
+    expect(widest).toBeLessThan(300_000);
+    // The newest result still carries its real payload — trimming the page the
+    // model is standing on would blind it.
+    const newest = wire.findLast((m) => m.toolResults?.length)?.toolResults?.[0];
+    expect(newest?.content).toContain("x".repeat(1000));
+  });
+});

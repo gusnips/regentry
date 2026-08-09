@@ -62,8 +62,17 @@ never reach the service-worker bundle.
 - `agent/` — agent loop (stream → tool calls → results → repeat), tools, system prompt.
   The system prompt carries a consequential-action policy (paying, sending on the user's
   behalf, deleting, submitting need explicit permission), enforced through the `ask_user`
-  tool: the run ends on a question the panel renders as a card with tappable choices, and
-  the answer arrives as the next message. Background-only.
+  tool: the run ends on a question the panel renders as a card, and the answer arrives as
+  the next message. `choices` are optional and mean something — a few concrete options get
+  tappable chips, an open answer (a name, free text) gets none and the composer IS the
+  answer field, which the card says outright. **A question in plain prose does not pause
+  the run** — the model streams it, the loop sees no tool call, and the user is left
+  answering into a run that already moved on; the prompt forbids it and the tool-less-turn
+  nudge steers a just-asked question back into `ask_user`. The panel gates the card's
+  chips/hint and the composer's placeholder on ONE shared rule (`ui/ask-gate.ts`): the
+  newest question with no user reply after it. Not "the last message" — the sentence a
+  model streams alongside its `ask_user` call lands after the card and would otherwise
+  hide the answer affordance on the one question that needs it. Background-only.
 - `browser/` — accessibility-tree snapshot (injected script), CDP driver (trusted input),
   unified driver seam, on-page "Regentry is controlling this tab" badge plus a purple dot over
   the driven tab's favicon so the strip shows where a run is working — the dot pulses via
@@ -223,6 +232,13 @@ delegate calls `browser_start(goal)` and then the `browser_*` verbs.
   loop keeps only the newest `MAX_ATTACHED_IMAGES` screenshots attached (every image is re-sent
   on every later turn); a user's own attachment is never pruned. Screenshots are JPEG q80 from
   `Page.captureScreenshot` and are stripped before storage — user attachments persist.
+- **A run's own request body is bounded, not just its images.** Every tool result is re-sent on
+  every later turn and a page snapshot is the biggest thing a run makes: untrimmed, twenty
+  steps of a real page is already ~1MB of body, so a long run dies on a context-length 400
+  mid-task — the exact dead end the step budget's checkpoint exists to prevent. `pruneResultText`
+  is `pruneImages`'s text sibling: newest results keep their payload, older ones keep their id
+  (the wire needs one result per call) and a line telling the model to re-fetch. This is what
+  makes a 500-step `MAX_STEPS` safe; the two must move together.
 - **The ChatGPT subscription provider is a `responses` shape** (`responses.ts`), streaming the
   Codex backend's `POST {base}/responses` — it exposes no chat-completions surface. Auth is a
   Bearer access token PLUS the `ChatGPT-Account-Id` header (extracted from the JWT at sign-in as
