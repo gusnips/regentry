@@ -158,7 +158,7 @@ export function buildTaskMessage(task: string, pageContent: string, ctx: TaskCon
   // user is on" as if it were driving it — and steals a tab it should leave be.
   if (mode?.background) {
     parts.push(
-      "You are working in a tab of your own, opened on the page the user was looking at — their tab is untouched, and they may be watching this one. Navigate THIS tab wherever the task leads; switch_tab only when the task needs a page that is already open somewhere else, and expect that switch not to bring the tab forward.",
+      "You are working in a tab of your own, opened on the page the user was looking at — their own tab is untouched, leave it alone. Navigate THIS tab wherever the task leads; switch_tab only when the task needs a page that is already open somewhere else, and expect that switch not to bring the tab forward.",
     );
   }
   if (mode?.blockedStart) {
