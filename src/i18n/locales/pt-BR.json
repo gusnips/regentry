@@ -395,7 +395,7 @@
   "tips": {
     "label": "Dica",
     "escStop": "Esc interrompe a tarefa em execução — o que você já digitou é enviado como a próxima.",
-    "historyRecall": "Pressione ↑ com o campo vazio para percorrer o que você já enviou — ↓ volta para frente.",
+    "historyRecall": "Pressione ↑ quando quiser para percorrer o que você já enviou — ↓ volta com seu rascunho.",
     "thisPage": "A tarefa age por padrão na aba que você está vendo — escolha “Em segundo plano” quando ela deve trabalhar numa aba própria enquanto você continua navegando.",
     "queueSteer": "Você pode continuar digitando enquanto a tarefa roda — a mensagem entra na fila e a direciona entre os passos.",
     "pasteImage": "Cole uma captura de tela direto no campo — o agente consegue vê-la.",

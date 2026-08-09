@@ -532,17 +532,25 @@ function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoni
   );
 }
 
-/** The assistant bubble — rendered for stored messages and the live stream alike. */
+/**
+ * The assistant bubble — rendered for stored messages and the live stream alike.
+ *
+ * The typing caret rides the last markdown block as an ::after, not a sibling
+ * span: markdown renders block elements, so a span after them dropped the caret
+ * onto a line of its own — a stray grey brick under the text.
+ */
 function AssistantBubble({ content, cursor }: { content: string; cursor?: boolean }) {
   return (
     <Bubble>
-      <BubbleContent>
+      <BubbleContent className={cursor ? CARET : ""}>
         <Markdown>{content}</Markdown>
-        {cursor && <span className="animate-pulse">▊</span>}
       </BubbleContent>
     </Bubble>
   );
 }
+
+const CARET =
+  "[&>*:last-child]:after:ml-0.5 [&>*:last-child]:after:animate-pulse [&>*:last-child]:after:content-['▊']";
 
 /** Ghost-button override for actions inside the red error bubble. */
 const ERROR_ACTION_CLASSES =

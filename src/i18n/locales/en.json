@@ -395,7 +395,7 @@
   "tips": {
     "label": "Tip",
     "escStop": "Esc stops the running task — anything already typed is sent as the next one.",
-    "historyRecall": "Press ↑ with an empty composer to walk back through what you've sent — ↓ comes forward again.",
+    "historyRecall": "Press ↑ any time to walk back through what you've sent — ↓ comes forward, draft and all.",
     "thisPage": "The task drives the tab you're looking at by default — pick “Background” when it should work in a tab of its own while you keep browsing.",
     "queueSteer": "You can keep typing while a task runs — the message queues and steers it between steps.",
     "pasteImage": "Paste a screenshot straight into the composer — the agent can see it.",

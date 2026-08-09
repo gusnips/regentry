@@ -52,8 +52,9 @@ export function ChatInput() {
   const areaRef = useRef<HTMLTextAreaElement>(null);
   /** Monotonic, so removing #1 never lets a later paste reuse its token. */
   const imageCount = useRef(0);
-  /** Position in `sentHistory` while browsing it; null = editing a fresh draft. */
-  const historyIndex = useRef<number | null>(null);
+  /** Position in `sentHistory` (null = editing your own draft) plus the draft
+   *  that browsing stashed, so ↓ past the newest hands it straight back. */
+  const browse = useRef<{ index: number | null; draft: string }>({ index: null, draft: "" });
   const sentHistory = useMemo(() => sentMessages(messages), [messages]);
 
   const running = status === "running";
@@ -170,12 +171,6 @@ export function ChatInput() {
     setAttachError(null);
   };
 
-  /** Typing ends the browse: ↑ must never overwrite text you just wrote. */
-  const onChangeText = (value: string) => {
-    historyIndex.current = null;
-    setText(value);
-  };
-
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -208,10 +203,14 @@ export function ChatInput() {
       recallQueued();
       return;
     }
-    const recall = recallStep(e.key, historyIndex.current, text, sentHistory);
+    const recall = recallStep(e.key, sentHistory, {
+      ...browse.current,
+      text,
+      caret: areaRef.current?.selectionStart ?? text.length,
+    });
     if (!recall) return;
     e.preventDefault();
-    historyIndex.current = recall.index;
+    browse.current = { index: recall.index, draft: recall.draft };
     setText(recall.text);
   };
 
@@ -313,7 +312,7 @@ export function ChatInput() {
                 : t("chat.placeholder")
           }
           value={text}
-          onChange={(e) => onChangeText(e.target.value)}
+          onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
           onPaste={(e) => void onPaste(e)}
         />
