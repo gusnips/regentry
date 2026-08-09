@@ -330,7 +330,10 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       const msg = e instanceof Error ? e.message : String(e);
       log.error(`run failed at step ${step + 1}:`, msg);
       const kind = e instanceof ProviderError ? e.kind : undefined;
-      callbacks.onError?.(i18n.t("errors.providerError", { message: msg }), kind);
+      // A classified provider error leads with its own complete line ("…hit your
+      // weekly usage limit — resets…") — wrapping it in "Provider error:" would
+      // frame a state as a failure. Unclassified errors keep the envelope.
+      callbacks.onError?.(kind ? msg : i18n.t("errors.providerError", { message: msg }), kind);
       return messages;
     }
 

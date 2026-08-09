@@ -448,6 +448,7 @@
     "kindRateWindow": "{{provider}} alcanzó tu límite de uso {{window}} — se reinicia {{reset}}",
     "window5h": "de 5 horas",
     "windowWeekly": "semanal",
+    "windowMonthly": "mensual",
     "kindOverload": "{{provider}} está sobrecargado ahora mismo — inténtalo de nuevo en unos minutos",
     "oauthRefreshExpired": "Tu sesión de {{name}} caducó y no se pudo renovar — inicia sesión de nuevo en Configuración.",
     "signInFailed": "Error al iniciar sesión: {{detail}}",

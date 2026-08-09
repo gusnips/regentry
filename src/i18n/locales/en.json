@@ -448,6 +448,7 @@
     "kindRateWindow": "{{provider}} hit your {{window}} usage limit — it resets {{reset}}",
     "window5h": "5-hour",
     "windowWeekly": "weekly",
+    "windowMonthly": "monthly",
     "kindOverload": "{{provider}} is overloaded right now — try again in a few minutes",
     "oauthRefreshExpired": "Your {{name}} sign-in expired and couldn't be renewed — sign in again in Settings.",
     "signInFailed": "Sign-in failed: {{detail}}",

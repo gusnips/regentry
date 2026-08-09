@@ -1,7 +1,12 @@
 import type { ProviderConfig } from "./types";
 import { ProviderError } from "./types";
 import { classifyProviderError, type ErrorKind } from "./error-classify";
-import { formatResetRelative, parseRateLimitReset, type RateLimitReset } from "./rate-limit";
+import {
+  formatResetRelative,
+  parseRateLimitReset,
+  parseUsageLimitBody,
+  type RateLimitReset,
+} from "./rate-limit";
 import { providerDisplayName } from "./presets";
 import { createLogger, truncate } from "@/lib/logger";
 import { i18n } from "@/i18n";
@@ -21,16 +26,23 @@ const ERROR_KIND_KEYS = {
   overload: "errors.kindOverload",
 } as const satisfies Record<ErrorKind, string>;
 
+const WINDOW_KEYS = {
+  "5h": "errors.window5h",
+  weekly: "errors.windowWeekly",
+  monthly: "errors.windowMonthly",
+} as const satisfies Record<NonNullable<RateLimitReset["window"]>, string>;
+
 /**
  * The rate-limit lead line. "Try again in a moment" is only honest for a
- * per-minute throttle — when the headers name a subscription window (Claude
- * OAuth 5-hour/weekly) or any reset time, say when it actually resets.
+ * per-minute throttle — when the response names a subscription window (Claude
+ * OAuth 5-hour/weekly via headers, ChatGPT via the body) or any reset time,
+ * say when it actually resets.
  */
 function rateLimitLine(label: string, reset: RateLimitReset, now: number): string {
   if (reset.window && reset.resetAtMs !== undefined) {
     return i18n.t("errors.kindRateWindow", {
       provider: label,
-      window: i18n.t(reset.window === "5h" ? "errors.window5h" : "errors.windowWeekly"),
+      window: i18n.t(WINDOW_KEYS[reset.window]),
       reset: formatResetRelative(reset.resetAtMs, now),
     });
   }
@@ -165,7 +177,21 @@ export async function* streamSse(opts: {
     const text = await res.text().catch(() => "");
     log.error(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
     const now = Date.now();
-    const reset = parseRateLimitReset((name) => res.headers.get(name), now);
+    // Headers are authoritative (Anthropic names the window); the body fills
+    // gaps (ChatGPT's codex backend carries the reset only in the 429 body).
+    const fromHeaders = parseRateLimitReset((name) => res.headers.get(name), now);
+    const fromBody = parseUsageLimitBody(text, now);
+    const reset: RateLimitReset = {
+      ...(fromHeaders.resetAtMs !== undefined || fromBody.resetAtMs !== undefined
+        ? { resetAtMs: fromHeaders.resetAtMs ?? fromBody.resetAtMs }
+        : {}),
+      ...(fromHeaders.retryAfterMs !== undefined || fromBody.retryAfterMs !== undefined
+        ? { retryAfterMs: fromHeaders.retryAfterMs ?? fromBody.retryAfterMs }
+        : {}),
+      ...(fromHeaders.window || fromBody.window
+        ? { window: fromHeaders.window ?? fromBody.window }
+        : {}),
+    };
     const { message, kind } = providerErrorMessage(
       provider,
       res.status,

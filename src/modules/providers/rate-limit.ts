@@ -13,7 +13,7 @@ export interface RateLimitReset {
   /** Server-requested wait (`retry-after`) — the retry policy honors it. */
   retryAfterMs?: number;
   /** Which subscription window bound — only Anthropic's unified headers say. */
-  window?: "5h" | "weekly";
+  window?: "5h" | "weekly" | "monthly";
 }
 
 const RETRY_AFTER = "retry-after";
@@ -93,12 +93,67 @@ export function parseRateLimitReset(
 }
 
 /**
- * "in 4 hours" / "em 3 dias" — relative time in the UI locale. Absolute "at
- * 6:47 PM" reads better for minutes, but locale-correct at/on/às glue for
- * mixed date+time is a translation trap; relative formats cleanly everywhere.
+ * ChatGPT's codex backend puts the reset IN THE 429 BODY, not the headers:
+ * `{"error":{"type":"usage_limit_reached","resets_at":1788801754,"resets_in_seconds":2501465}}`.
+ * The window name is inferred from the wait itself — but only past ten minutes:
+ * a sub-minute retry is a per-minute throttle, and calling it a "5-hour window"
+ * would be its own lie.
+ */
+export function parseUsageLimitBody(bodyText: string, now: number): RateLimitReset {
+  let body: unknown;
+  try {
+    body = JSON.parse(bodyText);
+  } catch {
+    return {};
+  }
+  if (typeof body !== "object" || body === null) return {};
+  const source = (body as Record<string, unknown>).error;
+  const error =
+    typeof source === "object" && source !== null
+      ? (source as Record<string, unknown>)
+      : (body as Record<string, unknown>);
+
+  const inSeconds = Number(error.resets_in_seconds);
+  const atSeconds = Number(error.resets_at);
+  const retryAfterMs =
+    Number.isFinite(inSeconds) && inSeconds >= 0
+      ? inSeconds * 1000
+      : Number.isFinite(atSeconds) && atSeconds > 0
+        ? Math.max(0, atSeconds * 1000 - now)
+        : undefined;
+  if (retryAfterMs === undefined) return {};
+
+  const result: RateLimitReset = { retryAfterMs, resetAtMs: now + retryAfterMs };
+  if (retryAfterMs > 10 * 60_000) {
+    result.window =
+      retryAfterMs <= 5.5 * 3_600_000
+        ? "5h"
+        : retryAfterMs <= 7.5 * 86_400_000
+          ? "weekly"
+          : "monthly";
+  }
+  return result;
+}
+
+/**
+ * "in 4 hours (6:47 PM)" / "em 3 dias (12 de ago., 14:30)" — relative time in
+ * the UI locale, with the absolute time appended once the wait is long enough
+ * that "when exactly" matters. Relative leads because locale-correct at/on/às
+ * glue is a translation trap; the parenthesized absolute needs no glue.
  */
 export function formatResetRelative(resetAtMs: number, now: number): string {
-  return formatRelative(Math.max(0, resetAtMs - now));
+  const relative = formatRelative(Math.max(0, resetAtMs - now));
+  if (resetAtMs - now < 90 * 60_000) return relative;
+  return `${relative} (${formatAbsolute(resetAtMs, now)})`;
+}
+
+function formatAbsolute(resetAtMs: number, now: number): string {
+  const locale = SUPPORTED_LOCALES.find((l) => l === i18n.language) ?? DEFAULT_LOCALE;
+  const sameDay = new Date(resetAtMs).toDateString() === new Date(now).toDateString();
+  const options: Intl.DateTimeFormatOptions = sameDay
+    ? { hour: "numeric", minute: "2-digit" }
+    : { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" };
+  return new Intl.DateTimeFormat(locale, options).format(resetAtMs);
 }
 
 /** "2 minutes ago" / "há 2 minutos" — the past counterpart of formatResetRelative. */

@@ -448,6 +448,7 @@
     "kindRateWindow": "{{provider}} atingiu seu limite de uso {{window}} — reinicia {{reset}}",
     "window5h": "de 5 horas",
     "windowWeekly": "semanal",
+    "windowMonthly": "mensal",
     "kindOverload": "{{provider}} está sobrecarregado agora — tente de novo em alguns minutos",
     "oauthRefreshExpired": "Sua conexão com {{name}} expirou e não pôde ser renovada — entre novamente nas Configurações.",
     "signInFailed": "Falha ao entrar: {{detail}}",
