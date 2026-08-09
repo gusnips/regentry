@@ -37,6 +37,17 @@ describe("buildAuthorizeUrl", () => {
 });
 
 describe("exchangeCode", () => {
+  it("posts to the API host, not the console frontend", async () => {
+    // platform.claude.com is a web frontend behind bot protection: an extension
+    // fetch lands there with a chrome-extension:// Origin and comes back 429
+    // with nothing wrong on the account. Every current client uses this host.
+    const mock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(json({ access_token: "at", refresh_token: "rt", expires_in: 3600 }));
+    await exchangeCode("code-1", "state-y", "verifier-x");
+    expect(mock.mock.calls[0]?.[0]).toBe("https://api.anthropic.com/v1/oauth/token");
+  });
+
   it("trades a code for a credential with the refresh skew baked in", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       json({ access_token: "at", refresh_token: "rt", expires_in: 3600 }),

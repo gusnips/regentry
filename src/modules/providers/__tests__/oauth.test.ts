@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { generatePKCE, postToken, toCredential } from "../oauth";
-import { ProviderError } from "../types";
+import { captureRedirect, generatePKCE, postToken, randomState, toCredential } from "../oauth";
+import { ProviderError, SignInError } from "../types";
 
 // Storage stand-in and i18n come from src/test-setup.ts (vitest setupFiles).
 
@@ -26,6 +26,12 @@ describe("generatePKCE", () => {
   });
 });
 
+describe("randomState", () => {
+  it("is hex — claude.ai's authorize page rejects a state carrying - or _", () => {
+    expect(randomState()).toMatch(/^[0-9a-f]{32}$/);
+  });
+});
+
 describe("postToken", () => {
   it("takes a token pair as success whatever the status says", async () => {
     // Anthropic answers 429 for a plan over its usage limit AND hands back the
@@ -43,6 +49,19 @@ describe("postToken", () => {
     );
     expect(error).toBeInstanceOf(ProviderError);
     expect((error as ProviderError).status).toBe(429);
+    // A throttled token endpoint says nothing about the account's usage, and
+    // blaming an untouched plan is worse than saying nothing.
+    expect((error as ProviderError).message).toMatch(/isn't about your plan/i);
+  });
+
+  it("turns Retry-After into the wait it actually is", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "rate_limited" }), {
+        status: 429,
+        headers: { "content-type": "application/json", "retry-after": "45" },
+      }),
+    );
+    await expect(postToken("https://x/token", {}, { encode: "json" })).rejects.toThrow(/45s/);
   });
 
   it("surfaces the vendor's own reason on a plain failure", async () => {
@@ -69,6 +88,71 @@ describe("postToken", () => {
     await postToken("https://x/token", { a: "1" }, { encode: "form" });
     expect(mock.mock.calls[0]?.[1]?.body).toBe('{"a":"1"}');
     expect(mock.mock.calls[1]?.[1]?.body).toBe("a=1");
+  });
+});
+
+describe("captureRedirect", () => {
+  const TAB_ID = 42;
+  type Updated = (id: number, info: { url?: string }) => void;
+
+  /**
+   * chrome.tabs holding one listener per event. `remove` rejects the way Chrome
+   * does for a dead id, so a call the flow should not have made shows up as an
+   * unhandled rejection — the very bug these cases guard.
+   */
+  const stubTabs = () => {
+    const listeners: { updated?: Updated; removed?: (id: number) => void } = {};
+    const remove = vi.fn(() => Promise.reject(new Error(`No tab with id: ${TAB_ID}.`)));
+    (globalThis as Record<string, unknown>).chrome = {
+      tabs: {
+        create: () => Promise.resolve({ id: TAB_ID }),
+        remove,
+        onUpdated: {
+          addListener: (fn: Updated) => (listeners.updated = fn),
+          removeListener: () => (listeners.updated = undefined),
+        },
+        onRemoved: {
+          addListener: (fn: (id: number) => void) => (listeners.removed = fn),
+          removeListener: () => (listeners.removed = undefined),
+        },
+      },
+    };
+    return { listeners, remove };
+  };
+
+  /** Start the flow and let tabs.create resolve — until then it has no tab id. */
+  const start = async () => {
+    const stub = stubTabs();
+    const pending = captureRedirect({
+      authorizeUrl: "https://vendor.example/authorize",
+      redirectUri: "http://localhost:1455/callback",
+      state: "st",
+      signal: new AbortController().signal,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    return { ...stub, pending };
+  };
+
+  it("cancels when the user closes the approve tab, without closing it again", async () => {
+    const { listeners, remove, pending } = await start();
+
+    listeners.removed?.(TAB_ID);
+
+    await expect(pending).rejects.toThrow(SignInError);
+    await expect(pending).rejects.toMatchObject({ reason: "cancelled" });
+    // The tab is already gone; asking Chrome to close it again is the uncaught
+    // "No tab with id" the panel was reporting.
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("closes the approve tab once the code is captured", async () => {
+    const { listeners, remove, pending } = await start();
+
+    listeners.updated?.(TAB_ID, { url: "http://localhost:1455/callback?state=st&code=abc" });
+
+    await expect(pending).resolves.toBe("abc");
+    // A rejecting remove (tab died first) must not break a completed sign-in.
+    expect(remove).toHaveBeenCalledWith(TAB_ID);
   });
 });
 

@@ -1,6 +1,6 @@
 import type { OAuthCredential } from "./types";
 import { ProviderError, SignInError } from "./types";
-import { createLogger } from "@/lib/logger";
+import { createLogger, truncate } from "@/lib/logger";
 import { i18n } from "@/i18n";
 
 const log = createLogger("oauth");
@@ -20,6 +20,18 @@ const REFRESH_SKEW_MS = 5 * 60 * 1000;
 /** An authorization code is only good for a few minutes — stop waiting past that. */
 const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000;
 
+/**
+ * Close a tab we opened, tolerating one that is already gone. Every exit runs
+ * the same cleanup, and a tab's lifetime is not ours to assume: the window can
+ * close under it, or the browser can be shutting down. `tabs.remove` on a dead
+ * id rejects with "No tab with id", so an unguarded call surfaces as an
+ * uncaught rejection — noise from what is really a completed cancel.
+ */
+function closeTab(tabId?: number): void {
+  if (tabId === undefined) return;
+  void chrome.tabs.remove(tabId).catch(() => {});
+}
+
 /** RFC 7636 code verifier + S256 challenge, browser-safe (no Node Buffer). */
 export async function generatePKCE(): Promise<{ verifier: string; challenge: string }> {
   const verifierBytes = new Uint8Array(64);
@@ -29,11 +41,15 @@ export async function generatePKCE(): Promise<{ verifier: string; challenge: str
   return { verifier, challenge: toBase64Url(new Uint8Array(digest)) };
 }
 
-/** Opaque CSRF state, for flows that don't pin it to the PKCE verifier. */
+/**
+ * Opaque CSRF state. Hex rather than base64url on purpose: `-` and `_` are
+ * legal in a state parameter but claude.ai's authorize page rejects them with
+ * "Invalid request format", and hex is what every working client ships.
+ */
 export function randomState(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
-  return toBase64Url(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function toBase64Url(bytes: Uint8Array): string {
@@ -74,7 +90,7 @@ export function captureRedirect(opts: {
       clearTimeout(timeout);
       chrome.tabs.onUpdated.removeListener(onUpdated);
       chrome.tabs.onRemoved.removeListener(onRemoved);
-      if (openedTabId !== undefined) void chrome.tabs.remove(openedTabId);
+      closeTab(openedTabId);
     };
 
     const onAbort = () => finish(() => reject(new SignInError("cancelled")));
@@ -112,8 +128,12 @@ export function captureRedirect(opts: {
     };
 
     // The user closing the approve tab is a cancel, not a five-minute wait.
+    // Forget the id first: the tab is already gone, so the cleanup that follows
+    // must not ask Chrome to close it again.
     const onRemoved: Parameters<typeof chrome.tabs.onRemoved.addListener>[0] = (tabId) => {
-      if (tabId === openedTabId) finish(() => reject(new SignInError("cancelled")));
+      if (tabId !== openedTabId) return;
+      openedTabId = undefined;
+      finish(() => reject(new SignInError("cancelled")));
     };
 
     chrome.tabs.onUpdated.addListener(onUpdated);
@@ -124,7 +144,7 @@ export function captureRedirect(opts: {
         if (settled) {
           // The tab created is ours, so its id is set — but the type keeps it
           // optional, and removing an id-less tab would be a no-op anyway.
-          if (tab.id) void chrome.tabs.remove(tab.id);
+          closeTab(tab.id);
           return;
         }
         openedTabId = tab.id;
@@ -165,15 +185,27 @@ export async function postToken(
   // caller reads those bodies instead of treating them as transport failures.
   if (res.ok || (opts.allowErrorBody && res.status < 500)) return record;
 
-  log.info("token request refused", { status: res.status });
-  throw new ProviderError(
-    // No token came back, so nobody is signed in — a 429 here is the vendor
-    // throttling sign-ins, which waiting fixes and a new attempt does not.
-    res.status === 429
-      ? i18n.t("errors.signInRateLimited")
-      : i18n.t("errors.signInFailed", { detail: errorDetail(record) ?? String(res.status) }),
-    res.status,
-  );
+  const detail = errorDetail(record);
+  log.info("token request refused", { status: res.status, detail: detail ? truncate(detail) : "" });
+  throw new ProviderError(rejectionMessage(res, detail), res.status);
+}
+
+/**
+ * What to tell the user about a token endpoint that refused.
+ *
+ * A 429 here is the SIGN-IN service throttling the request — it says nothing
+ * about the account's usage, so it must never claim the plan is spent (an
+ * untouched plan being blamed is worse than no explanation). `Retry-After`
+ * turns "wait a bit" into an actual number whenever the vendor sends one.
+ */
+function rejectionMessage(res: Response, detail?: string): string {
+  if (res.status !== 429) {
+    return i18n.t("errors.signInFailed", { detail: detail ?? String(res.status) });
+  }
+  const seconds = num(Number(res.headers.get("retry-after")));
+  return seconds && seconds > 0
+    ? i18n.t("errors.signInRateLimitedFor", { seconds: Math.ceil(seconds) })
+    : i18n.t("errors.signInRateLimited");
 }
 
 /** Whether the body holds a full token pair — the sign of a successful exchange. */

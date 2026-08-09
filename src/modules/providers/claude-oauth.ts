@@ -1,5 +1,13 @@
 import type { OAuthCredential } from "./types";
-import { captureRedirect, generatePKCE, jwtClaims, postToken, str, toCredential } from "./oauth";
+import {
+  captureRedirect,
+  generatePKCE,
+  jwtClaims,
+  postToken,
+  randomState,
+  str,
+  toCredential,
+} from "./oauth";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("claude-oauth");
@@ -19,7 +27,13 @@ const log = createLogger("claude-oauth");
 const CLAUDE_OAUTH = {
   clientId: "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
   authorizeUrl: "https://claude.ai/oauth/authorize",
-  tokenUrl: "https://platform.claude.com/v1/oauth/token",
+  // The API host, NOT platform.claude.com. Both terminate the same grant, but
+  // platform.claude.com is a web frontend behind bot protection: an extension
+  // fetch arrives there with a chrome-extension:// Origin and gets turned away
+  // with 429s that have nothing to do with the account's usage. api.anthropic.com
+  // is built to be called by programmatic clients (and by browsers — it's what
+  // anthropic-dangerous-direct-browser-access exists for).
+  tokenUrl: "https://api.anthropic.com/v1/oauth/token",
   redirectUri: "http://localhost:54545/callback",
   scopes: "org:create_api_key user:profile user:inference",
 } as const;
@@ -49,11 +63,13 @@ export async function signInWithClaude(
   onPending?: (authorizeUrl: string) => void,
 ): Promise<OAuthCredential> {
   const { verifier, challenge } = await generatePKCE();
-  // Anthropic quirk: claude.ai/oauth/authorize rejects a random `state` with
-  // "Invalid request format" — the state must be the PKCE verifier, which is
-  // what the Claude Code CLI ships. Same secret the exchange needs, so a
-  // forged callback still can't mint tokens.
-  const state = verifier;
+  // A hex state, not base64url: claude.ai/oauth/authorize answers "Invalid
+  // request format" to a state carrying `-` or `_`, which is what sent an
+  // earlier attempt down the road of reusing the PKCE verifier as the state.
+  // Hex keeps the CSRF token independent of the verifier — the verifier is
+  // supposed to stay secret, and a state rides through the URL bar, browser
+  // history, and any extension watching the tab.
+  const state = randomState();
   const authorizeUrl = buildAuthorizeUrl(challenge, state);
   onPending?.(authorizeUrl);
 
