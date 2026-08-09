@@ -93,7 +93,7 @@ describe("buildExtractionMessages", () => {
 
   it("keeps the run's turns, stripped of everything the extraction call cannot use", () => {
     const messages = buildExtractionMessages(transcript, "");
-    expect(messages).toHaveLength(4); // system + the three non-system turns
+    expect(messages).toHaveLength(5); // system + the three non-system turns + the closing ask
 
     expect(messages[1]).toEqual({ role: "user", content: "Do the thing" });
     expect(messages[1]?.images).toBeUndefined();
@@ -136,7 +136,30 @@ describe("buildExtractionMessages", () => {
       { role: "assistant", content: "", toolCalls: [{ id: "c9", name: "done", args: {} }] },
     ];
     const messages = buildExtractionMessages(ended, "");
-    expect(messages).toHaveLength(2); // system + user — no empty assistant message
+    expect(messages).toHaveLength(3); // system + user + the closing ask — no empty assistant message
+  });
+
+  it("closes on a user turn — a trailing assistant message is an Anthropic prefill 400", () => {
+    // The common run end: the model speaks its summary alongside the done call.
+    const ended: ChatMessage[] = [
+      { role: "user", content: "Task" },
+      {
+        role: "assistant",
+        content: "All done — the renewal went through.",
+        toolCalls: [{ id: "c9", name: "done", args: { summary: "renewed" } }],
+      },
+    ];
+    const messages = buildExtractionMessages(ended, "");
+    // The summary survives the done-call filter — it is the gist extraction wants…
+    expect(messages.at(-2)).toEqual({
+      role: "assistant",
+      content: "All done — the renewal went through.",
+      toolCalls: undefined,
+      toolResults: undefined,
+    });
+    // …but it may not close the wire.
+    expect(messages.at(-1)?.role).toBe("user");
+    expect(messages.at(-1)?.content).toContain("none");
   });
 
   it("caps oversized texts — the extraction call needs the gist, not the pages", () => {

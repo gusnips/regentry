@@ -53,12 +53,17 @@ function capText(text: string): string {
  * screenshots (`data:` URLs — huge) and reasoning. Tool calls and results stay,
  * so the model can tell what the run actually did.
  *
- * Two wire-validity rules keep the replay from being rejected outright:
+ * Three wire-validity rules keep the replay from being rejected outright:
  *
  * - A run's last turn ends on `done`/`ask_user`, whose result the loop never
  *   records — replayed verbatim, that unmatched tool call 400s the extraction
  *   request on every strict provider (Anthropic, OpenAI alike). Only calls
  *   that got a result ride along.
+ * - The wire closes on a user turn asking for the list. A run ends on the
+ *   assistant's own words (the summary riding its `done` call survives the
+ *   filter above), and a trailing assistant message is an assistant-prefill
+ *   400 on Anthropic. Closing on the ask also restates the output contract
+ *   where the model's attention is freshest.
  * - Oversized texts are capped, so a long run's transcript stays a quick,
  *   cheap call instead of a full page-by-page replay.
  */
@@ -81,6 +86,12 @@ export function buildExtractionMessages(transcript: ChatMessage[], memory: strin
       toolResults: m.toolResults?.map((r) => ({ id: r.id, content: capText(r.content) })),
     });
   }
+  // The closing ask — see the trailing-assistant rule above. Merges into a
+  // final tool_results turn on the Anthropic wire (mergeConsecutiveUsers).
+  messages.push({
+    role: "user",
+    content: `Which durable facts from this run are worth remembering? One "- " line each, or exactly: none`,
+  });
   return messages;
 }
 
