@@ -382,7 +382,8 @@
     "open": "Open",
     "hide": "Hide",
     "openHint": "Open the TabRunner panel",
-    "hideHint": "Hides the widget until you re-enable it in Settings"
+    "hideHint": "Collapse to a small dot — click the dot to bring the widget back",
+    "expandHint": "Show the TabRunner status widget"
   },
   "board": {
     "title": "Tasks",

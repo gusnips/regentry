@@ -382,7 +382,8 @@
     "open": "Abrir",
     "hide": "Ocultar",
     "openHint": "Abrir o painel do TabRunner",
-    "hideHint": "Oculta o widget até você reativá-lo nas Configurações"
+    "hideHint": "Recolhe o widget para um ponto — clique no ponto para trazê-lo de volta",
+    "expandHint": "Mostrar o widget de status do TabRunner"
   },
   "board": {
     "title": "Tarefas",

@@ -382,7 +382,8 @@
     "open": "Abrir",
     "hide": "Ocultar",
     "openHint": "Abrir el panel de TabRunner",
-    "hideHint": "Oculta el widget hasta que lo reactives en Ajustes"
+    "hideHint": "Contrae el widget a un punto — haz clic en el punto para recuperarlo",
+    "expandHint": "Mostrar el widget de estado de TabRunner"
   },
   "board": {
     "title": "Tareas",

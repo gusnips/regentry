@@ -108,7 +108,9 @@ strip signal matters; a run blocked on the user (ask_user, plan approval) settle
 pulse into a still "?" and drops the badge — waiting-on-you, not working
 (`waitAgentIndicator`). Also `restricted-url.ts` (`isRestrictedUrl`, the proactive form of
 the injection rejection) and `status-widget.ts`: the floating pill ("TabRunner ·" + task +
-queue count, open-panel and hide buttons messaging the worker), injected only into each
+queue count, an open-panel button messaging the worker, and a hide button that collapses
+the pill in-page to a small blinking status dot — the dot keeps the working/waiting mark
+and a click on it brings the pill back), injected only into each
 window's active tab while the run board is non-empty — never the driven tab, which has the
 badge — moved on activation/focus churn, removed everywhere when idle or hidden via the
 `widgetHidden` pref.

@@ -17,9 +17,12 @@ const HOST_ID = "tabrunner-status-widget";
  * because every navigation wipes the document.
  *
  * Unlike the indicator this one is clickable — it is the way back to the run —
- * so pointer-events stay on, confined to the pill. Its two buttons message the
- * worker ("open" the side panel, "hide" the widget); the isolated world that
- * executeScript runs in has extension API access.
+ * so pointer-events stay on, confined to the pill. The "open" button messages
+ * the worker (the isolated world that executeScript runs in has extension API
+ * access); "hide" never leaves the page — it collapses the pill to a small
+ * blinking status dot, and clicking the dot brings the pill back. Collapse
+ * survives repaints (host dataset) but not navigation, which wipes the document
+ * anyway. Hiding the widget for good stays in Settings (`widgetHidden` pref).
  */
 
 /** What one paint needs — pre-digested by the worker (i18n, excerpts). */
@@ -32,9 +35,10 @@ export interface WidgetState {
   awaiting: boolean;
   openLabel: string;
   hideLabel: string;
-  /** Button tooltips — hide's says the choice is permanent until Settings. */
   openHint: string;
+  /** Collapse-to-dot tooltip; the dot's own tooltip is `expandHint`. */
   hideHint: string;
+  expandHint: string;
 }
 
 /** Tabs currently showing the pill — repaint and removal consult this set. */
@@ -45,8 +49,10 @@ let lastExclude: number | undefined;
 
 /**
  * Runs in the page. Must be fully self-contained — it is serialized, not closed
- * over. The buttons post their intent to the worker; the page function never
- * sees the answer, the pill just repaints or vanishes on the next sync.
+ * over. "Open" posts its intent to the worker and never sees the answer — the
+ * side panel simply opens. "Hide" is purely local: it collapses the pill to the
+ * status dot, and the dot expands back. The collapsed flag lives on the host's
+ * dataset so a repaint (fresh board content re-injects this function) keeps it.
  */
 export function paintWidget(
   hostId: string,
@@ -56,9 +62,12 @@ export function paintWidget(
   hideLabel: string,
   openHint: string,
   hideHint: string,
+  expandHint: string,
   awaiting: boolean,
 ): void {
-  document.getElementById(hostId)?.remove();
+  const old = document.getElementById(hostId);
+  const wasCollapsed = old?.dataset.collapsed === "1";
+  old?.remove();
 
   const host = document.createElement("div");
   host.id = hostId;
@@ -98,19 +107,28 @@ export function paintWidget(
       background: transparent; color: #6ee7b7; font: inherit; cursor: pointer;
     }
     .btn:hover { background: #34d39933; color: #e8eefb; }
+    .mini {
+      display: flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border: 0; border-radius: 9999px; padding: 0;
+      background: #0b1224ee; box-shadow: 0 2px 12px #0000004d; cursor: pointer;
+    }
   `;
+
+  // Parked on an answer speaks the favicon's wait language: a still "?", never
+  // the pulse — motion is the "working" signal and the run is blocked on you.
+  const makeStatus = (): HTMLSpanElement => {
+    const dot = document.createElement("span");
+    if (awaiting) {
+      dot.className = "wait";
+      dot.textContent = "?";
+    } else {
+      dot.className = "dot";
+    }
+    return dot;
+  };
 
   const pill = document.createElement("div");
   pill.className = "pill";
-  // Parked on an answer speaks the favicon's wait language: a still "?", never
-  // the pulse — motion is the "working" signal and the run is blocked on you.
-  const dot = document.createElement("span");
-  if (awaiting) {
-    dot.className = "wait";
-    dot.textContent = "?";
-  } else {
-    dot.className = "dot";
-  }
   // Self-identifying on unrelated pages — the badge's own emerald language.
   const brand = document.createElement("span");
   brand.className = "brand";
@@ -119,7 +137,7 @@ export function paintWidget(
   text.className = "task";
   text.textContent = task;
   text.title = task;
-  pill.append(dot, brand, text);
+  pill.append(makeStatus(), brand, text);
   if (queuedText) {
     const queued = document.createElement("span");
     queued.className = "queued";
@@ -134,16 +152,31 @@ export function paintWidget(
   open.addEventListener("click", () => {
     void chrome.runtime.sendMessage({ type: "tabrunner-widget", action: "open" });
   });
+
+  // Collapsed form: just the status mark in a small round button — still
+  // blinking while working, and the way back to the pill.
+  const mini = document.createElement("button");
+  mini.className = "mini";
+  mini.type = "button";
+  mini.title = expandHint;
+  mini.appendChild(makeStatus());
+
+  const setCollapsed = (collapsed: boolean): void => {
+    host.dataset.collapsed = collapsed ? "1" : "0";
+    pill.style.display = collapsed ? "none" : "";
+    mini.style.display = collapsed ? "" : "none";
+  };
   const hide = document.createElement("button");
   hide.className = "btn";
   hide.type = "button";
   hide.textContent = hideLabel;
   hide.title = hideHint;
-  hide.addEventListener("click", () => {
-    void chrome.runtime.sendMessage({ type: "tabrunner-widget", action: "hide" });
-  });
+  hide.addEventListener("click", () => setCollapsed(true));
+  mini.addEventListener("click", () => setCollapsed(false));
+
   pill.append(open, hide);
-  root.append(style, pill);
+  root.append(style, pill, mini);
+  setCollapsed(wasCollapsed);
   (document.body ?? document.documentElement).appendChild(host);
 }
 
@@ -161,6 +194,7 @@ function argsOf(state: WidgetState): Parameters<typeof paintWidget> {
     state.hideLabel,
     state.openHint,
     state.hideHint,
+    state.expandHint,
     state.awaiting,
   ];
 }

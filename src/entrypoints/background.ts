@@ -243,20 +243,17 @@ export default defineBackground(() => {
     });
   });
 
-  // The status widget's two buttons, posted from the page's isolated world.
+  // The status widget's "open" button, posted from the page's isolated world
+  // ("hide" collapses the pill in-page — it never reaches the worker).
   chrome.runtime.onMessage.addListener((msg: unknown, sender) => {
     const m = typeof msg === "object" && msg !== null ? (msg as Record<string, unknown>) : null;
-    if (m?.type !== "tabrunner-widget") return;
-    if (m.action === "hide") {
-      void widgetHidden.set(true);
-    } else if (m.action === "open") {
-      // Land on the work, not on whatever conversation happens to be active.
-      const board = currentBoard();
-      const target = board.running?.conversationId ?? board.queue[0]?.conversationId;
-      if (target) void setActiveConversation(target);
-      const windowId = sender.tab?.windowId;
-      if (windowId !== undefined) void chrome.sidePanel.open({ windowId });
-    }
+    if (m?.type !== "tabrunner-widget" || m.action !== "open") return;
+    // Land on the work, not on whatever conversation happens to be active.
+    const board = currentBoard();
+    const target = board.running?.conversationId ?? board.queue[0]?.conversationId;
+    if (target) void setActiveConversation(target);
+    const windowId = sender.tab?.windowId;
+    if (windowId !== undefined) void chrome.sidePanel.open({ windowId });
   });
 
   // Open side panel on action click
@@ -305,6 +302,7 @@ function boardToWidget(board: RunBoard): WidgetState | null {
     hideLabel: i18n.t("widget.hide"),
     openHint: i18n.t("widget.openHint"),
     hideHint: i18n.t("widget.hideHint"),
+    expandHint: i18n.t("widget.expandHint"),
   };
 }
 
