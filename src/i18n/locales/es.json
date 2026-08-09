@@ -37,6 +37,9 @@
     "showTipsHint": "Atajos y consejos de funciones de vez en cuando, bajo el campo de texto y el estado de la tarea.",
     "invalidUrl": "Escribe una URL completa que empiece con http:// o https://",
     "languageAutoShort": "Auto",
+    "about": "Acerca de",
+    "aboutBody": "TabRunner es un agente de navegador de código abierto: describes la tarea y él maneja tu navegador real con el proveedor de IA que elijas. Todo está bajo licencia MIT en GitHub — errores, ideas y pull requests son bienvenidos.",
+    "aboutIssues": "Issues",
     "nav": {
       "general": "General",
       "behavior": "Comportamiento",

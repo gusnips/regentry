@@ -5,9 +5,9 @@ import { Button } from "@/components/Button";
 import { Switch } from "@/components/Switch";
 import { TextField } from "@/components/TextField";
 import { useStoredItem } from "@/components/useStoredItem";
+import { LINKS } from "@/lib/links";
 import { StatusDot } from "./StatusStrip";
 
-const DOCS_URL = "https://github.com/gusnips/tabrunner/blob/main/docs/mcp.md";
 const SETUP_COMMAND = "claude mcp add tabrunner -- bun /path/to/tabrunner/daemon/src/index.ts";
 
 /** Copy with a moment of confirmation, then back to a quiet button. */
@@ -127,7 +127,7 @@ export function McpPane() {
           </div>
           <p className="mt-2 text-xs">
             <a
-              href={DOCS_URL}
+              href={LINKS.mcpDocs}
               target="_blank"
               rel="noreferrer"
               className="text-brand-600 hover:underline dark:text-brand-400"

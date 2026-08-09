@@ -37,6 +37,9 @@
     "showTipsHint": "Occasional shortcuts and feature tips under the composer and the run status.",
     "invalidUrl": "Enter a full URL starting with http:// or https://",
     "languageAutoShort": "Auto",
+    "about": "About",
+    "aboutBody": "TabRunner is an open-source browser agent: you describe a task, it drives your real browser through the AI provider you choose. Everything is MIT-licensed on GitHub — bugs, ideas and pull requests are welcome.",
+    "aboutIssues": "Issues",
     "nav": {
       "general": "General",
       "behavior": "Behavior",
