@@ -21,7 +21,7 @@ export function Onboarding() {
       <AddProviderDialog
         trigger={<Button className="mt-1">{t("onboarding.addProvider")}</Button>}
       />
-      <p className="text-xs text-neutral-400 dark:text-neutral-500">
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
         {t("onboarding.presetsNote", { count: PRESETS.length })}
       </p>
     </div>

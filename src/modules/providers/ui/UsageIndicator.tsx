@@ -41,7 +41,7 @@ function WindowRow({ label, window, now }: { label: string; window?: UsageWindow
         <div className={`h-full rounded-full ${tone}`} style={{ width: `${pct}%` }} />
       </div>
       {window.resetsAtMs !== undefined && (
-        <div className="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">
+        <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
           {t("usage.resets", { reset: formatResetRelative(window.resetsAtMs, now) })}
         </div>
       )}
@@ -111,7 +111,7 @@ export function UsageIndicator({ provider }: { provider: ProviderConfig }) {
 
       <div className="mt-2 flex flex-col gap-2.5">
         {loading && !snapshot && (
-          <div className="text-xs text-neutral-400 dark:text-neutral-500">{t("usage.loading")}</div>
+          <div className="text-xs text-neutral-500 dark:text-neutral-400">{t("usage.loading")}</div>
         )}
         {snapshot?.state === "error" && (
           <div>
@@ -146,7 +146,7 @@ export function UsageIndicator({ provider }: { provider: ProviderConfig }) {
 
       {usage && (
         <div className="mt-2.5 flex items-center justify-between border-t border-neutral-100 pt-2 dark:border-neutral-800">
-          <span className="text-xs text-neutral-400 dark:text-neutral-500">
+          <span className="text-xs text-neutral-500 dark:text-neutral-400">
             {t("usage.updated", { ago: formatAgo(usage.fetchedAt, now) })}
           </span>
           <Button

@@ -232,7 +232,7 @@ export function ConversationList({ onClose }: { onClose: () => void }) {
               onDelete={() => removeConversation(c.id)}
             />
           ))}
-          <p className="mt-2 px-2 pb-1 text-center text-xs text-neutral-400 dark:text-neutral-500">
+          <p className="mt-2 px-2 pb-1 text-center text-xs text-neutral-500 dark:text-neutral-400">
             {t("history.storedNote")}
           </p>
         </div>

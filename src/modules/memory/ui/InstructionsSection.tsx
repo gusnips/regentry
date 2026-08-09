@@ -30,7 +30,7 @@ export function InstructionsSection() {
         className="mt-3 w-full bg-white text-sm leading-relaxed text-neutral-800 dark:bg-neutral-900 dark:text-neutral-200"
       />
 
-      <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+      <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
         {saved ? t("memory.saved") : t("instructions.autosave")}
       </p>
     </section>

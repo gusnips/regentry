@@ -90,7 +90,7 @@ export function Select({
             const opt = byValue.get(v);
             if (!opt)
               return (
-                <span className="text-neutral-400 dark:text-neutral-500">
+                <span className="text-neutral-500 dark:text-neutral-400">
                   {t("common.selectPlaceholder")}
                 </span>
               );
@@ -106,7 +106,7 @@ export function Select({
             );
           }}
         </BaseSelect.Value>
-        <BaseSelect.Icon className="text-neutral-400 dark:text-neutral-500">▾</BaseSelect.Icon>
+        <BaseSelect.Icon className="text-neutral-500 dark:text-neutral-400">▾</BaseSelect.Icon>
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
         {/* alignItemWithTrigger would center the SELECTED item on the trigger, pushing

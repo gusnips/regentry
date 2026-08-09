@@ -30,7 +30,7 @@ export function FieldShell({
       )}
       {children}
       {hint && (
-        <Field.Description className="text-xs text-neutral-400 dark:text-neutral-500">
+        <Field.Description className="text-xs text-neutral-500 dark:text-neutral-400">
           {hint}
         </Field.Description>
       )}

@@ -73,7 +73,7 @@ export function SettingsMenu() {
                   <div className="text-[11px] font-medium tracking-wide text-neutral-400 uppercase dark:text-neutral-500">
                     {t("settings.showWidget")}
                   </div>
-                  <div className="mt-0.5 text-[11px] leading-snug text-neutral-400 dark:text-neutral-500">
+                  <div className="mt-0.5 text-[11px] leading-snug text-neutral-500 dark:text-neutral-400">
                     {t("settings.showWidgetHint")}
                   </div>
                 </div>

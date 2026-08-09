@@ -237,7 +237,7 @@ export function ChatInput() {
               </button>
             </div>
           ))}
-          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
             {t("chat.queuedHint")}
           </p>
         </div>
@@ -278,7 +278,7 @@ export function ChatInput() {
               >
                 ✕
               </button>
-              <span className="mt-0.5 block text-center text-[10px] text-neutral-400 dark:text-neutral-500">
+              <span className="mt-0.5 block text-center text-[10px] text-neutral-500 dark:text-neutral-400">
                 {a.token.replace(/[[\]]/g, "")}
               </span>
             </div>
@@ -342,7 +342,7 @@ export function ChatInput() {
         <RunTargetToggle />
         {pastedTexts.some((p) => text.includes(p.token)) && (
           <p
-            className="min-w-0 truncate text-right text-[11px] italic text-neutral-400 dark:text-neutral-500"
+            className="min-w-0 truncate text-right text-[11px] italic text-neutral-500 dark:text-neutral-400"
             title={t("chat.pasteHint")}
           >
             {t("chat.pasteHint")}

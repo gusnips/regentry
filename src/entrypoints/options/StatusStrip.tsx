@@ -63,7 +63,7 @@ export function StatusStrip({ onAddProvider }: { onAddProvider: () => void }) {
         <span className="text-neutral-700 dark:text-neutral-300">
           {providerDisplayName(provider)}
           {provider.model && (
-            <span className="text-neutral-400 dark:text-neutral-500"> · {provider.model}</span>
+            <span className="text-neutral-500 dark:text-neutral-400"> · {provider.model}</span>
           )}
         </span>
       ) : (

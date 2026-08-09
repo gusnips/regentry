@@ -28,7 +28,7 @@ function StatusDot({ connected }: { connected: boolean }) {
       className={
         connected
           ? "text-emerald-600 dark:text-emerald-400"
-          : "text-neutral-400 dark:text-neutral-500"
+          : "text-neutral-500 dark:text-neutral-400"
       }
     >
       {connected ? "●" : "○"}

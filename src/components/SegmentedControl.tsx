@@ -45,7 +45,7 @@ export function SegmentedControl<T extends string>({
           value={o.value}
           title={o.title}
           aria-label={o.title}
-          className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-neutral-500 transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 data-[pressed]:bg-white data-[pressed]:text-neutral-900 data-[pressed]:shadow-sm dark:text-neutral-400 dark:hover:text-neutral-100 dark:data-[pressed]:bg-neutral-950 dark:data-[pressed]:text-neutral-100"
+          className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-neutral-600 transition-colors hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 data-[pressed]:bg-white data-[pressed]:text-neutral-900 data-[pressed]:shadow-sm dark:text-neutral-400 dark:hover:text-neutral-100 dark:data-[pressed]:bg-neutral-950 dark:data-[pressed]:text-neutral-100"
         >
           {o.label}
         </Toggle>

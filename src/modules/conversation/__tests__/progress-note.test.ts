@@ -18,7 +18,11 @@ describe("buildProgressNote", () => {
   it("lists each step once, with the distinguishing argument", () => {
     const note = buildProgressNote(
       [
-        step({ tool: "navigate", summary: "Navigated successfully", args: { url: "https://www.reddit.com/r/all" } }),
+        step({
+          tool: "navigate",
+          summary: "Navigated successfully",
+          args: { url: "https://www.reddit.com/r/all" },
+        }),
         step({ tool: "click", summary: "Clicked at (420, 300)", args: { ref: "e50" } }),
       ],
       "Provider error: 429",

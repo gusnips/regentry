@@ -60,9 +60,16 @@ if (!extId) {
 }
 console.log(`extension id: ${extId}`);
 
-async function shoot(page_: string, name: string, dark: boolean) {
+/**
+ * Chrome's side panel opens around 400px and the options page is a wide
+ * document — shooting both at 1280 made every panel review a lie, all the
+ * whitespace in the world and no line ever wrapping where it really wraps.
+ */
+const SIDEPANEL_WIDTH = 400;
+
+async function shoot(page_: string, name: string, dark: boolean, width = 1280) {
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800 });
+  await page.setViewport({ width, height: 800 });
   await page.emulateMediaFeatures([
     { name: "prefers-color-scheme", value: dark ? "dark" : "light" },
   ]);
@@ -74,9 +81,102 @@ async function shoot(page_: string, name: string, dark: boolean) {
   await page.close();
 }
 
+/**
+ * A stand-in transcript, so the review sees the surface people actually live
+ * in — plan card, step rows, bubbles, an error — instead of the empty state
+ * the panel shows for about ten seconds of its life. Written straight to the
+ * storage keys `defineItem` builds ("local:tabrunner:<key>").
+ */
+async function seedConversation() {
+  const page = await browser.newPage();
+  await page.goto(`chrome-extension://${extId}/sidepanel.html`);
+  await page.evaluate(() => {
+    const id = "shots-demo";
+    const t = 1_700_000_000_000;
+    let n = 0;
+    const msg = (m: Record<string, unknown>) => ({ id: `m${++n}`, timestamp: t + n * 1000, ...m });
+    return chrome.storage.local.set({
+      // Without a provider the panel shows onboarding, transcript or not.
+      "tabrunner:active-provider": "shots-provider",
+      "tabrunner:providers": [
+        {
+          id: "shots-provider",
+          name: "Anthropic",
+          shape: "anthropic",
+          baseUrl: "https://api.anthropic.com",
+          apiKey: "sk-ant-preview",
+          model: "claude-sonnet-4-5",
+          reasoningEffort: "medium",
+          createdAt: t,
+        },
+      ],
+      "tabrunner:active-conversation": id,
+      "tabrunner:conversations": [
+        {
+          id,
+          title: "Pull the latest invoice from my inbox into the expense report",
+          createdAt: t,
+          updatedAt: t + 60_000,
+          messageCount: 8,
+        },
+      ],
+      [`tabrunner:conversation:${id}`]: [
+        msg({
+          role: "user",
+          content: "Pull the latest invoice from my inbox into the expense report",
+          tab: { title: "Inbox — webmail", url: "https://mail.example.com/inbox" },
+        }),
+        msg({
+          role: "plan",
+          content: "",
+          steps: [
+            "Open the inbox",
+            "Find the latest invoice",
+            "Open the expense report",
+            "Attach it and fill the fields",
+          ],
+          current: 1,
+        }),
+        msg({ role: "reasoning", content: "Checking which tab is in front…", elapsed: 4200 }),
+        msg({
+          role: "step",
+          tool: "navigate",
+          ok: true,
+          content: "",
+          args: { url: "https://mail.example.com/inbox" },
+        }),
+        msg({
+          role: "step",
+          tool: "snapshot",
+          ok: true,
+          content: "",
+          detail: "Captured 214 elements",
+        }),
+        msg({ role: "step", tool: "click", ok: true, content: "", args: { ref: "e42" } }),
+        msg({
+          role: "error",
+          content: "The tab this task was driving (Inbox — webmail) was closed — the run stopped.",
+          kind: "network",
+        }),
+        msg({
+          role: "assistant",
+          content:
+            "I found the **March invoice** (`INV-2291`, $412.60) and attached it to the expense report. The vendor and date fields are filled; the category is still blank because the form offers no match for “cloud hosting”.",
+        }),
+      ],
+    });
+  });
+  await page.close();
+}
+
 for (const dark of [false, true]) {
   const mode = dark ? "dark" : "light";
   await shoot("options.html", `ext-options-${mode}`, dark);
-  await shoot("sidepanel.html", `ext-sidepanel-${mode}`, dark);
+  await shoot("sidepanel.html", `ext-sidepanel-${mode}`, dark, SIDEPANEL_WIDTH);
+}
+await seedConversation();
+for (const dark of [false, true]) {
+  const mode = dark ? "dark" : "light";
+  await shoot("sidepanel.html", `ext-chat-${mode}`, dark, SIDEPANEL_WIDTH);
 }
 await browser.close();

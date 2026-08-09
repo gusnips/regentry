@@ -16,5 +16,5 @@ export function planGlyphClass(index: number, current: number): string {
     ? "text-brand-700 dark:text-brand-400"
     : index === current
       ? "text-amber-700 dark:text-amber-400"
-      : "text-neutral-400 dark:text-neutral-600";
+      : "text-neutral-400 dark:text-neutral-500";
 }

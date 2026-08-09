@@ -25,7 +25,10 @@ describe("formatTranscriptWindow", () => {
         msg("user", "find flights"),
         msg("reasoning", "let me think"),
         msg("step", "Connection hiccup — retrying (1/2)", { tool: "retry" }),
-        msg("step", "Navigated successfully", { tool: "navigate", args: { url: "https://reddit.com" } }),
+        msg("step", "Navigated successfully", {
+          tool: "navigate",
+          args: { url: "https://reddit.com" },
+        }),
         msg("error", "Provider error: 429"),
         msg("assistant", "I need to continue"),
       ],
@@ -68,7 +71,7 @@ describe("formatTranscriptWindow", () => {
 
     expect(formatTranscriptWindow(messages, {}).log).not.toContain("Submit");
     expect(formatTranscriptWindow(messages, { includeDetails: true }).log).toContain(
-      "↳ button \"Submit\" [ref=e3]",
+      '↳ button "Submit" [ref=e3]',
     );
   });
 

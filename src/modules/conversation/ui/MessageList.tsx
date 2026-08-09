@@ -93,8 +93,8 @@ function StepIcon({ live, ok }: { live?: boolean; ok?: boolean }) {
       />
     );
   if (ok === false) return <span className="text-red-500 dark:text-red-400">✗</span>;
-  if (ok === true) return <span className="text-neutral-400 dark:text-neutral-500">✓</span>;
-  return <span className="text-neutral-300 dark:text-neutral-600">•</span>;
+  if (ok === true) return <span className="text-neutral-500 dark:text-neutral-400">✓</span>;
+  return <span className="text-neutral-400 dark:text-neutral-500">•</span>;
 }
 
 /**
@@ -120,7 +120,7 @@ function StepRow({ msg }: { msg: Message }) {
       <StepIcon live={msg.live} ok={msg.ok} />
       <span className="font-medium">{label}</span>
       {!msg.live && trailing && (
-        <span className="truncate text-neutral-400 dark:text-neutral-500">{trailing}</span>
+        <span className="truncate text-neutral-500 dark:text-neutral-400">{trailing}</span>
       )}
     </>
   );
@@ -137,7 +137,7 @@ function StepRow({ msg }: { msg: Message }) {
     <details className="group max-w-full self-start px-1 text-xs text-neutral-500 dark:text-neutral-400">
       <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none hover:text-neutral-700 dark:hover:text-neutral-300">
         {line}
-        <span className="shrink-0 text-neutral-300 transition-transform group-open:rotate-90 dark:text-neutral-600">
+        <span className="shrink-0 text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500">
           ▸
         </span>
       </summary>
@@ -205,7 +205,7 @@ function QuestionCard({ msg, onAnswer }: { msg: Message; onAnswer?: (text: strin
             ))}
           </div>
         )}
-        <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
+        <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
           {t(choices.length > 0 ? "chat.askUserHint" : "chat.askUserOpenHint")}
         </span>
       </div>
@@ -341,13 +341,13 @@ function PlanCard({
       className="group max-w-[85%] self-start rounded-lg border border-neutral-200 px-3 py-1.5 text-xs dark:border-neutral-700"
     >
       <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none">
-        <span className="inline-block text-neutral-300 transition-transform group-open:rotate-90 dark:text-neutral-600">
+        <span className="inline-block text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500">
           ▸
         </span>
         <span className="font-medium text-neutral-700 dark:text-neutral-200">
           {t("plan.title")}
         </span>
-        <span className="text-neutral-400 dark:text-neutral-500">
+        <span className="text-neutral-500 dark:text-neutral-400">
           {t("plan.progress", { done, total: steps.length })}
         </span>
         {active && (
@@ -360,7 +360,7 @@ function PlanCard({
             key={i}
             className={
               i < current
-                ? "flex gap-1.5 text-neutral-400 line-through dark:text-neutral-600"
+                ? "flex gap-1.5 text-neutral-400 line-through dark:text-neutral-500"
                 : i === current
                   ? "flex gap-1.5 font-medium text-neutral-800 dark:text-neutral-100"
                   : "flex gap-1.5 text-neutral-500 dark:text-neutral-400"
@@ -443,7 +443,7 @@ function QuietThought({ msg, onToggle }: { msg: Message; onToggle: () => void })
       title={t("chat.reasoningToggle")}
       className="flex items-center gap-1.5 self-start rounded select-none hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:hover:text-neutral-300"
     >
-      <span aria-hidden className="text-neutral-300 dark:text-neutral-600">
+      <span aria-hidden className="text-neutral-400 dark:text-neutral-500">
         ▸
       </span>
       <span className="font-medium">
@@ -510,12 +510,12 @@ function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoni
       className="group max-w-full self-start px-1 text-xs text-neutral-500 dark:text-neutral-400"
     >
       <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none hover:text-neutral-700 dark:hover:text-neutral-300">
-        <span className="shrink-0 text-neutral-300 transition-transform group-open:rotate-90 dark:text-neutral-600">
+        <span className="shrink-0 text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500">
           ▸
         </span>
         <StepIcon live={burst.live} ok={failed ? false : true} />
         <span className="truncate">{list}</span>
-        <span className="shrink-0 text-neutral-400 dark:text-neutral-500">
+        <span className="shrink-0 text-neutral-500 dark:text-neutral-400">
           · {formatDuration(elapsed)}
         </span>
       </summary>
@@ -576,7 +576,7 @@ function TabStamp({ tab }: { tab: NonNullable<Message["tab"]> }) {
   return (
     <span
       title={tab.url}
-      className="flex max-w-[85%] min-w-0 items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500"
+      className="flex max-w-[85%] min-w-0 items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400"
     >
       {tab.favIconUrl && iconOk && (
         <img
@@ -728,7 +728,7 @@ export function MessageList() {
         <p className="max-w-[240px] text-xs text-neutral-500 dark:text-neutral-400">
           {t("chat.emptyBody")}
         </p>
-        <p className="mt-2 text-xs text-neutral-400 dark:text-neutral-500">
+        <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
           {t("chat.emptyExample")}
         </p>
       </div>

@@ -8,7 +8,17 @@ import { paintWidget, removeWidget } from "../status-widget";
 const HOST_ID = "tabrunner-status-widget";
 
 function paint(awaiting = false) {
-  paintWidget(HOST_ID, "Summarize the thread", "", "Open", "Hide", "Open hint", "Hide hint", "Expand hint", awaiting);
+  paintWidget(
+    HOST_ID,
+    "Summarize the thread",
+    "",
+    "Open",
+    "Hide",
+    "Open hint",
+    "Hide hint",
+    "Expand hint",
+    awaiting,
+  );
 }
 
 function host(): HTMLElement {

@@ -47,7 +47,7 @@
     "strip": {
       "noProvider": "No provider yet — add one",
       "mcpConnected": "MCP: connected",
-      "mcpWaiting": "MCP: idle",
+      "mcpWaiting": "MCP: waiting",
       "mcpOff": "MCP: off"
     },
     "mcp": {
@@ -215,7 +215,7 @@
     "send": "Send",
     "retry": "Retry",
     "emptyTitle": "What should I do?",
-    "emptyBody": "Describe a task and I'll drive the browser — navigate, read pages, click, type — in its own background tab, unless you ask for this page. Uses your existing logins.",
+    "emptyBody": "Describe a task and I'll drive the browser — navigate, read pages, click, type — on the page you're looking at, or in a tab of its own if you switch to Background below. Uses your existing logins.",
     "emptyExample": "Example: \"pull the latest invoice from my inbox into the expense report\"",
     "portLost": "Connection to the agent was lost — the run stopped. Send the task again to retry.",
     "reloaded": "TabRunner was reloaded — close and reopen this panel to keep going.",
@@ -251,7 +251,7 @@
     "queueNoImages": "Images can't join a running task — queue the text now and paste the image with the next task.",
     "pasteToken": "Pasted {{count}} lines",
     "pasteHint": "Long pasted text is folded into a note to keep things tidy — the full text is still sent. Backspace deletes it.",
-    "askUserHint": "Tap one, or write your own",
+    "askUserHint": "Pick one, or write your own",
     "askUserOpenHint": "Type your answer below",
     "answerPlaceholder": "Write your answer… (Enter to send)",
     "thinkingFor": "Thinking · {{duration}}",
@@ -287,7 +287,6 @@
     "progress": "{{done}}/{{total}}",
     "peekMore": "{{done}} done · {{pending}} to go",
     "approvalTitle": "Approve this plan?",
-    "revisionNote": "The user asked for changes instead of approving — their note is in \"revision\". Update the plan to address it and present the revised plan.",
     "reapprovalTitle": "The plan changed — approve the new one?",
     "approve": "Approve",
     "adjust": "Adjust",

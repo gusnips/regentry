@@ -200,7 +200,7 @@ export function ProviderForm({
             key — it says where that key goes. A sign-in reveals its own
             destination on the vendor's page, so the URL is just noise there. */}
         {preset && !isOAuth && (
-          <span className="text-xs text-neutral-400 dark:text-neutral-500">{preset.baseUrl}</span>
+          <span className="text-xs text-neutral-500 dark:text-neutral-400">{preset.baseUrl}</span>
         )}
       </div>
 
@@ -259,7 +259,7 @@ export function ProviderForm({
         />
       )}
 
-      <p className="text-xs text-neutral-400 dark:text-neutral-500">
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
         {t("providerForm.modelNote")}
       </p>
 
