@@ -43,21 +43,22 @@ describe("buildTaskMessage", () => {
     expect(message).toContain("switch_tab only when");
   });
 
+  it("tells an adopted run it drives the user's tab and must plan before acting", () => {
+    const message = buildTaskMessage("book the flight", '- heading "Flights"', {
+      mode: { background: true, adopted: true },
+    });
+
+    expect(message).not.toContain("tab of your own");
+    expect(message).toContain("driving the user's current tab");
+    expect(message).toContain("propose a plan before any action");
+  });
+
   it("says nothing about tabs when the run drives the user's own page", () => {
     const message = buildTaskMessage("book the flight", '- heading "Flights"', {
       mode: { background: false },
     });
 
     expect(message).not.toContain("tab of your own");
-  });
-
-  it("names the page Chrome would not let the run open, and forbids answering about it", () => {
-    const message = buildTaskMessage("summarize this page", '- heading "Google"', {
-      mode: { background: true, blockedStart: "chrome://settings/" },
-    });
-
-    expect(message).toContain("chrome://settings/");
-    expect(message).toContain("ask_user");
-    expect(message).toContain("never answer as if you had seen it");
+    expect(message).not.toContain("driving the user's current tab");
   });
 });

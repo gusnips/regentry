@@ -10,38 +10,34 @@ module's internals, not on every session.
 Agent loop (stream → tool calls → results → repeat), tools, system prompt, run slot +
 serial queue, run start.
 
-Panel runs drive **the current page by default**; the composer toggle opts into a
-**background** run, where `start-run.ts` gives the run an inactive tab of its own, waits
-for load, labels its tab group with the task (✓/?/✗ on end, then collapses it), and then
-brings that tab forward — loaded and grouped, so a run that fails to start takes its tab
-back without the user ever seeing it blink past. `thisPage` drives the user's current tab
-(restricted URLs refused up front, a loading page awaited).
+A panel run **works the tab the user is looking at by default** (`resolveRunTab`):
+the state the task is about — the half-filled form, the search results, the scrolled
+thread — lives in that tab and nowhere else, and re-visiting its url in a fresh tab
+would both lose it and open a second live session the site may read as a bot. So the
+default run adopts the current tab: groups it under the task's name, drives it with
+`activateOnSwitch` on, and settles the group with ✓/?/✗ when it lets go. The composer
+toggle's `thisPage` is the same drive minus the group bookkeeping.
 
-Where that background tab opens, in order (`resolveRunTab`): an unanswered question goes
-back to the **very tab** it was asked on when that tab is still alive and still there —
-re-opening its url would lose the page state the question was about (the half-filled
-form, the search results); then the task URL an MCP client named; then the page **the
-user is looking at**, because "book this" and "is it cheaper elsewhere" mean THIS page
-and a plan written against google.com is a plan about nothing; then `defaultStartUrl`;
-then google. Chrome forbids extensions on a handful of pages — those fall back to
-`defaultStartUrl` rather than refusing the task, and `mode.blockedStart` names the
-skipped page in the task message so the model asks instead of answering about a page it
-never saw. A new-tab page counts as "no page", not as a blocked one. An MCP client has no
-current page, so its sessions start on the default. The task message also tells a
-background run that the tab is its own and the user is elsewhere — otherwise it reasons
-about "the tab the user is on" as if it were driving it.
+Adoption is safe because of the plan gate, not instead of it: the run reads the page and
+proposes a plan before any action tool unlocks, so "don't touch this draft" is a plan
+rejection, not a reason to have forked the tab. Only a tab the run *opened* is taken
+back on a rejected plan — an adopted tab is the user's own and is never closed.
 
-Background runs take the browser **once, at the start, and never again**. The reveal is
-worth its interruption only there: the user just pressed send, is watching, and the tab
-being raised shows the very page they were already on — so the agent stops being
-invisible for the price of nothing. After that the driver's `activateOnSwitch` is off for
-them, so `switch_tab` re-targets without pulling the window forward (`thisPage` and MCP
-direct control keep it on — they already own the screen) and the user is free to work
-elsewhere while the run continues. The reveal is panel-only: an MCP client's run has
-nobody at the browser, and raising Chrome over the editor the user IS looking at is the
-hijack the whole design avoids. Every foregrounding — the panel's chips, `switch_tab`,
-this reveal — goes through `browser/focus-tab.ts` (window first, then tab, so the window
-never flashes its old tab).
+The run still gets a tab of its own when there is no page to work: a blank/new-tab page,
+a restricted page (chrome://, the Web Store — the model is told via `mode.blockedStart`
+so it asks instead of answering about a page it never saw), an MCP client (no current
+tab at all — its sessions start on the neutral default), or a run the client pointed at
+an explicit URL. Those forks open on `defaultStartUrl` (then google), inactive, labelled
+with the task, and — for the panel only — brought forward once they're loaded and
+grouped, so a run that fails to start takes its tab back without the user ever seeing it
+blink past.
+
+An unanswered question is the one case the run goes back to a tab it had before: it
+returns to the **very tab** the question was asked on when that tab is still alive and
+still there, page state and all — re-opening its url would lose the half-filled form or
+search results the question was about. The task message tells the model whose tab it's
+on (`mode.adopted`, `mode.background`), so it reads-and-plans on the user's tab and stays
+put in its own.
 
 `run-queue.ts` is the FIFO on top of the single
 slot: every submission goes through `submitRun` — free slot starts now, occupied waits and

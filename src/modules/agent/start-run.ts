@@ -107,7 +107,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       emit({ type: "error", message: target.error });
       return { ok: true };
     }
-    const { tab, groupId, opened, blockedStart } = target;
+    const { tab, groupId, opened, adopted } = target;
     if (!tab.id) {
       emit({ type: "error", message: i18n.t("errors.noActiveTab") });
       return { ok: true };
@@ -138,8 +138,10 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     let drivenTabId = tab.id;
     let drivenTitle = tabLabel(tab);
     const driver = createDriver(tab.id, {
-      // A background run never pulls the window to itself, not even mid-switch.
-      activateOnSwitch: opts.thisPage === true,
+      // A run that drives the user's own tab (this-page, or an adopted one) or
+      // answers to a person watching may bring it forward; a run in a tab of its
+      // own never pulls the window to itself.
+      activateOnSwitch: opts.thisPage === true || adopted === true,
       onSwitch: (info) => {
         void hideAgentIndicator(drivenTabId);
         drivenTabId = info.id;
@@ -202,7 +204,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         previousTabs: previousTabs.length > 0 ? previousTabs : undefined,
         mode: {
           background: opts.thisPage !== true,
-          ...(blockedStart ? { blockedStart } : {}),
+          ...(adopted ? { adopted: true } : {}),
         },
         drainInjected: () => run.injectedQueue.splice(0, run.injectedQueue.length),
         signal: run.controller.signal,
@@ -346,8 +348,8 @@ interface RunTab {
   groupId?: number;
   /** This run opened the tab, so a rejected plan can take it back. */
   opened?: boolean;
-  /** The page the user was on that Chrome would not let the run open. */
-  blockedStart?: string;
+  /** This run took over the user's current tab — drive it, group it, never close it. */
+  adopted?: boolean;
 }
 
 /** Last-resort start page when neither the task nor the preference names one. */
@@ -368,22 +370,24 @@ function isBlankPage(url: string | undefined): boolean {
  * active tab, refused early when injection could never reach it, given a moment
  * to finish loading.
  *
- * Otherwise the run gets a tab of its own, so it never hijacks what the user is
- * reading, and that tab opens on the page the user was actually looking at:
- * "book this", "reply to this" and "is it cheaper elsewhere" all mean THIS
- * page, and a plan written against google.com is a plan about nothing. Chrome
- * blocks a handful of pages outright (chrome://, the Web Store) — those fall
- * back to the start-page preference rather than refusing the task, and the
- * model is told so it never reports on a page it never saw.
+ * The default panel run adopts that same tab: the state the task is about — the
+ * half-filled form, the search results, the scrolled thread — lives there and
+ * nowhere else, and re-visiting its url in a fresh tab would both lose it and
+ * open a second live session the site may read as a bot. So the run takes the
+ * tab as-is and the plan gate carries the "don't touch this" decision to the
+ * user; the tab is grouped under the task's name so the user can see at a glance
+ * that it's being driven, and it is never the run's to close.
  *
- * A panel run's own tab is then brought forward, once. The user just pressed
- * send and is watching: hiding the work behind their own tab makes the agent
- * invisible for the price of nothing, since that tab opens on the very page
- * they were already looking at. Only here, at the start — mid-run the driver's
- * `activateOnSwitch` keeps its hands off the window, so the run stops taking
- * the browser the moment the user turns to something else. An MCP client's run
- * is never revealed: nobody is at the browser, and reaching over to raise
- * Chrome over the editor they ARE looking at is the hijack this all avoids.
+ * Only when there is no page to adopt — a blank/new-tab page, a page Chrome
+ * forbids, an MCP client (nowhere near a browser), or an explicit target URL —
+ * does the run open a tab of its own, on the start-page preference. A panel
+ * run's own tab is brought forward once it's loaded and grouped: the user just
+ * pressed send and is watching, and a run that fails to start takes its tab back
+ * without the user ever seeing it blink past. Mid-run the driver's
+ * `activateOnSwitch` keeps its hands off the window, so the run stops taking the
+ * browser the moment the user turns to something else. An MCP client's run is
+ * never revealed: nobody is at the browser, and reaching over to raise Chrome
+ * over the editor they ARE looking at is the hijack this all avoids.
  */
 async function resolveRunTab(
   opts: StartRunOptions,
@@ -406,6 +410,27 @@ async function resolveRunTab(
   if (reused) {
     if (reveal && reused.tab.id !== undefined) await focusTab(reused.tab.id, reused.tab.windowId);
     return reused;
+  }
+
+  // The default panel run works the tab the user is looking at — the state the
+  // task is about (the half-filled form, the search results, the scrolled
+  // thread) lives there and only there. Re-visiting its url in a fresh tab
+  // would answer about a cold copy, and open a second live session the site
+  // may read as a bot. Adoption takes the tab as-is; the run reads it and
+  // proposes a plan before any action tool is unlocked, so "don't touch this
+  // draft" is a plan rejection, not a fork.
+  const adopt = reveal && !opts.url;
+  if (adopt) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id && tab.url && !isBlankPage(tab.url) && !isRestrictedUrl(tab.url)) {
+      try {
+        if (tab.status === "loading") await waitForLoad(tab.id, 10_000);
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : String(e) };
+      }
+      const groupId = await labelRunTab(tab.id, opts.task);
+      return { tab, adopted: true, ...(groupId !== undefined ? { groupId } : {}) };
+    }
   }
 
   const start = await resolveStartUrl(opts, continuation?.url);
@@ -438,7 +463,6 @@ async function resolveRunTab(
     tab: loaded,
     opened: true,
     ...(groupId !== undefined ? { groupId } : {}),
-    ...(start.blockedStart ? { blockedStart: start.blockedStart } : {}),
   };
 }
 
@@ -468,24 +492,19 @@ async function reuseContinuationTab(last: LastTab | undefined): Promise<RunTab |
 async function resolveStartUrl(
   opts: StartRunOptions,
   continuationUrl: string | undefined,
-): Promise<{ url: string; blockedStart?: string }> {
+): Promise<{ url: string }> {
   // Both name the page outright: the bridge's `url` argument, and a
   // continuation whose tab is gone but whose page is known.
   const named = opts.url || continuationUrl;
   if (named) return { url: named };
 
   // Only a panel run has a "page the user is on" — an MCP client is somewhere
-  // else entirely, and its session starts on the neutral default.
-  let blockedStart: string | undefined;
-  if (opts.owner === "panel") {
-    const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (active?.url && !isBlankPage(active.url)) {
-      if (!isRestrictedUrl(active.url)) return { url: active.url };
-      blockedStart = active.url;
-    }
-  }
+  // else entirely, and its session starts on the neutral default. The panel
+  // adoption path has already taken the user's tab when it could; reaching here
+  // means that tab was blank or blocked, so the run opens its own on the
+  // start-page preference (or the fallback), never a copy of a page it can't see.
   const url = (await defaultStartUrl.get()) || FALLBACK_START_URL;
-  return { url, ...(blockedStart ? { blockedStart } : {}) };
+  return { url };
 }
 
 /** Takes back a tab this run opened and never earned — best-effort, it may be gone. */

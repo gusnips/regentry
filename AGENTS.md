@@ -65,9 +65,10 @@ never reach the service-worker bundle.
 ### Modules
 
 - `agent/` — agent loop, tools, system prompt, run slot + FIFO queue, run start. Panel runs
-  drive **the current page by default**; the composer toggle opts into a background run
-  (fresh tab, tab group labelled with task + ✓/?/✗, brought forward once at the start and
-  never yanked again). Runs survive panel close.
+  **work the user's current tab by default** — adopt it, group it under the task's name,
+  drive it (the plan gate protects a page the user didn't want touched). It opens its own
+  tab only when there's no page to work: blank/new-tab, a restricted page, an MCP client,
+  or an explicit URL. Runs survive panel close.
   Action tools
   are gated on user-approved plans; `ask_user` enforces the consequential-action policy.
 - `browser/` — accessibility-tree snapshot, CDP driver (trusted input), on-page badge + pulsing

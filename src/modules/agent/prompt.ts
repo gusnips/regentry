@@ -117,11 +117,10 @@ export interface RunMode {
   /** The run has a tab of its own; the user is working in a different one. */
   background: boolean;
   /**
-   * The page the user was on that Chrome forbids extensions from opening. The
-   * run started on the fallback start page instead — named so the model never
-   * answers about a page it was never given.
+   * The run took over the user's current tab — the page they were looking at,
+   * with whatever they had in it. Read it and propose a plan before touching it.
    */
-  blockedStart?: string;
+  adopted?: boolean;
 }
 
 export interface TaskContext {
@@ -154,16 +153,17 @@ export function buildTaskMessage(task: string, pageContent: string, ctx: TaskCon
     `Current page:\n${pageContent}`,
     `Current date: ${date} (${weekday})`,
   ];
-  // A run in its own tab has to be told so, or it reasons about "the tab the
-  // user is on" as if it were driving it — and steals a tab it should leave be.
-  if (mode?.background) {
+  // The run has to know whose tab it's on. Its own: stay in it, don't steal the
+  // user's. The user's: it holds live state (a half-filled form, a scrolled
+  // thread) — read and plan before any action, and the plan gate carries the
+  // "don't touch this" decision to the user.
+  if (mode?.background && !mode.adopted) {
     parts.push(
       "You are working in a tab of your own, opened on the page the user was looking at — their own tab is untouched, leave it alone. Navigate THIS tab wherever the task leads; switch_tab only when the task needs a page that is already open somewhere else, and expect that switch not to bring the tab forward.",
     );
-  }
-  if (mode?.blockedStart) {
+  } else if (mode?.adopted) {
     parts.push(
-      `The page the user was on (${mode.blockedStart}) cannot be opened by an extension — Chrome blocks it. This run started on the page above instead. If the task was about that blocked page, call "ask_user", say you cannot read it, and ask where to work instead — never answer as if you had seen it.`,
+      "You are driving the user's current tab — the page they were looking at, with whatever they already had in it (a half-filled form, a scrolled thread, a filtered search). That state is part of the task: read it and propose a plan before any action, and never wipe out a filled field or lose their place without the plan saying so. If the task isn't about this page, ask before navigating away from it.",
     );
   }
   const count = previousTabs?.length ?? 0;
