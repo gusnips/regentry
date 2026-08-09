@@ -27,11 +27,14 @@
     "addProvider": "Añadir proveedor",
     "menuTitle": "Ajustes",
     "allSettings": "Todos los ajustes →",
-    "defaultStartUrl": "Página de inicio predeterminada",
-    "defaultStartUrlHint": "Las tareas en segundo plano abren una pestaña nueva aquí, salvo que la tarea indique un sitio.",
+    "defaultStartUrl": "Página de inicio de reserva",
+    "defaultStartUrlHint": "Una tarea en segundo plano empieza en la página que estás viendo. Cuando Chrome bloquea esa página — chrome:// o la Web Store — se abre aquí.",
     "showWidget": "Widget flotante de estado",
     "showWidgetHint": "Un indicador flotante en tus pestañas mientras una tarea corre o espera en cola.",
     "backgroundTasks": "Tareas en segundo plano",
+    "sidePanel": "Panel lateral",
+    "showTips": "Consejos",
+    "showTipsHint": "Atajos y consejos de funciones de vez en cuando, bajo el campo de texto y el estado de la tarea.",
     "invalidUrl": "Escribe una URL completa que empiece con http:// o https://",
     "languageAutoShort": "Auto"
   },
@@ -119,7 +122,7 @@
     "signOutBody": "TabRunner olvida esta sesión y deja de usar la suscripción. El proveedor sigue en tu lista — inicia sesión de nuevo cuando quieras."
   },
   "modelPicker": {
-    "providerTitle": "Proveedor para la próxima tarea",
+    "providerTitleFor": "{{name}} — proveedor para la próxima tarea",
     "modelTitle": "Modelo para la próxima tarea — Auto elige el más reciente al ejecutar",
     "modelTitleFor": "{{model}} — modelo para la próxima tarea. Auto elige el más reciente al ejecutar.",
     "provider": "Proveedor",
@@ -251,6 +254,8 @@
   "run": {
     "tool": {
       "navigate": "Navegando",
+      "list_tabs": "Listando pestañas",
+      "switch_tab": "Cambiando de pestaña",
       "snapshot": "Leyendo la página",
       "click": "Haciendo clic",
       "type": "Escribiendo",
@@ -321,7 +326,7 @@
     "bridgeStopTitle": "Detiene la tarea y devuelve el navegador",
     "background": "En segundo plano",
     "thisPage": "Esta página",
-    "targetTitle": "Dónde corre la tarea — una pestaña propia en segundo plano, o esta página"
+    "targetTitle": "Dónde corre la tarea — una pestaña en segundo plano que abre en esta página, o esta misma página"
   },
   "queue": {
     "position": "En cola · n.º {{position}}",
@@ -340,6 +345,17 @@
     "jump": "Mostrar la pestaña",
     "stop": "Detener",
     "cancel": "Cancelar"
+  },
+  "tips": {
+    "label": "Consejo",
+    "escStop": "Esc detiene la tarea en curso — lo que ya escribiste se envía como la siguiente.",
+    "historyRecall": "Pulsa ↑ con el campo vacío para recorrer lo que ya enviaste — ↓ avanza de nuevo.",
+    "thisPage": "Una tarea en segundo plano abre esta página en una pestaña propia, así sigues navegando — elige “Esta página” cuando la tarea deba actuar en la pestaña que estás viendo.",
+    "queueSteer": "Puedes seguir escribiendo mientras la tarea corre — el mensaje se encola y la orienta entre pasos.",
+    "pasteImage": "Pega una captura de pantalla directamente en el campo — el agente puede verla.",
+    "pasteCollapse": "Un texto largo pegado se pliega en un token compacto — el texto completo igual llega al agente.",
+    "planApproval": "La tarea muestra su plan antes de tocar la página — apruébalo y el panel se aparta mientras trabaja, o responde con ajustes y replanifica.",
+    "widget": "La píldora flotante en tus pestañas muestra qué hace TabRunner — haz clic en Abrir para ir al panel."
   },
   "notify": {
     "doneFallback": "Tarea terminada."

@@ -14,3 +14,8 @@ export const defaultStartUrl = defineItem<string>("defaultStartUrl", "https://ww
 /** The floating run-status widget's hide preference — respected across runs;
  *  re-enabled from Settings. */
 export const widgetHidden = defineItem<boolean>("widgetHidden", false);
+
+/** Rotating tips under the run band and in the composer footer — on unless the
+ *  user turns them off in Settings. Checked at pick time, so off applies to the
+ *  very next boundary. */
+export const tipsEnabled = defineItem<boolean>("tipsEnabled", true);

@@ -5,6 +5,7 @@ import { DrivenTabChip } from "./DrivenTabChip";
 import { planGlyph } from "./plan";
 import { pendingAskId } from "./ask-gate";
 import { useNow } from "./hooks";
+import { TipLine } from "@/modules/tips/ui";
 import { Button } from "@/components/Button";
 import type { BridgeActive } from "@/shared/protocol";
 import { formatDuration, formatTokens } from "@/lib/format";
@@ -136,6 +137,9 @@ export function RunStatus() {
         </div>
       )}
       {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
+      {/* The working band is the one place the user watches while waiting —
+          Claude Code's spinner-tip slot; idle/footer gets the same line. */}
+      <TipLine className="text-brand-800/60 dark:text-brand-200/50" />
     </div>
   );
 }

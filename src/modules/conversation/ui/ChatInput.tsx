@@ -6,30 +6,11 @@ import { pendingAskId } from "./ask-gate";
 import { toAttachment } from "./image";
 import { recallStep, sentMessages } from "./history-recall";
 import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
+import { RunTargetSelect } from "./RunTargetSelect";
+import { TipLine } from "@/modules/tips/ui";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
-import { Icon } from "@/components/Icon";
 import { ZoomableImage } from "@/components/ZoomableImage";
-
-/** Two stacked pages — the run gets its own tab, behind yours. */
-function BackgroundIcon() {
-  return (
-    <Icon>
-      <rect x="8" y="3" width="13" height="13" rx="2" />
-      <path d="M16 19v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h1" />
-    </Icon>
-  );
-}
-
-/** One page with an arrow into it — the run drives what you're looking at. */
-function ThisPageIcon() {
-  return (
-    <Icon>
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M12 7v8m-3.5-3.5L12 15l3.5-3.5" />
-    </Icon>
-  );
-}
 
 interface Attachment {
   /** The "[Image #1]" token that stands in for this image inside the task text. */
@@ -56,8 +37,6 @@ export function ChatInput() {
   const unqueueMessage = useConversationStore((s) => s.unqueueMessage);
   const recallQueued = useConversationStore((s) => s.recallQueued);
   const stop = useConversationStore((s) => s.stop);
-  const runTarget = useConversationStore((s) => s.runTarget);
-  const setRunTarget = useConversationStore((s) => s.setRunTarget);
   const queuedRun = useConversationStore((s) => s.queuedRun);
   const cancelQueuedRun = useConversationStore((s) => s.cancelQueuedRun);
   // The chip's position reads the board live (like RunBoard does) — entries
@@ -313,22 +292,6 @@ export function ChatInput() {
         </p>
       )}
       <div className="flex items-end gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className={`mb-0.5 flex shrink-0 items-center gap-1 px-1.5 ${
-            runTarget === "thisPage" ? "bg-neutral-100 dark:bg-neutral-800" : ""
-          }`}
-          title={t("run.targetTitle")}
-          aria-label={t("run.targetTitle")}
-          aria-pressed={runTarget === "thisPage"}
-          onClick={() => setRunTarget(runTarget === "thisPage" ? "background" : "thisPage")}
-        >
-          {runTarget === "thisPage" ? <ThisPageIcon /> : <BackgroundIcon />}
-          <span className="text-xs">
-            {runTarget === "thisPage" ? t("run.thisPage") : t("run.background")}
-          </span>
-        </Button>
         <TextArea
           ref={areaRef}
           className="flex-1"
@@ -366,11 +329,24 @@ export function ChatInput() {
           </Button>
         )}
       </div>
-      {pastedTexts.some((p) => text.includes(p.token)) && (
-        <p className="text-[11px] italic text-neutral-400 dark:text-neutral-500">
-          {t("chat.pasteHint")}
-        </p>
-      )}
+      {/* Composer footer: the run-target select anchors the left (permanent, so
+          the row never collapses), transient hints take the right one at a time
+          by contextual priority — their coming and going never moves the control. */}
+      <div className="flex items-center justify-between gap-2">
+        <RunTargetSelect />
+        {pastedTexts.some((p) => text.includes(p.token)) ? (
+          <p
+            className="min-w-0 truncate text-right text-[11px] italic text-neutral-400 dark:text-neutral-500"
+            title={t("chat.pasteHint")}
+          >
+            {t("chat.pasteHint")}
+          </p>
+        ) : (
+          // The paste hint outranks the tip — it's about what's in the box
+          // right now; the tip is ambient and can wait for the slot to free up.
+          <TipLine className="min-w-0 text-right" />
+        )}
+      </div>
     </div>
   );
 }

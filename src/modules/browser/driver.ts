@@ -40,18 +40,30 @@ export interface BrowserDriver {
   screenshot(): Promise<string>;
   navigate(url: string): Promise<void>;
   listTabs(): Promise<TabInfo[]>;
-  /** Re-targets every later action at this tab and brings it to the front. */
+  /** Re-targets every later action at this tab — foregrounding it is `activateOnSwitch`'s call. */
   switchTab(tabId: TabId): Promise<TabInfo>;
 }
 
-/**
- * `onSwitch` fires when the agent re-targets itself mid-run — the background
- * moves the on-page badge and the panel's driving chip with it.
- */
-export function createDriver(
-  initialTabId: TabId,
-  onSwitch?: (tab: TabInfo) => void,
-): BrowserDriver {
+export interface DriverOptions {
+  /**
+   * Fires when the agent re-targets itself mid-run — the background moves the
+   * on-page badge and the panel's driving chip with it.
+   */
+  onSwitch?: (tab: TabInfo) => void;
+  /**
+   * Bring a switched-to tab to the front. On for a run that already owns the
+   * screen (this-page, MCP direct control), off for a background run — yanking
+   * the user's window mid-switch is exactly what "background" promises not to
+   * do, and CDP input reaches an inactive tab either way (the background run's
+   * own start tab is never activated). The cost is that a background tab gets
+   * no rAF ticks, so a page whose UI only advances on animation frames can
+   * stall — a reason to pick "this page" for one, not to steal focus for all.
+   */
+  activateOnSwitch?: boolean;
+}
+
+export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): BrowserDriver {
+  const { onSwitch, activateOnSwitch = true } = opts;
   // The run starts on the submit-time tab but may hop: the CDP layer is
   // multi-tab (attach re-targets per call), so the driver just tracks a target.
   let current = initialTabId;
@@ -125,17 +137,18 @@ export function createDriver(
     async switchTab(tabId) {
       // chrome.tabs.get throws for a dead id — the model then re-lists.
       const tab = await chrome.tabs.get(tabId);
-      // Trusted input needs the tab on screen — a background tab doesn't get
-      // real events. Bring it forward, the way the panel's chip does.
-      await chrome.tabs.update(tabId, { active: true });
-      await chrome.windows.update(tab.windowId, { focused: true });
+      if (activateOnSwitch) {
+        // Bring it forward, the way the panel's chip does.
+        await chrome.tabs.update(tabId, { active: true });
+        await chrome.windows.update(tab.windowId, { focused: true });
+      }
       current = tabId;
       const info: TabInfo = {
         id: tabId,
         windowId: tab.windowId,
         title: tab.title ?? "",
         url: tab.url ?? "",
-        active: true,
+        active: activateOnSwitch ? true : tab.active === true,
         ...(tab.favIconUrl ? { favIconUrl: tab.favIconUrl } : {}),
       };
       onSwitch?.(info);

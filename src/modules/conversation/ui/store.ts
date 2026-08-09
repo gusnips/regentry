@@ -331,16 +331,19 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       makeMsg("user", task, { ...(images?.length ? { images } : {}), ...(tab ? { tab } : {}) }),
     );
     startRun(p, task, images, thisPage || undefined);
-    // Dispatch-and-forget: close on the first event back — posting from an
-    // unloading context isn't guaranteed, so the event is the delivery receipt.
-    if (!thisPage) schedulePanelClose();
+    // The panel stays up through the plan: a background run's FIRST act is to
+    // read the page and ask you to approve what it intends to do, and closing
+    // before that turns the approval into an OS notification you have to click
+    // your way back from. Dispatch-and-forget starts at approvePlan, where the
+    // work actually becomes unattended.
   };
 
   const handleEvent = (event: Event) => {
     const s = get();
     if (closeOnFirstEvent) {
-      // An immediate failure must stay visible — never close on an error.
-      if (event.type === "error") cancelPanelClose();
+      // Never close on something the user still has to see: an immediate
+      // failure, or a replan that re-opens the gate before the panel is gone.
+      if (event.type === "error" || event.type === "plan_approval") cancelPanelClose();
       else if (
         event.type === "run_queued" ||
         event.type === "driving" ||
@@ -669,9 +672,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         pushMsg(makeMsg("error", i18n.t("chat.reloaded")));
         return;
       }
+      // Same as sendTask: the retry goes back through the plan gate, and the
+      // panel leaves with the approval.
       startRun(p, last.task, last.images, last.thisPage);
-      // Same dispatch-and-forget as sendTask — a background retry closes too.
-      if (!last.thisPage) schedulePanelClose();
     },
 
     stop: () => {
@@ -702,6 +705,15 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       if (!get().planApproval) return;
       post({ type: "plan_approval", approved: true });
       set({ planApproval: null });
+      // Approval is the handover: from here the run is unattended, so a
+      // background one this panel dispatched takes the panel with it and gets
+      // out of the way. The close waits for the next event — proof the approval
+      // landed. A reject ends the run and a revision parks it again, so neither
+      // closes; and a panel the user opened by hand to answer a parked run
+      // (lastRun is another session's) stays, because closing a window someone
+      // just opened reads as a crash, not as tact.
+      const dispatched = get().lastRun;
+      if (dispatched && !dispatched.thisPage) schedulePanelClose();
     },
 
     rejectPlan: () => {

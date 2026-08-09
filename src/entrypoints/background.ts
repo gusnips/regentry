@@ -207,6 +207,17 @@ export default defineBackground(() => {
           // Answer fresh on connect — the broadcast may have happened while the
           // panel was closed, and stale state must never read as "browser idle".
           send(port, { type: "run_active", active: getBridge()?.activity ?? null });
+          // Re-arm a plan the panel was closed on. The approval card lives only
+          // in panel memory, so a run parked while the panel was away — which
+          // is every run whose notification the user just clicked — would come
+          // back unanswerable: a question on screen with no way to say yes.
+          const parked = getActiveRun();
+          if (parked?.owner === "panel" && parked.planApproval) {
+            const { steps, reapproval } = parked.planApproval;
+            if ((await getActiveId()) === parked.conversationId) {
+              send(port, { type: "plan_approval", steps, reapproval });
+            }
+          }
           break;
         }
 

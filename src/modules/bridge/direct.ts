@@ -164,10 +164,14 @@ export class DirectSession {
   private driver(): BrowserDriver {
     const tabId = this.tabId;
     if (tabId === null) throw new Error(i18n.t("errors.noActiveTab"));
-    return createDriver(tabId, (tab) => {
-      this.tabId = tab.id;
-      void hideAgentIndicator(tabId);
-      void showAgentIndicator(tab.id, i18n.t("indicator.driving"));
+    // Direct control is the client steering tab by tab — it asked for this tab,
+    // so bringing it forward is the answer, not an interruption.
+    return createDriver(tabId, {
+      onSwitch: (tab) => {
+        this.tabId = tab.id;
+        void hideAgentIndicator(tabId);
+        void showAgentIndicator(tab.id, i18n.t("indicator.driving"));
+      },
     });
   }
 

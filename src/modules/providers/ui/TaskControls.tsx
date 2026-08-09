@@ -121,9 +121,10 @@ export function ProviderSelect() {
       <Select
         size="sm"
         variant="quiet"
-        className="max-w-[45%] shrink-0"
+        className="shrink-0"
+        iconOnlyTrigger
         ariaLabel={t("modelPicker.provider")}
-        title={t("modelPicker.providerTitle")}
+        title={t("modelPicker.providerTitleFor", { name: providerDisplayName(active) })}
         value={active.id}
         onChange={(id) => (id === ADD_NEW ? setAddOpen(true) : void activate(id))}
         options={[

@@ -58,6 +58,7 @@ export function Select({
   variant = "boxed",
   title,
   ariaLabel,
+  iconOnlyTrigger = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -67,6 +68,10 @@ export function Select({
   variant?: Variant;
   title?: string;
   ariaLabel?: string;
+  /** Compact trigger: the picked option's icon + chevron only, the full label
+   *  lives in the popup rows and the tooltip. For dense strips where every
+   *  option carries a distinctive icon (provider logos, mode glyphs). */
+  iconOnlyTrigger?: boolean;
 }) {
   const { t } = useTranslation();
   const byValue = new Map(options.map((o) => [o.value, o]));
@@ -90,6 +95,7 @@ export function Select({
                 </span>
               );
             const hint = opt.hint ? <Hint text={opt.hint} /> : null;
+            if (iconOnlyTrigger && opt.icon) return opt.icon;
             return (
               <span className="flex min-w-0 items-center gap-1.5">
                 {opt.icon}

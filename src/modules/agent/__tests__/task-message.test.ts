@@ -10,9 +10,9 @@ describe("buildTaskMessage", () => {
   });
 
   it("points at the one previous tab when the run moved", () => {
-    const message = buildTaskMessage("now archive that email", '- heading "Doc"', [
-      { title: "Gmail — Inbox", url: "https://mail.google.com/mail/u/0/" },
-    ]);
+    const message = buildTaskMessage("now archive that email", '- heading "Doc"', {
+      previousTabs: [{ title: "Gmail — Inbox", url: "https://mail.google.com/mail/u/0/" }],
+    });
 
     expect(message).toContain("Task: now archive that email");
     expect(message).toContain('Current page:\n- heading "Doc"');
@@ -21,14 +21,43 @@ describe("buildTaskMessage", () => {
   });
 
   it("lists every earlier tab of a multi-tab conversation", () => {
-    const message = buildTaskMessage("send it to that client", '- heading "Doc"', [
-      { title: "Gmail — Inbox", url: "https://mail.google.com/" },
-      { title: "Q3 Invoice", url: "https://docs.google.com/document/d/1" },
-    ]);
+    const message = buildTaskMessage("send it to that client", '- heading "Doc"', {
+      previousTabs: [
+        { title: "Gmail — Inbox", url: "https://mail.google.com/" },
+        { title: "Q3 Invoice", url: "https://docs.google.com/document/d/1" },
+      ],
+    });
 
     expect(message).toContain("other tabs:");
     expect(message).toContain('"Gmail — Inbox" (https://mail.google.com/)');
     expect(message).toContain('"Q3 Invoice" (https://docs.google.com/document/d/1)');
     expect(message).toContain("any of them");
+  });
+
+  it("tells a background run it has a tab of its own", () => {
+    const message = buildTaskMessage("book the flight", '- heading "Flights"', {
+      mode: { background: true },
+    });
+
+    expect(message).toContain("tab of your own");
+    expect(message).toContain("switch_tab only when");
+  });
+
+  it("says nothing about tabs when the run drives the user's own page", () => {
+    const message = buildTaskMessage("book the flight", '- heading "Flights"', {
+      mode: { background: false },
+    });
+
+    expect(message).not.toContain("tab of your own");
+  });
+
+  it("names the page Chrome would not let the run open, and forbids answering about it", () => {
+    const message = buildTaskMessage("summarize this page", "- heading \"Google\"", {
+      mode: { background: true, blockedStart: "chrome://settings/" },
+    });
+
+    expect(message).toContain("chrome://settings/");
+    expect(message).toContain("ask_user");
+    expect(message).toContain("never answer as if you had seen it");
   });
 });

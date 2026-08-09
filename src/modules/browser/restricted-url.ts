@@ -7,7 +7,10 @@
 export function isRestrictedUrl(url: string | undefined): boolean {
   if (!url) return false;
   return (
-    /^(chrome|chrome-extension|about|edge|view-source):/i.test(url) ||
-    /^https?:\/\/chrome\.google\.com\/webstore/i.test(url)
+    /^(chrome|chrome-untrusted|chrome-extension|devtools|about|edge|view-source):/i.test(url) ||
+    // Both Web Store hostnames: the legacy path-scoped one and the domain it
+    // moved to — Chrome blocks extensions on either.
+    /^https?:\/\/chrome\.google\.com\/webstore/i.test(url) ||
+    /^https?:\/\/chromewebstore\.google\.com/i.test(url)
   );
 }

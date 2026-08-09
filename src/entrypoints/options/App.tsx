@@ -8,7 +8,7 @@ import { TextField } from "@/components/TextField";
 import { useStoredItem } from "@/components/useStoredItem";
 import { ThemeToggle } from "@/components/ThemeControl";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { defaultStartUrl, widgetHidden } from "@/lib/prefs";
+import { defaultStartUrl, tipsEnabled, widgetHidden } from "@/lib/prefs";
 
 /** A start page a background run can actually open — full http(s) URL only. */
 function validStartUrl(value: string): boolean {
@@ -25,6 +25,7 @@ export default function App() {
   // Stored inverted ("hidden") so the default needs no write; shown as the
   // positive toggle.
   const hidden = useStoredItem(widgetHidden);
+  const tips = useStoredItem(tipsEnabled);
   const stored = useStoredItem(defaultStartUrl);
   // Edited locally, persisted on blur — a half-typed URL must never reach a run.
   const [startUrl, setStartUrl] = useState<string | null>(null);
@@ -115,6 +116,28 @@ export default function App() {
             inputMode="url"
             spellCheck={false}
             aria-invalid={urlError || undefined}
+          />
+        </div>
+      </section>
+
+      {/* Panel-only chrome — nothing here touches a background run. */}
+      <section className="mt-8">
+        <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+          {t("settings.sidePanel")}
+        </h2>
+        <div className="mt-3 flex items-start justify-between gap-4">
+          <div>
+            <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+              {t("settings.showTips")}
+            </div>
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              {t("settings.showTipsHint")}
+            </p>
+          </div>
+          <Switch
+            checked={tips}
+            onChange={(v) => void tipsEnabled.set(v)}
+            ariaLabel={t("settings.showTips")}
           />
         </div>
       </section>

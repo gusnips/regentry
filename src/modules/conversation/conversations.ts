@@ -10,6 +10,8 @@ export interface LastTab {
   title: string;
   /** Opportunistic hint only — may point at a long-closed tab. */
   tabId?: number;
+  /** The tab group that run created, when it made one — reused only if it still matches. */
+  groupId?: number;
 }
 
 /** List-view metadata — the list reads only this, never the message arrays. */

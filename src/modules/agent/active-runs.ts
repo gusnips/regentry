@@ -14,9 +14,18 @@ export interface ActiveRun {
   controller: AbortController;
   /** Messages typed mid-run, drained by the loop at each tool boundary. */
   injectedQueue: { id: string; text: string }[];
-  /** A parked plan-approval prompt — resolved by the panel's plan_approval command.
-   *  `feedback` rides along on a revision request (a "no" that keeps the run). */
-  planApproval?: { resolve: (approved: boolean, feedback?: string) => void };
+  /**
+   * A parked plan-approval prompt — resolved by the panel's plan_approval
+   * command. `feedback` rides along on a revision request (a "no" that keeps
+   * the run). The steps are kept, not just the resolver: a panel that closed
+   * and came back has no memory of the card, and a parked run it cannot answer
+   * is a run nobody can finish.
+   */
+  planApproval?: {
+    steps: string[];
+    reapproval: boolean;
+    resolve: (approved: boolean, feedback?: string) => void;
+  };
 }
 
 let active: ActiveRun | null = null;

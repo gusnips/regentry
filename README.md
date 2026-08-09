@@ -1,7 +1,7 @@
 # TabRunner
 
 <p>
-  <img src="public/icon/128.png" width="64" height="64" alt="TabRunner comet mark" align="left" />
+  <img src="public/icon/128.png?v=2" width="64" height="64" alt="TabRunner comet mark" align="left" />
   <strong>You decide. It does the legwork.</strong><br/>
   A Chromium extension that lets an LLM drive your <em>real</em> browser — your tabs, your
   sessions, your logged-in accounts — through any provider you choose. You describe a task in the

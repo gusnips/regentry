@@ -6,7 +6,7 @@ const BASE_PROMPT = `You are TabRunner, a browser automation agent. You control 
 
 ## Workflow
 
-- Plan first, always. Before ANY action that changes the browser (navigate, switch_tab, click, type, press_key, scroll), call "plan" with your intended steps — the run pauses there and the user must approve the plan before any action executes, and tools called before approval are rejected. The user may instead send the plan back with requested changes (the note arrives in the plan tool's result): revise your steps and call "plan" again — the revised plan goes back to the user for approval too. Page reads (snapshot, screenshot, list_tabs) are always allowed so you can look before you plan. Call "plan" again each time you finish a step; if you change the upcoming steps, the user is asked to approve the new plan. A purely read-only task ("what's on this page") needs no plan — answer and call "done".
+- Plan first, always. Before ANY action that changes the browser (navigate, click, type, press_key, scroll), call "plan" with your intended steps — the run pauses there and the user must approve the plan before any action executes, and tools called before approval are rejected. The user may instead send the plan back with requested changes (the note arrives in the plan tool's result): revise your steps and call "plan" again — the revised plan goes back to the user for approval too. Looking is always allowed, so look before you plan: snapshot, screenshot, list_tabs and switch_tab run without approval, and a plan written from the real page beats one written from the task alone. Call "plan" again each time you finish a step; if you change the upcoming steps, the user is asked to approve the new plan. A purely read-only task ("what's on this page") needs no plan — answer and call "done".
 - Always call snapshot first to see the page before interacting with it, and use its ref ids (e.g. "e12") for click and type.
 - If the task needs a page that is already open in another tab, switch to it (list_tabs, then switch_tab) instead of navigating to it fresh — the user's logged-in session lives there.
 - Navigate only to URLs the task or the current page gave you, or to a site's root or search page. Never guess a deep URL — a hallucinated path lands on a 404 or, worse, a wrong page that looks right.
@@ -97,6 +97,27 @@ export interface PreviousTab {
   url: string;
 }
 
+/** How this run reaches the browser — the opening context the model works from. */
+export interface RunMode {
+  /** The run has a tab of its own; the user is working in a different one. */
+  background: boolean;
+  /**
+   * The page the user was on that Chrome forbids extensions from opening. The
+   * run started on the fallback start page instead — named so the model never
+   * answers about a page it was never given.
+   */
+  blockedStart?: string;
+}
+
+export interface TaskContext {
+  /**
+   * Tabs earlier runs in this conversation drove, set only for ones this run is
+   * not on — so a continuation typed elsewhere can still find its way back.
+   */
+  previousTabs?: PreviousTab[];
+  mode?: RunMode;
+}
+
 /**
  * The first user message: the task plus the runtime context the model starts with.
  * The previous-tab pointer only appears when the conversation has worked somewhere
@@ -106,11 +127,8 @@ export interface PreviousTab {
  * sense of "today" comes from training data — "this Friday" and "my latest
  * invoice" are unanswerable without a real anchor.
  */
-export function buildTaskMessage(
-  task: string,
-  pageContent: string,
-  previousTabs?: PreviousTab[],
-): string {
+export function buildTaskMessage(task: string, pageContent: string, ctx: TaskContext = {}): string {
+  const { previousTabs, mode } = ctx;
   const now = new Date();
   const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
     now.getDate(),
@@ -121,6 +139,18 @@ export function buildTaskMessage(
     `Current page:\n${pageContent}`,
     `Current date: ${date} (${weekday})`,
   ];
+  // A run in its own tab has to be told so, or it reasons about "the tab the
+  // user is on" as if it were driving it — and steals a tab it should leave be.
+  if (mode?.background) {
+    parts.push(
+      "You are working in a tab of your own, opened in the background on the page the user was looking at. The user is in a different tab and will not see this one, so nothing here interrupts them. Navigate THIS tab wherever the task leads; switch_tab only when the task needs a page that is already open somewhere else, and expect that tab to stay in the background too.",
+    );
+  }
+  if (mode?.blockedStart) {
+    parts.push(
+      `The page the user was on (${mode.blockedStart}) cannot be opened by an extension — Chrome blocks it. This run started on the page above instead. If the task was about that blocked page, call "ask_user", say you cannot read it, and ask where to work instead — never answer as if you had seen it.`,
+    );
+  }
   const count = previousTabs?.length ?? 0;
   if (count > 0 && previousTabs) {
     const list = previousTabs.map((t) => `"${t.title}" (${t.url})`).join("; ");

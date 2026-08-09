@@ -67,7 +67,7 @@ describe("driver tab switching", () => {
 
   it("switchTab re-targets later actions and brings the tab forward", async () => {
     const switches: number[] = [];
-    const driver = createDriver(1, (info) => switches.push(info.id));
+    const driver = createDriver(1, { onSwitch: (info) => switches.push(info.id) });
 
     await expect(driver.snapshot()).resolves.toMatchObject({ pageContent: "snap:1" });
 
@@ -78,6 +78,16 @@ describe("driver tab switching", () => {
       { id: 2, props: { active: true } },
       { window: 10, props: { focused: true } },
     ]);
+
+    await expect(driver.snapshot()).resolves.toMatchObject({ pageContent: "snap:2" });
+  });
+
+  it("a background run re-targets without taking the browser away from the user", async () => {
+    const driver = createDriver(1, { activateOnSwitch: false });
+
+    const info = await driver.switchTab(2);
+    expect(info).toMatchObject({ id: 2, active: false });
+    expect(updates).toEqual([]); // no tab activation, no window focus
 
     await expect(driver.snapshot()).resolves.toMatchObject({ pageContent: "snap:2" });
   });

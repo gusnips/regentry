@@ -18,6 +18,7 @@ import {
 } from "@/modules/providers";
 import type { ResolvedProviderConfig } from "@/modules/providers/types";
 import { getConversationTabsFor, getMessages, recordDrivenTabFor } from "@/modules/conversation";
+import type { LastTab } from "@/modules/conversation/conversations";
 import type { Message } from "@/modules/conversation/types";
 import { defaultStartUrl } from "@/lib/prefs";
 import { createLogger, truncate } from "@/lib/logger";
@@ -91,20 +92,18 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     }
 
     // Where the run drives: the user's current tab only when explicitly asked,
-    // a fresh background tab otherwise — dispatch-and-forget never hijacks
-    // what the user is reading. An answer continues where the question arose:
-    // a transcript parked on an unanswered ask_user starts from the page the
-    // conversation last drove, not the default start URL.
+    // a tab of the run's own otherwise — dispatch-and-forget never hijacks what
+    // the user is reading. An answer continues where the question arose: a
+    // transcript parked on an unanswered ask_user goes back to the very tab the
+    // conversation last drove, page state and all.
     const conversationTabs = await getConversationTabsFor(conversationId);
-    const continuationUrl = hasPendingQuestion(transcript)
-      ? conversationTabs[0]?.url
-      : undefined;
-    const target = await resolveRunTab(opts, continuationUrl);
+    const continuation = hasPendingQuestion(transcript) ? conversationTabs[0] : undefined;
+    const target = await resolveRunTab(opts, continuation);
     if ("error" in target) {
       emit({ type: "error", message: target.error });
       return { ok: true };
     }
-    const { tab, groupId } = target;
+    const { tab, groupId, opened, blockedStart } = target;
     if (!tab.id) {
       emit({ type: "error", message: i18n.t("errors.noActiveTab") });
       return { ok: true };
@@ -115,9 +114,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     // (one run per message, and users move between messages). Name those tabs
     // so references like "that email" or "the doc" can find their way back
     // (rule 6 does the rest).
-    const previousTabs = tab.url
-      ? conversationTabs.filter((t) => t.url !== tab.url)
-      : [];
+    const previousTabs = conversationTabs.filter((t) => t.url !== tab.url);
 
     log.info("run queued", {
       provider: providerConfig.name,
@@ -129,23 +126,30 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     let endedOnQuestion = false;
     // How the run's tab group is retitled when it lets go — ✓, ? or ✗.
     let runFailed = false;
+    // A plain "no" to a plan: nothing ran, so the tab this run opened for the
+    // job is litter to take back rather than a result to keep.
+    let planRejected = false;
     // A moving target: the run starts on the submit-time tab but the agent may
     // re-target itself with switch_tab — badge, panel chip and fail-fast all follow.
     let drivenTabId = tab.id;
     let drivenTitle = tabLabel(tab);
-    const driver = createDriver(tab.id, (info) => {
-      void hideAgentIndicator(drivenTabId);
-      drivenTabId = info.id;
-      drivenTitle = info.title;
-      markRunningTab(conversationId, info.id);
-      emit({
-        type: "driving",
-        tabId: info.id,
-        windowId: info.windowId,
-        title: info.title,
-        favIconUrl: info.favIconUrl,
-      });
-      void showAgentIndicator(info.id, i18n.t("indicator.driving"));
+    const driver = createDriver(tab.id, {
+      // A background run never pulls the window to itself, not even mid-switch.
+      activateOnSwitch: opts.thisPage === true,
+      onSwitch: (info) => {
+        void hideAgentIndicator(drivenTabId);
+        drivenTabId = info.id;
+        drivenTitle = info.title;
+        markRunningTab(conversationId, info.id);
+        emit({
+          type: "driving",
+          tabId: info.id,
+          windowId: info.windowId,
+          title: info.title,
+          favIconUrl: info.favIconUrl,
+        });
+        void showAgentIndicator(info.id, i18n.t("indicator.driving"));
+      },
     });
     emit({
       type: "driving",
@@ -187,6 +191,10 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         supportsImages: resolvedProvider?.supportsImages,
         history: history.length > 0 ? history : undefined,
         previousTabs: previousTabs.length > 0 ? previousTabs : undefined,
+        mode: {
+          background: opts.thisPage !== true,
+          ...(blockedStart ? { blockedStart } : {}),
+        },
         drainInjected: () => run.injectedQueue.splice(0, run.injectedQueue.length),
         signal: run.controller.signal,
         callbacks: {
@@ -214,6 +222,8 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
             void waitAgentIndicator(drivenTabId);
             return new Promise<PlanApprovalOutcome>((resolve) => {
               run.planApproval = {
+                steps,
+                reapproval,
                 resolve: (approved, feedback) => {
                   const revision = approved ? undefined : feedback?.trim() || undefined;
                   // Approve or revise: the run works again, so the working marks
@@ -221,6 +231,8 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
                   if (approved || revision) {
                     markRunningAwaiting(conversationId, false);
                     void showAgentIndicator(drivenTabId, i18n.t("indicator.driving"));
+                  } else {
+                    planRejected = true;
                   }
                   resolve(revision ? { approved: false, feedback: revision } : { approved });
                 },
@@ -265,9 +277,20 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       chrome.tabs.onRemoved.removeListener(onTabGone);
       if (endedOnQuestion) void waitAgentIndicator(drivenTabId);
       else void hideAgentIndicator(drivenTabId);
-      // Runs whatever unwinds the loop — done, error, stop, question.
-      await persistDrivenTabFor(conversationId, drivenTabId);
-      await settleRunTab(groupId, task, runFailed ? "failed" : endedOnQuestion ? "question" : "done");
+      // Runs whatever unwinds the loop — done, error, stop, question. A "no" to
+      // the plan is the exception: nothing ran, so the tab the dispatch opened
+      // goes away instead of settling into a ✗ group, and a page the agent only
+      // glanced at is not where the conversation now lives.
+      if (planRejected && opened) {
+        await discardRunTab(tab.id);
+      } else {
+        await persistDrivenTabFor(conversationId, drivenTabId);
+        await settleRunTab(
+          groupId,
+          task,
+          runFailed ? "failed" : endedOnQuestion ? "question" : "done",
+        );
+      }
     }
   } finally {
     releaseRun(run);
@@ -300,23 +323,45 @@ function hasPendingQuestion(transcript: Message[]): boolean {
   return false;
 }
 
-type RunTab = { tab: chrome.tabs.Tab; groupId?: number };
+interface RunTab {
+  tab: chrome.tabs.Tab;
+  /** The run's tab group, when it owns one — retitled with the outcome on the way out. */
+  groupId?: number;
+  /** This run opened the tab, so a rejected plan can take it back. */
+  opened?: boolean;
+  /** The page the user was on that Chrome would not let the run open. */
+  blockedStart?: string;
+}
 
 /** Last-resort start page when neither the task nor the preference names one. */
 const FALLBACK_START_URL = "https://www.google.com";
 
 /**
- * Where the run drives. "this page" keeps the legacy semantics — the window's
+ * Pages that mean "no page" rather than "a page we were blocked from": the user
+ * opened a tab and typed a task into it. Falling back to the start page is the
+ * whole answer there — telling the model it was blocked would invent a page the
+ * user never had.
+ */
+function isBlankPage(url: string | undefined): boolean {
+  return !url || /^(about:blank|about:newtab|chrome:\/\/(newtab|new-tab-page))\/?$/i.test(url);
+}
+
+/**
+ * Where the run drives. "this page" keeps the direct semantics — the window's
  * active tab, refused early when injection could never reach it, given a moment
- * to finish loading. The default opens a fresh background tab (a run never
- * hijacks what the user is reading), waits for it to load, and labels its tab
- * group with the task so the strip says what that tab is. `continuationUrl`
- * wins over the default start URL — an answer continues where the question
- * arose.
+ * to finish loading.
+ *
+ * Otherwise the run gets a tab of its own, so it never hijacks what the user is
+ * reading, and that tab opens on the page the user was actually looking at:
+ * "book this", "reply to this" and "is it cheaper elsewhere" all mean THIS
+ * page, and a plan written against google.com is a plan about nothing. Chrome
+ * blocks a handful of pages outright (chrome://, the Web Store) — those fall
+ * back to the start-page preference rather than refusing the task, and the
+ * model is told so it never reports on a page it never saw.
  */
 async function resolveRunTab(
   opts: StartRunOptions,
-  continuationUrl?: string,
+  continuation?: LastTab,
 ): Promise<RunTab | { error: string }> {
   if (opts.thisPage) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -330,11 +375,14 @@ async function resolveRunTab(
     return { tab };
   }
 
-  const url = opts.url || continuationUrl || (await defaultStartUrl.get()) || FALLBACK_START_URL;
-  if (isRestrictedUrl(url)) return { error: i18n.t("errors.restrictedPage") };
+  const reused = await reuseContinuationTab(continuation);
+  if (reused) return reused;
+
+  const start = await resolveStartUrl(opts, continuation?.url);
+  if (isRestrictedUrl(start.url)) return { error: i18n.t("errors.restrictedPage") };
   let tab: chrome.tabs.Tab;
   try {
-    tab = await chrome.tabs.create({ active: false, url });
+    tab = await chrome.tabs.create({ active: false, url: start.url });
   } catch (e) {
     return {
       error: i18n.t("errors.tabCreateFailed", {
@@ -353,7 +401,67 @@ async function resolveRunTab(
   // Re-read after the wait — the created record predates the navigation.
   const loaded = await chrome.tabs.get(tab.id);
   const groupId = await labelRunTab(tab.id, opts.task);
-  return { tab: loaded, groupId };
+  return {
+    tab: loaded,
+    opened: true,
+    ...(groupId !== undefined ? { groupId } : {}),
+    ...(start.blockedStart ? { blockedStart: start.blockedStart } : {}),
+  };
+}
+
+/**
+ * The very tab the question was asked on, when it is still alive and still
+ * there. Re-opening its url would also "continue where the question arose", but
+ * a fresh load throws away the state the question was ABOUT — the half-filled
+ * booking form, the search results, the scrolled thread. The group is adopted
+ * only when it is the one that run created (its id was recorded alongside the
+ * tab), so a tab the user has since filed into a group of their own keeps the
+ * label they gave it.
+ */
+async function reuseContinuationTab(last: LastTab | undefined): Promise<RunTab | undefined> {
+  if (last?.tabId === undefined) return undefined;
+  try {
+    const tab = await chrome.tabs.get(last.tabId);
+    // A tab that has moved on is a different page with the same id.
+    if (tab.url !== last.url || isRestrictedUrl(tab.url)) return undefined;
+    return { tab, ...(tab.groupId === last.groupId ? { groupId: last.groupId } : {}) };
+  } catch {
+    // The tab died while the question waited — open a fresh one on its url.
+    return undefined;
+  }
+}
+
+/** The page a run's own tab opens on, and the page Chrome kept it from opening. */
+async function resolveStartUrl(
+  opts: StartRunOptions,
+  continuationUrl: string | undefined,
+): Promise<{ url: string; blockedStart?: string }> {
+  // Both name the page outright: the bridge's `url` argument, and a
+  // continuation whose tab is gone but whose page is known.
+  const named = opts.url || continuationUrl;
+  if (named) return { url: named };
+
+  // Only a panel run has a "page the user is on" — an MCP client is somewhere
+  // else entirely, and its session starts on the neutral default.
+  let blockedStart: string | undefined;
+  if (opts.owner === "panel") {
+    const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (active?.url && !isBlankPage(active.url)) {
+      if (!isRestrictedUrl(active.url)) return { url: active.url };
+      blockedStart = active.url;
+    }
+  }
+  const url = (await defaultStartUrl.get()) || FALLBACK_START_URL;
+  return { url, ...(blockedStart ? { blockedStart } : {}) };
+}
+
+/** Takes back a tab this run opened and never earned — best-effort, it may be gone. */
+async function discardRunTab(tabId: number): Promise<void> {
+  try {
+    await chrome.tabs.remove(tabId);
+  } catch {
+    // Already closed — the group went with it.
+  }
 }
 
 /** Tab-group titles cap at ~25 chars before they ellipsis into noise. */
@@ -401,15 +509,21 @@ async function settleRunTab(
 }
 
 /**
- * Remember the tab this run drove so the next run can spot a tab change.
- * The final state is read fresh — navigations mid-run leave the start-time
- * title and url stale.
+ * Remember the tab this run drove so the next run can spot a tab change — and
+ * go back to the tab itself when it answers a question. The final state is read
+ * fresh: navigations mid-run leave the start-time title, url and group stale.
  */
 async function persistDrivenTabFor(conversationId: string, tabId: number): Promise<void> {
   try {
     const tab = await chrome.tabs.get(tabId);
     if (!tab.url) return;
-    await recordDrivenTabFor(conversationId, { url: tab.url, title: tab.title ?? "", tabId });
+    await recordDrivenTabFor(conversationId, {
+      url: tab.url,
+      title: tab.title ?? "",
+      tabId,
+      // Only a real group: TAB_GROUP_ID_NONE is -1, and reuse compares ids.
+      ...(tab.groupId >= 0 ? { groupId: tab.groupId } : {}),
+    });
   } catch {
     // The tab died during the run — nothing left to remember.
   }

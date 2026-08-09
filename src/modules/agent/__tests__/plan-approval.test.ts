@@ -15,7 +15,7 @@ const snapshot = async (): Promise<SnapshotResult> => ({
   title: "Example",
 });
 
-/** Driver stand-in — every method resolves a benign success; navigate/click record their use. */
+/** Driver stand-in — every method resolves a benign success; actions record their use. */
 function makeDriver(calls: string[] = []): BrowserDriver {
   return {
     snapshot,
@@ -25,6 +25,10 @@ function makeDriver(calls: string[] = []): BrowserDriver {
     click: async () => {
       calls.push("click");
       return { x: 1, y: 2 };
+    },
+    switchTab: async (tabId: number) => {
+      calls.push(`switch_tab:${tabId}`);
+      return { id: tabId, windowId: 1, title: "Inbox", url: "https://mail.example", active: false };
     },
   } as unknown as BrowserDriver;
 }
@@ -93,6 +97,64 @@ describe("runAgentLoop plan approval gate", () => {
     // The bounced call's tool result tells the model how to unblock itself.
     const results = wire.find((m) => m.role === "tool_results")?.toolResults ?? [];
     expect(results[0]?.content).toContain(i18n.t("errors.planGateModel"));
+  });
+
+  it("gives the bounced step a drawer to open, not just a red mark", async () => {
+    const steps: { tool: string; ok?: boolean; detail?: string }[] = [];
+    const provider = scriptedProvider([[call("click", { ref: "e1" })], [planCall(["Click it"])]]);
+    await runAgentLoop({
+      provider,
+      driver: makeDriver(),
+      task: "click it",
+      signal: new AbortController().signal,
+      callbacks: {
+        onStep: (s) => steps.push(s),
+        onPlanApproval: async () => ({ approved: true }),
+      },
+    });
+
+    const blocked = steps.find((s) => s.ok === false);
+    expect(blocked?.tool).toBe("click");
+    expect(blocked?.detail).toBe(i18n.t("errors.planGateModel"));
+  });
+
+  it("lets the agent reach the page it must read before it can plan", async () => {
+    const calls: string[] = [];
+    // Looking is not acting: a background run starts on a tab of its own, so
+    // "go to the Gmail tab and see what's there" IS the opening move.
+    const provider = scriptedProvider([
+      [call("switch_tab", { tab_id: 7 }), call("snapshot")],
+      [planCall(["Archive the newsletter"])],
+    ]);
+    await runAgentLoop({
+      provider,
+      driver: makeDriver(calls),
+      task: "archive that newsletter",
+      signal: new AbortController().signal,
+      callbacks: { onPlanApproval: async () => ({ approved: true }) },
+    });
+
+    expect(calls).toContain("switch_tab:7");
+  });
+
+  it("runs a plan batched with its own first action, in that order", async () => {
+    const calls: string[] = [];
+    // Models routinely emit the plan and the step it opens with in one turn.
+    // Wire order puts navigate first; executed as-is the gate would bounce it.
+    const provider = scriptedProvider([
+      [call("navigate", { url: "https://x.com" }), planCall(["Go to X", "Read X"])],
+    ]);
+    const wire: ChatMessage[] = await runAgentLoop({
+      provider,
+      driver: makeDriver(calls),
+      task: "go to x",
+      signal: new AbortController().signal,
+      callbacks: { onPlanApproval: async () => ({ approved: true }) },
+    });
+
+    expect(calls).toEqual(["navigate"]);
+    const results = wire.find((m) => m.role === "tool_results")?.toolResults ?? [];
+    expect(results.some((r) => r.content.includes(i18n.t("errors.planGateModel")))).toBe(false);
   });
 
   it("parks on the first plan, then runs actions once approved", async () => {

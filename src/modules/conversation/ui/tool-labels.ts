@@ -7,6 +7,8 @@ import { truncateTo } from "@/lib/format";
  */
 const TOOL_VERB_KEYS = {
   navigate: "run.tool.navigate",
+  list_tabs: "run.tool.list_tabs",
+  switch_tab: "run.tool.switch_tab",
   snapshot: "run.tool.snapshot",
   click: "run.tool.click",
   type: "run.tool.type",
@@ -58,6 +60,11 @@ export function toolHint(
   switch (tool) {
     case "navigate":
       return host(args.url);
+    case "switch_tab":
+      // The id is all the call carries; the tab's title arrives in the result,
+      // which the summary already shows on a success. On a failure this is the
+      // only trace of what it reached for.
+      return typeof args.tab_id === "number" ? `#${args.tab_id}` : undefined;
     case "click":
       return text(args.ref);
     case "type":

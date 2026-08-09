@@ -27,11 +27,14 @@
     "addProvider": "Adicionar provedor",
     "menuTitle": "Configurações",
     "allSettings": "Todas as configurações →",
-    "defaultStartUrl": "Página inicial padrão",
-    "defaultStartUrlHint": "Tarefas em segundo plano abrem uma aba nova aqui, a menos que a tarefa indique um site.",
+    "defaultStartUrl": "Página inicial de reserva",
+    "defaultStartUrlHint": "Uma tarefa em segundo plano começa na página que você está vendo. Quando o Chrome bloqueia essa página — chrome:// ou a Web Store — ela abre aqui.",
     "showWidget": "Widget flutuante de status",
     "showWidgetHint": "Um indicador flutuante nas suas abas enquanto uma tarefa roda ou espera na fila.",
     "backgroundTasks": "Tarefas em segundo plano",
+    "sidePanel": "Painel lateral",
+    "showTips": "Dicas",
+    "showTipsHint": "Atalhos e dicas de recursos de vez em quando, sob o campo de texto e o status da tarefa.",
     "invalidUrl": "Digite uma URL completa começando com http:// ou https://",
     "languageAutoShort": "Auto"
   },
@@ -119,7 +122,7 @@
     "signOutBody": "O TabRunner esquece esta conexão e para de usar a assinatura. O provedor continua na sua lista — entre novamente quando quiser."
   },
   "modelPicker": {
-    "providerTitle": "Provedor para a próxima tarefa",
+    "providerTitleFor": "{{name}} — provedor para a próxima tarefa",
     "modelTitle": "Modelo para a próxima tarefa — Auto escolhe o mais recente ao executar",
     "modelTitleFor": "{{model}} — modelo para a próxima tarefa. Auto escolhe o mais recente ao executar.",
     "provider": "Provedor",
@@ -251,6 +254,8 @@
   "run": {
     "tool": {
       "navigate": "Navegando",
+      "list_tabs": "Listando abas",
+      "switch_tab": "Trocando de aba",
       "snapshot": "Lendo a página",
       "click": "Clicando",
       "type": "Digitando",
@@ -321,7 +326,7 @@
     "bridgeStopTitle": "Para a tarefa e devolve o navegador",
     "background": "Em segundo plano",
     "thisPage": "Esta página",
-    "targetTitle": "Onde a tarefa roda — uma aba própria em segundo plano, ou esta página"
+    "targetTitle": "Onde a tarefa roda — uma aba em segundo plano que abre nesta página, ou esta página mesmo"
   },
   "queue": {
     "position": "Na fila · nº {{position}}",
@@ -340,6 +345,17 @@
     "jump": "Mostrar a aba",
     "stop": "Parar",
     "cancel": "Cancelar"
+  },
+  "tips": {
+    "label": "Dica",
+    "escStop": "Esc interrompe a tarefa em execução — o que você já digitou é enviado como a próxima.",
+    "historyRecall": "Pressione ↑ com o campo vazio para percorrer o que você já enviou — ↓ volta para frente.",
+    "thisPage": "Uma tarefa em segundo plano abre esta página numa aba própria, então você continua navegando — escolha “Esta página” quando a tarefa precisar agir na aba que você está vendo.",
+    "queueSteer": "Você pode continuar digitando enquanto a tarefa roda — a mensagem entra na fila e a direciona entre os passos.",
+    "pasteImage": "Cole uma captura de tela direto no campo — o agente consegue vê-la.",
+    "pasteCollapse": "Um texto longo colado vira um token compacto — o texto completo ainda chega ao agente.",
+    "planApproval": "A tarefa mostra o plano antes de tocar na página — aprove e o painel sai da frente enquanto ela trabalha, ou responda com ajustes e ela replaneja.",
+    "widget": "A pílula flutuante nas abas mostra o que o TabRunner está fazendo — clique em Abrir para ir ao painel."
   },
   "notify": {
     "doneFallback": "Tarefa concluída."

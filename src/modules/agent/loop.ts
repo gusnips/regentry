@@ -13,7 +13,8 @@ import { i18n, currentLanguageName } from "@/i18n";
 import { loadAgentContext } from "@/modules/memory";
 import type { ToolDef } from "@/modules/providers/types";
 import { executeTool, formatDetail, formatSuccessSummary } from "./tools";
-import { buildSystemPrompt, buildTaskMessage, buildToolDefs, type PreviousTab } from "./prompt";
+import { buildSystemPrompt, buildTaskMessage, buildToolDefs } from "./prompt";
+import type { PreviousTab, RunMode } from "./prompt";
 
 const log = createLogger("agent");
 
@@ -48,16 +49,33 @@ const MAX_ATTACHED_IMAGES = 2;
  * agent can do is a read (snapshot, screenshot, list_tabs), bookkeeping (plan,
  * remember), or a run-control call (ask_user, done) — those stay free so the
  * model can look at the page before proposing its plan.
+ *
+ * switch_tab is deliberately NOT here: it changes nothing on any page, it is
+ * how the agent reaches the page it must read before it can plan (a background
+ * run starts on a tab of its own, so "look at the Gmail tab first" is the
+ * normal opening move), and gating it produced a red ✗ on the very first step
+ * of runs that were behaving correctly. Focus-stealing is the driver's call
+ * (activateOnSwitch), not the gate's.
  */
 const ACTION_TOOLS = new Set([
   "navigate",
-  "switch_tab",
   "click",
   "type",
   "press_key",
   "scroll_down",
   "scroll_up",
 ]);
+
+/**
+ * A turn's tool calls with `plan` first. Models routinely batch the plan with
+ * the first action of that plan in one turn; executed in wire order the action
+ * hits the gate and is rejected, even though its approval was one call away.
+ * Hoisting costs nothing (results are matched to calls by id on every adapter)
+ * and turns a guaranteed bounce into the intended flow.
+ */
+function planFirst(calls: ToolCall[]): ToolCall[] {
+  return [...calls].sort((a, b) => Number(b.name === "plan") - Number(a.name === "plan"));
+}
 
 /**
  * Does an updated plan deviate from what the user approved? Only the UPCOMING
@@ -129,6 +147,8 @@ export interface LoopOptions {
    * is not on, so a continuation typed elsewhere can still find its way back.
    */
   previousTabs?: PreviousTab[];
+  /** Where this run works and what it was kept from — see RunMode. */
+  mode?: RunMode;
   /**
    * The stored conversation as alternating user/assistant turns, replayed
    * between the system prompt and the fresh task so a continuation lands on a
@@ -227,6 +247,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     images,
     supportsImages: supportsImagesOpt,
     previousTabs,
+    mode,
     history,
     drainInjected,
     signal,
@@ -247,7 +268,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     ...(history ?? []),
     {
       role: "user",
-      content: buildTaskMessage(task, initial.pageContent, previousTabs),
+      content: buildTaskMessage(task, initial.pageContent, { previousTabs, mode }),
       // The user's own attachments are the subject of the task — unlike screenshots
       // they are never pruned, or a long run would forget what it was asked about.
       // A text-only model can't receive them; dropping the whole field keeps the wire valid.
@@ -342,7 +363,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     let taskDone = false;
     const results: ProviderToolResult[] = [];
 
-    for (const call of turn.toolCalls) {
+    for (const call of planFirst(turn.toolCalls)) {
       if (signal.aborted) {
         callbacks.onDone?.();
         return messages;
@@ -355,12 +376,15 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // The gate: no page action runs before the user has approved a plan.
       // The tool-result error tells the model exactly how to unblock itself.
       if (ACTION_TOOLS.has(call.name) && !approvedPlan) {
-        log.warn(`tool ${call.name} blocked — no approved plan yet`);
+        log.warn(`tool ${call.name} blocked — no approved plan yet`, call.args);
         callbacks.onStep?.({
           tool: call.name,
           summary: i18n.t("errors.planGate"),
           ok: false,
           args: call.args,
+          // A red ✗ with no way to ask "why?" is the one thing every other step
+          // row avoids — the drawer carries the same explanation the model got.
+          detail: i18n.t("errors.planGateModel"),
         });
         results.push({
           id: call.id,

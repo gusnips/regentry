@@ -97,6 +97,10 @@ function StepRow({ msg }: { msg: Message }) {
   const hint = toolHint(msg.tool, msg.args);
   // A failure's summary IS the error — it must stay on the visible line.
   const trailing = msg.ok === false ? msg.content : (hint ?? msg.content);
+  // The row fits one line, so the drawer carries whichever fact it displaced:
+  // for a failure that is the attempt itself ("switch to tab 42"), which is
+  // exactly what you open a red row to find out.
+  const displaced = msg.ok === false ? hint : hint ? msg.content : undefined;
   const expandable = !msg.live && Boolean(msg.detail || msg.images?.length);
 
   const line = (
@@ -126,7 +130,7 @@ function StepRow({ msg }: { msg: Message }) {
         </span>
       </summary>
       <div className="mt-1 ml-4 flex flex-col gap-1.5">
-        {hint && msg.content && msg.ok !== false && <div>{msg.content}</div>}
+        {displaced && <div>{displaced}</div>}
         {msg.images?.map((src, i) => (
           <ZoomableImage
             key={i}

@@ -27,11 +27,14 @@
     "addProvider": "Add provider",
     "menuTitle": "Settings",
     "allSettings": "All settings →",
-    "defaultStartUrl": "Default start page",
-    "defaultStartUrlHint": "Background tasks open a fresh tab here, unless the task names a site.",
+    "defaultStartUrl": "Fallback start page",
+    "defaultStartUrlHint": "A background task starts on the page you're looking at. When Chrome blocks that page — chrome:// or the Web Store — it opens here instead.",
     "showWidget": "Floating status widget",
     "showWidgetHint": "A small floating indicator on your tabs while a task runs or waits in line.",
     "backgroundTasks": "Background tasks",
+    "sidePanel": "Side panel",
+    "showTips": "Tips",
+    "showTipsHint": "Occasional shortcuts and feature tips under the composer and the run status.",
     "invalidUrl": "Enter a full URL starting with http:// or https://",
     "languageAutoShort": "Auto"
   },
@@ -119,7 +122,7 @@
     "signOutBody": "TabRunner forgets this sign-in and stops using the subscription. The provider stays in your list — sign in again whenever you like."
   },
   "modelPicker": {
-    "providerTitle": "Provider for the next task",
+    "providerTitleFor": "{{name}} — provider for the next task",
     "modelTitle": "Model for the next task — Auto picks the newest at run start",
     "modelTitleFor": "{{model}} — model for the next task. Auto picks the newest at run start.",
     "provider": "Provider",
@@ -251,6 +254,8 @@
   "run": {
     "tool": {
       "navigate": "Navigating",
+      "list_tabs": "Listing tabs",
+      "switch_tab": "Switching tab",
       "snapshot": "Reading page",
       "click": "Clicking",
       "type": "Typing",
@@ -321,7 +326,7 @@
     "bridgeStopTitle": "Stops the task and hands the browser back",
     "background": "Background",
     "thisPage": "This page",
-    "targetTitle": "Where the task runs — its own background tab, or this page"
+    "targetTitle": "Where the task runs — a background tab that opens on this page, or this page itself"
   },
   "queue": {
     "position": "Queued · #{{position}}",
@@ -340,6 +345,17 @@
     "jump": "Show the tab",
     "stop": "Stop",
     "cancel": "Cancel"
+  },
+  "tips": {
+    "label": "Tip",
+    "escStop": "Esc stops the running task — anything already typed is sent as the next one.",
+    "historyRecall": "Press ↑ with an empty composer to walk back through what you've sent — ↓ comes forward again.",
+    "thisPage": "A background task opens this page in a tab of its own, so you keep browsing — pick “This page” when the task must act on the tab you're looking at.",
+    "queueSteer": "You can keep typing while a task runs — the message queues and steers it between steps.",
+    "pasteImage": "Paste a screenshot straight into the composer — the agent can see it.",
+    "pasteCollapse": "A long pasted text folds into a neat token — the full text still reaches the agent.",
+    "planApproval": "A task shows its plan before it touches the page — approve it and the panel steps aside while it works, or reply with adjustments and it replans.",
+    "widget": "The floating pill on your tabs shows what TabRunner is doing — click Open to jump to the panel."
   },
   "notify": {
     "doneFallback": "Task finished."

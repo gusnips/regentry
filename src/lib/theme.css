@@ -3,19 +3,43 @@
 /* Class strategy — a stored light/dark choice must be able to override the OS. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* TabRunner brand — royal purple (violet scale), used via brand-* utilities */
+/*
+ * TabRunner brand — comet-ice (2026-08 rebrand, same system as tabrunner.app):
+ * ion cyan is the action/motion color, used via brand-* utilities. The scale is
+ * Tailwind's cyan under the brand alias so every brand-* usage recolors from
+ * here. Live measurement (running dots, the on-page pulse) is amber instead —
+ * amber utilities come straight from the default palette; cyan never measures,
+ * amber never acts.
+ */
 @theme {
-  --color-brand-50: #f5f3ff;
-  --color-brand-100: #ede9fe;
-  --color-brand-200: #ddd6fe;
-  --color-brand-300: #c4b5fd;
-  --color-brand-400: #a78bfa;
-  --color-brand-500: #8b5cf6;
-  --color-brand-600: #7c3aed;
-  --color-brand-700: #6d28d9;
-  --color-brand-800: #5b21b6;
-  --color-brand-900: #4c1d95;
-  --color-brand-950: #2e1065;
+  --color-brand-50: #ecfeff;
+  --color-brand-100: #cffafe;
+  --color-brand-200: #a5f3fc;
+  --color-brand-300: #67e8f9;
+  --color-brand-400: #22d3ee;
+  --color-brand-500: #06b6d4;
+  --color-brand-600: #0891b2;
+  --color-brand-700: #0e7490;
+  --color-brand-800: #155e75;
+  --color-brand-900: #164e63;
+  --color-brand-950: #083344;
+
+  /*
+   * Neutral, retinted to the deep-field grounds: cool starlight grays at the
+   * light end sinking into indigo darks (950 is the site's page ground). One
+   * override moves every neutral-* surface in both modes onto the palette.
+   */
+  --color-neutral-50: #f4f7fc;
+  --color-neutral-100: #e8eefb;
+  --color-neutral-200: #d5deef;
+  --color-neutral-300: #b9c6de;
+  --color-neutral-400: #8797ba;
+  --color-neutral-500: #5d6d92;
+  --color-neutral-600: #3d4a6e;
+  --color-neutral-700: #25325c;
+  --color-neutral-800: #131c33;
+  --color-neutral-900: #0b1224;
+  --color-neutral-950: #070b16;
 }
 
 /* Native chrome (scrollbars, form controls) + the pre-render canvas follow the theme. */

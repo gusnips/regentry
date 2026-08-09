@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MessageList,
   ChatInput,
@@ -16,6 +16,7 @@ import {
   useProvidersStore,
 } from "@/modules/providers/ui";
 import { SettingsMenu } from "./SettingsMenu";
+import { notePanelOpen, refreshTip } from "@/modules/tips/ui";
 
 export default function App() {
   const connect = useConversationStore((s) => s.connect);
@@ -68,6 +69,21 @@ export default function App() {
   useEffect(() => {
     void load(); // idempotent — the store dedupes concurrent mounts
   }, [load]);
+
+  // Tip rotation boundaries — Claude Code re-picks per turn; our run is the
+  // turn: once per panel open, then again each time a run ends. A conversation
+  // switch re-fires the runEndedAt effect too, which is fine — the composer is
+  // re-read then anyway, and pickTip's chain dedupes a mount/run-end race.
+  const runEndedAt = useConversationStore((s) => s.runEndedAt);
+  const prevRunEndedAt = useRef(runEndedAt);
+  useEffect(() => {
+    void notePanelOpen().then(() => refreshTip());
+  }, []);
+  useEffect(() => {
+    if (runEndedAt === prevRunEndedAt.current) return;
+    prevRunEndedAt.current = runEndedAt;
+    refreshTip();
+  }, [runEndedAt]);
 
   const needsProvider = loaded && providers.length === 0;
 
