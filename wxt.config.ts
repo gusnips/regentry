@@ -10,6 +10,11 @@ export default defineConfig({
     description: "__MSG_extDescription__",
     default_locale: "en",
     homepage_url: "https://tabrunner.app",
+    // Public half of tabrunner-test.pem — pins every unpacked/dev load to the
+    // CRX's id (dfmcnfgiddfdjciciaflpieglmmgdmhh) instead of a per-machine one,
+    // so the MCP bridge's expected id holds in dev too. The store id will be a
+    // second, CWS-owned value once published; the daemon default tracks the CRX.
+    key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3ZlVSo9td5K/VDX4FnlLA9c+HyCesWBcxD3ZtseoOqGvxOLtFcDmjlrQC334scbMAFvKR2udEVT0HrwtlhkJWdXKMloxwTvpeFZ1aAKmf7hmia9LhylqXiugykS7/aARuJITvxVZ/hG40HvZ42T8T57SUNmefPXQDKl2YggQunNPlfYw7LodPS7gcUwWcgxK8+09E3RUam+FZ3ry32yIHWExkw23CoNRsBaMrYA+n1R/LAgK6g7/r4FXbngNpw39Kn/9ytE3hGLXM89x6M4iN01WQ4dyRWT9xYD2pN8Ydcgrf2UP+IWBWROJyMPpp9Vay5A4j5/1jS6yRPCMtKu7OQIDAQAB",
     icons: {
       16: "icon/16.png",
       32: "icon/32.png",

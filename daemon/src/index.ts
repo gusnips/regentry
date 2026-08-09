@@ -20,9 +20,14 @@ import type { BridgeProviderInfo, BridgeStatus, CaptureResult } from "./protocol
 import pkg from "../package.json" with { type: "json" };
 
 const PORT = Number(process.env.TABRUNNER_BRIDGE_PORT ?? 17_836);
-/** The Chrome Web Store build. A dev build has its own id — set the env var. */
+/**
+ * The canonical build: the CRX signed with tabrunner-test.pem (what
+ * tabrunner.app distributes), and any unpacked dev load too — the manifest
+ * `key` pins dev builds to this id. The future Chrome Web Store listing gets
+ * its own CWS-owned id; when it ships, health may need to accept both.
+ */
 const EXPECTED_EXTENSION_ID =
-  process.env.TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID ?? "jlngbadknjppfbohhifabijkimigdiia";
+  process.env.TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID ?? "dfmcnfgiddfdjciciaflpieglmmgdmhh";
 
 /** Under a client's own timeout, so a wait ends as an answer, not a failure. */
 const DEFAULT_WAIT_SECONDS = 30;

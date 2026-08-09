@@ -55,23 +55,23 @@ The daemon starts when your client starts it; there's nothing to leave running. 
 
 ### Configuration
 
-| Variable                                 | Default                            | What it does                                                                                     |
-| ---------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `TABRUNNER_BRIDGE_PORT`                  | `17836`                            | The localhost port. Change it in both places — the extension's `bridge` storage item must match. |
-| `TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID` | `jlngbadknjppfbohhifabijkimigdiia` | The extension `health` expects. An unpacked dev build has its own id; set this to it.            |
+| Variable                                 | Default                            | What it does                                                                                    |
+| ---------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `TABRUNNER_BRIDGE_PORT`                  | `17836`                            | The localhost port. Change it in both places — Settings → MCP in the extension must match.      |
+| `TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID` | `dfmcnfgiddfdjciciaflpieglmmgdmhh` | The extension `health` expects — the CRX's id, which unpacked dev builds share via the manifest `key`. The Web Store listing will have its own id once published. |
 
 ## The tools
 
-| Tool                              | What it does                                                                                                                                         |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `health`                          | Is TabRunner reachable? Reports the connection, the extension id and version, and the fix when something's off. Call it first.                       |
+| Tool                                    | What it does                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `health`                                | Is TabRunner reachable? Reports the connection, the extension id and version, and the fix when something's off. Call it first.                                                                                                                                                                                                                                     |
 | `run(task, url?, background?, images?)` | Give TabRunner a task in plain language. Returns immediately with a run id — browser work takes minutes. Opens its own background tab by default (optionally at `url`); `background: false` drives the tab the user is on. Optional images ride along as base64. A task submitted while another runs **queues** and answers with its position instead of an error. |
-| `get_status(wait?, waitSeconds?)` | Where the run stands. **Blocks until something changes** by default, so following a ten-minute task costs one call per real event, not one per poll. |
-| `answer(text)`                    | Reply to a question the run stopped on.                                                                                                              |
-| `steer(text)`                     | Drop a note into a running task — a correction or an extra constraint. It lands between tool calls; the run doesn't restart.                         |
-| `stop()`                          | End the run — and cancel any of this client's queued runs. Stopping is normal control flow, not an error.                                            |
-| `screenshot()`                    | A picture of what the browser is showing right now, as an image the model can actually look at. Works run or no run.                                 |
-| `new_conversation()`              | Forget the thread and start clean. Refused while this thread has a run active or queued — stop it first.                                           |
+| `get_status(wait?, waitSeconds?)`       | Where the run stands. **Blocks until something changes** by default, so following a ten-minute task costs one call per real event, not one per poll.                                                                                                                                                                                                               |
+| `answer(text)`                          | Reply to a question the run stopped on.                                                                                                                                                                                                                                                                                                                            |
+| `steer(text)`                           | Drop a note into a running task — a correction or an extra constraint. It lands between tool calls; the run doesn't restart.                                                                                                                                                                                                                                       |
+| `stop()`                                | End the run — and cancel any of this client's queued runs. Stopping is normal control flow, not an error.                                                                                                                                                                                                                                                          |
+| `screenshot()`                          | A picture of what the browser is showing right now, as an image the model can actually look at. Works run or no run.                                                                                                                                                                                                                                               |
+| `new_conversation()`                    | Forget the thread and start clean. Refused while this thread has a run active or queued — stop it first.                                                                                                                                                                                                                                                           |
 
 ### Driving it yourself
 
@@ -159,9 +159,9 @@ Every failure comes back as text that says what happened, why, and what to do ne
 | No provider configured             | `health` says so up front. Add one in TabRunner's settings and pick it in the panel header.                                                     |
 | Provider needs a sign-in or key    | `health` names it and which of the two it wants. Direct `browser_*` control keeps working without a provider.                                   |
 | No tab to drive                    | Open a tab in the window you want TabRunner to work in.                                                                                         |
-| A run is already going             | Your task queues behind it (position reported, `get_status` shows the line) — a direct session is the only case that still refuses.                  |
+| A run is already going             | Your task queues behind it (position reported, `get_status` shows the line) — a direct session is the only case that still refuses.             |
 | The link drops mid-run             | **The run keeps going.** The extension reconnects and re-syncs; `get_status` picks up where it left off. A long task survives a daemon restart. |
-| Chrome suspends the worker mid-run | Reported as an interrupted run, not left polling a ghost. A keepalive alarm holds the worker while tasks are up, so this should be rare.                |
+| Chrome suspends the worker mid-run | Reported as an interrupted run, not left polling a ghost. A keepalive alarm holds the worker while tasks are up, so this should be rare.        |
 | Another daemon owns the port       | Which port, and how to give this one its own. Every MCP client spawns its own daemon, so this is normal with two clients open.                  |
 
 ## Security
