@@ -96,11 +96,13 @@ export function RunStatus() {
       </div>
       {/* The run's target gets its own row: squeezed between the verb and the
           timer it truncated to a letter, and a chip you cannot read cannot be
-          clicked. 0.75rem, not the plan peek's 1.125rem, because the chip is a
-          button carrying its own px-1.5 — the two indents differ so the TEXT
-          inside them lines up, with each other and with the verb above. */}
+          clicked. It belongs to the header, so it sits in the DOT's column,
+          not the plan's — indented to 1.125rem its favicon landed exactly on
+          the glyph column and the tab read as a fifth step. The -ml-1 cancels
+          the pill's own pl-1 so the favicon aligns with the dot above it, and
+          the plan then indents under both. */}
       {drivingTab && (
-        <div className="pl-[0.75rem]">
+        <div className="-ml-1 flex">
           <DrivenTabChip />
         </div>
       )}

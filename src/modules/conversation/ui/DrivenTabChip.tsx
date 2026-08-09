@@ -9,6 +9,11 @@ import { useConversationStore } from "./store";
  * same lifecycle as the band): squeezed between the verb and the timer it
  * truncated to a letter. No dot of its own — the band's is the live signal.
  * One click brings the tab to the front.
+ *
+ * A filled pill, not bare text: favicon-then-title is the same shape as a
+ * plan row (`○ step`), and directly above the plan peek the two read as one
+ * list. The resting surface is what says "object you can press" instead of
+ * "next item" — hover alone only works once you are already on it.
  */
 export function DrivenTabChip() {
   const { t } = useTranslation();
@@ -34,7 +39,7 @@ export function DrivenTabChip() {
       onClick={() => void focusTab()}
       title={t("run.drivingTabTip")}
       aria-label={t("run.drivingTabTip")}
-      className="flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs text-brand-800/90 hover:bg-brand-100 hover:text-brand-950 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-brand-200/90 dark:hover:bg-brand-900 dark:hover:text-brand-50"
+      className="flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-full bg-brand-100/80 py-1 pr-2.5 pl-1 text-xs text-brand-900 hover:bg-brand-200 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:bg-brand-900/60 dark:text-brand-100 dark:hover:bg-brand-800"
     >
       {drivingTab.favIconUrl && drivingTab.favIconUrl !== failedIconUrl && (
         <img
