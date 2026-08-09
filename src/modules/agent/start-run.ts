@@ -4,6 +4,7 @@ import { extractAndRemember } from "@/modules/memory";
 import {
   clearAgentWait,
   createDriver,
+  focusTab,
   hideAgentIndicator,
   isRestrictedUrl,
   showAgentIndicator,
@@ -374,11 +375,21 @@ function isBlankPage(url: string | undefined): boolean {
  * blocks a handful of pages outright (chrome://, the Web Store) — those fall
  * back to the start-page preference rather than refusing the task, and the
  * model is told so it never reports on a page it never saw.
+ *
+ * A panel run's own tab is then brought forward, once. The user just pressed
+ * send and is watching: hiding the work behind their own tab makes the agent
+ * invisible for the price of nothing, since that tab opens on the very page
+ * they were already looking at. Only here, at the start — mid-run the driver's
+ * `activateOnSwitch` keeps its hands off the window, so the run stops taking
+ * the browser the moment the user turns to something else. An MCP client's run
+ * is never revealed: nobody is at the browser, and reaching over to raise
+ * Chrome over the editor they ARE looking at is the hijack this all avoids.
  */
 async function resolveRunTab(
   opts: StartRunOptions,
   continuation?: LastTab,
 ): Promise<RunTab | { error: string }> {
+  const reveal = opts.owner === "panel";
   if (opts.thisPage) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return { error: i18n.t("errors.noActiveTab") };
@@ -392,7 +403,10 @@ async function resolveRunTab(
   }
 
   const reused = await reuseContinuationTab(continuation);
-  if (reused) return reused;
+  if (reused) {
+    if (reveal && reused.tab.id !== undefined) await focusTab(reused.tab.id, reused.tab.windowId);
+    return reused;
+  }
 
   const start = await resolveStartUrl(opts, continuation?.url);
   if (isRestrictedUrl(start.url)) return { error: i18n.t("errors.restrictedPage") };
@@ -417,6 +431,9 @@ async function resolveRunTab(
   // Re-read after the wait — the created record predates the navigation.
   const loaded = await chrome.tabs.get(tab.id);
   const groupId = await labelRunTab(tab.id, opts.task);
+  // Loaded and grouped before it is shown: a run that never got off the ground
+  // takes its tab back without the user ever having seen it blink past.
+  if (reveal) await focusTab(tab.id, loaded.windowId);
   return {
     tab: loaded,
     opened: true,

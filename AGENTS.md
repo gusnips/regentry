@@ -66,7 +66,8 @@ never reach the service-worker bundle.
 
 - `agent/` — agent loop, tools, system prompt, run slot + FIFO queue, run start. Panel runs
   drive **the current page by default**; the composer toggle opts into a background run
-  (fresh inactive tab, tab group labelled with task + ✓/?/✗). Runs survive panel close.
+  (fresh tab, tab group labelled with task + ✓/?/✗, brought forward once at the start and
+  never yanked again). Runs survive panel close.
   Action tools
   are gated on user-approved plans; `ask_user` enforces the consequential-action policy.
 - `browser/` — accessibility-tree snapshot, CDP driver (trusted input), on-page badge + pulsing

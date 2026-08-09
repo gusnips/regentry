@@ -11,10 +11,11 @@ Agent loop (stream → tool calls → results → repeat), tools, system prompt,
 serial queue, run start.
 
 Panel runs drive **the current page by default**; the composer toggle opts into a
-**background** run, where `start-run.ts` gives the run an inactive tab of its own, labels
-its tab group with the task (✓/?/✗ on end, then collapses it), and waits for load.
-`thisPage` drives the user's current tab (restricted URLs refused up front, a loading
-page awaited).
+**background** run, where `start-run.ts` gives the run an inactive tab of its own, waits
+for load, labels its tab group with the task (✓/?/✗ on end, then collapses it), and then
+brings that tab forward — loaded and grouped, so a run that fails to start takes its tab
+back without the user ever seeing it blink past. `thisPage` drives the user's current tab
+(restricted URLs refused up front, a loading page awaited).
 
 Where that background tab opens, in order (`resolveRunTab`): an unanswered question goes
 back to the **very tab** it was asked on when that tab is still alive and still there —
@@ -30,9 +31,17 @@ current page, so its sessions start on the default. The task message also tells 
 background run that the tab is its own and the user is elsewhere — otherwise it reasons
 about "the tab the user is on" as if it were driving it.
 
-Background runs never take the browser away from the user: the driver's
-`activateOnSwitch` is off for them, so `switch_tab` re-targets without pulling the window
-forward (`thisPage` and MCP direct control keep it on — they already own the screen).
+Background runs take the browser **once, at the start, and never again**. The reveal is
+worth its interruption only there: the user just pressed send, is watching, and the tab
+being raised shows the very page they were already on — so the agent stops being
+invisible for the price of nothing. After that the driver's `activateOnSwitch` is off for
+them, so `switch_tab` re-targets without pulling the window forward (`thisPage` and MCP
+direct control keep it on — they already own the screen) and the user is free to work
+elsewhere while the run continues. The reveal is panel-only: an MCP client's run has
+nobody at the browser, and raising Chrome over the editor the user IS looking at is the
+hijack the whole design avoids. Every foregrounding — the panel's chips, `switch_tab`,
+this reveal — goes through `browser/focus-tab.ts` (window first, then tab, so the window
+never flashes its old tab).
 
 `run-queue.ts` is the FIFO on top of the single
 slot: every submission goes through `submitRun` — free slot starts now, occupied waits and

@@ -10,6 +10,7 @@ import {
   navigateToUrl,
   ensureAttached,
 } from "./cdp-driver";
+import { focusTab } from "./focus-tab";
 import { truncate } from "@/lib/logger";
 import type { TabId } from "@/shared/types";
 
@@ -52,10 +53,10 @@ export interface DriverOptions {
   onSwitch?: (tab: TabInfo) => void;
   /**
    * Bring a switched-to tab to the front. On for a run that already owns the
-   * screen (this-page, MCP direct control), off for a background run — yanking
-   * the user's window mid-switch is exactly what "background" promises not to
-   * do, and CDP input reaches an inactive tab either way (the background run's
-   * own start tab is never activated). The cost is that a background tab gets
+   * screen (this-page, MCP direct control), off for a background run — a panel
+   * run shows you its tab once, at the start, and after that yanking your
+   * window mid-switch is exactly what "background" promises not to do; CDP
+   * input reaches an inactive tab either way. The cost is that a background tab gets
    * no rAF ticks, so a page whose UI only advances on animation frames can
    * stall — a reason to pick "this page" for one, not to steal focus for all.
    */
@@ -137,11 +138,8 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
     async switchTab(tabId) {
       // chrome.tabs.get throws for a dead id — the model then re-lists.
       const tab = await chrome.tabs.get(tabId);
-      if (activateOnSwitch) {
-        // Bring it forward, the way the panel's chip does.
-        await chrome.tabs.update(tabId, { active: true });
-        await chrome.windows.update(tab.windowId, { focused: true });
-      }
+      // Bring it forward, the way the panel's chip does.
+      if (activateOnSwitch) await focusTab(tabId, tab.windowId);
       current = tabId;
       const info: TabInfo = {
         id: tabId,

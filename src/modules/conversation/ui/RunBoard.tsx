@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
-import { focusTab } from "./focus-tab";
+import { focusTab } from "@/modules/browser";
 import { Button } from "@/components/Button";
 import { Icon, XIcon } from "@/components/Icon";
 

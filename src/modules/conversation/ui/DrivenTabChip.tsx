@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
-import { focusTab } from "./focus-tab";
+import { focusTab } from "@/modules/browser";
 
 /**
  * Chip naming the tab the live run is driving — the panel is window-scoped

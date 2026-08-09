@@ -74,9 +74,10 @@ describe("driver tab switching", () => {
     const info = await driver.switchTab(2);
     expect(info).toMatchObject({ id: 2, title: "Second" });
     expect(switches).toEqual([2]);
+    // Window first, then the tab — so the window never flashes its old tab.
     expect(updates).toEqual([
-      { id: 2, props: { active: true } },
       { window: 10, props: { focused: true } },
+      { id: 2, props: { active: true } },
     ]);
 
     await expect(driver.snapshot()).resolves.toMatchObject({ pageContent: "snap:2" });
