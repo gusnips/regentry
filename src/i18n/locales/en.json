@@ -306,6 +306,7 @@
       "press_key": "Pressing keys",
       "scroll": "Scrolling",
       "screenshot": "Capturing",
+      "read_history": "Reading the transcript",
       "remember": "Remembering",
       "ask_user": "Asking you",
       "done": "Wrapping up",
@@ -409,6 +410,12 @@
   "notify": {
     "doneFallback": "Task finished."
   },
+  "progress": {
+    "interrupted": "This run was interrupted before it could finish. What it had already done:",
+    "thenFailed": "It then failed: {{message}}",
+    "resume": "Call read_history to see these steps' full results, then continue from where it stopped instead of repeating them.",
+    "omitted": "… {{count}} earlier steps"
+  },
   "errors": {
     "alreadyRunningMCP": "A task from an external MCP client is already running. Stop it from the client (tabrunner.stop), or wait for it to finish.",
     "alreadyRunningPanel": "A task is already running in the TabRunner panel. Open the panel and stop it, or wait for it to finish.",
@@ -432,6 +439,10 @@
     "tabsListed_one": "Listed {{count}} open tab",
     "tabsListed_other": "Listed {{count}} open tabs",
     "screenshotCaptured": "Screenshot captured",
+    "historyRead_one": "Read the transcript — {{count}} entry",
+    "historyRead_other": "Read the transcript — {{count}} entries",
+    "historyEmpty": "No transcript entries yet.",
+    "historyUnavailable": "This run has no conversation attached — there is no transcript to read.",
     "failed": "Failed: {{error}}",
     "toolCompleted": "{{tool}} completed",
     "unknownTool": "Unknown tool: {{name}}",

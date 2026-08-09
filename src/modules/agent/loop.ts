@@ -136,6 +136,11 @@ export interface LoopOptions {
   provider: ChatProvider;
   driver: BrowserDriver;
   task: string;
+  /**
+   * The conversation this run belongs to — read_history reads its stored
+   * transcript. Absent only in tests.
+   */
+  conversationId?: string;
   /** Data-URL images the user attached to the task, referenced in the text as "[Image #1]". */
   images?: string[];
   /**
@@ -249,6 +254,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     provider,
     driver,
     task,
+    conversationId,
     images,
     supportsImages: supportsImagesOpt,
     previousTabs,
@@ -406,7 +412,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // rather than adding a row, so it gets no spinner and no step of its own.
       const bookkeeping = call.name === "plan";
       if (!bookkeeping) callbacks.onStepStart?.(call.name, call.args);
-      const result = await executeTool(call, driver);
+      const result = await executeTool(call, driver, { conversationId });
       if (!result.ok) log.warn(`tool ${call.name} failed:`, result.error);
 
       if (bookkeeping && result.ok) {

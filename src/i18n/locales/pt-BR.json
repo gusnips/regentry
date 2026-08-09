@@ -306,6 +306,7 @@
       "press_key": "Pressionando teclas",
       "scroll": "Rolando",
       "screenshot": "Capturando",
+      "read_history": "Lendo o histórico",
       "remember": "Memorizando",
       "ask_user": "Perguntando a você",
       "done": "Finalizando",
@@ -409,6 +410,12 @@
   "notify": {
     "doneFallback": "Tarefa concluída."
   },
+  "progress": {
+    "interrupted": "Esta execução foi interrompida antes de terminar. O que ela já havia feito:",
+    "thenFailed": "Em seguida, ela falhou: {{message}}",
+    "resume": "Chame read_history para ver os resultados completos desses passos e continue de onde parou, em vez de repeti-los.",
+    "omitted": "… {{count}} passos anteriores"
+  },
   "errors": {
     "alreadyRunningMCP": "Uma tarefa de um cliente MCP externo já está em execução. Pare-a pelo cliente (tabrunner.stop) ou aguarde terminar.",
     "alreadyRunningPanel": "Uma tarefa já está em execução no painel do TabRunner. Abra o painel e pare-a, ou aguarde terminar.",
@@ -432,6 +439,10 @@
     "tabsListed_one": "Listou {{count}} aba aberta",
     "tabsListed_other": "Listou {{count}} abas abertas",
     "screenshotCaptured": "Captura realizada",
+    "historyRead_one": "{{count}} entrada do histórico lida",
+    "historyRead_other": "{{count}} entradas do histórico lidas",
+    "historyEmpty": "Nenhuma entrada no histórico ainda.",
+    "historyUnavailable": "Esta execução não tem uma conversa associada — não há histórico para ler.",
     "failed": "Falha: {{error}}",
     "toolCompleted": "{{tool}} concluído",
     "unknownTool": "Ferramenta desconhecida: {{name}}",

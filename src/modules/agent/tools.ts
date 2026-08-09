@@ -3,6 +3,7 @@ import type { ToolCall } from "@/modules/providers/types";
 import { remember } from "@/modules/memory";
 import { i18n } from "@/i18n";
 import { truncate } from "@/lib/logger";
+import { readStepLog } from "./read-history";
 
 /** Longer than this and the plan card stops being scannable in a side panel. */
 const MAX_PLAN_STEPS = 20;
@@ -17,8 +18,17 @@ export interface ToolResult {
   images?: string[];
 }
 
+export interface ToolContext {
+  /** The run's conversation — read_history reads its stored transcript. Absent under direct control, which has none. */
+  conversationId?: string;
+}
+
 /** Execute a single tool call against the browser driver. */
-export async function executeTool(call: ToolCall, driver: BrowserDriver): Promise<ToolResult> {
+export async function executeTool(
+  call: ToolCall,
+  driver: BrowserDriver,
+  ctx: ToolContext = {},
+): Promise<ToolResult> {
   try {
     switch (call.name) {
       case "navigate":
@@ -99,6 +109,11 @@ export async function executeTool(call: ToolCall, driver: BrowserDriver): Promis
         // panel renders the question; the answer arrives as the next message.
         return { ok: true, data: { question: call.args.question, choices: call.args.choices } };
 
+      case "read_history":
+        // Direct control drives tools without a conversation — nothing to read.
+        if (!ctx.conversationId) return { ok: false, error: i18n.t("errors.historyUnavailable") };
+        return readStepLog(ctx.conversationId, call.args);
+
       case "done":
         return { ok: true, data: { summary: call.args.summary } };
 
@@ -117,6 +132,11 @@ export function formatDetail(tool: string, result: ToolResult): string | undefin
   if (tool === "snapshot") {
     const snapshot = result.data as { pageContent?: string } | undefined;
     return snapshot?.pageContent ? truncate(snapshot.pageContent, MAX_DETAIL) : undefined;
+  }
+  if (tool === "read_history") {
+    // The log is already formatted text — showing it as escaped JSON would be unreadable.
+    const window = result.data as { log?: string } | undefined;
+    return window?.log ? truncate(window.log, MAX_DETAIL) : undefined;
   }
   if (result.data === undefined) return undefined;
   const json = JSON.stringify(result.data, null, 2);
@@ -148,6 +168,10 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
   }
   if (tool === "screenshot") {
     return i18n.t("errors.screenshotCaptured");
+  }
+  if (tool === "read_history" && data && typeof data === "object") {
+    const window = data as { from: number; to: number };
+    return i18n.t("errors.historyRead", { count: window.to - window.from });
   }
   if (tool === "remember" && data && typeof data === "object") {
     // The fact itself is the summary — "Saved to memory" tells the user nothing

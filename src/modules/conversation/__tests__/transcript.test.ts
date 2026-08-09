@@ -71,6 +71,45 @@ describe("TranscriptWriter", () => {
     expect(stored[0]).toMatchObject({ role: "error", kind: "rate" });
   });
 
+  it("leaves a progress note when a run dies after doing work", async () => {
+    const rows = await replay("run-err", [
+      {
+        type: "step",
+        tool: "navigate",
+        summary: "Navigated successfully",
+        ok: true,
+        args: { url: "https://www.reddit.com/r/all" },
+      },
+      { type: "step", tool: "snapshot", summary: "Captured 154 elements", ok: true },
+      { type: "error", message: "Provider error: 429" },
+    ]);
+
+    expect(rows[0]).toEqual(["step", "Navigated successfully"]);
+    expect(rows[1]).toEqual(["step", "Captured 154 elements"]);
+    // The note replays into the next run's history — the error message never does.
+    expect(rows[2]?.[0]).toBe("assistant");
+    expect(rows[2]?.[1]).toContain("reddit.com");
+    expect(rows[2]?.[1]).toContain("Provider error: 429");
+    expect(rows[3]).toEqual(["error", "Provider error: 429"]);
+  });
+
+  it("writes no progress note when the run died before its first step", async () => {
+    const rows = await replay("run-err-early", [{ type: "error", message: "Provider error: 429" }]);
+    expect(rows).toEqual([["error", "Provider error: 429"]]);
+  });
+
+  it("keeps retry chatter out of the progress note", async () => {
+    const rows = await replay("run-err-retry", [
+      { type: "step", tool: "retry", summary: "Connection hiccup — retrying (1/2)" },
+      { type: "step", tool: "snapshot", summary: "Captured 154 elements", ok: true },
+      { type: "error", message: "Provider error: 429" },
+    ]);
+
+    const note = rows.find(([role]) => role === "assistant");
+    expect(note?.[1]).toContain("Captured 154 elements");
+    expect(note?.[1]).not.toContain("retrying");
+  });
+
   it("drops a done summary that only repeats the prose already shown", async () => {
     const rows = await replay("run-4", [
       { type: "token", text: "The invoice is paid." },

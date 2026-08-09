@@ -1,6 +1,8 @@
 import type { Event } from "@/shared/protocol";
 import type { Message } from "./types";
 import { appendMessageTo, replaceMessageTo } from "./conversations";
+import { buildProgressNote } from "./progress-note";
+import type { ProgressStep } from "./progress-note";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("transcript");
@@ -57,6 +59,8 @@ export class TranscriptWriter {
   private lastAssistant: string | null = null;
   /** The plan card, remembered so updates rewrite it instead of stacking copies. */
   private planMsg: Message | null = null;
+  /** The run's real steps, so an interrupted run can still leave a progress note. */
+  private progressSteps: ProgressStep[] = [];
 
   constructor(private readonly conversationId: string) {}
 
@@ -131,6 +135,15 @@ export class TranscriptWriter {
             live: false,
           }),
         );
+        // retry/warn are run-internal chatter, not work a later run resumes from.
+        if (event.tool && event.tool !== "retry" && event.tool !== "warn") {
+          this.progressSteps.push({
+            tool: event.tool,
+            summary: event.summary,
+            ok: event.ok,
+            args: event.args,
+          });
+        }
         break;
       }
 
@@ -161,6 +174,13 @@ export class TranscriptWriter {
       case "error":
         this.flushReasoning();
         this.flushStreaming();
+        // The run died before writing its closing summary — leave a
+        // deterministic one. The error message itself never replays into
+        // history, so without the note the next run would start blind.
+        {
+          const note = buildProgressNote(this.progressSteps, event.message);
+          if (note) this.append(makeMsg("assistant", note));
+        }
         this.append(makeMsg("error", event.message, { kind: event.kind }));
         break;
 

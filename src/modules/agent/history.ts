@@ -26,7 +26,9 @@ const IMAGE_TOKEN = /\s?\[Image #\d+\]/g;
  * The conversation as alternating wire turns: every user message (the task,
  * the corrections, the answers) and the assistant's replies in its own words.
  * Steps, plans and reasoning stay out — what happened lives in the assistant's
- * summaries, and the fresh run re-reads the page itself. Both adapters
+ * summaries (an interrupted run gets a deterministic one — progress-note.ts —
+ * so the summary exists even when the model never wrote one), and the fresh
+ * run re-reads the page itself. Both adapters
  * serialize these turns with the same code path as the run's own.
  */
 export function buildConversationHistory(transcript: Message[]): ChatMessage[] {

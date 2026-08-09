@@ -193,6 +193,18 @@ starts clean; the only context that crosses chats is AGENTS.md / MEMORY.md. Step
 reasoning stay out of it; outcomes live in the assistant's own words, ask_user questions
 included. Conversations remain scrollback you can revisit and delete.
 
+A run that errors before writing any closing summary used to fall through that design —
+no assistant words, so the work vanished from the replay and "continue" started blind.
+The writer closes the hole itself: on an `error` event it appends a deterministic
+progress note (`conversation/progress-note.ts`) built from the run's persisted step
+rows — deliberately NOT a model call, since the failures that reach there (a 429, a
+dead tab) are exactly the ones where asking the model to summarize would fail too. The
+note is an ordinary assistant message, so it replays like any other. When the model
+needs more than its outline, the `read_history` tool pages the stored transcript
+(user/assistant/error turns, plans, step rows with optional result extracts) by absolute
+index — append-stable while the current run keeps writing — newest window by default,
+char-capped with `to` marking where to continue.
+
 **Tabs belong to messages, not to the conversation.** One run per message, and the user
 moves between messages: in "this page" mode each user message is stamped with the tab it
 was sent from (shown in the transcript once the conversation spans more than one tab —

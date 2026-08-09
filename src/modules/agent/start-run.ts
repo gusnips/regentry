@@ -194,6 +194,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         provider,
         driver,
         task,
+        conversationId,
         images,
         supportsImages: resolvedProvider?.supportsImages,
         history: history.length > 0 ? history : undefined,
