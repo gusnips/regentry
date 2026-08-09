@@ -467,7 +467,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         recallQueue();
         // A stop redirect must never auto-fire into an error — hand it back.
         returnPending();
-        pushDisplay(makeMsg("error", event.message));
+        pushDisplay(makeMsg("error", event.message, { kind: event.kind }));
         settleRun("error");
         break;
       }
@@ -553,7 +553,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     runStartedAt: null,
     runEndedAt: null,
     lastRun: null,
-    runTarget: "background",
+    runTarget: "thisPage",
     pendingStepId: null,
     planMsgId: null,
     planApproval: null,

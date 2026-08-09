@@ -22,9 +22,7 @@ const FONTS = ["Unbounded.ttf", "Figtree.ttf", "JetBrainsMono.ttf"].map(
 function renderPng(svg: string, width: number, withText = false): Buffer {
   const r = new Resvg(svg, {
     fitTo: { mode: "width", value: width },
-    font: withText
-      ? { fontFiles: FONTS, loadSystemFonts: false }
-      : { loadSystemFonts: true },
+    font: withText ? { fontFiles: FONTS, loadSystemFonts: false } : { loadSystemFonts: true },
   });
   return Buffer.from(r.render().asPng());
 }
@@ -100,7 +98,10 @@ const TILE = tileIconSvg();
 await write("public/icon.svg", TILE + "\n");
 for (const size of [16, 32, 48, 96, 128]) {
   // 16px gets the trail-less small variant — trails dissolve below that size.
-  await write(`public/icon/${size}.png`, renderPng(size === 16 ? tileIconSvg("small") : TILE, size));
+  await write(
+    `public/icon/${size}.png`,
+    renderPng(size === 16 ? tileIconSvg("small") : TILE, size),
+  );
 }
 await write("docs/og.png", renderPng(ogSvg(), 1200, true));
 

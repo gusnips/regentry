@@ -1,14 +1,8 @@
 import { createLogger } from "@/lib/logger";
-import { defineItem } from "@/lib/storage";
+import { bridgeConnected, bridgeItem } from "./config";
 import type { DaemonMessage, ExtensionMessage } from "./protocol";
 
 const log = createLogger("bridge");
-
-/** Bridge config — on by default; the port must match what `bun run bridge` listens on. */
-export const bridgeItem = defineItem<{ enabled: boolean; port: number }>("bridge", {
-  enabled: true,
-  port: 17_836,
-});
 
 /**
  * Outbound WS to the local daemon — the only place WebSocket lives. The worker
@@ -56,6 +50,7 @@ export class BridgeSocket {
       // battery cost — the bridge that isn't running wakes nothing.
       await chrome.alarms.clear(this.alarm);
       this.ws?.close();
+      await bridgeConnected.set(false);
       return;
     }
     // Same name replaces, so reconciling never stacks alarms.
@@ -85,6 +80,7 @@ export class BridgeSocket {
       ws.onopen = () => {
         established = true;
         log.info("bridge connected");
+        void bridgeConnected.set(true);
         this.onOpen();
       };
       ws.onmessage = (e) => {
@@ -97,6 +93,7 @@ export class BridgeSocket {
       ws.onclose = () => {
         this.ws = null;
         log.debug("bridge ws closed");
+        void bridgeConnected.set(false);
         // Only a link that actually existed earns the fast retry. A socket that
         // never opened means no daemon is listening — the overwhelmingly common
         // case — and retrying every 2s would hammer a closed port forever and

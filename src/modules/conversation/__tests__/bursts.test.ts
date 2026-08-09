@@ -31,15 +31,27 @@ describe("groupBursts", () => {
     expect(burst.live).toBe(false);
   });
 
-  it("keeps thought-only and step-only runs flat", () => {
-    const thoughts = groupBursts([msg("reasoning", 1000, { elapsed: 500 })]);
-    const steps = groupBursts([
+  it("keeps a lone thought or step flat, and thought-only runs too", () => {
+    const items = groupBursts([
+      msg("reasoning", 1000, { elapsed: 500 }),
+      msg("reasoning", 1200, { elapsed: 300 }),
+      msg("assistant", 1500),
+      msg("step", 1600, { tool: "click" }),
+    ]);
+    expect(items.every((i) => i.kind === "message")).toBe(true);
+    expect(items).toHaveLength(4);
+  });
+
+  it("folds a thought-free step run — thinking is not required", () => {
+    const items = groupBursts([
       msg("step", 1100, { tool: "click" }),
       msg("step", 1200, { tool: "type" }),
+      msg("step", 1300, { tool: "snapshot" }),
     ]);
-    expect([...thoughts, ...steps].every((i) => i.kind === "message")).toBe(true);
-    expect(thoughts).toHaveLength(1);
-    expect(steps).toHaveLength(2);
+    const [burst] = items;
+    if (!burst || burst.kind !== "burst") throw new Error("expected burst");
+    expect(burst.steps).toHaveLength(3);
+    expect(burst.startedAt).toBe(1100);
   });
 
   it("splits bursts on plans and other messages", () => {

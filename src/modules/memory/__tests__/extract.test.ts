@@ -103,6 +103,52 @@ describe("buildExtractionMessages", () => {
     expect(messages[3]?.toolResults).toEqual([{ id: "c1", content: "Page loaded" }]);
     expect(messages[3]?.toolResults?.[0]?.images).toBeUndefined();
   });
+
+  it("drops tool calls that never got a result — an unmatched done/ask_user 400s the wire", () => {
+    const ended: ChatMessage[] = [
+      { role: "user", content: "Task" },
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [
+          { id: "c1", name: "snapshot", args: {} },
+          { id: "c2", name: "done", args: { summary: "finished" } },
+        ],
+      },
+      { role: "tool_results", content: "", toolResults: [{ id: "c1", content: "Page" }] },
+    ];
+    const messages = buildExtractionMessages(ended, "");
+    // The answered call stays; the terminal done call does not.
+    expect(messages[2]?.toolCalls?.map((c) => c.name)).toEqual(["snapshot"]);
+    expect(messages[3]?.role).toBe("tool_results");
+  });
+
+  it("drops an assistant turn left empty once its unanswered call is filtered", () => {
+    const ended: ChatMessage[] = [
+      { role: "user", content: "Task" },
+      { role: "assistant", content: "", toolCalls: [{ id: "c9", name: "done", args: {} }] },
+    ];
+    const messages = buildExtractionMessages(ended, "");
+    expect(messages).toHaveLength(2); // system + user — no empty assistant message
+  });
+
+  it("caps oversized texts — the extraction call needs the gist, not the pages", () => {
+    const huge = "x".repeat(10_000);
+    const messages = buildExtractionMessages(
+      [
+        { role: "user", content: huge },
+        {
+          role: "tool_results",
+          content: "",
+          toolResults: [{ id: "c1", content: huge }],
+        },
+      ],
+      "",
+    );
+    expect(messages[1]?.content.length).toBeLessThan(huge.length);
+    expect(messages[1]?.content.endsWith("…")).toBe(true);
+    expect(messages[2]?.toolResults?.[0]?.content.length).toBeLessThan(huge.length);
+  });
 });
 
 describe("parseExtractedFacts", () => {
@@ -175,5 +221,19 @@ describe("extractAndRemember", () => {
     mockStreamReply("- A known fact.\n- A fresh one.");
     await extractAndRemember(makeConfig(), [], new AbortController().signal);
     expect(await getDoc("MEMORY.md")).toBe("- A known fact.\n- A fresh one.\n");
+  });
+
+  it("extracts from a run that ended on done — the terminal call never got a result", async () => {
+    mockStreamReply("- The user's handle is gus.");
+    await extractAndRemember(
+      makeConfig(),
+      [
+        { role: "system", content: "You are a browser agent." },
+        { role: "user", content: "Check my handle" },
+        { role: "assistant", content: "", toolCalls: [{ id: "c1", name: "done", args: {} }] },
+      ],
+      new AbortController().signal,
+    );
+    expect(await getDoc("MEMORY.md")).toBe("- The user's handle is gus.\n");
   });
 });

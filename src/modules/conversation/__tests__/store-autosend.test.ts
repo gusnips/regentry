@@ -64,6 +64,8 @@ beforeEach(() => {
     runStartedAt: null,
     runEndedAt: null,
     lastRun: null,
+    // Pin the run target so the wire assertions don't depend on the UI default.
+    runTarget: "background",
     pendingStepId: null,
     planMsgId: null,
     queued: [],

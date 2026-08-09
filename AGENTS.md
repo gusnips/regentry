@@ -15,6 +15,8 @@ bun run format     # prettier
 bun run deadcode   # knip (deadcode:fix to auto-fix)
 bun run i18n:check # locale parity + every static t() key resolves (--unused for orphans)
 bun run icons      # regenerate public/icon/* + docs/og.png from src/shared/logo.ts
+bun run shots      # store screenshots → docs/screenshots/ (+ site sync when ../site exists)
+bun run shots:ui   # light/dark UI previews → preview/ (gitignored)
 bun run zip        # build + pack dist/tabrunner-<version>-chrome.zip
 bun run crx        # build + sign the public CRX with tabrunner-test.pem (gitignored)
 bun run release    # bun run release <patch|minor|major> — gates, bump, commit, tag, zip
@@ -62,9 +64,10 @@ never reach the service-worker bundle.
 
 ### Modules
 
-- `agent/` — agent loop, tools, system prompt, run slot + FIFO queue, run start. Runs are
-  **background by default** (fresh inactive tab, tab group labelled with task + ✓/?/✗);
-  `thisPage` opts into driving the user's current tab. Runs survive panel close. Action tools
+- `agent/` — agent loop, tools, system prompt, run slot + FIFO queue, run start. Panel runs
+  drive **the current page by default**; the composer toggle opts into a background run
+  (fresh inactive tab, tab group labelled with task + ✓/?/✗). Runs survive panel close.
+  Action tools
   are gated on user-approved plans; `ask_user` enforces the consequential-action policy.
 - `browser/` — accessibility-tree snapshot, CDP driver (trusted input), on-page badge + pulsing
   favicon dot on the driven tab, `restricted-url.ts`, `status-widget.ts`. Background-only.
@@ -73,13 +76,18 @@ never reach the service-worker bundle.
 - `conversation/` — stored conversations, message types, chat UI. The worker owns transcript
   persistence (`TranscriptWriter`); the panel store only renders.
 - `bridge/` — the MCP bridge's extension half. Background-only.
-- `tips/` — the rotating "Tip: …" line; i18n data + cooldown scheduler.
+- `tips/` — the rotating "Tip: …" line; i18n data + cooldown scheduler (panel opens,
+  least-recently-shown wins, re-picked on panel open / run end). Shows in the running run band,
+  or on its own full-width row above the composer input when idle — never sharing the footer row
+  with the run-target select. Shipping a user-facing gesture, shortcut, or tucked-away control?
+  Add a tip with it: id + cooldown in `registry.ts`, copy in all three `tips.*` catalogs.
 - `shared/` — Port protocol, shared types, brand mark (`logo.ts`).
 - `src/components/` — cross-domain Base UI primitives (Button, Select, TextField, dialogs…)
   plus the chat Bubble/MessageScroller shells over `@shadcn/react`.
 - `src/i18n/` — the one i18next instance, the `en`/`pt-BR`/`es` catalogs, and typed keys.
   Not a `modules/` domain because every layer needs it, background included.
-- `src/lib/` — storage helpers, logger, Tailwind theme tokens (`brand-*` purple scale).
+- `src/lib/` — storage helpers, logger, Tailwind theme tokens (`brand-*` comet-burn emerald scale,
+  indigo-tinted neutrals; amber utilities = live measurement).
 
 ### Data flow
 

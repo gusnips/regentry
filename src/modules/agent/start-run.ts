@@ -30,6 +30,9 @@ import { markRunningAwaiting, markRunningTab } from "./run-queue";
 
 const log = createLogger("bg");
 
+/** Holds the worker up through the post-run memory extraction — see start-run.ts. */
+export const MEMORY_KEEPALIVE_ALARM = "tabrunner-memory-keepalive";
+
 export interface StartRunOptions {
   /** The conversation this run's transcript lives in — the panel's active one,
    *  or the bridge's dedicated MCP thread. */
@@ -167,7 +170,11 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       log.info("driven tab closed mid-run", { tabId: drivenTabId });
       runFailed = true;
       // The user closed the tab — that IS the answer, no notification on top.
-      emit({ type: "error", message: i18n.t("errors.tabClosed", { title: drivenTitle }), silent: true });
+      emit({
+        type: "error",
+        message: i18n.t("errors.tabClosed", { title: drivenTitle }),
+        silent: true,
+      });
       run.controller.abort();
     };
     chrome.tabs.onRemoved.addListener(onTabGone);
@@ -250,9 +257,9 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
             });
           },
           onUsage: (input, output) => emit({ type: "usage", input, output }),
-          onError: (message) => {
+          onError: (message, kind) => {
             runFailed = true;
-            emit({ type: "error", message });
+            emit({ type: "error", message, kind });
           },
           onDone: (summary) =>
             emit({ type: "done", summary, ...(endedOnQuestion ? { question: true } : {}) }),
@@ -265,8 +272,16 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       // Memory is a background nicety: after a finished run, one cheap extra call
       // distills the durable facts the agent never got around to remembering.
       // Fire-and-forget — best-effort, a failed extraction never fails the run.
+      // But not unprotected: the board's keepalive alarm clears the moment this
+      // run lets go of its slot, the panel has long closed itself, and an MV3
+      // worker with nothing pending is killed mid-fetch — the extraction (and
+      // the memory write) dies with it. A dedicated alarm holds the worker up
+      // until the call settles; background.ts clears a stale one at boot.
       if (!run.controller.signal.aborted && resolvedProvider) {
-        void extractAndRemember(resolvedProvider, wire, run.controller.signal);
+        void chrome.alarms.create(MEMORY_KEEPALIVE_ALARM, { periodInMinutes: 0.5 });
+        void extractAndRemember(resolvedProvider, wire, run.controller.signal).finally(() => {
+          void chrome.alarms.clear(MEMORY_KEEPALIVE_ALARM);
+        });
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -481,7 +496,7 @@ function groupTitle(task: string, mark = ""): string {
 async function labelRunTab(tabId: number, task: string): Promise<number | undefined> {
   try {
     const groupId = await chrome.tabs.group({ tabIds: tabId });
-    await chrome.tabGroups.update(groupId, { title: groupTitle(task), color: "purple" });
+    await chrome.tabGroups.update(groupId, { title: groupTitle(task), color: "green" });
     return groupId;
   } catch (e) {
     log.debug("tab grouping skipped:", e instanceof Error ? e.message : String(e));

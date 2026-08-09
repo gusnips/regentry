@@ -1,5 +1,5 @@
 import { initI18n, i18n } from "@/i18n";
-import { startAgentRun } from "@/modules/agent/start-run";
+import { startAgentRun, MEMORY_KEEPALIVE_ALARM } from "@/modules/agent/start-run";
 import { getActiveRun, releaseRun, answerPlanApproval } from "@/modules/agent/active-runs";
 import {
   cancelQueued,
@@ -43,6 +43,9 @@ let widgetState: WidgetState | null = null;
 
 export default defineBackground(() => {
   void initI18n();
+  // A worker killed mid-extraction leaves its keepalive alarm firing forever —
+  // a permanent wake loop. Alarms outlive the worker, so clear a stale one here.
+  void chrome.alarms.clear(MEMORY_KEEPALIVE_ALARM);
   // Strip Origin from our own provider calls, or a subscription OAuth token is
   // refused by Anthropic's CORS gate before any model code ever runs.
   initProviderOriginStrip();
@@ -81,7 +84,9 @@ export default defineBackground(() => {
   onBoardChanged((board) => {
     widgetState = boardToWidget(board);
     const exclude = board.running?.tabId;
-    void widgetHidden.get().then((hidden) => syncStatusWidget(hidden ? null : widgetState, exclude));
+    void widgetHidden
+      .get()
+      .then((hidden) => syncStatusWidget(hidden ? null : widgetState, exclude));
     if (board.running || board.queue.length > 0) {
       void chrome.alarms.create(KEEPALIVE_ALARM, { periodInMinutes: 0.5 });
     } else {

@@ -1,6 +1,7 @@
 import type { ProviderConfig } from "./types";
 import { ProviderError } from "./types";
 import { classifyProviderError, type ErrorKind } from "./error-classify";
+import { formatResetRelative, parseRateLimitReset, type RateLimitReset } from "./rate-limit";
 import { providerDisplayName } from "./presets";
 import { createLogger, truncate } from "@/lib/logger";
 import { i18n } from "@/i18n";
@@ -21,6 +22,28 @@ const ERROR_KIND_KEYS = {
 } as const satisfies Record<ErrorKind, string>;
 
 /**
+ * The rate-limit lead line. "Try again in a moment" is only honest for a
+ * per-minute throttle — when the headers name a subscription window (Claude
+ * OAuth 5-hour/weekly) or any reset time, say when it actually resets.
+ */
+function rateLimitLine(label: string, reset: RateLimitReset, now: number): string {
+  if (reset.window && reset.resetAtMs !== undefined) {
+    return i18n.t("errors.kindRateWindow", {
+      provider: label,
+      window: i18n.t(reset.window === "5h" ? "errors.window5h" : "errors.windowWeekly"),
+      reset: formatResetRelative(reset.resetAtMs, now),
+    });
+  }
+  if (reset.resetAtMs !== undefined) {
+    return i18n.t("errors.kindRateRetry", {
+      provider: label,
+      reset: formatResetRelative(reset.resetAtMs, now),
+    });
+  }
+  return i18n.t(ERROR_KIND_KEYS.rate, { provider: label });
+}
+
+/**
  * Classified errors lead with what fixes them ("rejected the API key — check
  * it…") and keep the raw body after a colon, so splitErrorDetail still lifts
  * the provider's own line into the summary and the JSON behind Details.
@@ -33,13 +56,21 @@ function providerErrorMessage(
   status: number,
   text: string,
   fallbackDetail: string,
+  reset: RateLimitReset,
+  now: number,
 ): { message: string; kind?: ErrorKind } {
   const label = providerDisplayName(provider);
   const kind = classifyProviderError(status, text);
   if (kind) {
-    const key =
-      kind === "auth" && provider.auth ? "errors.kindAuthSignedIn" : ERROR_KIND_KEYS[kind];
-    const line = i18n.t(key, { provider: label });
+    const line =
+      kind === "rate"
+        ? rateLimitLine(label, reset, now)
+        : i18n.t(
+            kind === "auth" && provider.auth ? "errors.kindAuthSignedIn" : ERROR_KIND_KEYS[kind],
+            {
+              provider: label,
+            },
+          );
     return { message: text ? `${line}: ${text}` : line, kind };
   }
   return {
@@ -133,8 +164,17 @@ export async function* streamSse(opts: {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     log.error(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
-    const { message, kind } = providerErrorMessage(provider, res.status, text, res.statusText);
-    throw new ProviderError(message, res.status, kind);
+    const now = Date.now();
+    const reset = parseRateLimitReset((name) => res.headers.get(name), now);
+    const { message, kind } = providerErrorMessage(
+      provider,
+      res.status,
+      text,
+      res.statusText,
+      reset,
+      now,
+    );
+    throw new ProviderError(message, res.status, kind, reset.retryAfterMs);
   }
 
   if (!res.body) throw new Error(i18n.t("errors.noResponseBody"));

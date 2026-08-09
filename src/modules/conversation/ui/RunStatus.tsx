@@ -109,7 +109,7 @@ export function RunStatus() {
     >
       <div className="flex items-center gap-2 text-sm">
         {/* One motion only — the shimmering verb is the live signal, so the dot stays still. */}
-        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500" />
+        <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400" />
         {awaitingApproval ? (
           // Parked on the user's answer: the run is alive (the timer keeps
           // counting) but nothing is working — the shimmer would be lying.
@@ -201,7 +201,7 @@ function BridgeActiveBand({ active }: { active: BridgeActive }) {
       {/* The one motion — a breathing dot. Nothing is streaming, so the copy is
           still; the dot carries the "alive" signal the live band gives its
           shimmering verb. */}
-      <span className="inline-block h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-brand-500" />
+      <span className="inline-block h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-amber-400" />
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">
         {active.mode === "direct"
           ? t("run.bridgeDriving", { client: active.client })

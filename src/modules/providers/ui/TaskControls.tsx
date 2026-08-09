@@ -5,8 +5,10 @@ import { ProviderIcon } from "./ProviderIcon";
 import { AddProviderDialog } from "./AddProviderDialog";
 import { listModels, pickLatestModel } from "../models";
 import { PRESETS, providerDisplayName } from "../presets";
+import { supportsUsage } from "../usage";
 import { REASONING_EFFORTS } from "../types";
 import type { ModelInfo, ProviderConfig, ProviderShape, ReasoningEffort } from "../types";
+import { UsageIndicator } from "./UsageIndicator";
 import { Select } from "@/components/Select";
 import type { SelectOption } from "@/components/Select";
 import { TextField } from "@/components/TextField";
@@ -241,6 +243,8 @@ export function ModelControls() {
           options={modelOptions}
         />
       )}
+
+      {supportsUsage(active.id) && <UsageIndicator provider={active} />}
 
       <Select
         size="sm"

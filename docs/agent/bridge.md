@@ -48,6 +48,11 @@ and can never drift from the panel's.
   clears it when not, so a disabled bridge costs nothing. Only a WS that actually opened
   earns the 2s fast retry; a refused connect (the normal case — almost nobody runs the
   daemon) waits for the alarm.
+- **Config and link state live in storage, not in the socket.** `bridge/config.ts` holds
+  the `bridge` item (`enabled`, `port`) plus `bridgeConnected`, a mirror the socket writes
+  on open/close/disable so UI contexts can show the link over the storage-watch channel.
+  Settings → MCP edits the same item the socket reconciles on, so a port change there
+  reconnects on its own — no messaging, no restart.
 
 ## Direct control
 

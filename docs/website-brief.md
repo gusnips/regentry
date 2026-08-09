@@ -10,11 +10,11 @@ the GitHub Releases URLs below.
 Every pushed `v*` tag builds and attaches four files to the GitHub Release
 (`.github/workflows/release.yml`):
 
-| URL (stable — hotlink these)                                                                                    | What                                             |
-| --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest.crx`                            | Signed CRX, primary install until store approval |
-| `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest-chrome.zip`                     | The exact zip uploaded to the Chrome Web Store   |
-| `https://github.com/gusnips/tabrunner/releases/latest`                                                          | Release notes + versioned artifacts              |
+| URL (stable — hotlink these)                                                                | What                                             |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest.crx`        | Signed CRX, primary install until store approval |
+| `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest-chrome.zip` | The exact zip uploaded to the Chrome Web Store   |
+| `https://github.com/gusnips/tabrunner/releases/latest`                                      | Release notes + versioned artifacts              |
 
 The versioned artifacts (`tabrunner-<version>.crx`, `tabrunner-<version>-chrome.zip`) sit on the
 same release for the permanent record; the site links only the `latest` aliases and the release

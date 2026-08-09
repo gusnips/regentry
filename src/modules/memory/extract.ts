@@ -9,6 +9,16 @@ const log = createLogger("memory");
 const MAX_FACTS_PER_RUN = 3;
 
 /**
+ * One message's text ceiling on the extraction wire. Snapshots dominate a run's
+ * transcript and the distillation only needs the gist of each step — full pages
+ * would make the call slow enough to outlive the service worker hosting it.
+ */
+const MAX_MESSAGE_CHARS = 4_000;
+
+/** A hung provider must not pin the worker (and its keepalive alarm) forever. */
+const EXTRACTION_TIMEOUT_MS = 90_000;
+
+/**
  * The extraction turn's system prompt. Mirrors claude-code-original's
  * `extractMemories` prompt in the minimum TabRunner needs: no taxonomy, one flat
  * memory list, a strict "what not to save". The current MEMORY.md rides along so
@@ -33,25 +43,42 @@ Current memory:
 ${memory || "(empty)"}`;
 }
 
+function capText(text: string): string {
+  return text.length > MAX_MESSAGE_CHARS ? `${text.slice(0, MAX_MESSAGE_CHARS)}…` : text;
+}
+
 /**
  * The transcript the extraction call sees: the run's wire messages minus the
  * system prompt, with everything the extraction turn cannot use stripped —
  * screenshots (`data:` URLs — huge) and reasoning. Tool calls and results stay,
  * so the model can tell what the run actually did.
- * ponytail: sends the whole text-only transcript; if cost ever matters, cap to
- * the last N messages here — extraction only needs the run's highlights.
+ *
+ * Two wire-validity rules keep the replay from being rejected outright:
+ *
+ * - A run's last turn ends on `done`/`ask_user`, whose result the loop never
+ *   records — replayed verbatim, that unmatched tool call 400s the extraction
+ *   request on every strict provider (Anthropic, OpenAI alike). Only calls
+ *   that got a result ride along.
+ * - Oversized texts are capped, so a long run's transcript stays a quick,
+ *   cheap call instead of a full page-by-page replay.
  */
 export function buildExtractionMessages(transcript: ChatMessage[], memory: string): ChatMessage[] {
+  const answered = new Set(transcript.flatMap((m) => (m.toolResults ?? []).map((r) => r.id)));
   const messages: ChatMessage[] = [
     { role: "system", content: buildExtractionSystemPrompt(memory) },
   ];
   for (const m of transcript) {
     if (m.role === "system") continue;
+    const toolCalls = m.toolCalls?.filter((c) => answered.has(c.id));
+    const content = capText(m.content);
+    // An assistant turn that was only a done/ask_user call is empty once its
+    // call is filtered out — and an empty message is its own wire error.
+    if (m.role === "assistant" && !content && !toolCalls?.length) continue;
     messages.push({
       role: m.role,
-      content: m.content,
-      toolCalls: m.toolCalls,
-      toolResults: m.toolResults?.map((r) => ({ id: r.id, content: r.content })),
+      content,
+      toolCalls: toolCalls?.length ? toolCalls : undefined,
+      toolResults: m.toolResults?.map((r) => ({ id: r.id, content: capText(r.content) })),
     });
   }
   return messages;
@@ -78,7 +105,9 @@ export function parseExtractedFacts(reply: string): string[] {
 /**
  * One best-effort extraction call at run end: replay the run's text-only
  * transcript to the model, parse the durable facts it names, and remember each.
- * Never throws — memory is a nice-to-have, a failed call must not surface.
+ * Never throws — memory is a nice-to-have, a failed call must not surface. It
+ * IS logged at warn, though: a silently-dying extraction once shipped as
+ * "memory never works", invisible at debug level.
  */
 export async function extractAndRemember(
   config: ResolvedProviderConfig,
@@ -99,8 +128,11 @@ export async function extractAndRemember(
       supportsImages: false,
     });
 
+    // The run's signal is not expected to fire (extraction is skipped on stop),
+    // but the timeout is real: a hung stream must release the worker.
+    const bounded = AbortSignal.any([signal, AbortSignal.timeout(EXTRACTION_TIMEOUT_MS)]);
     let reply = "";
-    for await (const delta of extraction.stream(messages, [], signal)) {
+    for await (const delta of extraction.stream(messages, [], bounded)) {
       if (delta.type === "text") reply += delta.text;
     }
 
@@ -110,6 +142,7 @@ export async function extractAndRemember(
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    log.debug("extraction skipped:", message);
+    if (signal.aborted) log.debug("extraction aborted:", message);
+    else log.warn("extraction failed:", message);
   }
 }

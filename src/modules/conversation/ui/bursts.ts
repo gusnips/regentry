@@ -2,10 +2,12 @@ import type { Message } from "../types";
 
 /**
  * With reasoning hidden, a transcript alternates heavy "Thought for 2s" chips
- * with quiet tool rows — one chip per action, all noise. A burst folds each
- * maximal thought+step run into a single quiet line ("Thinking, Clicking e25,
- * Typing 200 and 5 more · 2m 10s") that expands back to the rows. Runs without
- * both stay flat: a lone chip or a plain tool row is already quiet.
+ * with quiet tool rows — one row per action, all noise. A burst folds each
+ * maximal run of thoughts and steps into a single quiet line ("Thinking,
+ * Clicking e25, Typing 200 and 5 more · 2m 10s") that expands back to the
+ * rows. Any run with 2+ items and at least one step folds — thinking is not
+ * required. What stays flat: a lone chip or a single tool row (already quiet),
+ * and thought-only runs (a burst's summary is built from its steps).
  */
 export interface Burst {
   kind: "burst";
@@ -37,8 +39,7 @@ export function groupBursts(messages: Message[], running = false): RenderItem[] 
     const first = run[0];
     if (!first) return;
     const steps = run.filter((m) => m.role === "step");
-    const thoughts = run.filter((m) => m.role === "reasoning");
-    if (steps.length > 0 && thoughts.length > 0) {
+    if (steps.length > 0 && run.length > 1) {
       out.push({
         kind: "burst",
         id: first.id,

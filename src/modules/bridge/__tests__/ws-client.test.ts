@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BridgeSocket, bridgeItem } from "../ws-client";
+import { bridgeConnected, bridgeItem, validBridgePort } from "../config";
+import { BridgeSocket } from "../ws-client";
 
 /**
  * The bridge's cost when nobody is using it is the thing worth pinning down:
@@ -113,5 +114,48 @@ describe("BridgeSocket", () => {
     // A daemon restart is worth catching in seconds, not on the next alarm.
     await vi.advanceTimersByTimeAsync(2_500);
     expect(FakeSocket.instances).toHaveLength(2);
+  });
+
+  it("mirrors the link state for UI contexts: up on open, down on close", async () => {
+    new BridgeSocket(
+      () => {},
+      () => {},
+    ).start();
+    await settle();
+    expect(await bridgeConnected.get()).toBe(false);
+
+    FakeSocket.instances[0]?.open();
+    await settle();
+    expect(await bridgeConnected.get()).toBe(true);
+
+    FakeSocket.instances[0]?.close();
+    await settle();
+    expect(await bridgeConnected.get()).toBe(false);
+  });
+
+  it("reports the link as down when the bridge is switched off", async () => {
+    // A link was up before the user switched the bridge off; the boot reconcile
+    // is what stands for the config-change watch here (the storage mock's watch
+    // is a no-op).
+    await bridgeConnected.set(true);
+    await bridgeItem.set({ enabled: false, port: 17_836 });
+    new BridgeSocket(
+      () => {},
+      () => {},
+    ).start();
+    await settle();
+
+    expect(await bridgeConnected.get()).toBe(false);
+  });
+});
+
+describe("validBridgePort", () => {
+  it("accepts userland ports, rejects system ports and nonsense", () => {
+    expect(validBridgePort(17_836)).toBe(true);
+    expect(validBridgePort(1024)).toBe(true);
+    expect(validBridgePort(65_535)).toBe(true);
+    expect(validBridgePort(80)).toBe(false);
+    expect(validBridgePort(70_000)).toBe(false);
+    expect(validBridgePort(17_836.5)).toBe(false);
   });
 });

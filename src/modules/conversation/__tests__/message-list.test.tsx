@@ -167,6 +167,48 @@ describe("transcript scroll on settle", () => {
   });
 });
 
+describe("error bubble", () => {
+  async function renderError(msg: Message): Promise<HTMLElement> {
+    useConversationStore.setState({
+      messages: [{ id: "u1", role: "user", content: "do the thing", timestamp: 0 }, msg],
+      status: "error",
+      streamingText: "",
+      reasoningText: "",
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<MessageList />));
+    return container;
+  }
+
+  it("a provider-classified error shows its lead only — no paraphrasing hint line", async () => {
+    const content =
+      'Provider error: Anthropic is rate-limiting requests — try again in a moment: {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account\'s rate limit."}}';
+    const container = await renderError({
+      id: "e1",
+      role: "error",
+      content,
+      kind: "rate",
+      timestamp: 1,
+    });
+    const text = container.textContent ?? "";
+    expect(text).toContain("Anthropic is rate-limiting requests — try again in a moment");
+    // The dedup: the generic hint paraphrases the lead, so it must not render.
+    expect(text).not.toContain("Rate limited — wait a moment, then send again.");
+  });
+
+  it("an unclassified error keeps the generic regex hint", async () => {
+    const container = await renderError({
+      id: "e1",
+      role: "error",
+      content: "Provider error: 429 rate limit hit",
+      timestamp: 1,
+    });
+    expect(container.textContent ?? "").toContain("Rate limited — wait a moment, then send again.");
+  });
+});
+
 describe("ask_user chips", () => {
   // Regression: the chips gate used to require the question card to be the LAST
   // message. The sentence the model streams alongside its ask_user call is

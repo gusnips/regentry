@@ -52,7 +52,7 @@ describe("buildTaskMessage", () => {
   });
 
   it("names the page Chrome would not let the run open, and forbids answering about it", () => {
-    const message = buildTaskMessage("summarize this page", "- heading \"Google\"", {
+    const message = buildTaskMessage("summarize this page", '- heading "Google"', {
       mode: { background: true, blockedStart: "chrome://settings/" },
     });
 

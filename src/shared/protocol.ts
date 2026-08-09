@@ -4,6 +4,7 @@
  */
 
 import type { TabId } from "./types";
+import type { ErrorKind } from "@/modules/providers/error-classify";
 
 // ── Commands (side panel → background) ──────────────────────────────
 
@@ -101,7 +102,13 @@ export type Event =
   /** The submitted run is waiting in the serial queue — position is 1-based. */
   | { type: "run_queued"; id: string; position: number }
   | { type: "usage"; input: number; output: number }
-  | { type: "error"; message: string; /** user-initiated ending (driven tab closed) — no notification */ silent?: boolean }
+  /** kind is the classified provider failure — the bubble then shows its own lead line, no generic hint */
+  | {
+      type: "error";
+      message: string;
+      kind?: ErrorKind;
+      /** user-initiated ending (driven tab closed) — no notification */ silent?: boolean;
+    }
   /** summary is the done tool's final answer — present when the model ends on a tool-only turn;
    *  question marks a run that ended on ask_user — its own notification already fired */
   | { type: "done"; summary?: string; question?: boolean }

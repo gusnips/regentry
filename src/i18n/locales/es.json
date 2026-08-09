@@ -36,7 +36,38 @@
     "showTips": "Consejos",
     "showTipsHint": "Atajos y consejos de funciones de vez en cuando, bajo el campo de texto y el estado de la tarea.",
     "invalidUrl": "Escribe una URL completa que empiece con http:// o https://",
-    "languageAutoShort": "Auto"
+    "languageAutoShort": "Auto",
+    "nav": {
+      "general": "General",
+      "behavior": "Comportamiento",
+      "knowledge": "Conocimiento",
+      "providers": "Proveedores",
+      "mcp": "MCP"
+    },
+    "strip": {
+      "noProvider": "Aún no hay proveedor — añade uno",
+      "mcpConnected": "MCP: conectado",
+      "mcpWaiting": "MCP: inactivo",
+      "mcpOff": "MCP: apagado"
+    },
+    "mcp": {
+      "title": "Puente MCP",
+      "help": "Deja que un cliente de IA externo — Claude Code, Claude Desktop, cualquiera que hable MCP — maneje el mismo agente, en este navegador, con tus sesiones iniciadas.",
+      "enable": "Activar el puente",
+      "enableHint": "La extensión se conecta a un daemon local que inicia tu cliente de IA. Apagado no cuesta nada — ni puerto ni despertares.",
+      "port": "Puerto del daemon",
+      "portHint": "Debe coincidir con TABRUNNER_BRIDGE_PORT del daemon. Por defecto es 17836.",
+      "invalidPort": "Escribe un puerto entero entre 1024 y 65535",
+      "statusConnected": "Conectado al daemon",
+      "statusWaiting": "Esperando al daemon — se inicia cuando arranca tu cliente MCP",
+      "setupTitle": "Conectar un cliente",
+      "setupHelp": "Registra el daemon en tu cliente MCP:",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "docsLink": "Guía completa de configuración →",
+      "extensionId": "ID de la extensión",
+      "extensionIdHint": "Asigna este valor a TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID del daemon."
+    }
   },
   "instructions": {
     "title": "Instrucciones",
@@ -143,6 +174,19 @@
       "max": "Máximo"
     }
   },
+  "usage": {
+    "triggerAria": "Uso de la suscripción",
+    "triggerTitle": "Uso de la suscripción — ventanas de 5 horas y semanal",
+    "title": "Uso de la suscripción",
+    "window5h": "Ventana de 5 horas",
+    "windowWeekly": "Semanal",
+    "usedPercent": "{{percent}}% usado",
+    "resets": "se reinicia {{reset}}",
+    "updated": "Actualizado {{ago}}",
+    "refresh": "Actualizar",
+    "loading": "Consultando…",
+    "empty": "El proveedor no informó el uso esta vez — prueba Actualizar."
+  },
   "sidepanel": {
     "busyRunning": "Detén la ejecución antes de cambiar de conversación"
   },
@@ -172,7 +216,7 @@
     "retry": "Reintentar",
     "emptyTitle": "¿Qué debo hacer?",
     "emptyBody": "Describe una tarea y yo manejo el navegador — navegar, leer páginas, hacer clic, escribir — en su propia pestaña en segundo plano, salvo que pidas esta página. Usa tus inicios de sesión existentes.",
-    "emptyExample": "Ejemplo: \"ve a news.ycombinator.com y resume los 3 titulares principales\"",
+    "emptyExample": "Ejemplo: \"saca la factura más reciente del correo al informe de gastos\"",
     "portLost": "Se perdió la conexión con el agente — la ejecución se detuvo. Envía la tarea de nuevo para reintentar.",
     "reloaded": "TabRunner se recargó — cierra y vuelve a abrir este panel para continuar.",
     "working": "Trabajando",
@@ -350,12 +394,16 @@
     "label": "Consejo",
     "escStop": "Esc detiene la tarea en curso — lo que ya escribiste se envía como la siguiente.",
     "historyRecall": "Pulsa ↑ con el campo vacío para recorrer lo que ya enviaste — ↓ avanza de nuevo.",
-    "thisPage": "Una tarea en segundo plano abre esta página en una pestaña propia, así sigues navegando — elige “Esta página” cuando la tarea deba actuar en la pestaña que estás viendo.",
+    "thisPage": "La tarea actúa por defecto en la pestaña que estás viendo — elige “En segundo plano” cuando deba trabajar en una pestaña propia mientras sigues navegando.",
     "queueSteer": "Puedes seguir escribiendo mientras la tarea corre — el mensaje se encola y la orienta entre pasos.",
     "pasteImage": "Pega una captura de pantalla directamente en el campo — el agente puede verla.",
     "pasteCollapse": "Un texto largo pegado se pliega en un token compacto — el texto completo igual llega al agente.",
     "planApproval": "La tarea muestra su plan antes de tocar la página — apruébalo y el panel se aparta mientras trabaja, o responde con ajustes y replanifica.",
-    "widget": "La píldora flotante en tus pestañas muestra qué hace TabRunner — haz clic en Abrir para ir al panel."
+    "planExpand": "Pulsa E para desplegar el plan — todos los pasos, no solo el que corre. E otra vez lo pliega.",
+    "widget": "La píldora flotante en tus pestañas muestra qué hace TabRunner — haz clic en Abrir para ir al panel.",
+    "board": "Las tareas en segundo plano aparecen en la banda Tareas arriba — salta a la pestaña controlada o detén una desde ahí.",
+    "memory": "TabRunner recuerda datos útiles de tus tareas — revísalos o bórralos en Ajustes → Lo que TabRunner recuerda.",
+    "usage": "En un proveedor por suscripción, el icono de medidor junto al selector de modelo muestra tu uso de 5 horas y semanal — haz clic para ver cuándo se reinicia."
   },
   "notify": {
     "doneFallback": "Tarea terminada."
@@ -396,6 +444,10 @@
     "kindAuthSignedIn": "{{provider}} no aceptó el inicio de sesión — inicia sesión de nuevo en la configuración del proveedor",
     "kindModel": "{{provider}} no reconoce este modelo — puede haber sido renombrado o eliminado; elige otro",
     "kindRate": "{{provider}} está limitando las solicitudes — inténtalo de nuevo en un momento",
+    "kindRateRetry": "{{provider}} está limitando las solicitudes — inténtalo de nuevo {{reset}}",
+    "kindRateWindow": "{{provider}} alcanzó tu límite de uso {{window}} — se reinicia {{reset}}",
+    "window5h": "de 5 horas",
+    "windowWeekly": "semanal",
     "kindOverload": "{{provider}} está sobrecargado ahora mismo — inténtalo de nuevo en unos minutos",
     "oauthRefreshExpired": "Tu sesión de {{name}} caducó y no se pudo renovar — inicia sesión de nuevo en Configuración.",
     "signInFailed": "Error al iniciar sesión: {{detail}}",
@@ -414,6 +466,7 @@
     "planRejected": "Plan rechazado — detenido antes de cualquier acción en la página.",
     "planGate": "Bloqueado — el plan necesita tu aprobación primero",
     "planGateModel": "Blocked: no plan is approved yet. Call the plan tool with your intended steps first; the user must approve the plan before any page action runs.",
-    "memoryEmpty": "No hay nada que memorizar: envía el dato como una frase."
+    "memoryEmpty": "No hay nada que memorizar: envía el dato como una frase.",
+    "usageUnreadable": "La respuesta de uso del proveedor llegó en un formato que TabRunner no reconoció — prueba Actualizar."
   }
 }

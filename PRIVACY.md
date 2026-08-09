@@ -82,18 +82,18 @@ data.
 
 ## 5. Permissions, explained
 
-| Permission                      | What it's for                                                                                                                     |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `debugger`                      | Real trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol so sites can't ignore them.           |
-| `scripting`                     | Injects the accessibility-tree snapshot script into the tab TabRunner reads.                                                      |
-| `sidePanel`                     | Hosts the chat UI where you write tasks and watch the run.                                                                        |
-| `tabs`                          | Opens each task's background tab, reads URL/title, and switches tabs when a task references another open tab.                        |
-| `activeTab`                     | Grants access to the tab you submit a task from, per action.                                                                      |
-| `tabGroups`                     | Groups each background task's tab and labels the group with the task (✓/✗/? when it finishes, then collapses it).                 |
-| `storage`                       | Persists provider configs, history, and memory locally.                                                                           |
-| `notifications`                 | Tells you when a background task finishes, errs, or stops to ask you something while the panel is closed.                          |
+| Permission                      | What it's for                                                                                                                                                      |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `debugger`                      | Real trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol so sites can't ignore them.                                            |
+| `scripting`                     | Injects the accessibility-tree snapshot script into the tab TabRunner reads.                                                                                       |
+| `sidePanel`                     | Hosts the chat UI where you write tasks and watch the run.                                                                                                         |
+| `tabs`                          | Opens each task's background tab, reads URL/title, and switches tabs when a task references another open tab.                                                      |
+| `activeTab`                     | Grants access to the tab you submit a task from, per action.                                                                                                       |
+| `tabGroups`                     | Groups each background task's tab and labels the group with the task (✓/✗/? when it finishes, then collapses it).                                                  |
+| `storage`                       | Persists provider configs, history, and memory locally.                                                                                                            |
+| `notifications`                 | Tells you when a background task finishes, errs, or stops to ask you something while the panel is closed.                                                          |
 | `alarms`                        | Periodic wake-ups: reconnects the local MCP bridge, and keeps the worker alive through a long task while the panel is closed. It runs no task and touches no page. |
-| Host permissions (`<all_urls>`) | TabRunner must be able to navigate, read, and interact with any site you ask it to use. It uses this only when a task is running. |
+| Host permissions (`<all_urls>`) | TabRunner must be able to navigate, read, and interact with any site you ask it to use. It uses this only when a task is running.                                  |
 
 ## 6. Guardrails
 

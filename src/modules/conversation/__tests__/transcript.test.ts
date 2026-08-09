@@ -62,6 +62,15 @@ describe("TranscriptWriter", () => {
     ]);
   });
 
+  it("keeps the classified kind on the stored error message", async () => {
+    const writer = new TranscriptWriter("run-kind");
+    writer.apply({ type: "error", message: "Provider error: 429", kind: "rate" });
+    await settled();
+
+    const stored = await getMessages("run-kind");
+    expect(stored[0]).toMatchObject({ role: "error", kind: "rate" });
+  });
+
   it("drops a done summary that only repeats the prose already shown", async () => {
     const rows = await replay("run-4", [
       { type: "token", text: "The invoice is paid." },

@@ -6,7 +6,7 @@ import { pendingAskId } from "./ask-gate";
 import { toAttachment } from "./image";
 import { recallStep, sentMessages } from "./history-recall";
 import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
-import { RunTargetSelect } from "./RunTargetSelect";
+import { RunTargetToggle } from "./RunTargetToggle";
 import { TipLine } from "@/modules/tips/ui";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
@@ -291,6 +291,13 @@ export function ChatInput() {
           {attachError}
         </p>
       )}
+      {/* The tip gets the panel's full width on its own row — squeezed next to
+          the run-target select it truncated to a few useless words. It stacks
+          with the conditional rows above the input so the two permanent rows
+          (input, footer) stay adjacent. Hidden while a run is live (the status
+          band carries it then) and while the paste hint is up (one hint at a
+          time, and that one is contextual). */}
+      {!running && !pastedTexts.some((p) => text.includes(p.token)) && <TipLine />}
       <div className="flex items-end gap-2">
         <TextArea
           ref={areaRef}
@@ -329,22 +336,18 @@ export function ChatInput() {
           </Button>
         )}
       </div>
-      {/* Composer footer: the run-target select anchors the left (permanent, so
-          the row never collapses), transient hints take the right one at a time
-          by contextual priority — their coming and going never moves the control. */}
+      {/* Composer footer: the run-target toggle anchors the left (permanent, so
+          the row never collapses), the paste hint takes the right when it's
+          live — its coming and going never moves the control. */}
       <div className="flex items-center justify-between gap-2">
-        <RunTargetSelect />
-        {pastedTexts.some((p) => text.includes(p.token)) ? (
+        <RunTargetToggle />
+        {pastedTexts.some((p) => text.includes(p.token)) && (
           <p
             className="min-w-0 truncate text-right text-[11px] italic text-neutral-400 dark:text-neutral-500"
             title={t("chat.pasteHint")}
           >
             {t("chat.pasteHint")}
           </p>
-        ) : (
-          // The paste hint outranks the tip — it's about what's in the box
-          // right now; the tip is ambient and can wait for the slot to free up.
-          <TipLine className="min-w-0 text-right" />
         )}
       </div>
     </div>

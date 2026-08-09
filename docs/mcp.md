@@ -55,9 +55,9 @@ The daemon starts when your client starts it; there's nothing to leave running. 
 
 ### Configuration
 
-| Variable                                 | Default                            | What it does                                                                                    |
-| ---------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `TABRUNNER_BRIDGE_PORT`                  | `17836`                            | The localhost port. Change it in both places — Settings → MCP in the extension must match.      |
+| Variable                                 | Default                            | What it does                                                                                                                                                      |
+| ---------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TABRUNNER_BRIDGE_PORT`                  | `17836`                            | The localhost port. Change it in both places — Settings → MCP in the extension must match.                                                                        |
 | `TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID` | `dfmcnfgiddfdjciciaflpieglmmgdmhh` | The extension `health` expects — the CRX's id, which unpacked dev builds share via the manifest `key`. The Web Store listing will have its own id once published. |
 
 ## The tools

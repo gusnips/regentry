@@ -170,6 +170,8 @@ export class ProviderError extends Error {
     public readonly status: number,
     /** What the body says is actually wrong — overrides the status for retry decisions. */
     public readonly kind?: ErrorKind,
+    /** Server-requested wait (`retry-after`) — a long one means a usage window, not a blip. */
+    public readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = "ProviderError";
@@ -180,13 +182,22 @@ export class ProviderError extends Error {
 const NON_RETRYABLE_KINDS: readonly ErrorKind[] = ["entitlement", "quota", "auth", "model"];
 
 /**
+ * Longest server-requested wait worth holding a run for. Beyond it the limit
+ * is a usage window (subscription 5h/weekly resets run hours to days), so the
+ * run fails fast with the reset time instead of retrying into the same wall.
+ */
+const MAX_RETRY_WAIT_MS = 60_000;
+
+/**
  * 429 and 5xx are transient — retry in place. 4xx auth/request errors are not.
  * A classified permanent failure never retries even when its status looks
- * transient: OpenAI files "insufficient_quota" under 429.
+ * transient: OpenAI files "insufficient_quota" under 429. A 429 whose
+ * retry-after exceeds MAX_RETRY_WAIT_MS isn't transient either.
  */
 export function isRetryable(e: unknown): boolean {
   if (e instanceof ProviderError) {
     if (e.kind && NON_RETRYABLE_KINDS.includes(e.kind)) return false;
+    if (e.retryAfterMs !== undefined && e.retryAfterMs > MAX_RETRY_WAIT_MS) return false;
     return e.status === 429 || e.status >= 500;
   }
   // Network-level failures (TypeError from fetch) have no status — retryable

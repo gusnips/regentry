@@ -218,11 +218,7 @@ const conversations = [
 const browser: Browser = await puppeteer.launch({
   executablePath,
   headless: true,
-  args: [
-    `--disable-extensions-except=${extPath}`,
-    `--load-extension=${extPath}`,
-    "--lang=en-US",
-  ],
+  args: [`--disable-extensions-except=${extPath}`, `--load-extension=${extPath}`, "--lang=en-US"],
 });
 
 let extId = "";
@@ -232,7 +228,8 @@ for (let i = 0; i < 50 && !extId; i++) {
   if (match) extId = match[1];
   else await new Promise((r) => setTimeout(r, 100));
 }
-if (!extId) throw new Error("extension service worker never appeared — run `bun run build` in ../chrome");
+if (!extId)
+  throw new Error("extension service worker never appeared — run `bun run build` in ../chrome");
 console.log(`extension id: ${extId}`);
 
 async function seed(active: string | null) {
@@ -264,12 +261,16 @@ const BADGE_CSS = `
 const AMBER_DOT = `width:6px;height:6px;border-radius:9999px;background:#fbbf24;flex:none;`;
 
 async function injectBadge(page: Page) {
-  await page.evaluate((css, dot) => {
-    const el = document.createElement("div");
-    el.style.cssText = `position:fixed;top:12px;right:12px;z-index:2147483647;${css}`;
-    el.innerHTML = `<span style="${dot}"></span><span>TabRunner is controlling this tab</span>`;
-    document.body.appendChild(el);
-  }, BADGE_CSS, AMBER_DOT);
+  await page.evaluate(
+    (css, dot) => {
+      const el = document.createElement("div");
+      el.style.cssText = `position:fixed;top:12px;right:12px;z-index:2147483647;${css}`;
+      el.innerHTML = `<span style="${dot}"></span><span>TabRunner is controlling this tab</span>`;
+      document.body.appendChild(el);
+    },
+    BADGE_CSS,
+    AMBER_DOT,
+  );
 }
 
 async function injectWidget(page: Page, task: string, queued: string) {
@@ -307,7 +308,8 @@ async function shootPage(url: string, mark?: "badge" | "widget"): Promise<string
   });
   await new Promise((r) => setTimeout(r, 800));
   if (mark === "badge") await injectBadge(page);
-  if (mark === "widget") await injectWidget(page, "what are the top stories on Hacker N…", "+1 queued");
+  if (mark === "widget")
+    await injectWidget(page, "what are the top stories on Hacker N…", "+1 queued");
   const buf = await page.screenshot({ encoding: "base64" });
   await page.close();
   return String(buf);

@@ -7,6 +7,7 @@ describe("splitErrorDetail", () => {
       '{"error":{"type":"invalid_request_error","message":"Invalid request Error"},"type":"error"}';
     expect(splitErrorDetail(`Provider error: Anthropic API error 400: ${body}`)).toEqual({
       summary: "Provider error: Anthropic API error 400 — Invalid request Error",
+      lead: "Provider error: Anthropic API error 400",
       detail: body,
     });
   });
@@ -14,6 +15,7 @@ describe("splitErrorDetail", () => {
   it("reads a bare string error body", () => {
     expect(splitErrorDetail('HTTP 502: {"error":"upstream timed out"}')).toEqual({
       summary: "HTTP 502 — upstream timed out",
+      lead: "HTTP 502",
       detail: '{"error":"upstream timed out"}',
     });
   });
@@ -23,6 +25,7 @@ describe("splitErrorDetail", () => {
       '[{"error":{"code":429,"message":"You exceeded your current quota","status":"RESOURCE_EXHAUSTED"}}]';
     expect(splitErrorDetail(`Provider error: OpenAI API error 429: ${body}`)).toEqual({
       summary: "Provider error: OpenAI API error 429 — You exceeded your current quota",
+      lead: "Provider error: OpenAI API error 429",
       detail: body,
     });
   });
@@ -38,6 +41,7 @@ describe("splitErrorDetail", () => {
     expect(splitErrorDetail(`Anthropic API error 400: ${body}`)).toEqual({
       summary:
         "Anthropic API error 400 — max_completion_tokens [4096] must be greater than thinking_budget [32768]",
+      lead: "Anthropic API error 400",
       detail: body,
     });
   });
@@ -45,6 +49,7 @@ describe("splitErrorDetail", () => {
   it("falls back to the wrapper string when the embedded JSON has no message", () => {
     expect(splitErrorDetail('HTTP 502: {"message":"data: [DONE]"}')).toEqual({
       summary: "HTTP 502",
+      lead: "HTTP 502",
       detail: '{"message":"data: [DONE]"}',
     });
   });
@@ -52,6 +57,7 @@ describe("splitErrorDetail", () => {
   it("falls back to the status line when the body has no message", () => {
     expect(splitErrorDetail('HTTP 500:  {"oops":true}')).toEqual({
       summary: "HTTP 500",
+      lead: "HTTP 500",
       detail: '{"oops":true}',
     });
   });
@@ -63,11 +69,14 @@ describe("splitErrorDetail", () => {
   });
 
   it("leaves plain messages untouched", () => {
-    expect(splitErrorDetail("No active tab found.")).toEqual({ summary: "No active tab found." });
+    expect(splitErrorDetail("No active tab found.")).toEqual({
+      summary: "No active tab found.",
+      lead: "No active tab found.",
+    });
   });
 
   it("leaves messages with non-JSON braces untouched", () => {
     const msg = "tool input_schema {type: object} was rejected";
-    expect(splitErrorDetail(msg)).toEqual({ summary: msg });
+    expect(splitErrorDetail(msg)).toEqual({ summary: msg, lead: msg });
   });
 });

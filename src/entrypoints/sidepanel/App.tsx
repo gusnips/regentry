@@ -17,8 +17,10 @@ import {
 } from "@/modules/providers/ui";
 import { SettingsMenu } from "./SettingsMenu";
 import { notePanelOpen, refreshTip } from "@/modules/tips/ui";
+import { useTranslation } from "react-i18next";
 
 export default function App() {
+  const { t } = useTranslation();
   const connect = useConversationStore((s) => s.connect);
   const disconnect = useConversationStore((s) => s.disconnect);
   const stop = useConversationStore((s) => s.stop);
@@ -31,8 +33,8 @@ export default function App() {
       (s.status === "running" && !s.queuedRun) ||
       (s.activeId !== null && s.board.running?.conversationId === s.activeId),
   );
-  // Stays empty until the first message names the conversation — a placeholder
-  // here would just be filler above a transcript that says the same thing.
+  // Until the first message names the conversation the header shows the same
+  // "Untitled task" the history list uses — never a blank row.
   const chatTitle = useConversationStore(
     (s) => s.conversations.find((c) => c.id === s.activeId)?.title ?? "",
   );
@@ -100,7 +102,7 @@ export default function App() {
             className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-neutral-700 dark:text-neutral-200"
             title={chatTitle || undefined}
           >
-            {historyOpen ? "" : chatTitle}
+            {historyOpen ? "" : chatTitle || t("history.untitled")}
           </span>
           {!needsProvider && (
             <HistoryToggle open={historyOpen} onToggle={() => setHistoryOpen((v) => !v)} />

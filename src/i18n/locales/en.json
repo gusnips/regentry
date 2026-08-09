@@ -36,7 +36,38 @@
     "showTips": "Tips",
     "showTipsHint": "Occasional shortcuts and feature tips under the composer and the run status.",
     "invalidUrl": "Enter a full URL starting with http:// or https://",
-    "languageAutoShort": "Auto"
+    "languageAutoShort": "Auto",
+    "nav": {
+      "general": "General",
+      "behavior": "Behavior",
+      "knowledge": "Knowledge",
+      "providers": "Providers",
+      "mcp": "MCP"
+    },
+    "strip": {
+      "noProvider": "No provider yet — add one",
+      "mcpConnected": "MCP: connected",
+      "mcpWaiting": "MCP: idle",
+      "mcpOff": "MCP: off"
+    },
+    "mcp": {
+      "title": "MCP bridge",
+      "help": "Let an external AI client — Claude Code, Claude Desktop, anything speaking MCP — drive the same agent, in this browser, with your logged-in sessions.",
+      "enable": "Enable the bridge",
+      "enableHint": "The extension dials out to a local daemon that your AI client starts. Off costs nothing — no port, no wake-ups.",
+      "port": "Daemon port",
+      "portHint": "Must match the daemon's TABRUNNER_BRIDGE_PORT. Default is 17836.",
+      "invalidPort": "Enter a whole port between 1024 and 65535",
+      "statusConnected": "Connected to the daemon",
+      "statusWaiting": "Waiting for the daemon — it starts when your MCP client starts",
+      "setupTitle": "Connect a client",
+      "setupHelp": "Register the daemon with your MCP client:",
+      "copy": "Copy",
+      "copied": "Copied",
+      "docsLink": "Full setup guide →",
+      "extensionId": "Extension ID",
+      "extensionIdHint": "Set the daemon's TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID to this."
+    }
   },
   "instructions": {
     "title": "Instructions",
@@ -143,6 +174,19 @@
       "max": "Max"
     }
   },
+  "usage": {
+    "triggerAria": "Subscription usage",
+    "triggerTitle": "Subscription usage — 5-hour and weekly windows",
+    "title": "Subscription usage",
+    "window5h": "5-hour window",
+    "windowWeekly": "Weekly",
+    "usedPercent": "{{percent}}% used",
+    "resets": "resets {{reset}}",
+    "updated": "Updated {{ago}}",
+    "refresh": "Refresh",
+    "loading": "Checking…",
+    "empty": "The provider didn't report usage this time — try Refresh."
+  },
   "sidepanel": {
     "busyRunning": "Stop the run before switching conversations"
   },
@@ -172,7 +216,7 @@
     "retry": "Retry",
     "emptyTitle": "What should I do?",
     "emptyBody": "Describe a task and I'll drive the browser — navigate, read pages, click, type — in its own background tab, unless you ask for this page. Uses your existing logins.",
-    "emptyExample": "Example: \"go to news.ycombinator.com and summarize the top 3 headlines\"",
+    "emptyExample": "Example: \"pull the latest invoice from my inbox into the expense report\"",
     "portLost": "Connection to the agent was lost — the run stopped. Send the task again to retry.",
     "reloaded": "TabRunner was reloaded — close and reopen this panel to keep going.",
     "working": "Working",
@@ -350,12 +394,16 @@
     "label": "Tip",
     "escStop": "Esc stops the running task — anything already typed is sent as the next one.",
     "historyRecall": "Press ↑ with an empty composer to walk back through what you've sent — ↓ comes forward again.",
-    "thisPage": "A background task opens this page in a tab of its own, so you keep browsing — pick “This page” when the task must act on the tab you're looking at.",
+    "thisPage": "The task drives the tab you're looking at by default — pick “Background” when it should work in a tab of its own while you keep browsing.",
     "queueSteer": "You can keep typing while a task runs — the message queues and steers it between steps.",
     "pasteImage": "Paste a screenshot straight into the composer — the agent can see it.",
     "pasteCollapse": "A long pasted text folds into a neat token — the full text still reaches the agent.",
     "planApproval": "A task shows its plan before it touches the page — approve it and the panel steps aside while it works, or reply with adjustments and it replans.",
-    "widget": "The floating pill on your tabs shows what TabRunner is doing — click Open to jump to the panel."
+    "planExpand": "Press E to unfold the plan — every step, not just the one in flight. E again folds it back.",
+    "widget": "The floating pill on your tabs shows what TabRunner is doing — click Open to jump to the panel.",
+    "board": "Background tasks are tracked in the Tasks band at the top — jump to the driven tab or stop one from there.",
+    "memory": "TabRunner remembers useful facts from your tasks — review or prune them under Settings → What TabRunner remembers.",
+    "usage": "On a subscription provider, the gauge icon next to the model picker shows your 5-hour and weekly usage — click it for the reset times."
   },
   "notify": {
     "doneFallback": "Task finished."
@@ -396,6 +444,10 @@
     "kindAuthSignedIn": "{{provider}} didn't accept the sign-in — sign in again in the provider settings",
     "kindModel": "{{provider}} doesn't recognize this model — it may have been renamed or removed; pick another one",
     "kindRate": "{{provider}} is rate-limiting requests — try again in a moment",
+    "kindRateRetry": "{{provider}} is rate-limiting requests — try again {{reset}}",
+    "kindRateWindow": "{{provider}} hit your {{window}} usage limit — it resets {{reset}}",
+    "window5h": "5-hour",
+    "windowWeekly": "weekly",
     "kindOverload": "{{provider}} is overloaded right now — try again in a few minutes",
     "oauthRefreshExpired": "Your {{name}} sign-in expired and couldn't be renewed — sign in again in Settings.",
     "signInFailed": "Sign-in failed: {{detail}}",
@@ -414,6 +466,7 @@
     "planRejected": "Plan rejected — stopped before any page action ran.",
     "planGate": "Blocked — the plan needs your approval first",
     "planGateModel": "Blocked: no plan is approved yet. Call the plan tool with your intended steps first; the user must approve the plan before any page action runs.",
-    "memoryEmpty": "Nothing to remember — pass the fact as a sentence."
+    "memoryEmpty": "Nothing to remember — pass the fact as a sentence.",
+    "usageUnreadable": "The provider's usage reply came back in a format TabRunner didn't recognize — try Refresh."
   }
 }

@@ -13,7 +13,11 @@ export const TIPS = [
   { id: "pasteImage", cooldownOpens: 6 },
   { id: "pasteCollapse", cooldownOpens: 6 },
   { id: "planApproval", cooldownOpens: 6 },
+  { id: "planExpand", cooldownOpens: 4 },
   { id: "widget", cooldownOpens: 6 },
+  { id: "board", cooldownOpens: 6 },
+  { id: "memory", cooldownOpens: 8 },
+  { id: "usage", cooldownOpens: 8 },
 ] as const;
 
 export type TipId = (typeof TIPS)[number]["id"];

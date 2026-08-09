@@ -1,9 +1,16 @@
+import type { ErrorKind } from "@/modules/providers/error-classify";
+
 export type MessageRole = "user" | "assistant" | "reasoning" | "step" | "error" | "plan";
 
 export interface Message {
   id: string;
   role: MessageRole;
   content: string;
+  /**
+   * For error messages: the classified provider failure. The message already
+   * leads with its own actionable line, so the bubble skips the generic hint.
+   */
+  kind?: ErrorKind;
   /** For step messages: which tool ran */
   tool?: string;
   /** For step messages: the arguments the model passed — drives the row's hint and drill-down */

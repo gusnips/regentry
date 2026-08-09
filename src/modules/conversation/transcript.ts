@@ -161,7 +161,7 @@ export class TranscriptWriter {
       case "error":
         this.flushReasoning();
         this.flushStreaming();
-        this.append(makeMsg("error", event.message));
+        this.append(makeMsg("error", event.message, { kind: event.kind }));
         break;
 
       case "done": {

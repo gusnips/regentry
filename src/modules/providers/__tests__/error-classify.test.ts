@@ -90,4 +90,13 @@ describe("isRetryable with classified kinds", () => {
     expect(isRetryable(new ProviderError("plain", 400))).toBe(false);
     expect(isRetryable(new TypeError("fetch failed"))).toBe(true);
   });
+
+  it("gives up when the server's wait is a usage window, not a blip", () => {
+    // Subscription 5h/weekly limits come with retry-after of hours to days —
+    // retrying in place would just fail three times slower.
+    expect(isRetryable(new ProviderError("rate", 429, "rate", 3_600_000))).toBe(false);
+    expect(isRetryable(new ProviderError("plain", 429, undefined, 300_000_000))).toBe(false);
+    // Short hints stay transient and are honored by the retry sleep.
+    expect(isRetryable(new ProviderError("rate", 429, "rate", 20_000))).toBe(true);
+  });
 });

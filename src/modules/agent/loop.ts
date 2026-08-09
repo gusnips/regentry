@@ -6,7 +6,8 @@ import type {
   Delta,
   ToolResult as ProviderToolResult,
 } from "@/modules/providers/types";
-import { isRetryable } from "@/modules/providers/types";
+import { isRetryable, ProviderError } from "@/modules/providers/types";
+import type { ErrorKind } from "@/modules/providers/error-classify";
 import type { StepPayload, PlanPayload } from "@/shared/protocol";
 import { createLogger, truncate } from "@/lib/logger";
 import { i18n, currentLanguageName } from "@/i18n";
@@ -119,7 +120,8 @@ export interface LoopCallbacks {
   /** A queued mid-run message was consumed — the panel turns its pending line into a real one. */
   onInjected?: (id: string, text: string) => void;
   onUsage?: (input: number, output: number) => void;
-  onError?: (message: string) => void;
+  /** `kind` is the provider's classified failure — the UI renders its own lead line then. */
+  onError?: (message: string, kind?: ErrorKind) => void;
   onDone?: (summary?: string) => void;
   /**
    * The run ended on a question for the user — not on error and not on done.
@@ -231,7 +233,10 @@ async function streamTurn(
         summary: i18n.t("errors.retrying", { attempt, max: MAX_STREAM_ATTEMPTS - 1 }),
         detail: reason,
       });
-      await sleep(backoffMs(attempt));
+      // A server's retry-after (only short ones reach here — isRetryable gives
+      // up on long waits) outranks the backoff guess.
+      const retryAfterMs = e instanceof ProviderError ? (e.retryAfterMs ?? 0) : 0;
+      await sleep(Math.max(backoffMs(attempt), retryAfterMs));
     }
   }
 }
@@ -324,7 +329,8 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       }
       const msg = e instanceof Error ? e.message : String(e);
       log.error(`run failed at step ${step + 1}:`, msg);
-      callbacks.onError?.(i18n.t("errors.providerError", { message: msg }));
+      const kind = e instanceof ProviderError ? e.kind : undefined;
+      callbacks.onError?.(i18n.t("errors.providerError", { message: msg }), kind);
       return messages;
     }
 
@@ -408,10 +414,9 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
         // deviates from the approved plan — progress alone never re-prompts.
         const needsApproval = !approvedPlan || planNeedsReapproval(approvedPlan, plan);
         if (needsApproval) {
-          const outcome = (await callbacks.onPlanApproval?.(
-            plan.steps,
-            approvedPlan !== null,
-          )) ?? { approved: true };
+          const outcome = (await callbacks.onPlanApproval?.(plan.steps, approvedPlan !== null)) ?? {
+            approved: true,
+          };
           if (signal.aborted) {
             callbacks.onDone?.();
             return messages;

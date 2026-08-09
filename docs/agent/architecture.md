@@ -10,10 +10,11 @@ module's internals, not on every session.
 Agent loop (stream → tool calls → results → repeat), tools, system prompt, run slot +
 serial queue, run start.
 
-Runs are **background by default**: `start-run.ts` gives the run an inactive tab of its
-own, labels its tab group with the task (✓/?/✗ on end, then collapses it), and waits for
-load; `thisPage` is the explicit opt-in that drives the user's current tab (restricted
-URLs refused up front, a loading page awaited).
+Panel runs drive **the current page by default**; the composer toggle opts into a
+**background** run, where `start-run.ts` gives the run an inactive tab of its own, labels
+its tab group with the task (✓/?/✗ on end, then collapses it), and waits for load.
+`thisPage` drives the user's current tab (restricted URLs refused up front, a loading
+page awaited).
 
 Where that background tab opens, in order (`resolveRunTab`): an unanswered question goes
 back to the **very tab** it was asked on when that tab is still alive and still there —
@@ -100,7 +101,7 @@ plan still crosses its event stream.
 ### `browser/` — page control and visibility
 
 Accessibility-tree snapshot (injected script), CDP driver (trusted input), unified driver
-seam, on-page "TabRunner is controlling this tab" badge plus a purple dot over the driven
+seam, on-page "TabRunner is controlling this tab" badge plus an amber dot over the driven
 tab's favicon so the strip shows where a run is working — the dot pulses via frames pushed
 from the worker, because Chrome throttles hidden-tab timers and hidden is exactly when the
 strip signal matters; a run blocked on the user (ask_user, plan approval) settles the
@@ -117,9 +118,10 @@ badge — moved on activation/focus churn, removed everywhere when idle or hidde
 OpenAI/Anthropic/Responses adapters, presets, storage, config UI (add/edit dialog, list,
 per-task header picker, first-run onboarding). Adding a provider is a data change in
 `presets.ts` — never a code change elsewhere. (A new WIRE SHAPE is the exception: adapter
-+ factory case + `ProviderShape` union.) Preset ORDER is the picker's order and its first
-entry is the add form's default, so the subscription rows lead: a plan the user already
-pays for beats sending them to a billing console before their first task.
+
+- factory case + `ProviderShape` union.) Preset ORDER is the picker's order and its first
+  entry is the add form's default, so the subscription rows lead: a plan the user already
+  pays for beats sending them to a billing console before their first task.
 
 Sign-in is shared too: `oauth.ts` owns PKCE, the redirect capture, and the token POST; the
 per-vendor files own only client ids, authorize params, and which claim names the account;

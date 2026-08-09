@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { Markdown } from "./Markdown";
@@ -9,6 +9,7 @@ import { toolVerbKey, toolHint } from "./tool-labels";
 import { pendingAskId } from "./ask-gate";
 import type { Message } from "../types";
 import { splitErrorDetail } from "../error-detail";
+import type { ErrorKind } from "@/modules/providers/error-classify";
 import { formatDuration } from "@/lib/format";
 import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore } from "@/modules/providers/ui";
@@ -70,6 +71,17 @@ function errorHint(message: string, signedIn: boolean): { key: HintKey; cta?: Ct
   if (/failed to fetch|networkerror|network/.test(m)) return { key: "network", cta: "checkUrl" };
   if (/no (active )?provider/.test(m)) return { key: "noProvider", cta: "addProvider" };
   return null;
+}
+
+/**
+ * Classified provider failure → the fix action it offers. No hint text: the
+ * classified message already leads with its own actionable line, so a second
+ * generic line below it would only paraphrase it.
+ */
+function kindCta(kind: ErrorKind, signedIn: boolean): CtaKey | undefined {
+  if (kind === "quota") return "addProvider";
+  if (kind === "auth") return signedIn ? "signIn" : "updateKey";
+  return undefined;
 }
 
 function StepIcon({ live, ok }: { live?: boolean; ok?: boolean }) {
@@ -292,24 +304,40 @@ function PlanApprovalCard({
  * the one thing you want while it works; expanded it shows the whole route so
  * you can tell early that the agent misread the task and stop it. Once the run
  * ends there is no "in flight" anymore — the card stays open so the plan does
- * not vanish into a one-line summary.
+ * not vanish into a one-line summary. E folds/unfolds every card at once
+ * (plansOpen from Transcript); a summary click folds back into local control.
  */
 function PlanCard({
   steps,
   current,
   settled,
+  plansOpen,
 }: {
   steps: string[];
   current: number;
   settled?: boolean;
+  /** Global E-toggle — null leaves the card to its own default. */
+  plansOpen: boolean | null;
 }) {
   const { t } = useTranslation();
   const done = Math.min(current, steps.length);
   const active = settled ? undefined : steps[current];
+  // What the card would do on its own: the global E-toggle when pressed,
+  // otherwise open when settled / no step in flight. A summary click overrides
+  // until the auto state moves again (render-time adjustment, no effect).
+  const auto = plansOpen ?? (settled || !active);
+  const [clicked, setClicked] = useState<boolean | null>(null);
+  const [prevAuto, setPrevAuto] = useState(auto);
+  if (auto !== prevAuto) {
+    setPrevAuto(auto);
+    setClicked(null);
+  }
+  const open = clicked ?? auto;
 
   return (
     <details
-      open={settled || !active}
+      open={open}
+      onToggle={(e) => setClicked(e.currentTarget.open)}
       className="group max-w-[85%] self-start rounded-lg border border-neutral-200 px-3 py-1.5 text-xs dark:border-neutral-700"
     >
       <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none">
@@ -446,11 +474,13 @@ function burstCountKey(tool: string | undefined): BurstCountKey {
 }
 
 /**
- * A collapsed think→act run: one quiet line — "Thinking for 4m 12s, 5 clicks,
+ * A collapsed action run: one quiet line — "Thinking for 4m 12s, 5 clicks,
  * 3 entries and 2 page reads · 6m 40s" — that expands back to the rows it
- * replaces. Counts keep the run's shape without truncation; the per-action
- * hints live on the expanded rows. Live bursts stay open (same rule as the
- * plan card) and settle closed when the run ends.
+ * replaces. The thinking segment only appears when the run actually thought;
+ * a thought-free run is counts only ("5 clicks and 2 page reads · 40s").
+ * Counts keep the run's shape without truncation; the per-action hints live on
+ * the expanded rows. Live bursts stay open (same rule as the plan card) and
+ * settle closed when the run ends.
  */
 function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoning: () => void }) {
   const { t, i18n } = useTranslation();
@@ -470,7 +500,7 @@ function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoni
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   const list = new Intl.ListFormat(i18n.language, { type: "conjunction" }).format([
-    t("chat.burstThinking", { duration: formatDuration(thinkMs) }),
+    ...(thinkMs > 0 ? [t("chat.burstThinking", { duration: formatDuration(thinkMs) })] : []),
     ...[...counts].map(([key, count]) => t(key, { count })),
   ]);
 
@@ -523,8 +553,18 @@ const ERROR_ACTION_CLASSES =
  * spans more than one tab — with a single tab every message is obviously
  * there, so the label would be noise.
  */
+/** Host for tabs that never set a title — an empty stamp reads as a bug. */
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 function TabStamp({ tab }: { tab: NonNullable<Message["tab"]> }) {
   const [iconOk, setIconOk] = useState(true);
+  const label = tab.title || hostnameOf(tab.url);
   return (
     <span
       title={tab.url}
@@ -538,7 +578,7 @@ function TabStamp({ tab }: { tab: NonNullable<Message["tab"]> }) {
           onError={() => setIconOk(false)}
         />
       )}
-      <span className="truncate">{tab.title}</span>
+      <span className="truncate">{label}</span>
     </span>
   );
 }
@@ -552,6 +592,7 @@ function MessageBubble({
   onToggleReasoning,
   showTab,
   planSettled,
+  plansOpen,
 }: {
   msg: Message;
   activeProvider?: ProviderConfig;
@@ -565,6 +606,8 @@ function MessageBubble({
   showTab: boolean;
   /** The run has ended — plan cards stay open instead of collapsing to a summary. */
   planSettled?: boolean;
+  /** The E-toggle's target state for every plan card — null leaves each to its default. */
+  plansOpen: boolean | null;
 }) {
   const { t } = useTranslation();
   switch (msg.role) {
@@ -604,14 +647,24 @@ function MessageBubble({
       );
     case "plan":
       return msg.steps?.length ? (
-        <PlanCard steps={msg.steps} current={msg.current ?? 0} settled={planSettled} />
+        <PlanCard
+          steps={msg.steps}
+          current={msg.current ?? 0}
+          settled={planSettled}
+          plansOpen={plansOpen}
+        />
       ) : null;
     case "error": {
-      const hint = errorHint(msg.content, Boolean(activeProvider?.auth));
-      const { summary, detail } = splitErrorDetail(msg.content);
+      const signedIn = Boolean(activeProvider?.auth);
+      // A provider-classified error carries its kind: its lead line is the
+      // whole guidance, so the generic hint is skipped and the raw English
+      // tail stays behind Details. Unclassified errors keep the regex hint.
+      const hint = msg.kind ? null : errorHint(msg.content, signedIn);
+      const cta = msg.kind ? kindCta(msg.kind, signedIn) : hint?.cta;
+      const { summary, lead, detail } = splitErrorDetail(msg.content);
       return (
         <Bubble variant="destructive">
-          <div className="whitespace-pre-wrap">{summary}</div>
+          <div className="whitespace-pre-wrap">{msg.kind ? lead : summary}</div>
           {detail && (
             <details className="group mt-1">
               <summary className="cursor-pointer list-none text-xs text-red-500 select-none hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
@@ -636,12 +689,12 @@ function MessageBubble({
                 {t("chat.retry")}
               </Button>
             )}
-            {hint?.cta && (
+            {cta && (
               <AddProviderDialog
                 initialProvider={activeProvider}
                 trigger={
                   <Button variant="ghost" size="sm" className={ERROR_ACTION_CLASSES}>
-                    {t(CTA_KEYS[hint.cta])}
+                    {t(CTA_KEYS[cta])}
                   </Button>
                 }
               />
@@ -720,6 +773,30 @@ function Transcript() {
   const { end: offEnd } = useMessageScrollerScrollable();
   const { scrollToEnd } = useMessageScroller();
 
+  // E unfolds every plan card (all steps) and folds them back. null means each
+  // card follows its own default: current step only mid-run, open once settled.
+  const [plansOpen, setPlansOpen] = useState<boolean | null>(null);
+  const hasPlan = messages.some((m) => m.role === "plan" && m.steps?.length);
+  useEffect(() => {
+    if (!hasPlan) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "e" || e.ctrlKey || e.metaKey || e.altKey) return;
+      // A Base UI overlay's own keys win, and typing must never toggle.
+      if (
+        document.querySelector(
+          '[role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"]',
+        )
+      )
+        return;
+      if (e.target instanceof HTMLElement && e.target.closest("input,textarea,[contenteditable]"))
+        return;
+      // First press counters the live default: expand mid-run, compact once settled.
+      setPlansOpen((v) => !(v ?? status !== "running"));
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [hasPlan, status]);
+
   return (
     <MessageScroller>
       <MessageScrollerViewport>
@@ -745,6 +822,7 @@ function Transcript() {
                   onToggleReasoning={toggleReasoning}
                   showTab={multiTab}
                   planSettled={status !== "running"}
+                  plansOpen={plansOpen}
                   onRetry={
                     // Only the newest error offers Retry, and only once the run has settled.
                     item.msg.role === "error" &&

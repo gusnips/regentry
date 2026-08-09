@@ -43,7 +43,23 @@ The load-bearing details of talking to each provider shape. Read this when a tas
   text-only results stay a plain string. `reasoningEffort` maps to `reasoning: {effort}`
   (`none` omits the knob — codex models have no off switch).
 - **Stream retry** happens in place (agent loop) with full-jitter backoff, only while
-  nothing has been emitted yet — the UI never sees replayed tokens.
+  nothing has been emitted yet — the UI never sees replayed tokens. A server's
+  `retry-after` (≤ 60s) outranks the backoff guess; a longer one (a subscription 5h/weekly
+  window, not a blip) makes the 429 non-retryable so the run fails fast with the reset
+  time. `rate-limit.ts` reads the reset off the 429's headers — `retry-after`, Anthropic's
+  `anthropic-ratelimit-unified-5h/7d-utilization/-reset` pair (which also names WHICH
+  subscription window bound), or the RFC 3339 `anthropic-ratelimit-*-reset` — and the
+  error lead says when it actually resets instead of "try again in a moment".
+- **Subscription usage endpoints** (`usage.ts`, all unofficial/undocumented — parsers omit
+  windows they can't read): Claude `GET api.anthropic.com/api/oauth/usage` (Bearer +
+  `anthropic-beta: oauth-2025-04-20`; `{five_hour, seven_day: {utilization, resets_at}}`),
+  ChatGPT `GET chatgpt.com/backend-api/wham/usage` (Bearer + `ChatGPT-Account-Id`;
+  `rate_limit.primary_window` = 5h, `secondary_window` = weekly, `used_percent` +
+  `plan_type`), Kimi `GET api.kimi.com/coding/v1/usages` (Bearer; `limits[0].detail` = 5h,
+  `usage` = weekly, numbers as strings, `resetTime` RFC 3339). Only the OAuth presets have
+  one (`supportsUsage`); keyed variants don't. The panel's gauge icon (between the model
+  and effort selects) fetches lazily on popover open, cached 60s — these endpoints are
+  rate-sensitive.
 - **Stop is not an error.** User abort is normal control flow: the loop ends with `done`,
   never a red bubble. The `done` event carries the model's final summary — on tool-only
   final turns it IS the answer, so the panel renders it when no text was streamed.

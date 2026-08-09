@@ -102,6 +102,13 @@ Domain-first layout under `src/modules/` (agent, browser, providers, conversatio
 in `src/components/` (Base UI + Tailwind 4). See [AGENTS.md](AGENTS.md) for the full architecture
 and conventions.
 
+## Roadmap
+
+- **Scheduled tasks** — "at 3pm, open site X and do Y": one-shot and recurring runs on a timer,
+  plus a `schedule_task` agent tool. Design and hook points in
+  [docs/roadmap.md](docs/roadmap.md).
+- **Firefox version.**
+
 ## License
 
 [MIT](LICENSE) © Gus
