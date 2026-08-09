@@ -27,8 +27,9 @@ describe("generatePKCE", () => {
 });
 
 describe("randomState", () => {
-  it("is hex — claude.ai's authorize page rejects a state carrying - or _", () => {
+  it("is 128 bits of hex, and never repeats", () => {
     expect(randomState()).toMatch(/^[0-9a-f]{32}$/);
+    expect(randomState()).not.toBe(randomState());
   });
 });
 

@@ -27,15 +27,21 @@ const log = createLogger("claude-oauth");
 const CLAUDE_OAUTH = {
   clientId: "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
   authorizeUrl: "https://claude.ai/oauth/authorize",
-  // The API host, NOT platform.claude.com. Both terminate the same grant, but
-  // platform.claude.com is a web frontend behind bot protection: an extension
-  // fetch arrives there with a chrome-extension:// Origin and gets turned away
-  // with 429s that have nothing to do with the account's usage. api.anthropic.com
-  // is built to be called by programmatic clients (and by browsers — it's what
-  // anthropic-dangerous-direct-browser-access exists for).
+  // Both hosts terminate the same grant: the current CLIs post here, and
+  // Anthropic's own Chrome extension posts to platform.claude.com/v1/oauth/token
+  // from a service worker without trouble. We use the API host because that is
+  // where the rest of our traffic goes. (An earlier comment here blamed a 429 on
+  // platform.claude.com being bot-protected — the official extension disproves
+  // that; the 429 was the token endpoint throttling repeated attempts.)
   tokenUrl: "https://api.anthropic.com/v1/oauth/token",
   redirectUri: "http://localhost:54545/callback",
-  scopes: "org:create_api_key user:profile user:inference",
+  // Only what a browser agent spends: inference, plus the profile claim that
+  // names the signed-in account in the UI. The CLI also asks for
+  // `org:create_api_key` — a scope that lets a token MINT a durable API key on
+  // the user's org — and we would never call it, so asking for it would put a
+  // standing liability in storage for nothing. Anthropic's own extension asks
+  // for `user:profile user:inference user:chat`; we don't need chat either.
+  scopes: "user:profile user:inference",
 } as const;
 
 /** The authorize URL to open — exported so tests can pin the exact params. */
@@ -63,12 +69,12 @@ export async function signInWithClaude(
   onPending?: (authorizeUrl: string) => void,
 ): Promise<OAuthCredential> {
   const { verifier, challenge } = await generatePKCE();
-  // A hex state, not base64url: claude.ai/oauth/authorize answers "Invalid
-  // request format" to a state carrying `-` or `_`, which is what sent an
-  // earlier attempt down the road of reusing the PKCE verifier as the state.
-  // Hex keeps the CSRF token independent of the verifier — the verifier is
-  // supposed to stay secret, and a state rides through the URL bar, browser
-  // history, and any extension watching the tab.
+  // Its own random value, never the PKCE verifier: the verifier is the secret
+  // half of the exchange, and a state rides through the URL bar, browser
+  // history, and any extension watching the tab. (Anthropic's own extension
+  // sends a base64url state to this same endpoint, so the charset was never
+  // what broke an earlier attempt — the cause of that "Invalid request format"
+  // is still unknown, and hex simply avoids the question.)
   const state = randomState();
   const authorizeUrl = buildAuthorizeUrl(challenge, state);
   onPending?.(authorizeUrl);

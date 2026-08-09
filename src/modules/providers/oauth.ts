@@ -42,9 +42,9 @@ export async function generatePKCE(): Promise<{ verifier: string; challenge: str
 }
 
 /**
- * Opaque CSRF state. Hex rather than base64url on purpose: `-` and `_` are
- * legal in a state parameter but claude.ai's authorize page rejects them with
- * "Invalid request format", and hex is what every working client ships.
+ * Opaque CSRF state — 128 bits, hex. The charset is not load-bearing (vendors
+ * accept base64url here, Anthropic's own extension sends it); hex is just the
+ * form with no reserved characters to think about.
  */
 export function randomState(): string {
   const bytes = new Uint8Array(16);

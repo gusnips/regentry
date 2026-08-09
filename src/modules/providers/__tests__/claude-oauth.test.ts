@@ -28,7 +28,9 @@ describe("buildAuthorizeUrl", () => {
       client_id: "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
       response_type: "code",
       redirect_uri: "http://localhost:54545/callback",
-      scope: "org:create_api_key user:profile user:inference",
+      // No org:create_api_key — a token that can mint durable API keys on the
+      // user's org is a liability we would never spend.
+      scope: "user:profile user:inference",
       code_challenge: "challenge-x",
       code_challenge_method: "S256",
       state: "state-y",
