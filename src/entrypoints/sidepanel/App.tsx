@@ -3,6 +3,7 @@ import {
   MessageList,
   ChatInput,
   RunStatus,
+  RunBoard,
   ConversationList,
   HistoryToggle,
   NewChatButton,
@@ -19,8 +20,16 @@ import { SettingsMenu } from "./SettingsMenu";
 export default function App() {
   const connect = useConversationStore((s) => s.connect);
   const disconnect = useConversationStore((s) => s.disconnect);
-  const status = useConversationStore((s) => s.status);
   const stop = useConversationStore((s) => s.stop);
+  // Where Esc-stop applies: this panel's run in flight (not merely queued —
+  // Esc must never halt another conversation's run), or the board's run living
+  // on this conversation after a reopen (status is idle then, but the Stop is
+  // real). The same condition ChatInput calls "steering".
+  const stopReady = useConversationStore(
+    (s) =>
+      (s.status === "running" && !s.queuedRun) ||
+      (s.activeId !== null && s.board.running?.conversationId === s.activeId),
+  );
   // Stays empty until the first message names the conversation — a placeholder
   // here would just be filler above a transcript that says the same thing.
   const chatTitle = useConversationStore(
@@ -47,14 +56,14 @@ export default function App() {
         )
       )
         return;
-      if (e.key === "Escape" && status === "running") {
+      if (e.key === "Escape" && stopReady) {
         e.preventDefault();
         stop();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [status, stop]);
+  }, [stopReady, stop]);
 
   useEffect(() => {
     void load(); // idempotent — the store dedupes concurrent mounts
@@ -101,6 +110,7 @@ export default function App() {
         <ConversationList onClose={() => setHistoryOpen(false)} />
       ) : (
         <>
+          <RunBoard />
           <MessageList />
           <RunStatus />
           <ChatInput />

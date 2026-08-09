@@ -1,5 +1,6 @@
 import { i18n } from "@/i18n";
 import { getActiveRun, releaseRun } from "@/modules/agent/active-runs";
+import { cancelQueued, listQueue, onBoardChanged, submitRun } from "@/modules/agent/run-queue";
 import { startAgentRun } from "@/modules/agent/start-run";
 import { captureVisibleTab } from "@/modules/browser";
 import { appendMessageTo, openAgentConversation } from "@/modules/conversation";
@@ -48,6 +49,16 @@ export class Bridge {
       () => this.onOpen(),
     );
     this.socket.start();
+    // Mirror the run queue into the compact stream: get_status lists what is
+    // waiting, and a long-polling client wakes when the line moves.
+    onBoardChanged((board) => {
+      this.status.queue = board.queue.map((q, i) => ({
+        position: i + 1,
+        task: truncate(q.task, 160),
+        owner: q.owner,
+      }));
+      this.socket?.send({ type: "event", event: { type: "queue", queue: this.status.queue } });
+    });
   }
 
   private onOpen(): void {
@@ -82,7 +93,14 @@ export class Bridge {
         this.respond(requestId, await providerInfo());
         break;
       case "run":
-        await this.beginRun(requestId, str(params.task), images(params.images), str(params.agent));
+        await this.beginRun(
+          requestId,
+          str(params.task),
+          images(params.images),
+          str(params.agent),
+          str(params.url) || undefined,
+          params.background !== false,
+        );
         break;
       case "answer":
         await this.answer(requestId, str(params.text));
@@ -131,6 +149,8 @@ export class Bridge {
     task: string,
     attached?: string[],
     agent?: string,
+    url?: string,
+    background = true,
   ): Promise<void> {
     if (!task) {
       this.fail(requestId, "empty-task", "Task can't be empty.");
@@ -144,22 +164,18 @@ export class Bridge {
       );
       return;
     }
-    if (getActiveRun()) {
+    if (this.direct.open) {
+      // A direct session holds the slot but runs no loop — there is nothing to
+      // queue a task behind that the client could watch, so it stays a refusal.
       this.fail(requestId, "already-running", this.alreadyRunningText());
       return;
     }
     const conversationId = this.ensureThread();
     const runId = crypto.randomUUID();
-    log.info("bridge run queued", { runId, task: truncate(task, 120) });
-    // Claim the slot optimistically so a getStatus right after run() sees a live run.
-    this.status = newRunStatus(conversationId, runId);
-    // Stamp the thread with the client that drove it, so history can say which —
-    // and say it to the panel too, whose band mirrors the driven tab's favicon.
     const client = agent || i18n.t("history.unknownAgent");
-    this.setActivity("run", client);
     await openAgentConversation(conversationId, client);
-    // The task must be stored before the run starts — history is rebuilt from
-    // the transcript, so a fire-and-forget write loses that race every time.
+    // The task must be stored before the run starts — even a queued one: history
+    // is rebuilt from the transcript at launch, whenever the slot frees.
     await appendMessageTo(conversationId, {
       id: crypto.randomUUID(),
       role: "user",
@@ -167,7 +183,35 @@ export class Bridge {
       timestamp: Date.now(),
       ...(attached?.length ? { images: attached } : {}),
     });
-    void this.launch(task, attached);
+    const outcome = submitRun({
+      conversationId,
+      owner: "bridge",
+      task,
+      launch: () => {
+        log.info("bridge run starting", { runId, task: truncate(task, 120) });
+        // Claim the status slot only now — a queued run must not clobber the
+        // mirror of the run actually in flight. Stamp the thread with the
+        // client that drove it, for history and the panel's band alike.
+        this.status = newRunStatus(conversationId, runId);
+        this.setActivity("run", client);
+        // The daemon's mirror needs the same reset: without it a queued run's
+        // events fold into the previous run's terminal state.
+        this.socket?.send({
+          type: "event",
+          event: { type: "started", runId, conversationId },
+        });
+        void this.launch(task, attached, url, background);
+      },
+    });
+    if ("queued" in outcome) {
+      log.info("bridge run queued", {
+        runId,
+        position: outcome.queued,
+        task: truncate(task, 120),
+      });
+      this.respond(requestId, { runId, conversationId, queued: outcome.queued });
+      return;
+    }
     this.respond(requestId, { runId, conversationId });
   }
 
@@ -203,10 +247,29 @@ export class Bridge {
   private async stopRun(requestId: string): Promise<void> {
     const run = getActiveRun();
     const mine = run?.owner === "bridge";
+    // Queued bridge runs are this client's too — cancel them first, or stopping
+    // the active one would simply pump the next into the slot.
+    let cancelled = 0;
+    for (const q of listQueue()) {
+      if (q.owner !== "bridge" || !cancelQueued(q.id)) continue;
+      cancelled++;
+      // A cancelled queued run never produces an event — leave the breadcrumb
+      // itself, or the thread reads as if the task vanished.
+      await appendMessageTo(q.conversationId, {
+        id: crypto.randomUUID(),
+        role: "step",
+        tool: "interrupted",
+        content: i18n.t("errors.runCancelled"),
+        timestamp: Date.now(),
+      });
+    }
     this.stopFromPanel();
     // Stop is not an error — a no-op stop still succeeds. But say which no-op
     // it was: a panel run left untouched must never read as "browser is idle".
-    this.respond(requestId, { stopped: mine, panelBusy: !mine && run?.owner === "panel" });
+    this.respond(requestId, {
+      stopped: mine || cancelled > 0,
+      panelBusy: !mine && run?.owner === "panel",
+    });
   }
 
   /**
@@ -260,9 +323,13 @@ export class Bridge {
   }
 
   private async newConversation(requestId: string): Promise<void> {
-    // Only our own run blocks the reset — a panel run has nothing to do with
-    // this thread, and refusing over it would be a dead end with no way out.
-    if (!this.direct.open && getActiveRun()?.owner === "bridge") {
+    // Only our own run — active or queued — blocks the reset: a panel run has
+    // nothing to do with this thread, and refusing over it would be a dead end
+    // with no way out.
+    if (
+      !this.direct.open &&
+      (getActiveRun()?.owner === "bridge" || listQueue().some((q) => q.owner === "bridge"))
+    ) {
       this.fail(
         requestId,
         "run-in-progress",
@@ -298,20 +365,30 @@ export class Bridge {
     return this.conversationId;
   }
 
-  private async launch(task: string, images?: string[]): Promise<void> {
+  private async launch(
+    task: string,
+    images?: string[],
+    url?: string,
+    background = true,
+  ): Promise<void> {
     const conversationId = this.ensureThread();
     this.writer = new TranscriptWriter(conversationId);
+    // submitRun launches this only with the slot already free — acquireRun
+    // inside startAgentRun is the same synchronous turn, so it cannot conflict.
     const result = await startAgentRun({
       conversationId,
       owner: "bridge",
       task,
       images,
+      url,
+      thisPage: background ? undefined : true,
       emit: (event) => this.onRunEvent(event),
       onAskUser: (question, choices) => this.onQuestion(question, choices),
     });
     if (!result.ok) {
-      // The preflight above already rejected the common case — this is the rare
-      // race losing the slot; surface it as an error the model will see.
+      // Unreachable through the queue (see above) — keep the failure visible
+      // rather than silent if that ever changes.
+      log.error("bridge run lost the slot it was launched with");
       this.onRunEvent({ type: "error", message: this.alreadyRunningText() });
     }
   }
@@ -355,18 +432,18 @@ export class Bridge {
     } satisfies ExtensionMessage);
   }
 
-  /** Oriented already-running text naming where the run is and how to stop it. */
+  /** Oriented already-running text naming where the run is and how to stop it.
+   *  Only called with the slot held (a direct session is bridge-owned, so the
+   *  MCP wording covers the null case that can't happen here). */
   private alreadyRunningText(): string {
-    const run = getActiveRun();
-    if (!run) return i18n.t("errors.alreadyRunning");
-    return run.owner === "panel"
+    return getActiveRun()?.owner === "panel"
       ? i18n.t("errors.alreadyRunningPanel")
       : i18n.t("errors.alreadyRunningMCP");
   }
 }
 
 /**
- * Whether Regentry has a model to think with, for health to answer before a
+ * Whether TabRunner has a model to think with, for health to answer before a
  * task is sent. Read live rather than cached at connect: a user who signs in
  * while the daemon is already up must not still read as unconfigured.
  */

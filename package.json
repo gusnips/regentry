@@ -1,5 +1,5 @@
 {
-  "name": "regentry",
+  "name": "tabrunner",
   "description": "Provider-agnostic browser agent extension",
   "private": true,
   "version": "0.1.0",

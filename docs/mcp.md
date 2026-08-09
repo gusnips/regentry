@@ -1,17 +1,17 @@
 # MCP bridge
 
-Regentry's side panel is one way to give it a task. The MCP bridge is another: it lets an external
+TabRunner's side panel is one way to give it a task. The MCP bridge is another: it lets an external
 AI client — Claude Code, Claude Desktop, ChatGPT desktop, anything speaking the
 [Model Context Protocol](https://modelcontextprotocol.io) — drive **the same agent, in the same
 browser, with the same logins**.
 
-The main way in is one instruction: _do this in the browser_. Regentry plans, clicks, reads, and
+The main way in is one instruction: _do this in the browser_. TabRunner plans, clicks, reads, and
 reports back — with its own model, its own memory, and its own permission rules. That's `run`, and
 it's the right default: you pay one MCP turn per real event instead of one per click.
 
 When the job is small and exact, the client can also take the wheel and click through the page
 itself — see [Driving it yourself](#driving-it-yourself). Same browser, same logins, same stored
-transcript; what it gives up is Regentry's model, and with it the rule about asking first.
+transcript; what it gives up is TabRunner's model, and with it the rule about asking first.
 
 ## How it fits together
 
@@ -22,7 +22,7 @@ Claude Code / Claude Desktop / any MCP client
 daemon/  (bun; @modelcontextprotocol/sdk)
         │  WebSocket  ws://127.0.0.1:17836/ws
         ▼
-Regentry extension  (background service worker)
+TabRunner extension  (background service worker)
         │
         ▼
 the agent loop → your real Chrome tabs
@@ -42,7 +42,7 @@ provider is ready before you send a task.
 **2. Register the server** with your client:
 
 ```bash
-claude mcp add regentry -- bun /path/to/regentry/daemon/src/index.ts
+claude mcp add tabrunner -- bun /path/to/tabrunner/daemon/src/index.ts
 ```
 
 Inside this repo, `.mcp.json` already does it — Claude Code picks it up automatically.
@@ -55,27 +55,27 @@ The daemon starts when your client starts it; there's nothing to leave running. 
 
 ### Configuration
 
-| Variable                                | Default                            | What it does                                                                                     |
-| --------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `REGENTRY_BRIDGE_PORT`                  | `17836`                            | The localhost port. Change it in both places — the extension's `bridge` storage item must match. |
-| `REGENTRY_BRIDGE_EXPECTED_EXTENSION_ID` | `jlngbadknjppfbohhifabijkimigdiia` | The extension `health` expects. An unpacked dev build has its own id; set this to it.            |
+| Variable                                 | Default                            | What it does                                                                                     |
+| ---------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `TABRUNNER_BRIDGE_PORT`                  | `17836`                            | The localhost port. Change it in both places — the extension's `bridge` storage item must match. |
+| `TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID` | `jlngbadknjppfbohhifabijkimigdiia` | The extension `health` expects. An unpacked dev build has its own id; set this to it.            |
 
 ## The tools
 
 | Tool                              | What it does                                                                                                                                         |
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `health`                          | Is Regentry reachable? Reports the connection, the extension id and version, and the fix when something's off. Call it first.                        |
-| `run(task, images?)`              | Give Regentry a task in plain language. Returns immediately with a run id — browser work takes minutes. Optional images ride along as base64.        |
+| `health`                          | Is TabRunner reachable? Reports the connection, the extension id and version, and the fix when something's off. Call it first.                       |
+| `run(task, url?, background?, images?)` | Give TabRunner a task in plain language. Returns immediately with a run id — browser work takes minutes. Opens its own background tab by default (optionally at `url`); `background: false` drives the tab the user is on. Optional images ride along as base64. A task submitted while another runs **queues** and answers with its position instead of an error. |
 | `get_status(wait?, waitSeconds?)` | Where the run stands. **Blocks until something changes** by default, so following a ten-minute task costs one call per real event, not one per poll. |
 | `answer(text)`                    | Reply to a question the run stopped on.                                                                                                              |
 | `steer(text)`                     | Drop a note into a running task — a correction or an extra constraint. It lands between tool calls; the run doesn't restart.                         |
-| `stop()`                          | End the run. Stopping is normal control flow, not an error.                                                                                          |
+| `stop()`                          | End the run — and cancel any of this client's queued runs. Stopping is normal control flow, not an error.                                            |
 | `screenshot()`                    | A picture of what the browser is showing right now, as an image the model can actually look at. Works run or no run.                                 |
-| `new_conversation()`              | Forget the thread and start clean.                                                                                                                   |
+| `new_conversation()`              | Forget the thread and start clean. Refused while this thread has a run active or queued — stop it first.                                           |
 
 ### Driving it yourself
 
-Delegating is the better path for anything long or open-ended — Regentry's own model plans it, and
+Delegating is the better path for anything long or open-ended — TabRunner's own model plans it, and
 you pay one MCP turn instead of one per click. But sometimes you want the clicks. `browser_start`
 opens a direct-control session, and every `browser_*` tool drives the real tab:
 
@@ -99,10 +99,10 @@ method; they are discrete only at the MCP surface, because that is the shape mod
 them, so every mutating action returns the fresh snapshot alongside its result — act on that, never
 on a ref you read two actions ago.
 
-**Direct control has no ask_user.** Regentry's policy of stopping before consequential actions
+**Direct control has no ask_user.** TabRunner's policy of stopping before consequential actions
 lives in its system prompt, and driving directly takes that prompt out of the loop. Paying, sending
 on the user's behalf, deleting, submitting — those become **yours** to put to the user first.
-Regentry doesn't hide that this is happening: the badge and the tab dot stay up for the whole
+TabRunner doesn't hide that this is happening: the badge and the tab dot stay up for the whole
 session, and every action is recorded in a conversation labelled with your client's name.
 
 **One driver at a time.** A session holds the same run slot a task does, so direct control and an
@@ -126,7 +126,7 @@ run("find the Q3 invoice in my email and download it")
 
 ### Questions are the user's to answer
 
-Regentry stops and asks before consequential actions — paying, sending on someone's behalf,
+TabRunner stops and asks before consequential actions — paying, sending on someone's behalf,
 deleting, submitting. When `get_status` comes back with `state: question`, that question is for the
 **user**, not for the model driving the bridge. Relay it, get a real answer, then call `answer`.
 
@@ -137,15 +137,16 @@ address — and the user's own words are the answer.
 ## The conversation model
 
 The bridge keeps **one conversation of its own**, separate from whatever is open in the side panel.
-Each run continues the previous ones, so Regentry remembers the pages it visited and what it found
+Each run continues the previous ones, so TabRunner remembers the pages it visited and what it found
 there — ask a follow-up and it knows what "that invoice" means. `new_conversation` starts over.
 
 The thread shows up in the panel's history like any other, so you can read exactly what the agent
 did on your behalf.
 
-**One run at a time.** The panel and the bridge share a single run slot, because they share a
-single browser. Whoever asks second gets an error naming where the run already is and how to stop
-it.
+**One run at a time — the rest queue.** The panel and the bridge share a single run slot, because
+they share a single browser. A task submitted while one is in flight waits in a serial FIFO queue:
+`run` answers with its position, `get_status` lists the waiting line, and each queued task starts
+in order as the slot frees. Only direct-control sessions refuse a second starter — they can't queue.
 
 ## When things go wrong
 
@@ -155,12 +156,12 @@ Every failure comes back as text that says what happened, why, and what to do ne
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Extension not connected            | How to install it and wake the worker. It reconnects on its own within ~30s.                                                                    |
 | A different extension connected    | The id that connected, and the env var to accept it (a dev build has its own id).                                                               |
-| No provider configured             | `health` says so up front. Add one in Regentry's settings and pick it in the panel header.                                                      |
+| No provider configured             | `health` says so up front. Add one in TabRunner's settings and pick it in the panel header.                                                     |
 | Provider needs a sign-in or key    | `health` names it and which of the two it wants. Direct `browser_*` control keeps working without a provider.                                   |
-| No tab to drive                    | Open a tab in the window you want Regentry to work in.                                                                                          |
-| A run is already going             | Where it's running — panel or MCP — and how to stop it.                                                                                         |
+| No tab to drive                    | Open a tab in the window you want TabRunner to work in.                                                                                         |
+| A run is already going             | Your task queues behind it (position reported, `get_status` shows the line) — a direct session is the only case that still refuses.                  |
 | The link drops mid-run             | **The run keeps going.** The extension reconnects and re-syncs; `get_status` picks up where it left off. A long task survives a daemon restart. |
-| Chrome suspends the worker mid-run | Reported as an interrupted run, not left polling a ghost. Keeping the panel open prevents it.                                                   |
+| Chrome suspends the worker mid-run | Reported as an interrupted run, not left polling a ghost. A keepalive alarm holds the worker while tasks are up, so this should be rare.                |
 | Another daemon owns the port       | Which port, and how to give this one its own. Every MCP client spawns its own daemon, so this is normal with two clients open.                  |
 
 ## Security

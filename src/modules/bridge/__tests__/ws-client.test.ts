@@ -70,7 +70,7 @@ describe("BridgeSocket", () => {
     ).start();
     await settle();
 
-    expect(alarmCalls.cleared).toContain("regentry-bridge");
+    expect(alarmCalls.cleared).toContain("tabrunner-bridge");
     expect(alarmCalls.created).toEqual([]);
     expect(FakeSocket.instances).toHaveLength(0);
   });
@@ -83,7 +83,7 @@ describe("BridgeSocket", () => {
     ).start();
     await settle();
 
-    expect(alarmCalls.created).toEqual(["regentry-bridge"]);
+    expect(alarmCalls.created).toEqual(["tabrunner-bridge"]);
     expect(FakeSocket.instances[0]?.url).toBe("ws://127.0.0.1:4242/ws");
   });
 

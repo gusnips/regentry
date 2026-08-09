@@ -14,9 +14,9 @@ import {
 // snapshot-script is tested — the chrome.scripting wrapper is a thin try/catch.
 
 const ARGS = {
-  hostId: "regentry-agent-indicator",
-  linkId: "regentry-agent-favicon",
-  restoreId: "regentry-agent-favicon-restore",
+  hostId: "tabrunner-agent-indicator",
+  linkId: "tabrunner-agent-favicon",
+  restoreId: "tabrunner-agent-favicon-restore",
   dot: "data:image/svg+xml,dot",
 };
 
@@ -25,7 +25,7 @@ function iconLinks(): HTMLLinkElement[] {
 }
 
 function paint() {
-  paintIndicator(ARGS.hostId, "Regentry is driving", ARGS.linkId, ARGS.dot, ARGS.restoreId);
+  paintIndicator(ARGS.hostId, "TabRunner is driving", ARGS.linkId, ARGS.dot, ARGS.restoreId);
 }
 
 function remove() {
@@ -162,7 +162,7 @@ describe("worker-driven favicon heartbeat", () => {
     executeScript.mock.calls.filter((c) => (c[0] as { func: unknown }).func === stepFaviconFrame);
 
   it("alternates two frames every beat while shown, and stops on hide", async () => {
-    await showAgentIndicator(1, "Regentry is driving");
+    await showAgentIndicator(1, "TabRunner is driving");
     expect(frameBeats()).toHaveLength(0);
 
     await vi.advanceTimersByTimeAsync(700);
@@ -198,7 +198,7 @@ describe("worker-driven favicon heartbeat", () => {
   it("show drives again on a waiting tab — wait is cleared, paint and restore follow", async () => {
     await waitAgentIndicator(3);
 
-    await showAgentIndicator(3, "Regentry is driving");
+    await showAgentIndicator(3, "TabRunner is driving");
     // showAgentIndicator calls paintIndicator, never waitIndicator or removeIndicator.
     const paints = executeScript.mock.calls.filter(
       (c) => (c[0] as { func: unknown }).func === paintIndicator,

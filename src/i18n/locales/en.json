@@ -30,7 +30,9 @@
     "defaultStartUrl": "Default start page",
     "defaultStartUrlHint": "Background tasks open a fresh tab here, unless the task names a site.",
     "showWidget": "Floating status widget",
-    "showWidgetHint": "A small pill on your tabs while a task runs or waits in line.",
+    "showWidgetHint": "A small floating indicator on your tabs while a task runs or waits in line.",
+    "backgroundTasks": "Background tasks",
+    "invalidUrl": "Enter a full URL starting with http:// or https://",
     "languageAutoShort": "Auto"
   },
   "instructions": {
@@ -166,7 +168,7 @@
     "send": "Send",
     "retry": "Retry",
     "emptyTitle": "What should I do?",
-    "emptyBody": "Describe a task and I'll drive this browser tab — navigate, read pages, click, type. Uses your existing logins.",
+    "emptyBody": "Describe a task and I'll drive the browser — navigate, read pages, click, type — in its own background tab, unless you ask for this page. Uses your existing logins.",
     "emptyExample": "Example: \"go to news.ycombinator.com and summarize the top 3 headlines\"",
     "portLost": "Connection to the agent was lost — the run stopped. Send the task again to retry.",
     "reloaded": "TabRunner was reloaded — close and reopen this panel to keep going.",
@@ -195,9 +197,9 @@
     "attachFailed": "Couldn't read that image — the format may be unsupported. Copy it again as PNG or JPEG and paste once more.",
     "queue": "Queue",
     "queueTitle": "Inserted between the next tool calls",
-    "queuePlaceholder": "Queue a message for the running task… (Enter to queue · Esc stops and sends)",
+    "queuePlaceholder": "Add a message for the running task… (Enter to send · Esc stops and sends)",
     "queuedBadge": "queued",
-    "queuedHint": "Queued — lands between the next tool calls; stopping sends them as the next task. ↑ with an empty input edits the newest; ✕ drops it.",
+    "queuedHint": "Sent into the run — lands between the next tool calls; stopping sends them as the next task. ↑ with an empty input edits the newest; ✕ drops it.",
     "unqueueAria": "Drop queued message",
     "queueNoImages": "Images can't join a running task — queue the text now and paste the image with the next task.",
     "pasteToken": "Pasted {{count}} lines",
@@ -238,8 +240,12 @@
     "progress": "{{done}}/{{total}}",
     "peekMore": "{{done}} done · {{pending}} to go",
     "approvalTitle": "Approve this plan?",
+    "revisionNote": "The user asked for changes instead of approving — their note is in \"revision\". Update the plan to address it and present the revised plan.",
     "reapprovalTitle": "The plan changed — approve the new one?",
     "approve": "Approve",
+    "adjust": "Adjust",
+    "adjustPlaceholder": "What should change?",
+    "revisionNote": "The user sent this plan back with requested changes. Call `plan` again with a revised list — it goes back to the user for approval, and no page action runs before that.",
     "reject": "Reject"
   },
   "run": {
@@ -307,6 +313,8 @@
     ],
     "tokens": "{{count}} tokens",
     "finished": "Done",
+    "awaitingApproval": "Waiting for your approval",
+    "awaitingAnswer": "Waiting for your answer",
     "drivingTabTip": "Show the tab TabRunner is controlling",
     "bridgeTask": "{{client}} is running a task in your browser",
     "bridgeDriving": "{{client}} is driving your browser",
@@ -316,14 +324,16 @@
     "targetTitle": "Where the task runs — its own background tab, or this page"
   },
   "queue": {
-    "position": "Queued · position {{position}}",
+    "position": "Queued · #{{position}}",
     "queuedTitle": "Waiting for the current task to finish",
     "cancel": "Cancel"
   },
   "widget": {
     "queued": "+{{count}} queued",
     "open": "Open",
-    "hide": "Hide"
+    "hide": "Hide",
+    "openHint": "Open the TabRunner panel",
+    "hideHint": "Hides the widget until you re-enable it in Settings"
   },
   "board": {
     "title": "Tasks",
@@ -335,13 +345,12 @@
     "doneFallback": "Task finished."
   },
   "errors": {
-    "alreadyRunning": "A task is already running. Stop it first.",
     "alreadyRunningMCP": "A task from an external MCP client is already running. Stop it from the client (tabrunner.stop), or wait for it to finish.",
     "alreadyRunningPanel": "A task is already running in the TabRunner panel. Open the panel and stop it, or wait for it to finish.",
-    "alreadyRunningBridge": "An external agent is using your browser. Stop it in this panel, or wait for it to finish.",
     "noActiveProvider": "No active provider — pick one in the panel dropdown, or add one in Settings.",
     "noActiveTab": "No active tab found.",
-    "runCancelled": "The queued task was cancelled before it started",
+    "runCancelled": "The queued task was canceled before it started",
+    "tabCreateFailed": "Couldn't open a tab for the task: {{message}}",
     "tabClosed": "The tab this task was driving ({{title}}) was closed — the run stopped. TabRunner needs the tab to stay open; reopen the page and send the task again.",
     "providerError": "Provider error: {{message}}",
     "outputLimit": "Model hit its output limit mid-response — answer may be incomplete",

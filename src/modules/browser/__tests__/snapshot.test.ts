@@ -5,9 +5,9 @@ import type { SnapshotOptions } from "../snapshot-script";
 function setupDOM(html: string) {
   document.documentElement.innerHTML = `<body>${html}</body>`;
   // Reset ref state
-  (window as unknown as { __regentryRefs: undefined }).__regentryRefs = undefined;
-  (window as unknown as { __regentryReverse: undefined }).__regentryReverse = undefined;
-  (window as unknown as { __regentryCounter: undefined }).__regentryCounter = undefined;
+  (window as unknown as { __tabrunnerRefs: undefined }).__tabrunnerRefs = undefined;
+  (window as unknown as { __tabrunnerReverse: undefined }).__tabrunnerReverse = undefined;
+  (window as unknown as { __tabrunnerCounter: undefined }).__tabrunnerCounter = undefined;
 }
 
 describe("generateSnapshot", () => {

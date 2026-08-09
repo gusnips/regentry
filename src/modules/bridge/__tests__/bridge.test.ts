@@ -48,6 +48,8 @@ vi.mock("@/modules/browser", () => ({
   createDriver: () => ({}),
   showAgentIndicator: () => Promise.resolve(),
   hideAgentIndicator: () => Promise.resolve(),
+  isRestrictedUrl: () => false,
+  waitForLoad: () => Promise.resolve(),
   captureVisibleTab: () => Promise.resolve({ data: "data:image/jpeg;base64,AA==", tabId: 7 }),
 }));
 let activeProvider: ProviderConfig | null = null;

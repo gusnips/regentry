@@ -29,7 +29,7 @@ export class BridgeSocket {
   /** Set across the async config read so two reconciles can't open two sockets. */
   private connecting = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly alarm = "regentry-bridge";
+  private readonly alarm = "tabrunner-bridge";
 
   constructor(
     private readonly onMessage: (msg: DaemonMessage) => void,

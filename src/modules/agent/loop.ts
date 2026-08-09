@@ -43,6 +43,48 @@ const MAX_BACKOFF_MS = 15_000;
  */
 const MAX_ATTACHED_IMAGES = 2;
 
+/**
+ * Tools that change the browser or the account behind it. Everything else the
+ * agent can do is a read (snapshot, screenshot, list_tabs), bookkeeping (plan,
+ * remember), or a run-control call (ask_user, done) — those stay free so the
+ * model can look at the page before proposing its plan.
+ */
+const ACTION_TOOLS = new Set([
+  "navigate",
+  "switch_tab",
+  "click",
+  "type",
+  "press_key",
+  "scroll_down",
+  "scroll_up",
+]);
+
+/**
+ * Does an updated plan deviate from what the user approved? Only the UPCOMING
+ * steps matter — advancing `current` is progress, and rewriting finished steps
+ * changes nothing the user is still exposed to. Any upcoming step that was not
+ * in the approved remainder re-opens approval. The comparison is plain string
+ * equality on purpose: a reworded step re-asks too, because for a gate whose
+ * whole job is "nothing runs that you didn't see", over-asking beats
+ * under-asking.
+ */
+export function planNeedsReapproval(approved: PlanPayload, next: PlanPayload): boolean {
+  const remaining = new Set(approved.steps.slice(approved.current));
+  return next.steps.slice(next.current).some((step) => !remaining.has(step));
+}
+
+/** The user's answer to a parked plan. */
+export interface PlanApprovalOutcome {
+  /** false ends the run — unless `feedback` rides along. */
+  approved: boolean;
+  /**
+   * A "no" with changes attached is a revision request, not a rejection: the
+   * run stays alive, the note goes back to the model in the plan tool's own
+   * result, and the REVISED plan is parked for approval again.
+   */
+  feedback?: string;
+}
+
 export interface LoopCallbacks {
   onToken?: (text: string) => void;
   onReasoning?: (text: string) => void;
@@ -50,6 +92,12 @@ export interface LoopCallbacks {
   /** Wire shape lives in shared/protocol — producer and panel share one definition. */
   onStep?: (step: StepPayload) => void;
   onPlan?: (plan: PlanPayload) => void;
+  /**
+   * A proposed plan parked on user approval — resolves the user's answer.
+   * Absent = auto-approve (tests, non-interactive callers); the panel wires
+   * the real gate.
+   */
+  onPlanApproval?: (steps: string[], reapproval: boolean) => Promise<PlanApprovalOutcome>;
   /** A queued mid-run message was consumed — the panel turns its pending line into a real one. */
   onInjected?: (id: string, text: string) => void;
   onUsage?: (input: number, output: number) => void;
@@ -212,6 +260,11 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     callbacks.onStep?.({ tool: "warn", summary: i18n.t("errors.textOnlyImages") });
   }
 
+  // The approved plan for this run — null until the user says yes to one.
+  // Action tools are gated on it, so a model that skips planning gets an error
+  // tool-result pointing it back at the plan tool instead of a free pass.
+  let approvedPlan: PlanPayload | null = null;
+
   for (let step = 0; step < MAX_STEPS; step++) {
     if (signal.aborted) {
       callbacks.onDone?.();
@@ -294,6 +347,27 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
         callbacks.onDone?.();
         return messages;
       }
+      // The user's revision note for THIS plan call — rides back in its tool
+      // result (a separate user message would butt against the tool_results
+      // one, and Anthropic rejects consecutive same-role turns).
+      let revision: string | undefined;
+
+      // The gate: no page action runs before the user has approved a plan.
+      // The tool-result error tells the model exactly how to unblock itself.
+      if (ACTION_TOOLS.has(call.name) && !approvedPlan) {
+        log.warn(`tool ${call.name} blocked — no approved plan yet`);
+        callbacks.onStep?.({
+          tool: call.name,
+          summary: i18n.t("errors.planGate"),
+          ok: false,
+          args: call.args,
+        });
+        results.push({
+          id: call.id,
+          content: JSON.stringify({ error: i18n.t("errors.planGateModel") }),
+        });
+        continue;
+      }
 
       // The plan is bookkeeping, not an action on the page: it replaces a card
       // rather than adding a row, so it gets no spinner and no step of its own.
@@ -303,7 +377,35 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       if (!result.ok) log.warn(`tool ${call.name} failed:`, result.error);
 
       if (bookkeeping && result.ok) {
-        callbacks.onPlan?.(result.data as PlanPayload);
+        const plan = result.data as PlanPayload;
+        // Shown before the answer arrives — the user approves what they see.
+        callbacks.onPlan?.(plan);
+        // The first proposal always asks; a later one asks again only when it
+        // deviates from the approved plan — progress alone never re-prompts.
+        const needsApproval = !approvedPlan || planNeedsReapproval(approvedPlan, plan);
+        if (needsApproval) {
+          const outcome = (await callbacks.onPlanApproval?.(
+            plan.steps,
+            approvedPlan !== null,
+          )) ?? { approved: true };
+          if (signal.aborted) {
+            callbacks.onDone?.();
+            return messages;
+          }
+          if (!outcome.approved) {
+            revision = outcome.feedback?.trim() || undefined;
+            if (!revision) {
+              log.info("plan rejected by user");
+              callbacks.onDone?.(i18n.t("errors.planRejected"));
+              return messages;
+            }
+            // Revision, not rejection: the gate re-arms (the REVISED plan asks
+            // again) and the run continues on the note below.
+            log.info("plan returned for revision:", truncate(revision, 120));
+            approvedPlan = null;
+          }
+        }
+        if (!revision) approvedPlan = plan;
       } else {
         callbacks.onStep?.({
           tool: call.name,
@@ -339,7 +441,11 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
           // (DeepSeek: "missing field content"). No-data tools (type, keys,
           // scroll) still report success as {ok:true}.
           content: JSON.stringify(
-            result.ok ? (result.data ?? { ok: true }) : { error: result.error },
+            !result.ok
+              ? { error: result.error }
+              : revision
+                ? { revision, note: i18n.t("plan.revisionNote") }
+                : (result.data ?? { ok: true }),
           ),
           // The screenshot tool is withheld from text-only models, so images can't
           // normally get here — the guard keeps any future image tool off the wire.

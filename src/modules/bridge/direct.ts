@@ -3,7 +3,13 @@ import { acquireRun, getActiveRun, releaseRun } from "@/modules/agent/active-run
 import type { ActiveRun } from "@/modules/agent/active-runs";
 import { executeTool, formatDetail, formatSuccessSummary } from "@/modules/agent/tools";
 import type { ToolResult } from "@/modules/agent/tools";
-import { createDriver, hideAgentIndicator, showAgentIndicator } from "@/modules/browser";
+import {
+  createDriver,
+  hideAgentIndicator,
+  isRestrictedUrl,
+  showAgentIndicator,
+  waitForLoad,
+} from "@/modules/browser";
 import type { BrowserDriver } from "@/modules/browser";
 import { appendMessageTo, openAgentConversation } from "@/modules/conversation";
 import { createLogger, truncate } from "@/lib/logger";
@@ -13,12 +19,12 @@ const log = createLogger("bridge");
 
 /**
  * Direct browser control, for an external agent that would rather drive than
- * delegate: it calls snapshot/click/type itself instead of handing Regentry a
+ * delegate: it calls snapshot/click/type itself instead of handing TabRunner a
  * task. Every verb goes through the same `executeTool` the agent loop uses, so
  * there is exactly one browser implementation and no second catalog to drift.
  *
  * What a direct session does NOT get is the agent loop, and with it the
- * consequential-action policy — that lives in Regentry's system prompt, which
+ * consequential-action policy — that lives in TabRunner's system prompt, which
  * no longer sits between the client and the page. The client carries the rule
  * instead (the MCP tool descriptions and the skill say so), and the session is
  * loud about it: the on-page badge and favicon dot are up the whole time, and
@@ -75,6 +81,11 @@ export class DirectSession {
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error(i18n.t("errors.noActiveTab"));
+    // A direct session drives what the user sees — refuse a page injection
+    // could never reach before claiming the slot, and give a still-loading
+    // page its chance to settle first.
+    if (isRestrictedUrl(tab.url)) throw new Error(i18n.t("errors.restrictedPage"));
+    if (tab.status === "loading") await waitForLoad(tab.id, 10_000);
 
     const claim = acquireRun(crypto.randomUUID(), "bridge");
     if (!claim.ok) throw new Error(alreadyRunning(claim.active));

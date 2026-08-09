@@ -10,7 +10,7 @@ const MAX_FACTS_PER_RUN = 3;
 
 /**
  * The extraction turn's system prompt. Mirrors claude-code-original's
- * `extractMemories` prompt in the minimum Regentry needs: no taxonomy, one flat
+ * `extractMemories` prompt in the minimum TabRunner needs: no taxonomy, one flat
  * memory list, a strict "what not to save". The current MEMORY.md rides along so
  * the model doesn't re-save what it already knows (`remember()` dedups anyway).
  */

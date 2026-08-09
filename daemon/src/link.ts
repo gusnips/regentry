@@ -19,16 +19,16 @@ export class BridgeError extends Error {
 }
 
 export const NOT_CONNECTED =
-  "Regentry isn't connected to this bridge.\n" +
+  "TabRunner isn't connected to this bridge.\n" +
   "Cause: the extension isn't installed, its service worker is asleep, or it's pointed at another port.\n" +
-  "Fix: install Regentry in Chrome and open its side panel once to wake the worker. It reconnects on its own within ~30s — call health again then.";
+  "Fix: install TabRunner in Chrome and open its side panel once to wake the worker. It reconnects on its own within ~30s — call health again then.";
 
 const WORKER_GONE =
-  "The run stopped: Chrome suspended or restarted Regentry's service worker while it was working.\n" +
+  "The run stopped: Chrome suspended or restarted TabRunner's service worker while it was working.\n" +
   "Fix: send the task again with run. Keeping the side panel open while a long task runs prevents this.";
 
 const TIMED_OUT =
-  "Regentry didn't answer in time — the browser may be busy or the worker may have been suspended mid-request.\n" +
+  "TabRunner didn't answer in time — the browser may be busy or the worker may have been suspended mid-request.\n" +
   "Fix: call health to check the link, then retry.";
 
 /** One request/response round trip. Long work is polled, never held open here. */
@@ -88,7 +88,7 @@ export class BridgeLink {
         fetch: (req, server) => {
           if (server.upgrade(req)) return undefined;
           // A browser hitting the port by hand should learn what it found.
-          return new Response("Regentry MCP bridge — the extension connects here over /ws.\n", {
+          return new Response("TabRunner MCP bridge — the extension connects here over /ws.\n", {
             headers: { "content-type": "text/plain" },
           });
         },
@@ -108,11 +108,11 @@ export class BridgeLink {
       // the port taken. Serving MCP anyway (and saying so) beats exiting: the
       // model gets an answer it can act on instead of a dead server.
       this.bindError =
-        `Another Regentry bridge is already listening on port ${this.port}, so this one can't reach the extension.\n` +
+        `Another TabRunner bridge is already listening on port ${this.port}, so this one can't reach the extension.\n` +
         `Cause: one daemon owns the port, and every MCP client starts its own.\n` +
-        `Fix: drive the browser from the client that started first, or give this one its own port with REGENTRY_BRIDGE_PORT (the extension's port setting must match).\n` +
+        `Fix: drive the browser from the client that started first, or give this one its own port with TABRUNNER_BRIDGE_PORT (the extension's port setting must match).\n` +
         `Detail: ${e instanceof Error ? e.message : String(e)}`;
-      console.error(`[regentry] ${this.bindError}`);
+      console.error(`[tabrunner] ${this.bindError}`);
     }
   }
 
@@ -184,7 +184,7 @@ export class BridgeLink {
     this.socket = ws;
     // One extension at a time — a reconnect supersedes the socket it replaced.
     previous?.close();
-    console.error("[regentry] extension connected");
+    console.error("[tabrunner] extension connected");
   }
 
   private onClose(ws: ServerWebSocket<unknown>): void {
@@ -193,7 +193,7 @@ export class BridgeLink {
     if (this.socket !== ws) return;
     this.socket = null;
     this.extension = null;
-    console.error("[regentry] extension disconnected");
+    console.error("[tabrunner] extension disconnected");
     this.bump();
   }
 
@@ -219,7 +219,7 @@ export class BridgeLink {
           entry.reject(
             new BridgeError(
               msg.error?.code ?? "rejected",
-              msg.error?.message ?? "Regentry rejected the request.",
+              msg.error?.message ?? "TabRunner rejected the request.",
             ),
           );
         break;

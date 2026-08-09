@@ -6,3 +6,11 @@ import { defineItem } from "./storage";
  * calmer transcript. Clicking a reasoning block toggles this for all of them.
  */
 export const showReasoning = defineItem<boolean>("showReasoning", false);
+
+/** Where a background run's fresh tab starts when the task names no URL —
+ *  overridable in Settings. */
+export const defaultStartUrl = defineItem<string>("defaultStartUrl", "https://www.google.com");
+
+/** The floating run-status widget's hide preference — respected across runs;
+ *  re-enabled from Settings. */
+export const widgetHidden = defineItem<boolean>("widgetHidden", false);

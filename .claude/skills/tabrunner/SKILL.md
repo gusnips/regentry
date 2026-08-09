@@ -1,35 +1,35 @@
 ---
-name: regentry
+name: tabrunner
 description: |
-  Regentry drives the user's real Chrome — their tabs, their sessions, their logged-in accounts — to get things done on the web. Use this skill whenever the user wants something done in a browser: booking, buying, filling a form, reading a page behind a login, pulling data off a site, checking email, or any task on a site they're signed into. Also use when the user mentions "browser", "my email", "that page", "log in", "open URL", or "screenshot". Regentry is an agent, not a scraper: give it the goal, not the clicks.
+  TabRunner drives the user's real Chrome — their tabs, their sessions, their logged-in accounts — to get things done on the web. Use this skill whenever the user wants something done in a browser: booking, buying, filling a form, reading a page behind a login, pulling data off a site, checking email, or any task on a site they're signed into. Also use when the user mentions "browser", "my email", "that page", "log in", "open URL", or "screenshot". TabRunner is an agent, not a scraper: give it the goal, not the clicks.
 ---
 
-# Regentry
+# TabRunner
 
-Regentry is a browser agent with its own model. You don't drive the browser — **you give Regentry a
+TabRunner is a browser agent with its own model. You don't drive the browser — **you give TabRunner a
 task and it drives**. It plans, navigates, reads pages, clicks, types, and reports back.
 
 That distinction shapes everything below. Ask for the outcome ("find the Q3 invoice in my email and
 download it"), not the mechanics ("navigate to gmail, click search, type invoice…").
 
-Regentry is provider-agnostic — any MCP agent can drive it the same way. This skill ships in the
-cross-tool Agent Skills locations: `.agents/skills/regentry/` is canonical (read by Codex, Gemini
-CLI, Cursor, GitHub Copilot and Windsurf), and `.claude/skills/regentry/` is an identical copy for
+TabRunner is provider-agnostic — any MCP agent can drive it the same way. This skill ships in the
+cross-tool Agent Skills locations: `.agents/skills/tabrunner/` is canonical (read by Codex, Gemini
+CLI, Cursor, GitHub Copilot and Windsurf), and `.claude/skills/tabrunner/` is an identical copy for
 Claude Code, which only scans `.claude/`. Keep the two in sync. `docs/mcp.md` is the canonical,
 human-facing reference.
 
 ## Delegate, or drive?
 
-Two ways to use Regentry. Pick deliberately:
+Two ways to use TabRunner. Pick deliberately:
 
-**Delegate — `run`. The default.** You state the goal; Regentry's own model plans and executes it.
+**Delegate — `run`. The default.** You state the goal; TabRunner's own model plans and executes it.
 One MCP turn per real event instead of one per click, and it stops to ask the user before anything
 consequential. Right for anything long, open-ended, or on a site you'd have to explore.
 
 **Drive — `browser_start` and the `browser_*` tools.** You read the page, click, and type yourself.
 Right when the job is small and exact ("open this URL and read me the price"), when you need one
 specific element, or when each step decides the next. Costs one MCP turn per action, so it gets
-expensive fast on a real task — and it takes Regentry's own model, and its permission rule, out of
+expensive fast on a real task — and it takes TabRunner's own model, and its permission rule, out of
 the loop.
 
 When in doubt, `run`. It's the reason this thing exists.
@@ -64,7 +64,7 @@ Driving yourself:
 **Refs belong to the snapshot that made them.** Every action returns the page it produced — act on
 that, never on a ref you read two actions ago.
 
-**Driving means the guardrail is yours.** Regentry stops to ask before paying, sending on the
+**Driving means the guardrail is yours.** TabRunner stops to ask before paying, sending on the
 user's behalf, deleting, or submitting — but that rule lives in _its_ model, which you have just
 taken out of the loop. When driving, put those to the user yourself before you click. If you'd
 rather not carry that, use `run`.
@@ -85,7 +85,7 @@ ten-minute task is cheap. Never sleep-and-poll, and never assume silence means f
 
 ## Rules that matter
 
-**Questions belong to the user.** Regentry stops and asks before consequential actions — paying,
+**Questions belong to the user.** TabRunner stops and asks before consequential actions — paying,
 sending a message on the user's behalf, deleting, submitting an application. When `get_status`
 returns `state: question`, that question is for the **user**. Relay it, wait for a real answer, then
 call `answer`. Never approve a purchase, a send, or a deletion on your own judgement — that is the
@@ -96,22 +96,22 @@ connected, read what it tells you and act on it. Only involve the user for thing
 installing the extension, opening the panel, choosing a provider.
 
 **Say which site.** The run starts on the tab the user is looking at. If the task belongs on a
-particular site, put the URL in the task text — Regentry will navigate there.
+particular site, put the URL in the task text — TabRunner will navigate there.
 
-**One run at a time.** Regentry drives one browser, so the panel and this bridge share a single run
+**One run at a time.** TabRunner drives one browser, so the panel and this bridge share a single run
 slot. If a run is already going, `run` tells you where it is. `stop()` ends your own; a run the user
-started in Regentry's panel is theirs to stop — ask them, or wait.
+started in TabRunner's panel is theirs to stop — ask them, or wait.
 
 **Steer instead of restarting.** If the goal is unchanged and you just need to correct course, use
 `steer`. It lands between tool calls. Reserve `stop` + `run` for a genuinely different task.
 
-**The thread has a memory.** Runs continue each other — Regentry remembers the pages it visited and
+**The thread has a memory.** Runs continue each other — TabRunner remembers the pages it visited and
 what it found. Follow-ups can say "that invoice". Call `new_conversation` only when the subject
 truly changes.
 
 ## Reporting back
 
-When a run finishes, `get_status` gives you the answer in Regentry's own words. Relay the substance
+When a run finishes, `get_status` gives you the answer in TabRunner's own words. Relay the substance
 — what it found, what it did — not a play-by-play of the steps. If you need to verify a result with
 your own eyes, call `screenshot`.
 
@@ -123,10 +123,10 @@ rather than guessing at causes.
 `health` reports the exact problem and its fix. The usual ones:
 
 - **Not connected** — the extension isn't installed, or its service worker is asleep. The user
-  installs Regentry in Chrome and opens the side panel once; it reconnects within ~30 seconds.
+  installs TabRunner in Chrome and opens the side panel once; it reconnects within ~30 seconds.
 - **No provider, or one that needs a sign-in** — `health` names it and which of the two it wants;
-  the user fixes it in Regentry's settings. Regentry runs on the user's own model, not yours — but
+  the user fixes it in TabRunner's settings. TabRunner runs on the user's own model, not yours — but
   direct control (`browser_start` and the `browser_*` verbs) needs no provider at all.
 - **A different extension id** — usually an unpacked dev build. `health` names the id to accept.
 
-Full reference: `docs/mcp.md` in the Regentry repo.
+Full reference: `docs/mcp.md` in the TabRunner repo.

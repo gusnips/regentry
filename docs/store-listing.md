@@ -1,7 +1,7 @@
-# Regentry — Chrome Web Store listing
+# TabRunner — Chrome Web Store listing
 
 Source of truth for the store submission. Copy-paste from the blocks below into the CWS dashboard
-(`chrome.google.com/webstore/devconsole` → Regentry → **Store listing**). Everything here is kept in
+(`chrome.google.com/webstore/devconsole` → TabRunner → **Store listing**). Everything here is kept in
 sync with the product; when a feature lands, update the matching block and re-submit.
 
 > Status: **withdraw v0.1.0 from review and resubmit.** Subscription sign-in (Anthropic, OpenAI,
@@ -44,12 +44,12 @@ either way the fenced block directly above each one is the string to paste, verb
 
 | Field            | Value                                                                         |
 | ---------------- | ----------------------------------------------------------------------------- |
-| **Name**         | Regentry                                                                      |
+| **Name**         | TabRunner                                                                     |
 | **Category**     | Productivity                                                                  |
 | **Language**     | English (listing is localized: en / pt-BR / es shipped in `public/_locales/`) |
 | **Visibility**   | Public                                                                        |
-| **Support URL**  | https://github.com/gusnips/regentry/issues                                    |
-| **Homepage URL** | https://github.com/gusnips/regentry                                           |
+| **Support URL**  | https://github.com/gusnips/tabrunner/issues                                   |
+| **Homepage URL** | https://tabrunner.app                                                         |
 | **Extension ID** | `gkblgkcofolbpcbafkdhiihfbpjhdpgh` (assigned 2026-08-08)                      |
 | **Store URL**    | https://chromewebstore.google.com/detail/gkblgkcofolbpcbafkdhiihfbpjhdpgh     |
 
@@ -58,7 +58,7 @@ either way the fenced block directly above each one is the string to paste, verb
 <div data-copy-block>
 
 ```
-Regentry
+TabRunner
 ```
 
 <button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
@@ -119,9 +119,9 @@ sections. Paste as-is.
 <div data-copy-block>
 
 ```markdown
-## Your browser, commanded
+## You decide. It does the legwork.
 
-Regentry is a browser agent that lives in your browser and works in it — not in a sandbox. It
+TabRunner is a browser agent that lives in your browser and works in it — not in a sandbox. It
 opens your tabs, uses your logged-in sessions, and reads, clicks and types on the sites you
 already use, until the task you described is done.
 
@@ -130,7 +130,7 @@ already use, until the task you described is done.
 - **Bring your own provider** — sign in with a subscription you already pay for (Anthropic,
   OpenAI, Kimi) or paste an API key, across 15 presets (Anthropic, OpenAI, Kimi, Z.ai, Qwen,
   DeepSeek, Gemini, OpenRouter, Groq, Mistral, xAI, Ollama) plus any endpoint speaking the OpenAI
-  or Anthropic wire format. No vendor lock-in, no relay, no Regentry server.
+  or Anthropic wire format. No vendor lock-in, no relay, no TabRunner server.
 - **Your credentials stay yours** — a key or a sign-in goes straight from the extension to your
   provider. Nothing is stored outside Chrome. No account, no telemetry.
 - **Trusted input** — clicks and keystrokes go through the Chrome DevTools Protocol, so they are
@@ -141,13 +141,13 @@ already use, until the task you described is done.
 ## How it works
 
 1. Describe a task in the side panel — e.g. "open my inbox and summarize the last 3 emails".
-2. Regentry reads the page's accessibility tree and lets the model drive the tab: navigate,
+2. TabRunner reads the page's accessibility tree and lets the model drive the tab: navigate,
    click, type, scroll, screenshot — as real user input.
 3. Watch it work, step by step. Hit **Stop** at any time — queued messages run as the next task.
 
 ## Private by design
 
-- No Regentry server exists. The extension speaks to your provider directly.
+- No TabRunner server exists. The extension speaks to your provider directly.
 - Provider configs and conversation history live in `chrome.storage` on this device.
 - The model never receives raw HTML — it works from a compact semantic tree of the page, and
   sensitive fields (passwords, card numbers) never leave the page.
@@ -157,8 +157,9 @@ already use, until the task you described is done.
 
 - **Ask before acting** — consequential actions (paying, sending, deleting) ask for your
   confirmation in the panel before they happen.
-- **Stop is real** — closing the panel or pressing Esc stops the agent. No zombie clicking.
-- **Reasoning effort** — pin `none` → `max` per task, or leave Auto and Regentry runs the newest
+- **Stop is real** — Esc, the Stop button, or the Run Board stops the agent. Tasks keep working
+  in their own background tab after the panel closes — stop them there, not by closing.
+- **Reasoning effort** — pin `none` → `max` per task, or leave Auto and TabRunner runs the newest
   model your endpoint lists.
 
 ## Languages
@@ -175,7 +176,7 @@ English · Português (Brasil) · Español. Light and dark theme, or follow your
 ## 4. Screenshots
 
 CWS requirements: **1280×800** or **640×400**, PNG or JPEG, 1–5 images, the first is the card image.
-The panel and options pages are Regentry's own `chrome-extension://` pages, so they are never
+The panel and options pages are TabRunner's own `chrome-extension://` pages, so they are never
 "debugged" and capture without any browser warning bar — no workaround needed.
 
 Captured set (in this order — the first is the card image):
@@ -192,7 +193,7 @@ Capture recipe:
 
 1. Build and load: `bun run build` → `chrome://extensions` → Developer mode → **Load unpacked** →
    `dist/chrome-mv3`.
-2. Click the **Regentry** toolbar icon to open the side panel.
+2. Click the **TabRunner** toolbar icon to open the side panel.
 3. Set the window so the page + panel read well, then capture at exactly 1280×800. Preferred:
    Brave's `--window-size=1280,800`, or capture larger and center-crop to 16:10 + downscale.
 
@@ -212,9 +213,9 @@ what it does here, and why nothing narrower works.
 <div data-copy-block>
 
 ```
-Regentry clicks and types on the user's behalf. Chrome only produces trusted input events through
+TabRunner clicks and types on the user's behalf. Chrome only produces trusted input events through
 the DevTools Protocol; events dispatched from a content script are synthetic, and login forms,
-payment fields and most modern web apps ignore them. Regentry attaches to the single tab the
+payment fields and most modern web apps ignore them. TabRunner attaches to the single tab the
 user's task is running in and detaches when the task ends. Chrome's "started debugging" banner
 stays visible for the whole run, so the user always knows.
 ```
@@ -281,9 +282,9 @@ Grants access to the tab the user submits a task from, at the moment they submit
 <div data-copy-block>
 
 ```
-A task the user sends to the background opens its own tab. Regentry puts that tab in a labelled
+A task the user sends to the background opens its own tab. TabRunner puts that tab in a labelled
 tab group named after the task, so the user can see at a glance which tab the agent is working in
-and close it in one action. Only groups Regentry itself creates are touched.
+and close it in one action. Only groups TabRunner itself creates are touched.
 ```
 
 <button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
@@ -296,7 +297,7 @@ and close it in one action. Only groups Regentry itself creates are touched.
 
 ```
 Stores the user's AI provider settings and their conversation history locally, in chrome.storage on
-their own device. Nothing is uploaded — there is no Regentry server.
+their own device. Nothing is uploaded — there is no TabRunner server.
 ```
 
 <button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
@@ -308,9 +309,10 @@ their own device. Nothing is uploaded — there is no Regentry server.
 <div data-copy-block>
 
 ```
-A task can pause to ask the user a question (for example, before sending something on their
-behalf). If Chrome is not the focused window at that moment, a notification tells them the agent
-is waiting. Fired only when a run stops on a question.
+Tasks run in their own background tab and keep working after the side panel closes. A
+notification reports when a task finishes or fails, and when it pauses to ask the user a
+question (for example, before sending something on their behalf). Fired only while the panel
+is closed — never for runs the user stopped themselves.
 ```
 
 <button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
@@ -322,9 +324,10 @@ is waiting. Fired only when a run stops on a question.
 <div data-copy-block>
 
 ```
-Regentry can optionally accept tasks from a local AI assistant on the user's own machine. Chrome
+TabRunner can optionally accept tasks from a local AI assistant on the user's own machine. Chrome
 suspends the extension's service worker when idle, so a periodic alarm wakes it to re-establish
-that local connection. The alarm is only scheduled while the user has that feature enabled.
+that local connection, and to keep the worker alive through a long task while the side panel is
+closed. Alarms are only scheduled while the bridge feature is enabled or a task is in flight.
 ```
 
 <button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
@@ -336,11 +339,11 @@ that local connection. The alarm is only scheduled while the user has that featu
 <div data-copy-block>
 
 ```
-Used only on Regentry's own network requests to the AI provider the user configured — never on
+Used only on TabRunner's own network requests to the AI provider the user configured — never on
 pages the user visits or on the site being automated.
 
 Providers that the user signs in to (rather than pasting an API key) reject requests that arrive
-with a browser Origin header. Regentry removes that header from its own calls so a subscription
+with a browser Origin header. TabRunner removes that header from its own calls so a subscription
 sign-in works at all. The rule matches a fixed list of AI provider API hostnames, and modifies
 only request headers on those hosts. It blocks nothing, redirects nothing, and reads no page.
 ```
@@ -369,10 +372,10 @@ network destination is the AI provider the user configured.
 <div data-copy-block>
 
 ```
-Regentry lets an AI model the user chooses carry out tasks in their own browser: reading a page,
+TabRunner lets an AI model the user chooses carry out tasks in their own browser: reading a page,
 clicking, typing and filling forms on the sites they are already signed in to, until the task they
 described is done. Data goes to exactly two places — the site being worked on, and the AI provider
-the user configured with their own credentials. There is no Regentry server, no account, no
+the user configured with their own credentials. There is no TabRunner server, no account, no
 analytics, and no third-party network activity.
 ```
 
@@ -390,7 +393,7 @@ repo at [`PRIVACY.md`](../../PRIVACY.md), served on GitHub:
 <div data-copy-block>
 
 ```
-https://github.com/gusnips/regentry/blob/main/PRIVACY.md
+https://github.com/gusnips/tabrunner/blob/main/PRIVACY.md
 ```
 
 <button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
@@ -406,9 +409,9 @@ Draft single-purpose description (paste into the privacy form):
 
 <div data-copy-block>
 
-> Regentry lets an LLM the user configures drive their browser. It reads page content only while a
+> TabRunner lets an LLM the user configures drive their browser. It reads page content only while a
 > task is running, sends it to the user's chosen provider, and stores conversation history and
-> provider settings locally in Chrome. No server, no account, no data collection by Regentry, no
+> provider settings locally in Chrome. No server, no account, no data collection by TabRunner, no
 > third-party sharing beyond the provider the user configured and the sites the task touches.
 
 <button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
@@ -422,10 +425,10 @@ Draft single-purpose description (paste into the privacy form):
 A submission under review cannot change its permission set, so v0.1.0 comes out and a new
 version goes in.
 
-- [ ] **Withdraw v0.1.0**: dashboard → Regentry → Package → **Cancel submission** (the item
+- [ ] **Withdraw v0.1.0**: dashboard → TabRunner → Package → **Cancel submission** (the item
       returns to Draft; the listing text, screenshots and store URL all survive)
 - [ ] Gates green: `bun run compile && bun run lint && bun run test && bun run deadcode && bun run i18n:check`
-- [ ] `bun run release minor` → bumps, commits, tags, and writes `dist/regentry-<version>-chrome.zip`
+- [ ] `bun run release minor` → bumps, commits, tags, and writes `dist/tabrunner-<version>-chrome.zip`
 - [ ] Upload that zip (it carries the new `declarativeNetRequestWithHostAccess` permission)
 - [ ] Paste the **§5** justification for every permission — the new one especially; a permission
       added between submissions is the thing a reviewer looks at first

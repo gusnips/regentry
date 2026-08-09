@@ -17,6 +17,7 @@ export function emptyStatus(): BridgeStatus {
     steps: [],
     plan: null,
     driving: null,
+    queue: [],
     question: null,
     choices: null,
     error: null,

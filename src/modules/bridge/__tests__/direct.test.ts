@@ -17,6 +17,8 @@ vi.mock("@/modules/browser", () => ({
   createDriver: () => ({}),
   showAgentIndicator: () => Promise.resolve(),
   hideAgentIndicator: () => Promise.resolve(),
+  isRestrictedUrl: () => false,
+  waitForLoad: () => Promise.resolve(),
 }));
 
 const { DirectSession } = await import("../direct");

@@ -8,8 +8,9 @@ import type { TabId } from "./types";
 // ── Commands (side panel → background) ──────────────────────────────
 
 export type Command =
-  /** images are data URLs the user attached; the task text references them as "[Image #1]" */
-  | { type: "run"; task: string; images?: string[] }
+  /** images are data URLs the user attached; the task text references them as "[Image #1]";
+   *  thisPage opts out of the default background tab and drives the user's current one */
+  | { type: "run"; task: string; images?: string[]; thisPage?: boolean }
   | { type: "stop" }
   /**
    * Message typed while a run is in flight — the loop inserts it between tool
@@ -18,6 +19,14 @@ export type Command =
   | { type: "inject"; id: string; text: string }
   /** The user edited or dropped a queued message before it was consumed. */
   | { type: "unqueue"; id: string }
+  /** Cancel a run still waiting in the serial run queue (not the active one). */
+  | { type: "cancel_queued"; id: string }
+  /**
+   * The user answered a plan-approval prompt — the loop resumes or ends on it.
+   * `feedback` turns a "no" into a revision request: the run stays alive, the
+   * model replans with the changes, and the revised plan is asked about again.
+   */
+  | { type: "plan_approval"; approved: boolean; feedback?: string }
   /** Ask what an external agent is doing in the browser — answered with run_active. */
   | { type: "query_run" }
   /** Heartbeat — receiving it resets the worker's idle timer during long silences */
@@ -82,15 +91,23 @@ export type Event =
   | { type: "step_start"; tool: string; args?: Record<string, unknown> }
   | ({ type: "step" } & StepPayload)
   | ({ type: "plan" } & PlanPayload)
+  /**
+   * The agent proposed a plan and is parked until the user answers. `reapproval`
+   * marks a mid-run change big enough to need a fresh yes, not the first ask.
+   */
+  | { type: "plan_approval"; steps: string[]; reapproval: boolean }
   /** A queued message was inserted into the conversation at a tool boundary */
   | { type: "injected"; id: string; text: string }
+  /** The submitted run is waiting in the serial queue — position is 1-based. */
+  | { type: "run_queued"; id: string; position: number }
   | { type: "usage"; input: number; output: number }
-  | { type: "error"; message: string }
-  /** summary is the done tool's final answer — present when the model ends on a tool-only turn */
-  | { type: "done"; summary?: string }
+  | { type: "error"; message: string; /** user-initiated ending (driven tab closed) — no notification */ silent?: boolean }
+  /** summary is the done tool's final answer — present when the model ends on a tool-only turn;
+   *  question marks a run that ended on ask_user — its own notification already fired */
+  | { type: "done"; summary?: string; question?: boolean }
   /** Who an external agent is in the browser — null when the browser is yours again */
   | { type: "run_active"; active: BridgeActive | null };
 
 // ── Port name ────────────────────────────────────────────────────────
 
-export const PORT_NAME = "regentry";
+export const PORT_NAME = "tabrunner";

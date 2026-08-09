@@ -3,7 +3,7 @@
 /* Class strategy — a stored light/dark choice must be able to override the OS. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Regentry brand — royal purple (violet scale), used via brand-* utilities */
+/* TabRunner brand — royal purple (violet scale), used via brand-* utilities */
 @theme {
   --color-brand-50: #f5f3ff;
   --color-brand-100: #ede9fe;
@@ -35,7 +35,7 @@ body {
  * the agent is still working rather than wedged. Text-clipped rather than a
  * spinner so it reads as the word itself being alive.
  */
-@keyframes regentry-shimmer {
+@keyframes tabrunner-shimmer {
   from {
     background-position: 150% center;
   }
@@ -54,7 +54,7 @@ body {
   background-size: 250% auto;
   background-clip: text;
   color: transparent;
-  animation: regentry-shimmer 2.4s linear infinite;
+  animation: tabrunner-shimmer 2.4s linear infinite;
 }
 
 :where(.dark) .shimmer-text {
@@ -86,7 +86,7 @@ body {
  * it; every delay below is part of that budget, which is why they live here
  * together instead of scattered across the markup.
  */
-@keyframes regentry-pop {
+@keyframes tabrunner-pop {
   from {
     opacity: 0;
     transform: scale(0.7);
@@ -100,7 +100,7 @@ body {
   }
 }
 
-@keyframes regentry-ring {
+@keyframes tabrunner-ring {
   from {
     opacity: 0.5;
     transform: scale(0.9);
@@ -111,13 +111,13 @@ body {
   }
 }
 
-@keyframes regentry-draw {
+@keyframes tabrunner-draw {
   to {
     stroke-dashoffset: 0;
   }
 }
 
-@keyframes regentry-rise {
+@keyframes tabrunner-rise {
   from {
     opacity: 0;
     transform: translateY(6px);
@@ -129,27 +129,27 @@ body {
 }
 
 .connected-card {
-  animation: regentry-rise 220ms ease-out both;
+  animation: tabrunner-rise 220ms ease-out both;
 }
 .connected-tile {
-  animation: regentry-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 60ms both;
+  animation: tabrunner-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 60ms both;
 }
 .connected-ring {
-  animation: regentry-ring 700ms ease-out 180ms both;
+  animation: tabrunner-ring 700ms ease-out 180ms both;
 }
 .connected-badge {
-  animation: regentry-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 300ms both;
+  animation: tabrunner-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 300ms both;
 }
 .connected-check {
   stroke-dasharray: 14;
   stroke-dashoffset: 14;
-  animation: regentry-draw 260ms ease-out 430ms both;
+  animation: tabrunner-draw 260ms ease-out 430ms both;
 }
 .connected-title {
-  animation: regentry-rise 220ms ease-out 460ms both;
+  animation: tabrunner-rise 220ms ease-out 460ms both;
 }
 .connected-account {
-  animation: regentry-rise 220ms ease-out 600ms both;
+  animation: tabrunner-rise 220ms ease-out 600ms both;
 }
 
 /* Reduced motion keeps the whole card — it just arrives already finished. */

@@ -1,5 +1,6 @@
 import { defineItem } from "@/lib/storage";
 import { truncateTo } from "@/lib/format";
+import { cancelQueued, listQueue } from "@/modules/agent/run-queue";
 import type { Message } from "./types";
 
 /** A tab the conversation's runs drove — lets the next run spot a tab change. */
@@ -239,6 +240,12 @@ async function replaceTo(id: string, msg: Message): Promise<void> {
 }
 
 export async function deleteConversation(id: string): Promise<void> {
+  // Cancel its queued runs first — a waiting task's first write would
+  // resurrect the transcript being deleted. No breadcrumb here, for the same
+  // reason: writing one would recreate the ghost too.
+  for (const q of listQueue()) {
+    if (q.conversationId === id) cancelQueued(q.id);
+  }
   await messagesItem(id).remove();
   await indexItem.set((await indexItem.get()).filter((c) => c.id !== id));
   if ((await activeItem.get()) === id) await activeItem.set(null);

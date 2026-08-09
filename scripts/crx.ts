@@ -1,17 +1,19 @@
 /**
- * Pack the built extension into a signed CRX (CRX3) for hand-distribution to
- * testers. The Chrome Web Store serves its own signed CRX — only Google has that
- * key, so a store CRX can never be produced locally. This signs with the
- * gitignored `regentry-test.pem`, and the resulting extension ID (printed
- * below) differs from the store item's — expected and harmless.
+ * Pack the built extension into a signed CRX (CRX3) — the interim install
+ * artifact tabrunner.app offers until the store listing is approved. The Chrome
+ * Web Store serves its own signed CRX — only Google has that key, so a store CRX
+ * can never be produced locally. This signs with the gitignored
+ * `tabrunner-test.pem`, and the resulting extension ID (printed below) differs
+ * from the store item's — expected and harmless. CI signs with the same key via
+ * the CRX_SIGNING_KEY repo secret, so a local and a CI build share one ID.
  *
- *   bun run crx          # build + pack → dist/regentry-<version>-test.crx
+ *   bun run crx          # build + pack → dist/tabrunner-<version>.crx
  *
  * Requires a Chromium binary (Chrome/Brave/Edge/Chromium) and the signing key.
  * Generate the key once, then keep it (it's gitignored — committing it would
- * let anyone ship updates to testers' installs):
+ * let anyone ship updates to existing installs):
  *
- *   openssl genrsa -out regentry-test.pem 2048
+ *   openssl genrsa -out tabrunner-test.pem 2048
  */
 import { $ } from "bun";
 import { existsSync } from "node:fs";
@@ -19,14 +21,14 @@ import { fileURLToPath } from "node:url";
 
 process.chdir(fileURLToPath(new URL("..", import.meta.url)));
 
-const KEY = "regentry-test.pem";
+const KEY = "tabrunner-test.pem";
 const VERSION = ((await Bun.file("package.json").json()) as { version: string }).version;
-const OUT = `dist/regentry-${VERSION}-test.crx`;
+const OUT = `dist/tabrunner-${VERSION}.crx`;
 
 if (!existsSync(KEY)) {
-  console.error(`✗ Missing signing key ${KEY} — the test CRX's ID depends on it.`);
+  console.error(`✗ Missing signing key ${KEY} — the CRX's extension ID depends on it.`);
   console.error("  Generate it once (keep it; it's gitignored):");
-  console.error("    openssl genrsa -out regentry-test.pem 2048");
+  console.error("    openssl genrsa -out tabrunner-test.pem 2048");
   process.exit(1);
 }
 

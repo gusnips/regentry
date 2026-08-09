@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { Markdown } from "./Markdown";
@@ -197,18 +198,114 @@ function QuestionCard({ msg, onAnswer }: { msg: Message; onAnswer?: (text: strin
 }
 
 /**
+ * The run is parked on a decision: the plan the agent wants to execute. This is
+ * the safety gate — nothing that changes the browser runs until the user says
+ * yes, and a mid-run replan that deviates from what was approved asks again.
+ * Rendered at the transcript's live edge, where the eye already is; answering
+ * it resumes or ends the run, so the card itself is never persisted.
+ */
+function PlanApprovalCard({
+  steps,
+  reapproval,
+  onApprove,
+  onReject,
+  onRevise,
+}: {
+  steps: string[];
+  reapproval: boolean;
+  onApprove: () => void;
+  onReject: () => void;
+  onRevise: (feedback: string) => void;
+}) {
+  const { t } = useTranslation();
+  // "Adjust" swaps the buttons for the note the plan goes back with — the run
+  // stays alive and the revised plan comes back here for a fresh approval.
+  const [adjusting, setAdjusting] = useState(false);
+  const [note, setNote] = useState("");
+  const sendable = note.trim().length > 0;
+
+  return (
+    <div className="flex max-w-[85%] flex-col gap-2 self-start rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-900 dark:bg-brand-950/60">
+      <div className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
+        {t(reapproval ? "plan.reapprovalTitle" : "plan.approvalTitle")}
+      </div>
+      <ol className="flex flex-col gap-0.5 text-xs text-neutral-600 dark:text-neutral-300">
+        {steps.map((step, i) => (
+          <li key={i} className="flex gap-1.5">
+            <span aria-hidden className="shrink-0 opacity-70">
+              ○
+            </span>
+            <span>{step}</span>
+          </li>
+        ))}
+      </ol>
+      {adjusting ? (
+        <div className="flex flex-col gap-2">
+          <textarea
+            autoFocus
+            rows={2}
+            value={note}
+            placeholder={t("plan.adjustPlaceholder")}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && sendable) {
+                e.preventDefault();
+                onRevise(note);
+              } else if (e.key === "Escape") {
+                setAdjusting(false);
+              }
+            }}
+            className="w-full resize-none rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-xs text-neutral-800 placeholder:text-neutral-400 focus:border-brand-400 focus:outline-none dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-100"
+          />
+          <div className="flex gap-2">
+            <Button size="sm" disabled={!sendable} onClick={() => onRevise(note)}>
+              {t("chat.send")}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setAdjusting(false)}>
+              {t("common.cancel")}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <Button size="sm" onClick={onApprove}>
+            {t("plan.approve")}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setAdjusting(true)}>
+            {t("plan.adjust")}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onReject}>
+            {t("plan.reject")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * The agent's checklist. Collapsed it shows only the step in flight, which is
  * the one thing you want while it works; expanded it shows the whole route so
- * you can tell early that the agent misread the task and stop it.
+ * you can tell early that the agent misread the task and stop it. Once the run
+ * ends there is no "in flight" anymore — the card stays open so the plan does
+ * not vanish into a one-line summary.
  */
-function PlanCard({ steps, current }: { steps: string[]; current: number }) {
+function PlanCard({
+  steps,
+  current,
+  settled,
+}: {
+  steps: string[];
+  current: number;
+  settled?: boolean;
+}) {
   const { t } = useTranslation();
   const done = Math.min(current, steps.length);
-  const active = steps[current];
+  const active = settled ? undefined : steps[current];
 
   return (
     <details
-      open={!active}
+      open={settled || !active}
       className="group max-w-[85%] self-start rounded-lg border border-neutral-200 px-3 py-1.5 text-xs dark:border-neutral-700"
     >
       <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none">
@@ -450,6 +547,7 @@ function MessageBubble({
   showReasoningOn,
   onToggleReasoning,
   showTab,
+  planSettled,
 }: {
   msg: Message;
   activeProvider?: ProviderConfig;
@@ -461,6 +559,8 @@ function MessageBubble({
   onToggleReasoning: () => void;
   /** The conversation spans more than one tab, so user messages name theirs. */
   showTab: boolean;
+  /** The run has ended — plan cards stay open instead of collapsing to a summary. */
+  planSettled?: boolean;
 }) {
   const { t } = useTranslation();
   switch (msg.role) {
@@ -499,7 +599,9 @@ function MessageBubble({
         <StepRow msg={msg} />
       );
     case "plan":
-      return msg.steps?.length ? <PlanCard steps={msg.steps} current={msg.current ?? 0} /> : null;
+      return msg.steps?.length ? (
+        <PlanCard steps={msg.steps} current={msg.current ?? 0} settled={planSettled} />
+      ) : null;
     case "error": {
       const hint = errorHint(msg.content, Boolean(activeProvider?.auth));
       const { summary, detail } = splitErrorDetail(msg.content);
@@ -593,6 +695,10 @@ function Transcript() {
   const lastRun = useConversationStore((s) => s.lastRun);
   const retry = useConversationStore((s) => s.retry);
   const sendTask = useConversationStore((s) => s.sendTask);
+  const planApproval = useConversationStore((s) => s.planApproval);
+  const approvePlan = useConversationStore((s) => s.approvePlan);
+  const rejectPlan = useConversationStore((s) => s.rejectPlan);
+  const revisePlan = useConversationStore((s) => s.revisePlan);
   const activeProvider = useProvidersStore((s) => s.providers.find((p) => p.id === s.activeId));
   // One global preference, read and watched once here — never per reasoning block.
   const showReasoningOn = useStoredItem(showReasoning);
@@ -634,6 +740,7 @@ function Transcript() {
                   showReasoningOn={showReasoningOn}
                   onToggleReasoning={toggleReasoning}
                   showTab={multiTab}
+                  planSettled={status !== "running"}
                   onRetry={
                     // Only the newest error offers Retry, and only once the run has settled.
                     item.msg.role === "error" &&
@@ -660,32 +767,50 @@ function Transcript() {
               />
             </MessageScrollerItem>
           )}
+          {planApproval && (
+            <MessageScrollerItem>
+              <PlanApprovalCard
+                steps={planApproval.steps}
+                reapproval={planApproval.reapproval}
+                onApprove={approvePlan}
+                onReject={rejectPlan}
+                onRevise={revisePlan}
+              />
+            </MessageScrollerItem>
+          )}
           {streamingText && (
             <MessageScrollerItem>
               <AssistantBubble content={streamingText} cursor={status === "running"} />
             </MessageScrollerItem>
           )}
-          {/* Dots cover the gaps only — a live tool row carries its own spinner. */}
-          {status === "running" && !streamingText && !reasoningText && !hasLiveStep && (
-            <MessageScrollerItem>
-              <Bubble
-                variant="muted"
-                role="status"
-                aria-label={t("chat.working")}
-                className="py-2.5"
-              >
-                <span className="flex items-center gap-1">
-                  {[0, 150, 300].map((d) => (
-                    <span
-                      key={d}
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-400 dark:bg-neutral-500"
-                      style={{ animationDelay: `${d}ms` }}
-                    />
-                  ))}
-                </span>
-              </Bubble>
-            </MessageScrollerItem>
-          )}
+          {/* Dots cover the gaps only — a live tool row carries its own spinner,
+              and a parked approval is not a gap: the run is waiting on the user,
+              not working, so "working…" under the card would rush a decision
+              that has all the time it needs. */}
+          {status === "running" &&
+            !planApproval &&
+            !streamingText &&
+            !reasoningText &&
+            !hasLiveStep && (
+              <MessageScrollerItem>
+                <Bubble
+                  variant="muted"
+                  role="status"
+                  aria-label={t("chat.working")}
+                  className="py-2.5"
+                >
+                  <span className="flex items-center gap-1">
+                    {[0, 150, 300].map((d) => (
+                      <span
+                        key={d}
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-400 dark:bg-neutral-500"
+                        style={{ animationDelay: `${d}ms` }}
+                      />
+                    ))}
+                  </span>
+                </Bubble>
+              </MessageScrollerItem>
+            )}
         </MessageScrollerContent>
       </MessageScrollerViewport>
       {offEnd && (

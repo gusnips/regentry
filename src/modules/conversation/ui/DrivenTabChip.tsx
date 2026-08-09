@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
+import { focusTab } from "./focus-tab";
 
 /**
  * Chip naming the tab the live run is driving — the panel is window-scoped
@@ -24,19 +25,10 @@ export function DrivenTabChip() {
 
   if (!drivingTab?.title) return null;
 
-  const focusTab = async () => {
-    try {
-      await chrome.tabs.update(drivingTab.tabId, { active: true });
-      await chrome.windows.update(drivingTab.windowId, { focused: true });
-    } catch {
-      // Tab was closed mid-run — the run itself will surface that failure.
-    }
-  };
-
   return (
     <button
       type="button"
-      onClick={() => void focusTab()}
+      onClick={() => void focusTab(drivingTab.tabId, drivingTab.windowId)}
       title={t("run.drivingTabTip")}
       aria-label={t("run.drivingTabTip")}
       className="flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-full bg-brand-100/80 py-1 pr-2.5 pl-1 text-xs text-brand-900 hover:bg-brand-200 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:bg-brand-900/60 dark:text-brand-100 dark:hover:bg-brand-800"

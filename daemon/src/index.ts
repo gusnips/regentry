@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
- * Regentry MCP bridge.
+ * TabRunner MCP bridge.
  *
- * Speaks MCP over stdio to one AI client, and WebSocket to the Regentry
+ * Speaks MCP over stdio to one AI client, and WebSocket to the TabRunner
  * extension, which is always the dialling side — an MV3 service worker cannot
  * listen on a socket, so the extension can never be an MCP server itself.
  *
@@ -19,10 +19,10 @@ import type { BridgeProviderInfo, BridgeStatus, CaptureResult } from "./protocol
 // One source of truth for the version, exactly as the extension does it.
 import pkg from "../package.json" with { type: "json" };
 
-const PORT = Number(process.env.REGENTRY_BRIDGE_PORT ?? 17_836);
+const PORT = Number(process.env.TABRUNNER_BRIDGE_PORT ?? 17_836);
 /** The Chrome Web Store build. A dev build has its own id — set the env var. */
 const EXPECTED_EXTENSION_ID =
-  process.env.REGENTRY_BRIDGE_EXPECTED_EXTENSION_ID ?? "jlngbadknjppfbohhifabijkimigdiia";
+  process.env.TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID ?? "jlngbadknjppfbohhifabijkimigdiia";
 
 /** Under a client's own timeout, so a wait ends as an answer, not a failure. */
 const DEFAULT_WAIT_SECONDS = 30;
@@ -67,12 +67,17 @@ function formatStatus(status: BridgeStatus): string {
 
   switch (status.state) {
     case "idle":
-      return "state: idle — no task has been started in this conversation yet. Start one with run.";
+      lines.push(
+        status.queue.length > 0
+          ? "state: idle — nothing is running right now, but the queue below is waiting."
+          : "state: idle — no task has been started in this conversation yet. Start one with run.",
+      );
+      break;
     case "running":
       lines.push(`state: running · ${took} so far`);
       break;
     case "question":
-      lines.push(`state: question — Regentry stopped to ask you something (after ${took})`);
+      lines.push(`state: question — TabRunner stopped to ask you something (after ${took})`);
       break;
     case "done":
       lines.push(`state: done · ${took}`);
@@ -84,6 +89,18 @@ function formatStatus(status: BridgeStatus): string {
 
   if (status.driving) {
     lines.push(`tab: ${status.driving.title || "(untitled)"} (window ${status.driving.windowId})`);
+  }
+
+  if (status.queue.length > 0) {
+    lines.push(
+      `queue: ${status.queue.length} waiting (tasks run one at a time; these start in order)`,
+    );
+    for (const q of status.queue) {
+      const excerpt = q.task.length > 80 ? `${q.task.slice(0, 80)}…` : q.task;
+      lines.push(
+        `  ${q.position}. ${excerpt} — from ${q.owner === "panel" ? "the TabRunner panel" : "this client"}`,
+      );
+    }
   }
 
   if (status.plan) {
@@ -115,11 +132,11 @@ function formatStatus(status: BridgeStatus): string {
     if (status.choices?.length) {
       for (const choice of status.choices) lines.push(`  - ${choice}`);
       lines.push(
-        "next: relay this question AND its options to the user, then send their reply with answer — their own words if none of the options fit. Regentry asks before consequential actions — paying, sending on someone's behalf, deleting, submitting — so never answer those yourself.",
+        "next: relay this question AND its options to the user, then send their reply with answer — their own words if none of the options fit. TabRunner asks before consequential actions — paying, sending on someone's behalf, deleting, submitting — so never answer those yourself.",
       );
     } else {
       lines.push(
-        "next: relay this question to the user and send their reply with answer. Regentry asks before consequential actions — paying, sending on someone's behalf, deleting, submitting — so never answer those yourself.",
+        "next: relay this question to the user and send their reply with answer. TabRunner asks before consequential actions — paying, sending on someone's behalf, deleting, submitting — so never answer those yourself.",
       );
     }
   }
@@ -141,14 +158,14 @@ function formatStatus(status: BridgeStatus): string {
 
 // ── MCP server ──────────────────────────────────────────────────────
 
-const server = new McpServer({ name: "regentry", version: pkg.version });
+const server = new McpServer({ name: "tabrunner", version: pkg.version });
 
 server.registerTool(
   "health",
   {
-    title: "Regentry health",
+    title: "TabRunner health",
     description:
-      "Check that the browser agent is reachable before driving it. Reports whether the Regentry extension is connected to this bridge, which extension it is, whether it has a provider ready to think with, and what to do when any of that is missing. Call this first, and again after any connection error.",
+      "Check that the browser agent is reachable before driving it. Reports whether the TabRunner extension is connected to this bridge, which extension it is, whether it has a provider ready to think with, and what to do when any of that is missing. Call this first, and again after any connection error.",
   },
   async () => {
     const match = link.extension ? link.extension.id === EXPECTED_EXTENSION_ID : null;
@@ -166,7 +183,7 @@ server.registerTool(
     else if (match === false) {
       lines.push(
         "",
-        `A different extension is connected than the one expected.\nCause: this is probably an unpacked dev build, which gets its own id.\nFix: if you trust it, set REGENTRY_BRIDGE_EXPECTED_EXTENSION_ID=${link.extension?.id} for this daemon; otherwise load the Chrome Web Store build.`,
+        `A different extension is connected than the one expected.\nCause: this is probably an unpacked dev build, which gets its own id.\nFix: if you trust it, set TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID=${link.extension?.id} for this daemon; otherwise load the Chrome Web Store build.`,
       );
     } else if (provider && !provider.ready) lines.push("", providerProblem(provider));
     else lines.push("", "Ready — start a browser task with run.");
@@ -196,21 +213,31 @@ const describeProvider = (p: BridgeProviderInfo): string =>
  */
 const providerProblem = (p: BridgeProviderInfo): string =>
   p.name === null
-    ? "Regentry is connected, but no provider is configured — run has no model to think with.\n" +
-      "Cause: nothing has been added in Regentry's settings yet.\n" +
-      "Fix: the user adds one in Regentry's settings — a subscription sign-in or an API key. Direct control (browser_start and the browser_* verbs) works without one."
-    : `Regentry is connected, but ${p.name} has no working credential — run would fail on its first model call.\n` +
+    ? "TabRunner is connected, but no provider is configured — run has no model to think with.\n" +
+      "Cause: nothing has been added in TabRunner's settings yet.\n" +
+      "Fix: the user adds one in TabRunner's settings — a subscription sign-in or an API key. Direct control (browser_start and the browser_* verbs) works without one."
+    : `TabRunner is connected, but ${p.name} has no working credential — run would fail on its first model call.\n` +
       `Cause: the ${p.auth === "subscription" ? "sign-in was never completed, expired, or was revoked" : "API key is missing"}.\n` +
-      `Fix: the user ${p.auth === "subscription" ? "signs in again" : "pastes a key"} in Regentry's settings, or picks another provider in the panel header. Direct control (browser_start and the browser_* verbs) works without one.`;
+      `Fix: the user ${p.auth === "subscription" ? "signs in again" : "pastes a key"} in TabRunner's settings, or picks another provider in the panel header. Direct control (browser_start and the browser_* verbs) works without one.`;
 
 server.registerTool(
   "run",
   {
     title: "Run a browser task",
     description:
-      "Give Regentry a task to do in the user's real Chrome, with their existing logins and sessions — navigate, read pages, click, type, fill forms, extract data. Describe the goal in plain language, as you would to a person; Regentry plans and executes the steps itself. Returns immediately: follow the run with get_status. The task runs in the tab the user is on, so say which site to start from when it matters.",
+      "Give TabRunner a task to do in the user's real Chrome, with their existing logins and sessions — navigate, read pages, click, type, fill forms, extract data. Describe the goal in plain language, as you would to a person; TabRunner plans and executes the steps itself. Returns immediately: follow the run with get_status. By default the task opens its own background tab (optionally at url), leaving the user's current page alone; pass background: false only when the task is explicitly about what the user is looking at.",
     inputSchema: {
       task: z.string().describe("What to do, in plain language. Include any URL to start from."),
+      url: z
+        .string()
+        .optional()
+        .describe("Where the background tab starts. Defaults to the user's configured start page."),
+      background: z
+        .boolean()
+        .optional()
+        .describe(
+          "Run in a fresh background tab (default true). false drives the tab the user is on.",
+        ),
       images: z
         .array(
           z.object({
@@ -222,15 +249,28 @@ server.registerTool(
         .describe("Images to attach to the task — a screenshot to match, a form to copy from."),
     },
   },
-  async ({ task, images }) =>
+  async ({ task, url, background, images }) =>
     withLink(async () => {
-      const result = await link.request<{ runId: string; conversationId: string }>("run", {
+      const result = await link.request<{
+        runId: string;
+        conversationId: string;
+        queued?: number;
+      }>("run", {
         task,
         agent: clientName(),
+        ...(url ? { url } : {}),
+        ...(background === undefined ? {} : { background }),
         ...(images?.length
           ? { images: images.map((i) => `data:${i.mimeType};base64,${i.data}`) }
           : {}),
       });
+      // Tasks run one at a time — a second one waits in line, and the queue
+      // event the extension pushed ahead of this answer already lists it.
+      if (result.queued !== undefined) {
+        return text(
+          `Queued at position ${result.queued} — another task is in flight and they run one at a time. run ${result.runId}\nCall get_status to watch it start — it blocks until something happens, so polling costs one turn per real change.`,
+        );
+      }
       link.startRun(result.runId, result.conversationId);
       return text(
         `Started. run ${result.runId}\nCall get_status to follow it — it blocks until something happens, so polling costs one turn per real change.`,
@@ -259,7 +299,10 @@ server.registerTool(
   },
   async ({ wait, waitSeconds }) => {
     const shouldWait = wait ?? true;
-    if (shouldWait && link.status.state === "running") {
+    // Park while there is something to wait FOR: a run in flight, or one of
+    // this client's runs queued — its `started` event wakes the wait.
+    const queuedOurs = link.status.queue.some((q) => q.owner === "bridge");
+    if (shouldWait && (link.status.state === "running" || queuedOurs)) {
       const seconds = Math.min(Math.max(waitSeconds ?? DEFAULT_WAIT_SECONDS, 1), MAX_WAIT_SECONDS);
       await link.waitForChange(link.revision, seconds * 1000);
     }
@@ -277,17 +320,26 @@ server.registerTool(
 server.registerTool(
   "answer",
   {
-    title: "Answer Regentry's question",
+    title: "Answer TabRunner's question",
     description:
-      "Reply to the question a run stopped on (state: question) and let it continue. Regentry stops to ask before consequential actions — paying, sending on the user's behalf, deleting, submitting — so relay the question to the user and send THEIR decision, never your own.",
+      "Reply to the question a run stopped on (state: question) and let it continue. TabRunner stops to ask before consequential actions — paying, sending on the user's behalf, deleting, submitting — so relay the question to the user and send THEIR decision, never your own.",
     inputSchema: { text: z.string().describe("The user's answer, in their words.") },
   },
   async ({ text: answerText }) =>
     withLink(async () => {
       // An answer starts a fresh run over the same thread — same claim as run.
-      const result = await link.request<{ runId: string; conversationId: string }>("answer", {
+      const result = await link.request<{
+        runId: string;
+        conversationId: string;
+        queued?: number;
+      }>("answer", {
         text: answerText,
       });
+      if (result.queued !== undefined) {
+        return text(
+          `Answered — the continuation is queued at position ${result.queued} behind the task in flight. Follow it with get_status.`,
+        );
+      }
       link.startRun(result.runId, result.conversationId);
       return text("Answered — the run continues. Follow it with get_status.");
     }),
@@ -322,7 +374,7 @@ server.registerTool(
       // Never let a no-op stop read as "the browser is free now".
       return text(
         result.panelBusy
-          ? "Nothing of yours was stopped — the task in flight was started from Regentry's own panel, and only the panel can stop it. Ask the user to stop it there, or wait."
+          ? "Nothing of yours was stopped — the task in flight was started from TabRunner's own panel, and only the panel can stop it. Ask the user to stop it there, or wait."
           : "Nothing to stop — no task was running.",
       );
     }),
@@ -357,7 +409,7 @@ server.registerTool(
   {
     title: "Start a fresh thread",
     description:
-      "Forget the current thread and start clean. Regentry keeps one conversation for this bridge — each run continues the previous ones, so it remembers the pages it visited and what it found. Reset only when the new task has nothing to do with the old one.",
+      "Forget the current thread and start clean. TabRunner keeps one conversation for this bridge — each run continues the previous ones, so it remembers the pages it visited and what it found. Reset only when the new task has nothing to do with the old one.",
   },
   async () =>
     withLink(async () => {
@@ -375,7 +427,7 @@ server.registerTool(
 // extension keeps a single browser implementation and nothing can drift.
 //
 // The catch worth stating in every description: driving directly means
-// Regentry's own model is not in the loop, and neither is its policy of
+// TabRunner's own model is not in the loop, and neither is its policy of
 // stopping to ask before consequential actions. That rule is the client's to
 // keep here.
 
@@ -423,7 +475,7 @@ server.registerTool(
   {
     title: "Start driving the browser yourself",
     description:
-      "Open a direct-control session and get the first page snapshot. Use this instead of run when you want to drive step by step rather than hand Regentry the whole task — run is still the better choice for anything long or open-ended, because Regentry's own model plans it. State the goal: it names the conversation the user will see in Regentry's history, and every action you take is recorded under it. IMPORTANT: driving directly bypasses Regentry's own model and its rule of stopping to ask before consequential actions — so paying, sending on the user's behalf, deleting, or submitting is yours to put to the user first.",
+      "Open a direct-control session and get the first page snapshot. Use this instead of run when you want to drive step by step rather than hand TabRunner the whole task — run is still the better choice for anything long or open-ended, because TabRunner's own model plans it. State the goal: it names the conversation the user will see in TabRunner's history, and every action you take is recorded under it. IMPORTANT: driving directly bypasses TabRunner's own model and its rule of stopping to ask before consequential actions — so paying, sending on the user's behalf, deleting, or submitting is yours to put to the user first.",
     inputSchema: {
       goal: z
         .string()
@@ -437,7 +489,7 @@ server.registerTool(
         agent: clientName(),
       });
       return text(
-        `Driving directly. The user sees this as "${goal}" in Regentry's history, with every action under it.\n\n${renderToolResult("snapshot", result)}`,
+        `Driving directly. The user sees this as "${goal}" in TabRunner's history, with every action under it.\n\n${renderToolResult("snapshot", result)}`,
       );
     }),
 );
@@ -535,7 +587,7 @@ server.registerTool(
   {
     title: "Stop driving",
     description:
-      "Close the direct-control session, drop the on-page 'being controlled' badge, and hand the browser back. Call it when you're done — it also frees Regentry's panel to run tasks again. A session left open expires on its own after a few idle minutes.",
+      "Close the direct-control session, drop the on-page 'being controlled' badge, and hand the browser back. Call it when you're done — it also frees TabRunner's panel to run tasks again. A session left open expires on its own after a few idle minutes.",
   },
   async () =>
     withLink(async () => {
@@ -545,4 +597,4 @@ server.registerTool(
 );
 
 await server.connect(new StdioServerTransport());
-console.error(`[regentry] MCP bridge ready — WebSocket on 127.0.0.1:${PORT}`);
+console.error(`[tabrunner] MCP bridge ready — WebSocket on 127.0.0.1:${PORT}`);

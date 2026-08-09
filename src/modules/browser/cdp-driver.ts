@@ -207,7 +207,7 @@ export async function navigateToUrl(tabId: TabId, url: string): Promise<void> {
   await refreshAgentIndicator(tabId);
 }
 
-function waitForLoad(tabId: TabId, timeoutMs = 30_000): Promise<void> {
+export function waitForLoad(tabId: TabId, timeoutMs = 30_000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       chrome.tabs.onUpdated.removeListener(listener);

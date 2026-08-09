@@ -54,7 +54,7 @@ interface Bundle {
 
 const BUNDLES: Bundle[] = [
   {
-    name: "regentry",
+    name: "tabrunner",
     canonical: "en",
     locales: {
       en: { file: "src/i18n/locales/en.json" },

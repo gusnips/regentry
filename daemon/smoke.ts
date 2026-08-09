@@ -34,8 +34,8 @@ const daemon = Bun.spawn(["bun", "src/index.ts"], {
   cwd: import.meta.dir,
   env: {
     ...process.env,
-    REGENTRY_BRIDGE_PORT: String(PORT),
-    REGENTRY_BRIDGE_EXPECTED_EXTENSION_ID: EXTENSION_ID,
+    TABRUNNER_BRIDGE_PORT: String(PORT),
+    TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID: EXTENSION_ID,
   },
   stdin: "pipe",
   stdout: "pipe",
@@ -143,7 +143,7 @@ async function connectExtension(): Promise<void> {
 
 // ── The run ─────────────────────────────────────────────────────────
 
-console.log("regentry bridge — end-to-end smoke");
+console.log("tabrunner bridge — end-to-end smoke");
 
 const init = await rpc("initialize", {
   protocolVersion: "2024-11-05",
@@ -305,6 +305,85 @@ check(
   "the closing answer is served",
   finished.includes("state: done") && finished.includes("Receipt in the inbox"),
 );
+
+// ── Queue lifecycle ─────────────────────────────────────────────────
+// A second run waits in line: the reply says so, the queue event lists it,
+// get_status parks until its `started` event claims the slot, and its own
+// done is never swallowed by the previous run's closing state.
+const first = rpc("tools/call", { name: "run", arguments: { task: "tidy the downloads folder" } });
+const firstRequest = await awaitRequest("run");
+reply(firstRequest.requestId, { runId: "run-3", conversationId: "conv-1" });
+await first;
+
+const second = rpc("tools/call", { name: "run", arguments: { task: "archive the receipts" } });
+const secondRequest = await awaitRequest("run");
+reply(secondRequest.requestId, { runId: "run-4", conversationId: "conv-1", queued: 1 });
+check(
+  "a second run answers with its queue position",
+  bodyOf(await second).includes("Queued at position 1"),
+);
+
+send({
+  type: "event",
+  event: { type: "queue", queue: [{ position: 1, task: "archive the receipts", owner: "bridge" }] },
+});
+await Bun.sleep(50);
+const withQueue = bodyOf(
+  await rpc("tools/call", { name: "get_status", arguments: { wait: false } }),
+);
+check(
+  "the queue is listed with the waiting task",
+  withQueue.includes("queue: 1 waiting") && withQueue.includes("archive the receipts"),
+);
+
+// The first run ends on a question — the queued one is still behind it.
+send({ type: "event", event: { type: "question", question: "Delete the old zips?" } });
+send({ type: "event", event: { type: "done", summary: "waiting on you" } });
+await Bun.sleep(50);
+const parked = rpc("tools/call", { name: "get_status", arguments: { waitSeconds: 5 } });
+let parkedWoke = false;
+void parked.then(() => (parkedWoke = true));
+await Bun.sleep(300);
+check("get_status parks while this client's run is queued", !parkedWoke);
+
+// The queued run claims the slot — the mirror resets, the wait wakes.
+send({ type: "event", event: { type: "started", runId: "run-4", conversationId: "conv-1" } });
+const startedBody = bodyOf(await parked);
+check(
+  "the started event wakes the parked wait into running",
+  startedBody.includes("state: running"),
+);
+
+send({ type: "event", event: { type: "queue", queue: [] } });
+send({ type: "event", event: { type: "done", summary: "Receipts archived." } });
+await Bun.sleep(50);
+const queuedDone = bodyOf(
+  await rpc("tools/call", { name: "get_status", arguments: { wait: false } }),
+);
+check(
+  "the queued run's own done is served, not swallowed by the earlier question",
+  queuedDone.includes("state: done") && queuedDone.includes("Receipts archived"),
+);
+
+// A queue with nothing running (e.g. behind a direct session) still shows.
+const fresh = rpc("tools/call", { name: "new_conversation", arguments: {} });
+const freshRequest = await awaitRequest("newConversation");
+reply(freshRequest.requestId, { ok: true });
+await fresh;
+send({
+  type: "event",
+  event: { type: "queue", queue: [{ position: 1, task: "panel's task", owner: "panel" }] },
+});
+await Bun.sleep(50);
+const idleQueue = bodyOf(
+  await rpc("tools/call", { name: "get_status", arguments: { wait: false } }),
+);
+check(
+  "an idle state still lists the queue",
+  idleQueue.includes("state: idle") && idleQueue.includes("queue: 1 waiting"),
+);
+send({ type: "event", event: { type: "queue", queue: [] } });
+await Bun.sleep(50);
 
 // A screenshot comes back as a real MCP image block.
 const shot = rpc("tools/call", { name: "screenshot", arguments: {} });

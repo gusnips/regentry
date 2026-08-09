@@ -13,9 +13,9 @@ export interface Logger {
   error: (...args: unknown[]) => void;
 }
 
-/** Create a logger whose lines are prefixed `[regentry:<scope>]`. */
+/** Create a logger whose lines are prefixed `[tabrunner:<scope>]`. */
 export function createLogger(scope: string): Logger {
-  const prefix = `[regentry:${scope}]`;
+  const prefix = `[tabrunner:${scope}]`;
   return {
     debug: (...args) => console.debug(prefix, ...args),
     info: (...args) => console.info(prefix, ...args),

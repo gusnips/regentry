@@ -13,7 +13,7 @@ const VARIANTS: Record<Variant, string> = {
 /** Framed conversational content, adapted from shadcn/ui's Bubble
  *  (ui.shadcn.com/docs/components/base/bubble, base-nova): the frame carries
  *  variant + alignment, the content carries text flow. Trimmed to the variants
- *  and subcomponents Regentry uses — no reactions, no polymorphic render. */
+ *  and subcomponents TabRunner uses — no reactions, no polymorphic render. */
 export function Bubble({
   variant = "secondary",
   align = "start",

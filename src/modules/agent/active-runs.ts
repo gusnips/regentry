@@ -14,9 +14,21 @@ export interface ActiveRun {
   controller: AbortController;
   /** Messages typed mid-run, drained by the loop at each tool boundary. */
   injectedQueue: { id: string; text: string }[];
+  /** A parked plan-approval prompt — resolved by the panel's plan_approval command.
+   *  `feedback` rides along on a revision request (a "no" that keeps the run). */
+  planApproval?: { resolve: (approved: boolean, feedback?: string) => void };
 }
 
 let active: ActiveRun | null = null;
+
+/** Fired when the slot actually frees — the run queue pumps its next entry. */
+const releaseListeners = new Set<() => void>();
+
+/** Register a release listener; returns the unsubscribe. */
+export function onRunReleased(cb: () => void): () => void {
+  releaseListeners.add(cb);
+  return () => releaseListeners.delete(cb);
+}
 
 export function getActiveRun(): ActiveRun | null {
   return active;
@@ -42,7 +54,19 @@ export function acquireRun(conversationId: string, owner: RunOwner): AcquireResu
 
 /** Release the slot — but only if the handle is still the current one: a stop
  *  may have already released it and a newer run taken the slot while this one
- *  unwound. */
+ *  unwound. Listeners fire after the slot is visibly free, so a listener that
+ *  starts the next run never sees its own release. */
 export function releaseRun(run: ActiveRun): void {
-  if (active === run) active = null;
+  if (active !== run) return;
+  active = null;
+  for (const cb of releaseListeners) cb();
+}
+
+/** The panel's answer to a parked plan-approval prompt. A no-op when nothing is
+ *  parked — a bridge run auto-approves, and a stale answer must not leak into
+ *  the next run. */
+export function answerPlanApproval(approved: boolean, feedback?: string): void {
+  if (!active?.planApproval) return;
+  active.planApproval.resolve(approved, feedback);
+  active.planApproval = undefined;
 }

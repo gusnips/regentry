@@ -3,7 +3,7 @@ import type { TabId } from "@/shared/types";
 
 /** A JPEG of a visible tab, with the identity of what was actually captured. */
 export interface VisibleCapture {
-  /** `data:image/jpeg;base64,…` — images are data URLs everywhere inside Regentry. */
+  /** `data:image/jpeg;base64,…` — images are data URLs everywhere inside TabRunner. */
   dataUrl: string;
   tabId: TabId;
   title: string;

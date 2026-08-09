@@ -21,6 +21,11 @@ export async function captureSnapshot(
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    // Mid-navigation rejections are transient — the page moved under the
+    // injection. Worded as retry, not as the hard stop a restricted page is.
+    if (/frame was removed|No frame with id|tab was closed/i.test(msg)) {
+      throw new Error(i18n.t("errors.pageNavigating"), { cause: e });
+    }
     if (/chrome:\/\/|Cannot access|extensions gallery|Web Store/i.test(msg)) {
       throw new Error(i18n.t("errors.restrictedPage"), { cause: e });
     }
@@ -45,8 +50,8 @@ export async function resolveRefRect(
   const [result] = await chrome.scripting.executeScript({
     target: { tabId },
     func: (refId: string) => {
-      const w = window as unknown as { __regentryRefs?: Map<string, WeakRef<HTMLElement>> };
-      const entry = w.__regentryRefs?.get(refId);
+      const w = window as unknown as { __tabrunnerRefs?: Map<string, WeakRef<HTMLElement>> };
+      const entry = w.__tabrunnerRefs?.get(refId);
       const el = entry?.deref();
       if (!el) return null;
       el.scrollIntoView({ block: "center", inline: "center" });

@@ -42,7 +42,7 @@ function TrashIcon() {
 }
 
 /**
- * What Regentry has learned, shown as a plain list — the file and its markdown
+ * What TabRunner has learned, shown as a plain list — the file and its markdown
  * never reach the user. Deleting is how a normal user fixes a wrong memory.
  */
 export function MemorySection() {

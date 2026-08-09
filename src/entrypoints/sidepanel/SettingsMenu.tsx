@@ -4,9 +4,12 @@ import { Popover } from "@base-ui-components/react";
 import { useTranslation } from "react-i18next";
 import { AddProviderDialog } from "@/modules/providers/ui";
 import { Button } from "@/components/Button";
+import { Switch } from "@/components/Switch";
+import { useStoredItem } from "@/components/useStoredItem";
 import { ThemeToggle } from "@/components/ThemeControl";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Icon } from "@/components/Icon";
+import { widgetHidden } from "@/lib/prefs";
 
 function GearIcon() {
   return (
@@ -36,6 +39,9 @@ export function SettingsMenu() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [addProviderOpen, setAddProviderOpen] = useState(false);
+  // Stored inverted ("hidden") so the default needs no write; shown here as
+  // the positive toggle.
+  const hidden = useStoredItem(widgetHidden);
 
   return (
     <>
@@ -62,6 +68,21 @@ export function SettingsMenu() {
               <Section label={t("settings.language")}>
                 <LanguageToggle className="w-full" />
               </Section>
+              <div className="flex items-center justify-between gap-3 px-1 py-1.5">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-medium tracking-wide text-neutral-400 uppercase dark:text-neutral-500">
+                    {t("settings.showWidget")}
+                  </div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-neutral-400 dark:text-neutral-500">
+                    {t("settings.showWidgetHint")}
+                  </div>
+                </div>
+                <Switch
+                  checked={!hidden}
+                  onChange={(v) => void widgetHidden.set(!v)}
+                  ariaLabel={t("settings.showWidget")}
+                />
+              </div>
               <div className="mt-1 flex flex-col border-t border-neutral-100 pt-1 dark:border-neutral-800">
                 <Button
                   variant="ghost"

@@ -1,5 +1,4 @@
 export {
-  appendMessage,
   appendMessageTo,
   getActiveId,
   getConversationTabsFor,

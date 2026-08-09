@@ -1,21 +1,26 @@
 /**
- * The Regentry brand mark — a crown, for the one who rules in your stead.
+ * The TabRunner brand mark — a comet: a body in motion, with its trail behind.
  * Single source of truth for the extension icons and the OG card:
  * `bun run icons` (scripts/gen-icons.ts) rasterizes these into public/icon/.
+ *
+ * The wordmark carries "tab", so the glyph only has to carry "runner". Drawing
+ * a literal tab was tried and abandoned: filled blocks side by side read as a
+ * bar chart, and the window frame that makes a tab legible dissolves at 16px.
  *
  * Pure string builders, no React — safe to import from scripts and from any
  * runtime context.
  */
 
-/** Crown glyph on a 48×48 canvas. Flat geometric crown: peaks + band. */
-export function crownSvg(fill = "#ffffff"): string {
+/** Comet glyph on a 48×48 canvas. Flat geometry: head + two speed trails. */
+export function cometSvg(fill = "#ffffff"): string {
   return (
-    `<path fill="${fill}" d="M13 31.5V19.5L19.75 25 24 15.5 28.25 25 35 19.5V31.5Z" />` +
-    `<rect fill="${fill}" x="13" y="33.75" width="22" height="3.25" rx="1.625" />`
+    `<circle fill="${fill}" cx="31" cy="24" r="7.5" />` +
+    `<rect fill="${fill}" x="8" y="18" width="14" height="3.25" rx="1.625" />` +
+    `<rect fill="${fill}" x="11" y="27.75" width="11" height="3.25" rx="1.625" />`
   );
 }
 
-/** Rounded brand tile with the crown — the extension icon. */
+/** Rounded brand tile with the comet — the extension icon. */
 export function tileIconSvg(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
   <defs>
@@ -25,6 +30,6 @@ export function tileIconSvg(): string {
     </linearGradient>
   </defs>
   <rect width="48" height="48" rx="11" fill="url(#g)" />
-  ${crownSvg()}
+  ${cometSvg()}
 </svg>`;
 }

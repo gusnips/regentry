@@ -49,19 +49,19 @@ function ogSvg(): string {
   <rect width="${W}" height="${H}" fill="url(#glow)" />
   <g transform="rotate(-8 1060 350)">${tileAt(880, 150, 400, "ogw", 0.1)}</g>
   ${tileAt(72, 62, 52, "ogt")}
-  <text x="140" y="98" font-family="Inter, sans-serif" font-size="24" font-weight="700" letter-spacing="7" fill="#ede9fe">REGENTRY</text>
+  <text x="140" y="98" font-family="Inter, sans-serif" font-size="24" font-weight="700" letter-spacing="7" fill="#ede9fe">TABRUNNER</text>
   <text x="72" y="240" font-family="Inter, sans-serif" font-size="19" font-weight="700" letter-spacing="3" fill="#a78bfa">BROWSER AGENT · ANY PROVIDER</text>
-  <text x="72" y="320" font-family="Inter, sans-serif" font-size="64" font-weight="700" letter-spacing="-2.5" fill="#f3f1fa">Your browser,</text>
-  <text x="72" y="392" font-family="Inter, sans-serif" font-size="64" font-weight="700" letter-spacing="-2.5" fill="#f3f1fa">commanded.</text>
+  <text x="72" y="320" font-family="Inter, sans-serif" font-size="64" font-weight="700" letter-spacing="-2.5" fill="#f3f1fa">You decide.</text>
+  <text x="72" y="392" font-family="Inter, sans-serif" font-size="64" font-weight="700" letter-spacing="-2.5" fill="#f3f1fa">It does the legwork.</text>
   <text x="72" y="456" font-family="Inter, sans-serif" font-size="22" fill="#a9a3c4">An LLM drives your real browser — your sessions, your logins —</text>
   <text x="72" y="488" font-family="Inter, sans-serif" font-size="22" fill="#a9a3c4">through OpenAI, Anthropic, or any compatible endpoint.</text>
-  <text x="1128" y="596" font-family="Inter, sans-serif" font-size="20" fill="#6d6a86" text-anchor="end" letter-spacing="1">github.com/gusnips/regentry</text>
+  <text x="1128" y="596" font-family="Inter, sans-serif" font-size="20" fill="#6d6a86" text-anchor="end" letter-spacing="1">tabrunner.app</text>
   <rect y="${H - 8}" width="${W}" height="8" fill="url(#strip)" />
 </svg>`;
 }
 
 // ── emit ──────────────────────────────────────────────────────────────────────
-console.log("regentry · generating brand assets → public/icon, docs/\n");
+console.log("tabrunner · generating brand assets → public/icon, docs/\n");
 
 let bytes = 0;
 let count = 0;

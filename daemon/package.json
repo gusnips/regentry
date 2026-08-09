@@ -1,6 +1,6 @@
 {
-  "name": "regentry-bridge",
-  "description": "MCP server that lets external AI clients drive the Regentry browser agent",
+  "name": "tabrunner-bridge",
+  "description": "MCP server that lets external AI clients drive the TabRunner browser agent",
   "private": true,
   "version": "0.1.0",
   "type": "module",

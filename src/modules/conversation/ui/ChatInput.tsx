@@ -8,7 +8,28 @@ import { recallStep, sentMessages } from "./history-recall";
 import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
+import { Icon } from "@/components/Icon";
 import { ZoomableImage } from "@/components/ZoomableImage";
+
+/** Two stacked pages — the run gets its own tab, behind yours. */
+function BackgroundIcon() {
+  return (
+    <Icon>
+      <rect x="8" y="3" width="13" height="13" rx="2" />
+      <path d="M16 19v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h1" />
+    </Icon>
+  );
+}
+
+/** One page with an arrow into it — the run drives what you're looking at. */
+function ThisPageIcon() {
+  return (
+    <Icon>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M12 7v8m-3.5-3.5L12 15l3.5-3.5" />
+    </Icon>
+  );
+}
 
 interface Attachment {
   /** The "[Image #1]" token that stands in for this image inside the task text. */
@@ -35,6 +56,20 @@ export function ChatInput() {
   const unqueueMessage = useConversationStore((s) => s.unqueueMessage);
   const recallQueued = useConversationStore((s) => s.recallQueued);
   const stop = useConversationStore((s) => s.stop);
+  const runTarget = useConversationStore((s) => s.runTarget);
+  const setRunTarget = useConversationStore((s) => s.setRunTarget);
+  const queuedRun = useConversationStore((s) => s.queuedRun);
+  const cancelQueuedRun = useConversationStore((s) => s.cancelQueuedRun);
+  // The chip's position reads the board live (like RunBoard does) — entries
+  // ahead of ours leaving the line move it up without a new event.
+  const queuedPosition = useConversationStore((s) => {
+    if (!s.queuedRun) return 0;
+    const at = s.board.queue.findIndex((q) => q.id === s.queuedRun?.id);
+    return at >= 0 ? at + 1 : s.queuedRun.position;
+  });
+  const boardRunHere = useConversationStore(
+    (s) => s.activeId !== null && s.board.running?.conversationId === s.activeId,
+  );
   const areaRef = useRef<HTMLTextAreaElement>(null);
   /** Monotonic, so removing #1 never lets a later paste reuse its token. */
   const imageCount = useRef(0);
@@ -43,6 +78,10 @@ export function ChatInput() {
   const sentHistory = useMemo(() => sentMessages(messages), [messages]);
 
   const running = status === "running";
+  // Steering = typing into a run that is driving THIS conversation: either this
+  // panel's own run in flight, or one the board reports here after a reopen.
+  // While our own submission waits in the queue, input starts another task.
+  const steering = queuedRun ? false : running || boardRunHere;
   // Composer sub-state lives in the store alongside the draft: the draft itself
   // has store-side writers (recalls, conversation resets), and those must reset
   // the collapse state too — two copies would drift.
@@ -82,7 +121,7 @@ export function ChatInput() {
     const files = [...e.clipboardData.files].filter((f) => f.type.startsWith("image/"));
     if (files.length > 0) {
       e.preventDefault();
-      if (running) {
+      if (steering) {
         setAttachError(t("chat.queueNoImages"));
         return;
       }
@@ -135,7 +174,7 @@ export function ChatInput() {
     // the model never sees a "[Pasted 5 lines]" placeholder.
     const task = expandText(text, pastedTexts).trim();
     if (!task) return;
-    if (running) {
+    if (steering) {
       // Inserted between the next tool batches, never mid-stream.
       queueMessage(task);
     } else {
@@ -225,6 +264,24 @@ export function ChatInput() {
           </p>
         </div>
       )}
+      {queuedRun && (
+        <div className="flex items-center gap-1.5 rounded-lg border border-dashed border-brand-300 bg-brand-50 px-2 py-1 text-xs text-brand-700 dark:border-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+          <span className="shrink-0 rounded border border-brand-300 px-1 py-px text-[10px] font-medium dark:border-brand-700">
+            {t("queue.position", { position: queuedPosition })}
+          </span>
+          <span className="min-w-0 flex-1 truncate" title={t("queue.queuedTitle")}>
+            {queuedRun.task}
+          </span>
+          <button
+            type="button"
+            onClick={cancelQueuedRun}
+            aria-label={t("queue.cancel")}
+            className="shrink-0 rounded px-1 text-brand-500 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-brand-400 dark:hover:bg-brand-900"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {attachments.map((a) => (
@@ -256,6 +313,22 @@ export function ChatInput() {
         </p>
       )}
       <div className="flex items-end gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`mb-0.5 flex shrink-0 items-center gap-1 px-1.5 ${
+            runTarget === "thisPage" ? "bg-neutral-100 dark:bg-neutral-800" : ""
+          }`}
+          title={t("run.targetTitle")}
+          aria-label={t("run.targetTitle")}
+          aria-pressed={runTarget === "thisPage"}
+          onClick={() => setRunTarget(runTarget === "thisPage" ? "background" : "thisPage")}
+        >
+          {runTarget === "thisPage" ? <ThisPageIcon /> : <BackgroundIcon />}
+          <span className="text-xs">
+            {runTarget === "thisPage" ? t("run.thisPage") : t("run.background")}
+          </span>
+        </Button>
         <TextArea
           ref={areaRef}
           className="flex-1"
@@ -263,7 +336,7 @@ export function ChatInput() {
           autoFocus
           aria-label={t("chat.inputAria")}
           placeholder={
-            running
+            steering
               ? t("chat.queuePlaceholder")
               : questionPending
                 ? t("chat.answerPlaceholder")
@@ -274,12 +347,16 @@ export function ChatInput() {
           onKeyDown={onKeyDown}
           onPaste={(e) => void onPaste(e)}
         />
-        {running && (
+        {steering && (
           <Button onClick={submit} disabled={!text.trim()} title={t("chat.queueTitle")}>
             {t("chat.queue")}
           </Button>
         )}
-        {running ? (
+        {queuedRun ? (
+          <Button onClick={submit} disabled={!text.trim()}>
+            {t("chat.send")}
+          </Button>
+        ) : steering ? (
           <Button variant="danger" onClick={stop} title={t("chat.stopTitle")}>
             {t("chat.stop")}
           </Button>

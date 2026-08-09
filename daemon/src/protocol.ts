@@ -52,17 +52,20 @@ export type DaemonMessage = BridgePing | BridgeRequest;
 // ── Run events and status ───────────────────────────────────────────
 
 export type CompactRunEvent =
+  /** A queued run claimed the status slot — the mirror resets to a fresh running state. */
+  | { type: "started"; runId: string; conversationId: string }
   | { type: "step_start"; tool: string }
   | { type: "step"; tool: string; summary: string; ok?: boolean }
   | { type: "plan"; steps: string[]; current: number }
   | { type: "driving"; tabId: number; windowId: number; title: string }
+  | { type: "queue"; queue: BridgeQueueEntry[] }
   | { type: "error"; message: string }
   | { type: "done"; summary?: string }
   | { type: "question"; question: string; choices?: string[] };
 
 /**
  * The model side of "can a task actually run", answered before one is sent.
- * The browser link being up says nothing about whether Regentry has a model to
+ * The browser link being up says nothing about whether TabRunner has a model to
  * think with, and finding that out from a failed run wastes the user's turn.
  */
 export interface BridgeProviderInfo {
@@ -76,6 +79,13 @@ export interface BridgeProviderInfo {
   model: string | null;
 }
 
+/** One waiting run, as get_status lists it. Position is 1-based, FIFO. */
+export interface BridgeQueueEntry {
+  position: number;
+  task: string;
+  owner: "panel" | "bridge";
+}
+
 export interface BridgeStatus {
   conversationId: string | null;
   runId: string | null;
@@ -85,6 +95,8 @@ export interface BridgeStatus {
   steps: { tool: string; summary: string; ok?: boolean }[];
   plan: { steps: string[]; current: number } | null;
   driving: { tabId: number; windowId: number; title: string } | null;
+  /** Runs waiting on the single slot — tasks run one at a time, the rest queue. */
+  queue: BridgeQueueEntry[];
   question: string | null;
   /**
    * The tappable options the panel would show, when the answer is one of a few
@@ -107,6 +119,7 @@ export function emptyStatus(): BridgeStatus {
     steps: [],
     plan: null,
     driving: null,
+    queue: [],
     question: null,
     choices: null,
     error: null,
@@ -135,6 +148,19 @@ export interface CaptureResult {
  */
 export function applyCompact(status: BridgeStatus, event: CompactRunEvent): boolean {
   switch (event.type) {
+    case "started":
+      // A queued run took the slot: without this reset its events would fold
+      // into the previous run's terminal mirror — and its final done would be
+      // swallowed by the question guard below. The queue is preserved: the
+      // extension's queue event lands right behind and re-lists it.
+      Object.assign(status, emptyStatus(), {
+        queue: status.queue,
+        conversationId: event.conversationId,
+        runId: event.runId,
+        state: "running" as const,
+        startedAt: Date.now(),
+      });
+      return true;
     case "step_start":
       return false;
     case "step":
@@ -145,6 +171,9 @@ export function applyCompact(status: BridgeStatus, event: CompactRunEvent): bool
       return true;
     case "driving":
       status.driving = { tabId: event.tabId, windowId: event.windowId, title: event.title };
+      return true;
+    case "queue":
+      status.queue = event.queue;
       return true;
     case "question":
       status.state = "question";

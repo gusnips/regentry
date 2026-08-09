@@ -25,7 +25,7 @@ type Phase =
   | { step: "error"; message: string };
 
 /**
- * Subscription sign-in for any OAuth provider. Regentry opens the vendor's
+ * Subscription sign-in for any OAuth provider. TabRunner opens the vendor's
  * approval page, captures the answer, and saves the credential the moment it
  * arrives — approving that page is the whole flow.
  *

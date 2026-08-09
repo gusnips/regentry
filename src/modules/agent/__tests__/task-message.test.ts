@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest";
 import { buildTaskMessage } from "../prompt";
 
 describe("buildTaskMessage", () => {
-  it("pairs the task with the starting-page snapshot", () => {
+  it("pairs the task with the starting-page snapshot and the current date", () => {
     const message = buildTaskMessage("summarize this page", 'button "Go" [ref=e1]');
-    expect(message).toBe('Task: summarize this page\n\nCurrent page:\nbutton "Go" [ref=e1]');
+    expect(message).toMatch(
+      /^Task: summarize this page\n\nCurrent page:\nbutton "Go" \[ref=e1\]\n\nCurrent date: \d{4}-\d{2}-\d{2} \(\w+\)$/,
+    );
   });
 
   it("points at the one previous tab when the run moved", () => {

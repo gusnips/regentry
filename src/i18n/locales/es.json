@@ -30,7 +30,9 @@
     "defaultStartUrl": "Página de inicio predeterminada",
     "defaultStartUrlHint": "Las tareas en segundo plano abren una pestaña nueva aquí, salvo que la tarea indique un sitio.",
     "showWidget": "Widget flotante de estado",
-    "showWidgetHint": "Una píldora pequeña en tus pestañas mientras una tarea corre o espera en cola.",
+    "showWidgetHint": "Un indicador flotante en tus pestañas mientras una tarea corre o espera en cola.",
+    "backgroundTasks": "Tareas en segundo plano",
+    "invalidUrl": "Escribe una URL completa que empiece con http:// o https://",
     "languageAutoShort": "Auto"
   },
   "instructions": {
@@ -166,7 +168,7 @@
     "send": "Enviar",
     "retry": "Reintentar",
     "emptyTitle": "¿Qué debo hacer?",
-    "emptyBody": "Describe una tarea y yo manejo esta pestaña del navegador — navegar, leer páginas, hacer clic, escribir. Usa tus inicios de sesión existentes.",
+    "emptyBody": "Describe una tarea y yo manejo el navegador — navegar, leer páginas, hacer clic, escribir — en su propia pestaña en segundo plano, salvo que pidas esta página. Usa tus inicios de sesión existentes.",
     "emptyExample": "Ejemplo: \"ve a news.ycombinator.com y resume los 3 titulares principales\"",
     "portLost": "Se perdió la conexión con el agente — la ejecución se detuvo. Envía la tarea de nuevo para reintentar.",
     "reloaded": "TabRunner se recargó — cierra y vuelve a abrir este panel para continuar.",
@@ -195,9 +197,9 @@
     "attachFailed": "No se pudo leer esa imagen — puede que el formato no sea compatible. Cópiala de nuevo como PNG o JPEG y vuelve a pegarla.",
     "queue": "En cola",
     "queueTitle": "Se inserta entre las próximas llamadas a herramientas",
-    "queuePlaceholder": "Pon en cola un mensaje para la tarea en curso… (Enter para encolar · Esc detiene y envía)",
+    "queuePlaceholder": "Añade un mensaje para la tarea en curso… (Enter para enviar · Esc detiene y envía)",
     "queuedBadge": "en cola",
-    "queuedHint": "En cola — entra entre las próximas llamadas a herramientas; detener los envía como la siguiente tarea. Con el input vacío, ↑ edita el último; ✕ lo descarta.",
+    "queuedHint": "Enviada a la ejecución — entra entre las próximas llamadas a herramientas; detener los envía como la siguiente tarea. Con el input vacío, ↑ edita el último; ✕ lo descarta.",
     "unqueueAria": "Descartar mensaje en cola",
     "queueNoImages": "Las imágenes no pueden unirse a una tarea en curso — encola el texto ahora y pega la imagen con la próxima tarea.",
     "pasteToken": "Pegado {{count}} líneas",
@@ -238,8 +240,12 @@
     "progress": "{{done}}/{{total}}",
     "peekMore": "{{done}} hechos · {{pending}} pendientes",
     "approvalTitle": "¿Aprobar este plan?",
+    "revisionNote": "El usuario pidió cambios en lugar de aprobar — su nota está en \"revision\". Actualiza el plan en consecuencia y presenta la versión revisada.",
     "reapprovalTitle": "El plan cambió — ¿aprobar el nuevo?",
     "approve": "Aprobar",
+    "adjust": "Ajustar",
+    "adjustPlaceholder": "¿Qué debería cambiar?",
+    "revisionNote": "The user sent this plan back with requested changes. Call `plan` again with a revised list — it goes back to the user for approval, and no page action runs before that.",
     "reject": "Rechazar"
   },
   "run": {
@@ -307,6 +313,8 @@
     ],
     "tokens": "{{count}} tokens",
     "finished": "Listo",
+    "awaitingApproval": "Esperando tu aprobación",
+    "awaitingAnswer": "Esperando tu respuesta",
     "drivingTabTip": "Mostrar la pestaña que TabRunner está controlando",
     "bridgeTask": "{{client}} está ejecutando una tarea en tu navegador",
     "bridgeDriving": "{{client}} está controlando tu navegador",
@@ -316,14 +324,16 @@
     "targetTitle": "Dónde corre la tarea — una pestaña propia en segundo plano, o esta página"
   },
   "queue": {
-    "position": "En cola · posición {{position}}",
+    "position": "En cola · n.º {{position}}",
     "queuedTitle": "Esperando a que termine la tarea actual",
     "cancel": "Cancelar"
   },
   "widget": {
     "queued": "+{{count}} en cola",
     "open": "Abrir",
-    "hide": "Ocultar"
+    "hide": "Ocultar",
+    "openHint": "Abrir el panel de TabRunner",
+    "hideHint": "Oculta el widget hasta que lo reactives en Ajustes"
   },
   "board": {
     "title": "Tareas",
@@ -335,13 +345,12 @@
     "doneFallback": "Tarea terminada."
   },
   "errors": {
-    "alreadyRunning": "Ya hay una tarea en ejecución. Deténla primero.",
     "alreadyRunningMCP": "Ya hay una tarea de un cliente MCP externo en ejecución. Detenla desde el cliente (tabrunner.stop) o espera a que termine.",
     "alreadyRunningPanel": "Ya hay una tarea ejecutándose en el panel de TabRunner. Abre el panel y detenla, o espera a que termine.",
-    "alreadyRunningBridge": "Un agente externo está usando tu navegador. Detenlo aquí en el panel o espera a que termine.",
     "noActiveProvider": "No hay proveedor activo — elige uno en el selector del panel o añade uno en Configuración.",
     "noActiveTab": "No se encontró ninguna pestaña activa.",
     "runCancelled": "La tarea en cola fue cancelada antes de empezar",
+    "tabCreateFailed": "No se pudo abrir una pestaña para la tarea: {{message}}",
     "tabClosed": "La pestaña que manejaba esta tarea ({{title}}) se cerró — la ejecución se detuvo. TabRunner necesita que la pestaña siga abierta; reabre la página y envía la tarea de nuevo.",
     "providerError": "Error del proveedor: {{message}}",
     "outputLimit": "El modelo alcanzó su límite de salida a mitad de la respuesta — la respuesta puede estar incompleta",

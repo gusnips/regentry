@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { DrivenTabChip } from "./DrivenTabChip";
 import { planGlyph } from "./plan";
+import { pendingAskId } from "./ask-gate";
 import { useNow } from "./hooks";
 import { Button } from "@/components/Button";
 import type { BridgeActive } from "@/shared/protocol";
@@ -19,6 +20,13 @@ export function RunStatus() {
   // Selecting only the plan message (reference-stable until rewritten) keeps
   // this bar from re-rendering on every unrelated message churn mid-run.
   const plan = useConversationStore((s) => s.messages.findLast((m) => m.role === "plan"));
+  // Parked states: a mid-run plan approval keeps the run open but blocked on
+  // the user; an ask_user ends it with the question still open. Both speak
+  // "waiting", never the working shimmer/pulse.
+  const awaitingApproval = useConversationStore((s) => s.planApproval !== null);
+  const awaitingAnswer = useConversationStore(
+    (s) => pendingAskId(s.messages, s.status) !== undefined,
+  );
 
   const idleVerbs = t("run.idle", { returnObjects: true });
   const [verbIdx, setVerbIdx] = useState(0);
@@ -27,7 +35,7 @@ export function RunStatus() {
   const now = useNow(running);
 
   useEffect(() => {
-    if (!running) return;
+    if (!running || awaitingApproval) return;
     let rotate: ReturnType<typeof setTimeout>;
     const schedule = () => {
       // Random 1–2 min. Tools churn in under a second, so a verb that tracked
@@ -55,7 +63,7 @@ export function RunStatus() {
     };
     schedule();
     return () => clearTimeout(rotate);
-  }, [running, idleVerbs.length]);
+  }, [running, awaitingApproval, idleVerbs.length]);
 
   const totalTokens = usage.input + usage.output;
   const tokenNote =
@@ -72,7 +80,7 @@ export function RunStatus() {
     return (
       <div className="flex flex-col gap-0.5 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
         <div className="flex items-center gap-2">
-          <span>{t("run.finished")}</span>
+          <span>{awaitingAnswer ? t("run.awaitingAnswer") : t("run.finished")}</span>
           <span>
             {formatDuration(runEndedAt - runStartedAt)}
             {tokenNote}
@@ -101,7 +109,15 @@ export function RunStatus() {
       <div className="flex items-center gap-2 text-sm">
         {/* One motion only — the shimmering verb is the live signal, so the dot stays still. */}
         <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500" />
-        <span className="shimmer-text shrink-0 font-semibold">{verb}…</span>
+        {awaitingApproval ? (
+          // Parked on the user's answer: the run is alive (the timer keeps
+          // counting) but nothing is working — the shimmer would be lying.
+          <span className="shrink-0 font-semibold text-brand-700 dark:text-brand-300">
+            {t("run.awaitingApproval")}
+          </span>
+        ) : (
+          <span className="shimmer-text shrink-0 font-semibold">{verb}…</span>
+        )}
         <span className="ml-auto shrink-0 font-mono text-xs text-brand-700/70 dark:text-brand-300/70">
           {formatDuration(now - runStartedAt)}
           {tokenNote}

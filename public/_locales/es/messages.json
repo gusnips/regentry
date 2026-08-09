@@ -1,6 +1,6 @@
 {
   "extName": {
-    "message": "Regentry",
+    "message": "TabRunner",
     "description": "Extension name"
   },
   "extDescription": {
@@ -8,7 +8,7 @@
     "description": "Extension description shown in chrome://extensions and the Web Store"
   },
   "actionTitle": {
-    "message": "Abrir Regentry",
+    "message": "Abrir TabRunner",
     "description": "Toolbar action tooltip"
   }
 }

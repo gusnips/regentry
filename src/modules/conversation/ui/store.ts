@@ -4,6 +4,8 @@ import type { BridgeActive, Command, DrivingPayload, Event } from "@/shared/prot
 import { PORT_NAME } from "@/shared/protocol";
 import type { Message, AgentStatus } from "../types";
 import type { ConversationMeta } from "../conversations";
+import { runBoardItem } from "@/modules/agent/run-queue";
+import type { RunBoard } from "@/modules/agent/run-queue";
 import {
   appendMessage,
   deleteConversation,
@@ -13,9 +15,13 @@ import {
   setActiveConversation,
   watchConversations,
 } from "../conversations";
-import { TranscriptWriter, closingSummary } from "../transcript";
+import { closingSummary } from "../transcript";
 import { toolVerbKey } from "./tool-labels";
 import type { PastedText } from "./paste-collapse";
+
+/** Where a submitted task drives — a fresh background tab (default), or the
+ *  user's current page as an explicit opt-in. */
+export type RunTarget = "background" | "thisPage";
 
 interface ConversationState {
   messages: Message[];
@@ -36,11 +42,15 @@ interface ConversationState {
   /** Epoch ms when it finished — keeps the summary line up after the run ends */
   runEndedAt: number | null;
   /** Last run's input — powers the Retry action on transient errors */
-  lastRun: { task: string; images?: string[] } | null;
+  lastRun: { task: string; images?: string[]; thisPage?: boolean } | null;
+  /** Where the next submitted task drives — background tab or this page. */
+  runTarget: RunTarget;
   /** Id of the in-flight tool's live row (never persisted) */
   pendingStepId: string | null;
   /** Id of this run's plan card — updates rewrite it rather than stacking copies */
   planMsgId: string | null;
+  /** A proposed plan parked on the user's answer — the run resumes on approve, ends on reject. */
+  planApproval: { steps: string[]; reapproval: boolean } | null;
   /** Messages typed mid-run, waiting for the next tool boundary. */
   queued: { id: string; text: string }[];
   /** Joined queued text waiting to auto-run once the current run fully unwinds (a stop redirect). */
@@ -55,21 +65,35 @@ interface ConversationState {
   drivingTab: DrivingPayload | null;
   /** An external client working in the browser (a bridge run or direct session) */
   bridgeActive: BridgeActive | null;
+  /** The ambient run state — what runs/queues anywhere, widget-fed. */
+  board: RunBoard;
+  /** This panel's own submission waiting in the serial queue. */
+  queuedRun: { id: string; position: number; task: string } | null;
 
   connect: () => void;
   disconnect: () => void;
   sendTask: (task: string, images?: string[]) => void;
   queueMessage: (text: string) => void;
   unqueueMessage: (id: string) => void;
+  /** Cancel this panel's still-waiting queued run. */
+  cancelQueuedRun: () => void;
+  /** Cancel any panel-owned waiting run — the run board's per-row cancel. */
+  cancelQueuedById: (id: string) => void;
   /** ↑-arrow recall: the newest queued message goes back to the composer. */
   recallQueued: () => void;
   setDraft: (text: string) => void;
+  setRunTarget: (target: RunTarget) => void;
   /** Stash a collapsed paste's content behind its token. */
   addPastedText: (entry: PastedText) => void;
   /** Fresh draft after a send — the fold is fair game again. */
   clearPastedTexts: () => void;
   retry: () => void;
   stop: () => void;
+  /** Answer a parked plan prompt — the loop resumes on approve, unwinds on reject. */
+  approvePlan: () => void;
+  rejectPlan: () => void;
+  /** Send a parked plan back with changes — the model replans and asks again. */
+  revisePlan: (feedback: string) => void;
   /** Start a fresh transcript — the current one stays in history */
   newConversation: () => void;
   openConversation: (id: string) => void;
@@ -84,10 +108,28 @@ let intentionalDisconnect = false;
 let pingTimer: ReturnType<typeof setInterval> | null = null;
 /** Storage watch on the conversation index — background appends land here too. */
 let unwatchConversations: (() => void) | null = null;
+/** Storage watch on the run board — the widget's state, mirrored here. */
+let unwatchBoard: (() => void) | null = null;
 /** Did this run stream any prose? Governs done-summary dedup, never its display. */
 let sawAssistantText = false;
-/** Persists this run's events to storage — the display half stays in this store. */
-let writer: TranscriptWriter | null = null;
+/** Dispatch-and-forget's close handshake: the panel closes on the first event
+ *  back (proof the command landed), with a fallback if none ever comes. */
+let closeOnFirstEvent = false;
+let closeTimer: ReturnType<typeof setTimeout> | null = null;
+
+function schedulePanelClose(): void {
+  closeOnFirstEvent = true;
+  if (closeTimer) clearTimeout(closeTimer);
+  closeTimer = setTimeout(() => window.close(), 1500);
+}
+
+function cancelPanelClose(): void {
+  closeOnFirstEvent = false;
+  if (closeTimer) {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  }
+}
 
 function makeMsg(role: Message["role"], content: string, extra?: Partial<Message>): Message {
   return { id: crypto.randomUUID(), role, content, timestamp: Date.now(), ...extra };
@@ -124,6 +166,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     lastRun: null,
     pendingStepId: null,
     planMsgId: null,
+    planApproval: null,
     queued: [],
     pendingSend: null,
     draft: "",
@@ -173,7 +216,6 @@ export const useConversationStore = create<ConversationState>((set, get) => {
    * runStartedAt survives so the summary line can still say how long it went.
    */
   const settleRun = (status: AgentStatus) => {
-    writer = null;
     set((st) => ({
       messages: settleLive(st.messages),
       streamingText: "",
@@ -182,7 +224,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       status,
       runEndedAt: Date.now(),
       pendingStepId: null,
+      planApproval: null,
       drivingTab: null,
+      queuedRun: null,
     }));
   };
 
@@ -210,12 +254,15 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     set({ pendingSend: null, draft: mergeIntoDraft(pending), collapseDisabled: false });
   };
 
-  const startRun = (p: chrome.runtime.Port, task: string, images?: string[]) => {
+  const startRun = (
+    p: chrome.runtime.Port,
+    task: string,
+    images?: string[],
+    thisPage?: boolean,
+  ) => {
     sawAssistantText = false;
-    // The writer persists this run's events to storage — the task message was
-    // already appended (and its id adopted) before the run was sent.
-    const activeId = get().activeId;
-    writer = activeId ? new TranscriptWriter(activeId) : null;
+    // Persistence is the worker's job now (it owns the transcript writer — the
+    // panel may close right after submit); this store only renders.
     set({
       status: "running",
       streamingText: "",
@@ -224,21 +271,32 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       usage: { input: 0, output: 0 },
       runStartedAt: Date.now(),
       runEndedAt: null,
-      lastRun: { task, ...(images?.length ? { images } : {}) },
+      lastRun: { task, ...(images?.length ? { images } : {}), ...(thisPage ? { thisPage } : {}) },
       pendingStepId: null,
       // A new run draws its own card — never revives the last run's checklist.
       planMsgId: null,
+      planApproval: null,
     });
-    p.postMessage({ type: "run", task, ...(images?.length ? { images } : {}) } satisfies Command);
+    p.postMessage({
+      type: "run",
+      task,
+      ...(images?.length ? { images } : {}),
+      ...(thisPage ? { thisPage } : {}),
+    } satisfies Command);
   };
 
   /**
-   * Send a task, stamping it with the panel's active tab. Guarded against the
-   * stop redirect: while pendingSend is set, a user's Enter must not start a
-   * third run mid-handoff — the pending send fires from the done handler.
+   * Send a task. In "this page" mode it is stamped with the panel's active tab;
+   * a background run opens its own tab, so there is nothing to stamp. Guarded
+   * against the stop redirect: while pendingSend is set, a user's Enter must
+   * not start a third run mid-handoff — the pending send fires from the done
+   * handler.
    */
   const sendTask = async (task: string, images?: string[]) => {
-    if (get().status === "running" || get().pendingSend !== null) return;
+    if (get().pendingSend !== null) return;
+    // A run in flight steers instead (ChatInput routes there) — but when our
+    // own submission is only waiting in the queue, a new one joins the line.
+    if (get().status === "running" && !get().queuedRun) return;
     // The port dies with the worker — reconnect lazily instead of eating the task.
     let p: chrome.runtime.Port;
     try {
@@ -247,21 +305,24 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       pushMsg(makeMsg("error", i18n.t("chat.reloaded")));
       return;
     }
+    const thisPage = get().runTarget === "thisPage";
     // The message is anchored to the tab it was sent from. The panel queries
     // its own window here — the send-time fact — while the background's own
     // query stays the authority on what the run drives.
     let tab: Message["tab"];
-    try {
-      const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (active?.url) {
-        tab = {
-          title: active.title ?? "",
-          url: active.url,
-          ...(active.favIconUrl ? { favIconUrl: active.favIconUrl } : {}),
-        };
+    if (thisPage) {
+      try {
+        const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (active?.url) {
+          tab = {
+            title: active.title ?? "",
+            url: active.url,
+            ...(active.favIconUrl ? { favIconUrl: active.favIconUrl } : {}),
+          };
+        }
+      } catch {
+        // No stamp — the run still gets its tab from the background.
       }
-    } catch {
-      // No stamp — the run still gets its tab from the background.
     }
     // Stored BEFORE the run starts: the worker builds this run's history by
     // reading the transcript, so a fire-and-forget write would race it and
@@ -269,17 +330,39 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     await pushMsg(
       makeMsg("user", task, { ...(images?.length ? { images } : {}), ...(tab ? { tab } : {}) }),
     );
-    startRun(p, task, images);
+    startRun(p, task, images, thisPage || undefined);
+    // Dispatch-and-forget: close on the first event back — posting from an
+    // unloading context isn't guaranteed, so the event is the delivery receipt.
+    if (!thisPage) schedulePanelClose();
   };
 
   const handleEvent = (event: Event) => {
     const s = get();
-    // Persistence happens in the shared transcript writer; this store only renders.
-    writer?.apply(event);
+    if (closeOnFirstEvent) {
+      // An immediate failure must stay visible — never close on an error.
+      if (event.type === "error") cancelPanelClose();
+      else if (
+        event.type === "run_queued" ||
+        event.type === "driving" ||
+        event.type === "step_start"
+      ) {
+        cancelPanelClose();
+        window.close();
+        return;
+      }
+    }
     switch (event.type) {
       case "driving":
         // The event payload IS the chip's data — see DrivingPayload in protocol.
-        set({ drivingTab: event });
+        // A queued run's first driving event means the wait is over.
+        set({ drivingTab: event, queuedRun: null });
+        break;
+
+      case "run_queued":
+        // The submission is waiting in the serial queue — ChatInput says where.
+        set({
+          queuedRun: { id: event.id, position: event.position, task: get().lastRun?.task ?? "" },
+        });
         break;
 
       case "run_active":
@@ -360,6 +443,12 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         // line becomes a real transcript entry in the order the model saw it.
         set({ queued: get().queued.filter((q) => q.id !== event.id) });
         pushDisplay(makeMsg("user", event.text));
+        break;
+
+      case "plan_approval":
+        // The loop is parked until the user answers — the plan card above
+        // already shows what is being asked; this arms the approval card.
+        set({ planApproval: { steps: event.steps, reapproval: event.reapproval } });
         break;
 
       case "usage":
@@ -461,8 +550,10 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     runStartedAt: null,
     runEndedAt: null,
     lastRun: null,
+    runTarget: "background",
     pendingStepId: null,
     planMsgId: null,
+    planApproval: null,
     queued: [],
     pendingSend: null,
     draft: "",
@@ -470,11 +561,34 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     collapseDisabled: false,
     drivingTab: null,
     bridgeActive: null,
+    board: { queue: [] },
+    queuedRun: null,
 
     connect: () => {
       if (port) return;
       void listConversations().then((conversations) => set({ conversations }));
       unwatchConversations ??= watchConversations((conversations) => set({ conversations }));
+      void runBoardItem.get().then((board) => set({ board }));
+      unwatchBoard ??= runBoardItem.watch((board) => {
+        const prev = get().board;
+        set({ board });
+        // A worker restart resets the board to empty — drop the queued chip
+        // the dead queue can never fulfill.
+        if (!board.running && board.queue.length === 0 && get().queuedRun) {
+          set({ queuedRun: null });
+        }
+        // The frozen reopened panel: this conversation's run moved (started,
+        // retargeted, finished) — pull the transcript the worker has been
+        // writing so completion lands in the open panel.
+        const activeId = get().activeId;
+        if (!activeId) return;
+        const wasHere = prev.running?.conversationId === activeId;
+        const isHere = board.running?.conversationId === activeId;
+        if (!isHere && !wasHere) return;
+        void getMessages(activeId).then((messages) => {
+          if (get().activeId === activeId) set({ messages });
+        });
+      });
       void getActiveId().then(async (activeId) => {
         set({ activeId, messages: activeId ? await getMessages(activeId) : [] });
       });
@@ -484,6 +598,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     disconnect: () => {
       unwatchConversations?.();
       unwatchConversations = null;
+      unwatchBoard?.();
+      unwatchBoard = null;
       if (!port) return;
       intentionalDisconnect = true;
       port.disconnect();
@@ -495,6 +611,18 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     },
 
     sendTask,
+
+    cancelQueuedRun: () => {
+      const queued = get().queuedRun;
+      if (!queued) return;
+      post({ type: "cancel_queued", id: queued.id });
+      // Optimistic settle — if the run raced ahead and started, its events
+      // land next and the store recovers through them.
+      settleRun("idle");
+    },
+
+    // The run board's per-row cancel — the worker validates it is a panel entry.
+    cancelQueuedById: (id) => post({ type: "cancel_queued", id }),
 
     queueMessage: (text) => {
       const item = { id: crypto.randomUUID(), text };
@@ -528,6 +656,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       }),
     addPastedText: (entry) => set((st) => ({ pastedTexts: [...st.pastedTexts, entry] })),
     clearPastedTexts: () => set({ pastedTexts: [], collapseDisabled: false }),
+    setRunTarget: (target) => set({ runTarget: target }),
 
     retry: () => {
       const last = get().lastRun;
@@ -540,7 +669,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         pushMsg(makeMsg("error", i18n.t("chat.reloaded")));
         return;
       }
-      startRun(p, last.task, last.images);
+      startRun(p, last.task, last.images, last.thisPage);
+      // Same dispatch-and-forget as sendTask — a background retry closes too.
+      if (!last.thisPage) schedulePanelClose();
     },
 
     stop: () => {
@@ -561,9 +692,33 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         status: "idle",
         runEndedAt: Date.now(),
         pendingStepId: null,
+        planApproval: null,
         queued: [],
         pendingSend: pending,
       }));
+    },
+
+    approvePlan: () => {
+      if (!get().planApproval) return;
+      post({ type: "plan_approval", approved: true });
+      set({ planApproval: null });
+    },
+
+    rejectPlan: () => {
+      if (!get().planApproval) return;
+      post({ type: "plan_approval", approved: false });
+      set({ planApproval: null });
+    },
+
+    revisePlan: (feedback) => {
+      if (!get().planApproval) return;
+      const note = feedback.trim();
+      if (!note) return;
+      post({ type: "plan_approval", approved: false, feedback: note });
+      set({ planApproval: null });
+      // The note is a user message like any other: the transcript shows what
+      // the plan was sent back with, and the next run reads it as history.
+      void pushMsg(makeMsg("user", note));
     },
 
     newConversation: () => {

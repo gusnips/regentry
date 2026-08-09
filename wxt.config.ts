@@ -9,7 +9,7 @@ export default defineConfig({
     name: "__MSG_extName__",
     description: "__MSG_extDescription__",
     default_locale: "en",
-    homepage_url: "https://github.com/gusnips/regentry",
+    homepage_url: "https://tabrunner.app",
     icons: {
       16: "icon/16.png",
       32: "icon/32.png",
@@ -25,6 +25,8 @@ export default defineConfig({
       "tabs",
       "activeTab",
       "notifications",
+      // Background runs open their own tab and label its group with the task.
+      "tabGroups",
       // The MCP bridge's reconcile alarm — wakes a suspended worker to reconnect.
       "alarms",
       // Lets the browser strip Origin from our own provider calls: a subscription

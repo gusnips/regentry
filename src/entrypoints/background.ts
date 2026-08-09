@@ -1,9 +1,27 @@
 import { initI18n, i18n } from "@/i18n";
 import { startAgentRun } from "@/modules/agent/start-run";
-import { getActiveRun, releaseRun } from "@/modules/agent/active-runs";
-import type { ActiveRun } from "@/modules/agent/active-runs";
-import { appendMessage, getActiveId } from "@/modules/conversation";
-import { refreshAgentIndicator } from "@/modules/browser";
+import { getActiveRun, releaseRun, answerPlanApproval } from "@/modules/agent/active-runs";
+import {
+  cancelQueued,
+  currentBoard,
+  listQueue,
+  onBoardChanged,
+  runBoardItem,
+  submitRun,
+} from "@/modules/agent/run-queue";
+import type { RunBoard } from "@/modules/agent/run-queue";
+import { appendMessageTo, getActiveId } from "@/modules/conversation";
+import { setActiveConversation } from "@/modules/conversation/conversations";
+import { TranscriptWriter } from "@/modules/conversation/transcript";
+import { hideAgentIndicator, refreshAgentIndicator } from "@/modules/browser";
+import {
+  reconcileStatusWidgets,
+  refreshStatusWidget,
+  sweepStatusWidget,
+  syncStatusWidget,
+} from "@/modules/browser/status-widget";
+import type { WidgetState } from "@/modules/browser/status-widget";
+import { widgetHidden } from "@/lib/prefs";
 import { initProviderOriginStrip } from "@/modules/providers/origin";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
@@ -13,12 +31,40 @@ import { getBridge, startBridge } from "@/modules/bridge";
 const log = createLogger("bg");
 /** Every open panel — an external agent starting work must reach them all. */
 const panelPorts = new Set<chrome.runtime.Port>();
+/** Wakes the worker through long provider silences while a run is up and the
+ *  panel (whose ping does this when open) is closed. */
+const KEEPALIVE_ALARM = "tabrunner-run-keepalive";
+/** Where each notification's click should land, by notification id. */
+const notificationTargets = new Map<string, { conversationId: string; tabId?: number }>();
+/** Runs the user stopped themselves — their done is not notification-worthy. */
+const stoppedByUser = new Set<string>();
+/** The widget's current content — repaints after navigation read it. */
+let widgetState: WidgetState | null = null;
 
 export default defineBackground(() => {
   void initI18n();
   // Strip Origin from our own provider calls, or a subscription OAuth token is
   // refused by Anthropic's CORS gate before any model code ever runs.
   initProviderOriginStrip();
+  // A restarted worker holds no runs — the ones the stored board names died
+  // with the old worker. Reset it, sweep any orphaned widget pills and
+  // indicator marks, and say in each waiting thread that its task died with
+  // the worker rather than vanishing silently.
+  void runBoardItem.get().then(async (stale) => {
+    if (!stale.running && stale.queue.length === 0) return;
+    for (const q of stale.queue) {
+      void appendMessageTo(q.conversationId, {
+        id: crypto.randomUUID(),
+        role: "step",
+        tool: "interrupted",
+        content: i18n.t("errors.runCancelled"),
+        timestamp: Date.now(),
+      });
+    }
+    if (stale.running?.tabId !== undefined) void hideAgentIndicator(stale.running.tabId);
+    await runBoardItem.set({ queue: [] });
+    void sweepStatusWidget();
+  });
   // The MCP bridge — a WS client to the local daemon so external AI clients can
   // drive the same loop. Reconnects on its own reconcile alarm; harmless when
   // no daemon is listening. Activity changes are broadcast to open panels: the
@@ -26,6 +72,27 @@ export default defineBackground(() => {
   startBridge((active) => {
     for (const p of panelPorts) send(p, { type: "run_active", active });
   });
+
+  // The floating status widget follows the run board — shown on each window's
+  // active tab (never the driven tab, which has the indicator) while TabRunner
+  // has work, gone when idle, suppressed by the hide pref. The same transitions
+  // drive the keepalive: a run with a closed panel has no ping to hold the
+  // worker up through a long provider silence.
+  onBoardChanged((board) => {
+    widgetState = boardToWidget(board);
+    const exclude = board.running?.tabId;
+    void widgetHidden.get().then((hidden) => syncStatusWidget(hidden ? null : widgetState, exclude));
+    if (board.running || board.queue.length > 0) {
+      void chrome.alarms.create(KEEPALIVE_ALARM, { periodInMinutes: 0.5 });
+    } else {
+      void chrome.alarms.clear(KEEPALIVE_ALARM);
+    }
+  });
+  widgetHidden.watch((hidden) => {
+    void syncStatusWidget(hidden ? null : widgetState, currentBoard().running?.tabId);
+  });
+  // Firing is the whole point — the wake resets the MV3 idle timer.
+  chrome.alarms.onAlarm.addListener(() => {});
   log.debug("background initialized");
 
   chrome.runtime.onConnect.addListener((port) => {
@@ -39,16 +106,57 @@ export default defineBackground(() => {
           // The panel's task message was stored (and its id adopted) before the
           // run command left — so the active conversation is this run's home.
           const conversationId = (await getActiveId()) ?? crypto.randomUUID();
-          const result = await startAgentRun({
-            conversationId,
-            owner: "panel",
-            task: msg.task,
-            images: msg.images,
-            emit: (event) => send(port, event),
-            onAskUser: (question) => void notifyIfAway(question),
-          });
-          if (!result.ok) {
-            send(port, { type: "error", message: alreadyRunningMessage(result.active) });
+          const launch = () => {
+            // Persistence lives here, not in the panel store: the panel closes
+            // itself after submit, and its writer would die with it.
+            const writer = new TranscriptWriter(conversationId);
+            // submitRun launched this with the slot already free — acquireRun
+            // inside startAgentRun is the same synchronous turn, so no
+            // already-running branch is reachable here.
+            void startAgentRun({
+              conversationId,
+              owner: "panel",
+              task: msg.task,
+              images: msg.images,
+              thisPage: msg.thisPage,
+              emit: (event) => {
+                writer.apply(event);
+                send(port, event);
+                if (event.type === "done" || event.type === "error") {
+                  notifyRunEnded(conversationId, msg.task, event);
+                }
+              },
+              onAskUser: (question) =>
+                void notifyIfAway("tabrunner-question", question, conversationId),
+              onPlanApprovalRequest: (steps, reapproval) =>
+                void notifyIfAway(
+                  "tabrunner-plan",
+                  `${reapproval ? i18n.t("plan.reapprovalTitle") : i18n.t("plan.approvalTitle")} ${steps.join(" · ")}`,
+                  conversationId,
+                ),
+            }).catch((e) => {
+              log.error("panel run failed to start:", e instanceof Error ? e.message : String(e));
+            });
+          };
+          const outcome = submitRun({ conversationId, owner: "panel", task: msg.task, launch });
+          if ("queued" in outcome) {
+            send(port, { type: "run_queued", id: outcome.id, position: outcome.queued });
+          }
+          break;
+        }
+
+        case "cancel_queued": {
+          const entry = listQueue().find((q) => q.id === msg.id && q.owner === "panel");
+          if (entry && cancelQueued(msg.id)) {
+            // A cancelled queued run never produces an event — leave the
+            // breadcrumb, or the thread reads as if the task vanished.
+            void appendMessageTo(entry.conversationId, {
+              id: crypto.randomUUID(),
+              role: "step",
+              tool: "interrupted",
+              content: i18n.t("errors.runCancelled"),
+              timestamp: Date.now(),
+            });
           }
           break;
         }
@@ -68,9 +176,19 @@ export default defineBackground(() => {
           break;
         }
 
+        case "plan_approval": {
+          // The user's answer to a parked plan prompt — resolves the loop's wait.
+          // Owner-scoped like stop: a bridge run never parks, so this is a no-op there.
+          chrome.notifications.clear("tabrunner-plan");
+          if (getActiveRun()?.owner === "panel") answerPlanApproval(msg.approved, msg.feedback);
+          break;
+        }
+
         case "stop": {
           const run = getActiveRun();
           if (run?.owner === "panel") {
+            // User-initiated — the run's done must not fire a notification.
+            stoppedByUser.add(run.conversationId);
             run.controller.abort();
             run.injectedQueue.length = 0;
             releaseRun(run);
@@ -100,25 +218,29 @@ export default defineBackground(() => {
       }
     });
 
+    // Runs survive the panel closing — dispatch-and-forget is the whole point.
+    // A run is stopped explicitly (panel, widget, MCP stop, driven-tab close),
+    // never by the disconnect.
     port.onDisconnect.addListener(() => {
       panelPorts.delete(port);
-      const run = getActiveRun();
-      if (run?.owner === "panel") {
-        run.controller.abort();
-        run.injectedQueue.length = 0;
-        releaseRun(run);
-        // Best-effort breadcrumb so a reopened panel doesn't read as if the
-        // agent simply never replied — the worker may die before this lands.
-        void appendMessage({
-          id: crypto.randomUUID(),
-          role: "step",
-          tool: "interrupted",
-          content: i18n.t("errors.panelClosed"),
-          timestamp: Date.now(),
-        });
-      }
       log.debug("side panel disconnected");
     });
+  });
+
+  // The status widget's two buttons, posted from the page's isolated world.
+  chrome.runtime.onMessage.addListener((msg: unknown, sender) => {
+    const m = typeof msg === "object" && msg !== null ? (msg as Record<string, unknown>) : null;
+    if (m?.type !== "tabrunner-widget") return;
+    if (m.action === "hide") {
+      void widgetHidden.set(true);
+    } else if (m.action === "open") {
+      // Land on the work, not on whatever conversation happens to be active.
+      const board = currentBoard();
+      const target = board.running?.conversationId ?? board.queue[0]?.conversationId;
+      if (target) void setActiveConversation(target);
+      const windowId = sender.tab?.windowId;
+      if (windowId !== undefined) void chrome.sidePanel.open({ windowId });
+    }
   });
 
   // Open side panel on action click
@@ -128,12 +250,20 @@ export default defineBackground(() => {
     }
   });
 
-  // A load wipes the badge and the favicon dot. The navigate tool repaints
-  // itself, but click-triggered navigations have no other hook — any load
-  // completing in a driven tab puts its marks back. No-op for every other tab.
+  // A load wipes the badge, the favicon dot, and the status widget. The
+  // navigate tool repaints itself, but click-triggered navigations have no
+  // other hook — any load completing in a marked tab puts its marks back.
+  // No-ops for every other tab.
   chrome.tabs.onUpdated.addListener((tabId, info) => {
-    if (info.status === "complete") void refreshAgentIndicator(tabId);
+    if (info.status !== "complete") return;
+    void refreshAgentIndicator(tabId);
+    if (widgetState) void refreshStatusWidget(tabId, widgetState);
   });
+
+  // The widget lives on each window's active tab: activation and focus churn
+  // move it there and pull it from tabs that lost activation.
+  chrome.tabs.onActivated.addListener(() => void reconcileStatusWidgets());
+  chrome.windows.onFocusChanged.addListener(() => void reconcileStatusWidgets());
 });
 
 function send(port: chrome.runtime.Port, event: Event) {
@@ -144,38 +274,102 @@ function send(port: chrome.runtime.Port, event: Event) {
   }
 }
 
-/** alreadyRunning text naming who holds the slot — the panel reader needs to know. */
-function alreadyRunningMessage(run: ActiveRun): string {
-  return run.owner === "bridge"
-    ? i18n.t("errors.alreadyRunningBridge")
-    : i18n.t("errors.alreadyRunning");
+/** The widget's content for a board — null when there is nothing to report.
+ *  With only a queue (e.g. waiting behind a direct session) the first waiter
+ *  leads the pill. */
+function boardToWidget(board: RunBoard): WidgetState | null {
+  const lead = board.running ?? board.queue[0];
+  if (!lead) return null;
+  const extra = board.running ? board.queue.length : board.queue.length - 1;
+  return {
+    task: truncate(lead.task, 120),
+    queuedText: extra > 0 ? i18n.t("widget.queued", { count: extra }) : "",
+    awaiting: board.running?.awaiting === true,
+    openLabel: i18n.t("widget.open"),
+    hideLabel: i18n.t("widget.hide"),
+    openHint: i18n.t("widget.openHint"),
+    hideHint: i18n.t("widget.hideHint"),
+  };
 }
 
 /**
- * Fires an OS notification when a run ends on ask_user and the user is not
- * looking at a Chrome window — the strip "?" is invisible from another app.
+ * Dispatch-and-forget means the panel is usually closed when a run ends — say
+ * so where the user actually is. The question/plan notifications have their own
+ * flow (notifyIfAway); this covers the otherwise-silent finishes. Skipped for
+ * endings that were the user's own doing (stop, driven-tab close) and for
+ * question endings, which already fired their own notification. Per-run ids,
+ * so a second finishing run never replaces the first's notification.
  */
-async function notifyIfAway(question: string): Promise<void> {
+function notifyRunEnded(conversationId: string, task: string, event: Event): void {
+  if (panelPorts.size > 0) return;
+  if (event.type === "done" && event.question) return;
+  if (event.type === "error" && event.silent) return;
+  if (stoppedByUser.delete(conversationId)) return;
+  const done = event.type === "done";
+  const id = `tabrunner-run-${conversationId}`;
+  notificationTargets.set(id, {
+    conversationId,
+    ...(currentBoard().running?.tabId !== undefined
+      ? { tabId: currentBoard().running?.tabId }
+      : {}),
+  });
   try {
-    const windows = await chrome.windows.getAll({ windowTypes: ["normal"] });
-    if (windows.some((w) => w.focused)) return;
-    void chrome.notifications.create("regentry-question", {
+    void chrome.notifications.create(id, {
       type: "basic",
       iconUrl: "icon/128.png",
-      title: "Regentry",
-      message: truncate(question, 256),
+      title: truncate(task, 80),
+      message: truncate(
+        done
+          ? (event.summary ?? i18n.t("notify.doneFallback"))
+          : event.type === "error"
+            ? event.message
+            : "",
+        256,
+      ),
+    });
+  } catch {
+    // Notifications can fail silently — the widget still carries the signal.
+  }
+}
+
+/**
+ * Fires an OS notification when a run needs the user and no panel is open to
+ * see it — an unanswered ask_user or a parked plan approval stalls silently
+ * otherwise, and the strip mark is invisible from another app.
+ */
+async function notifyIfAway(id: string, message: string, conversationId?: string): Promise<void> {
+  if (panelPorts.size > 0) return;
+  if (conversationId) notificationTargets.set(id, { conversationId });
+  try {
+    void chrome.notifications.create(id, {
+      type: "basic",
+      iconUrl: "icon/128.png",
+      title: "TabRunner",
+      message: truncate(message, 256),
     });
   } catch {
     // Notifications can fail silently — the strip mark still carries the signal.
   }
 }
 
-// Notification click opens the panel so the user can answer.
+// Notification click opens the panel at the right conversation so the user can
+// answer — for a finished run, (best-effort) with its tab in front as well.
 chrome.notifications.onClicked.addListener((id) => {
-  if (id === "regentry-question") {
-    chrome.notifications.clear("regentry-question");
-    void chrome.windows.getLastFocused({ windowTypes: ["normal"] }).then((win) => {
-      if (win.id) void chrome.sidePanel.open({ windowId: win.id });
-    });
-  }
+  if (id !== "tabrunner-question" && id !== "tabrunner-plan" && !id.startsWith("tabrunner-run-"))
+    return;
+  chrome.notifications.clear(id);
+  const target = notificationTargets.get(id) ?? null;
+  notificationTargets.delete(id);
+  void (async () => {
+    if (target?.conversationId) await setActiveConversation(target.conversationId);
+    const win = await chrome.windows.getLastFocused({ windowTypes: ["normal"] });
+    if (win.id) await chrome.sidePanel.open({ windowId: win.id });
+    if (target?.tabId !== undefined) {
+      try {
+        await chrome.tabs.update(target.tabId, { active: true });
+      } catch {
+        // The run's tab is gone — the panel alone still carries the answer.
+      }
+    }
+  })();
 });

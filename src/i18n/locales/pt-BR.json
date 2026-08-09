@@ -30,7 +30,9 @@
     "defaultStartUrl": "Página inicial padrão",
     "defaultStartUrlHint": "Tarefas em segundo plano abrem uma aba nova aqui, a menos que a tarefa indique um site.",
     "showWidget": "Widget flutuante de status",
-    "showWidgetHint": "Uma pílula pequena nas suas abas enquanto uma tarefa roda ou espera na fila.",
+    "showWidgetHint": "Um indicador flutuante nas suas abas enquanto uma tarefa roda ou espera na fila.",
+    "backgroundTasks": "Tarefas em segundo plano",
+    "invalidUrl": "Digite uma URL completa começando com http:// ou https://",
     "languageAutoShort": "Auto"
   },
   "instructions": {
@@ -166,7 +168,7 @@
     "send": "Enviar",
     "retry": "Tentar de novo",
     "emptyTitle": "O que devo fazer?",
-    "emptyBody": "Descreva uma tarefa e eu dirijo esta aba do navegador — navegar, ler páginas, clicar, digitar. Usa seus logins existentes.",
+    "emptyBody": "Descreva uma tarefa e eu dirijo o navegador — navegar, ler páginas, clicar, digitar — numa aba própria em segundo plano, a menos que você peça esta página. Usa seus logins existentes.",
     "emptyExample": "Exemplo: \"vá a news.ycombinator.com e resuma as 3 principais manchetes\"",
     "portLost": "A conexão com o agente foi perdida — a execução parou. Envie a tarefa novamente para tentar de novo.",
     "reloaded": "O TabRunner foi recarregado — feche e reabra este painel para continuar.",
@@ -195,9 +197,9 @@
     "attachFailed": "Não foi possível ler essa imagem — o formato pode não ser compatível. Copie novamente como PNG ou JPEG e cole outra vez.",
     "queue": "Enfileirar",
     "queueTitle": "Entra entre as próximas chamadas de ferramenta",
-    "queuePlaceholder": "Enfileire uma mensagem para a tarefa em andamento… (Enter para enfileirar · Esc para e envia)",
+    "queuePlaceholder": "Adicione uma mensagem para a tarefa em andamento… (Enter para enviar · Esc para e envia)",
     "queuedBadge": "na fila",
-    "queuedHint": "Na fila — entra entre as próximas chamadas de ferramenta; parar as envia como a próxima tarefa. Com o campo vazio, ↑ edita a última; ✕ descarta.",
+    "queuedHint": "Enviada para a execução — entra entre as próximas chamadas de ferramenta; parar as envia como a próxima tarefa. Com o campo vazio, ↑ edita a última; ✕ descarta.",
     "unqueueAria": "Descartar mensagem enfileirada",
     "queueNoImages": "Imagens não podem entrar numa tarefa em andamento — enfileire o texto agora e cole a imagem na próxima tarefa.",
     "pasteToken": "Colado {{count}} linhas",
@@ -238,8 +240,12 @@
     "progress": "{{done}}/{{total}}",
     "peekMore": "{{done}} concluídos · {{pending}} restantes",
     "approvalTitle": "Aprovar este plano?",
+    "revisionNote": "O usuário pediu mudanças em vez de aprovar — a nota dele está em \"revision\". Atualize o plano de acordo e apresente a versão revisada.",
     "reapprovalTitle": "O plano mudou — aprovar o novo?",
     "approve": "Aprovar",
+    "adjust": "Ajustar",
+    "adjustPlaceholder": "O que deve mudar?",
+    "revisionNote": "The user sent this plan back with requested changes. Call `plan` again with a revised list — it goes back to the user for approval, and no page action runs before that.",
     "reject": "Rejeitar"
   },
   "run": {
@@ -307,6 +313,8 @@
     ],
     "tokens": "{{count}} tokens",
     "finished": "Concluído",
+    "awaitingApproval": "Aguardando sua aprovação",
+    "awaitingAnswer": "Aguardando sua resposta",
     "drivingTabTip": "Mostrar a aba que o TabRunner está controlando",
     "bridgeTask": "{{client}} está executando uma tarefa no seu navegador",
     "bridgeDriving": "{{client}} está controlando seu navegador",
@@ -316,14 +324,16 @@
     "targetTitle": "Onde a tarefa roda — uma aba própria em segundo plano, ou esta página"
   },
   "queue": {
-    "position": "Na fila · posição {{position}}",
+    "position": "Na fila · nº {{position}}",
     "queuedTitle": "Esperando a tarefa atual terminar",
     "cancel": "Cancelar"
   },
   "widget": {
     "queued": "+{{count}} na fila",
     "open": "Abrir",
-    "hide": "Ocultar"
+    "hide": "Ocultar",
+    "openHint": "Abrir o painel do TabRunner",
+    "hideHint": "Oculta o widget até você reativá-lo nas Configurações"
   },
   "board": {
     "title": "Tarefas",
@@ -335,13 +345,12 @@
     "doneFallback": "Tarefa concluída."
   },
   "errors": {
-    "alreadyRunning": "Uma tarefa já está em execução. Pare-a primeiro.",
     "alreadyRunningMCP": "Uma tarefa de um cliente MCP externo já está em execução. Pare-a pelo cliente (tabrunner.stop) ou aguarde terminar.",
     "alreadyRunningPanel": "Uma tarefa já está em execução no painel do TabRunner. Abra o painel e pare-a, ou aguarde terminar.",
-    "alreadyRunningBridge": "Um agente externo está usando seu navegador. Pare-o aqui no painel ou aguarde terminar.",
     "noActiveProvider": "Nenhum provedor ativo — escolha um no seletor do painel ou adicione um nas Configurações.",
     "noActiveTab": "Nenhuma aba ativa encontrada.",
     "runCancelled": "A tarefa na fila foi cancelada antes de começar",
+    "tabCreateFailed": "Não foi possível abrir uma aba para a tarefa: {{message}}",
     "tabClosed": "A aba que esta tarefa estava dirigindo ({{title}}) foi fechada — a execução parou. O TabRunner precisa que a aba fique aberta; reabra a página e envie a tarefa de novo.",
     "providerError": "Erro do provedor: {{message}}",
     "outputLimit": "O modelo atingiu seu limite de saída no meio da resposta — a resposta pode estar incompleta",
@@ -380,7 +389,7 @@
     "signInDeviceResponse": "O serviço de entrada respondeu em um formato que o TabRunner não reconheceu. Tente de novo em instantes.",
     "noResponseBody": "Resposta sem corpo",
     "restrictedPage": "O TabRunner não consegue ler esta página — o Chrome bloqueia extensões em páginas chrome:// e da Web Store. Navegue a aba para uma página comum e reenvie a tarefa.",
-    "pageNavigating": "A página ainda estava carregando ou navegando — espere ela estabilizar e tente de novo.",
+    "pageNavigating": "A página ainda estava carregando ou navegando — aguarde ela estabilizar e tente de novo.",
     "snapshotFailed": "Falha na captura: a página pode ter navegado ou ser uma URL restrita (chrome://, Web Store).",
     "refNotFound": "Referência de elemento \"{{ref}}\" não encontrada. Execute a captura primeiro para obter referências atualizadas.",
     "noTabAttached": "Nenhuma aba anexada. Chame attach primeiro.",
