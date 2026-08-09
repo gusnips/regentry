@@ -11,7 +11,7 @@ export function TipLine({ className = "" }: { className?: string }) {
   const tip = useTip();
   if (!tip) return null;
   return (
-    <p className={`truncate text-[11px] text-neutral-400 dark:text-neutral-500 ${className}`}>
+    <p className={`line-clamp-2 text-[11px] text-neutral-400 dark:text-neutral-500 ${className}`}>
       {t("tips.label")}: {tip}
     </p>
   );

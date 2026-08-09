@@ -4,6 +4,7 @@
  * `cooldownOpens` is measured in panel opens (Claude Code measures in app
  * startups; our "session" is a panel open), so the short-cooldown tips are the
  * core shortcuts worth repeating and the long ones are the niche features.
+ * Keep the copy to one idea, ≤ ~90 chars — TipLine clamps at two lines.
  */
 export const TIPS = [
   { id: "escStop", cooldownOpens: 4 },

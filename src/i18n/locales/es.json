@@ -399,7 +399,7 @@
     "pasteImage": "Pega una captura de pantalla directamente en el campo — el agente puede verla.",
     "pasteCollapse": "Un texto largo pegado se pliega en un token compacto — el texto completo igual llega al agente.",
     "planApproval": "La tarea muestra su plan antes de tocar la página — apruébalo y el panel se aparta mientras trabaja, o responde con ajustes y replanifica.",
-    "planExpand": "Pulsa E para desplegar el plan — todos los pasos, no solo el que corre. E otra vez lo pliega.",
+    "planExpand": "Pulsa E para expandir/cerrar el plan.",
     "widget": "La píldora flotante en tus pestañas muestra qué hace TabRunner — haz clic en Abrir para ir al panel.",
     "board": "Las tareas en segundo plano aparecen en la banda Tareas arriba — salta a la pestaña controlada o detén una desde ahí.",
     "memory": "TabRunner recuerda datos útiles de tus tareas — revísalos o bórralos en Ajustes → Lo que TabRunner recuerda.",

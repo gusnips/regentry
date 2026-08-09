@@ -399,7 +399,7 @@
     "pasteImage": "Cole uma captura de tela direto no campo — o agente consegue vê-la.",
     "pasteCollapse": "Um texto longo colado vira um token compacto — o texto completo ainda chega ao agente.",
     "planApproval": "A tarefa mostra o plano antes de tocar na página — aprove e o painel sai da frente enquanto ela trabalha, ou responda com ajustes e ela replaneja.",
-    "planExpand": "Aperte E para abrir o plano — todas as etapas, não só a em andamento. E de novo recolhe.",
+    "planExpand": "Aperte E para expandir/fechar o plano.",
     "widget": "A pílula flutuante nas abas mostra o que o TabRunner está fazendo — clique em Abrir para ir ao painel.",
     "board": "Tarefas em segundo plano aparecem na faixa Tarefas no topo — pule para a aba controlada ou pare uma por ali.",
     "memory": "O TabRunner lembra fatos úteis das suas tarefas — revise ou apague em Configurações → O que o TabRunner lembra.",

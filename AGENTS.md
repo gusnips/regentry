@@ -80,7 +80,9 @@ never reach the service-worker bundle.
   least-recently-shown wins, re-picked on panel open / run end). Shows in the running run band,
   or on its own full-width row above the composer input when idle — never sharing the footer row
   with the run-target select. Shipping a user-facing gesture, shortcut, or tucked-away control?
-  Add a tip with it: id + cooldown in `registry.ts`, copy in all three `tips.*` catalogs.
+  Add a tip with it: id + cooldown in `registry.ts`, copy in all three `tips.*` catalogs. Keep the
+  copy short — one idea, ≤ ~90 chars; `TipLine` clamps at two lines, so a tip that needs more is
+  two tips.
 - `shared/` — Port protocol, shared types, brand mark (`logo.ts`).
 - `src/components/` — cross-domain Base UI primitives (Button, Select, TextField, dialogs…)
   plus the chat Bubble/MessageScroller shells over `@shadcn/react`.

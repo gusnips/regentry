@@ -399,7 +399,7 @@
     "pasteImage": "Paste a screenshot straight into the composer — the agent can see it.",
     "pasteCollapse": "A long pasted text folds into a neat token — the full text still reaches the agent.",
     "planApproval": "A task shows its plan before it touches the page — approve it and the panel steps aside while it works, or reply with adjustments and it replans.",
-    "planExpand": "Press E to unfold the plan — every step, not just the one in flight. E again folds it back.",
+    "planExpand": "Press E to expand/collapse the plan.",
     "widget": "The floating pill on your tabs shows what TabRunner is doing — click Open to jump to the panel.",
     "board": "Background tasks are tracked in the Tasks band at the top — jump to the driven tab or stop one from there.",
     "memory": "TabRunner remembers useful facts from your tasks — review or prune them under Settings → What TabRunner remembers.",

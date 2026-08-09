@@ -244,8 +244,6 @@ export function ModelControls() {
         />
       )}
 
-      {supportsUsage(active.id) && <UsageIndicator provider={active} />}
-
       <Select
         size="sm"
         variant="quiet"
@@ -256,6 +254,8 @@ export function ModelControls() {
         onChange={(v) => void update(active.id, { reasoningEffort: isEffort(v) ? v : undefined })}
         options={effortOptions}
       />
+
+      {supportsUsage(active.id) && <UsageIndicator provider={active} />}
     </div>
   );
 }
