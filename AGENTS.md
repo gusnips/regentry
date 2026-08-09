@@ -45,7 +45,7 @@ the Chrome Web Store. The pushed tag fires `.github/workflows/release.yml`, whic
 versioned artifacts plus `tabrunner-latest-*` aliases that tabrunner.app hotlinks. CI signs the
 CRX with the `CRX_SIGNING_KEY` secret, which must hold the local `tabrunner-test.pem` verbatim —
 a mismatched key splits installs across two extension IDs; the CI-built CRX is canonical. The
-website contract lives in `docs/website-brief.md` — change it and the tabrunner-site repo
+website contract lives in `docs/website-brief.md` — change it and the site repo (`../site`)
 together.
 
 ## Architecture
@@ -78,6 +78,13 @@ never reach the service-worker bundle.
   persistence (`TranscriptWriter`); the panel store only renders. Whenever a run ends without
   a summary of its own — an error, or a user stop — the writer appends a deterministic progress
   note (`progress-note.ts`), so the work still reaches the next run's history.
+- `memory/` — the two storage-backed markdown docs every run loads, mirroring the AGENTS.md /
+  MEMORY.md convention: `AGENTS.md` is the user's standing instructions, `MEMORY.md` is the
+  agent's, written by the `remember` tool. On by default (`memoryEnabled`); off stops both halves
+  and the tool is not offered to the model at all. After a run, `extractAndRemember` distills
+  durable facts from the transcript — capped at 3, and "none" is the expected answer, since a run
+  that only read a page teaches nothing. Edited on the options page (no filesystem in an
+  extension — the filenames are the mental model, not a path).
 - `bridge/` — the MCP bridge's extension half. Background-only.
 - `tips/` — the rotating "Tip: …" line; i18n data + cooldown scheduler (panel opens,
   least-recently-shown wins, re-picked on panel open / run end). Shows in the running run band,

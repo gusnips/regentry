@@ -3,7 +3,6 @@
     "tabrunner": {
       "command": "bun",
       "args": ["daemon/src/index.ts"]
-      "enabled": false
     }
   }
 }
