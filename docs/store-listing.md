@@ -8,6 +8,35 @@ sync with the product; when a feature lands, update the matching block and re-su
 > checklist items in [§7](#7-pre-submit-checklist) are done. Permissions justification and privacy
 > notes verified against `wxt.config.ts` and `README.md`.
 
+**Copy buttons.** Each block the dashboard takes has a copy button under it. In a Markdown
+preview they render as working buttons; in plain text they're `<button>` tags you can ignore —
+either way the fenced block directly above each one is the string to paste, verbatim.
+
+<script>
+  // Copy the fenced code block immediately above a [data-copy] button. Tagged
+  // blocks (not the global navigator) so a preview that strips scripts degrades
+  // to a plain button, never a broken page.
+  function copyBlock(btn) {
+    const block = btn.closest("[data-copy-block]")?.querySelector("pre");
+    if (block) navigator.clipboard?.writeText(block.innerText.trimEnd());
+  }
+</script>
+<style>
+  .copy-btn {
+    font: inherit;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.6rem;
+    border: 1px solid currentColor;
+    border-radius: 0.4rem;
+    background: none;
+    cursor: pointer;
+    opacity: 0.7;
+  }
+  .copy-btn:hover {
+    opacity: 1;
+  }
+</style>
+
 ---
 
 ## 1. Identity
@@ -25,9 +54,15 @@ sync with the product; when a feature lands, update the matching block and re-su
 
 **Title field** (≤ 45 chars) — use the plain name, it's the strongest brand:
 
+<div data-copy-block>
+
 ```
 Regentry
 ```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
 
 ---
 
@@ -35,22 +70,43 @@ Regentry
 
 Use this string (109 chars — comfortable headroom under the 132 limit):
 
+<div data-copy-block>
+
 ```
 An AI agent that drives your real browser — your tabs, sessions and logins — through any provider you choose.
 ```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
 
 > Verify in the dashboard (it shows a counter). All three localized variants are also under the cap.
 
 **Localized short descriptions** (same 132-char cap each):
 
 - **Português (Brasil):**
+
+  <div data-copy-block>
+
   ```
   Um agente de IA que dirige seu navegador de verdade — abas, sessões e logins — com qualquer provedor que você escolher.
   ```
+
+  <button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+  </div>
+
 - **Español:**
+
+  <div data-copy-block>
+
   ```
   Un agente de IA que maneja tu navegador real — pestañas, sesiones y accesos — con el proveedor que elijas.
   ```
+
+  <button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+  </div>
 
 ---
 
@@ -58,6 +114,8 @@ An AI agent that drives your real browser — your tabs, sessions and logins —
 
 Markdown-friendly subset: `##`/`###`, `**bold**`, `-` lists, links. CWS renders headings as
 sections. Paste as-is.
+
+<div data-copy-block>
 
 ```markdown
 ## Your browser, commanded
@@ -68,12 +126,12 @@ already use, until the task you described is done.
 
 - **Works in your real browser** — your existing logins are its sessions. No setup on every site,
   no fake profile, no separate account.
-- **Bring your own provider** — 15 presets (Anthropic, OpenAI, Kimi, Z.ai, Qwen, DeepSeek,
-  Gemini, OpenRouter, Groq, Mistral, xAI, Ollama; Anthropic, OpenAI and Kimi each sign in with a
-  subscription) plus any endpoint speaking the OpenAI or Anthropic wire format. No vendor lock-in,
-  no relay, no Regentry server.
-- **Your keys stay yours** — the API key goes straight from the extension to your provider.
-  Nothing is stored outside Chrome. No account, no telemetry.
+- **Bring your own provider** — sign in with a subscription you already pay for (Anthropic,
+  OpenAI, Kimi) or paste an API key, across 15 presets (Anthropic, OpenAI, Kimi, Z.ai, Qwen,
+  DeepSeek, Gemini, OpenRouter, Groq, Mistral, xAI, Ollama) plus any endpoint speaking the OpenAI
+  or Anthropic wire format. No vendor lock-in, no relay, no Regentry server.
+- **Your credentials stay yours** — a key or a sign-in goes straight from the extension to your
+  provider. Nothing is stored outside Chrome. No account, no telemetry.
 - **Trusted input** — clicks and keystrokes go through the Chrome DevTools Protocol, so they are
   genuine trusted events, not synthetic dispatches sites can ignore.
 - **See the work** — a live plan, current action, token spend and elapsed time while the agent
@@ -106,6 +164,10 @@ already use, until the task you described is done.
 
 English · Português (Brasil) · Español. Light and dark theme, or follow your OS.
 ```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
 
 ---
 
@@ -142,22 +204,23 @@ Saved in `docs/screenshots/` as `01-side-panel.png`, `02-chat.png`, `03-provider
 
 Paste into the **Permission justification** section. (CWS shows this to reviewers; be precise.)
 
-| Permission                      | Justification                                                                                                                                                                      |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `debugger`                      | Required for trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol, the only way to produce real (trusted) events a site can't ignore.            |
-| `scripting`                     | Injects the accessibility-tree snapshot script into the tab the agent reads.                                                                                                       |
-| `sidePanel`                     | Hosts the chat UI where the user writes tasks and watches the agent run.                                                                                                           |
-| `tabs`                          | Reads the active tab's URL/title and switches tabs when a task references another open tab.                                                                                        |
-| `activeTab`                     | Grants access to the tab the user submits a task from, per action.                                                                                                                 |
-| `storage`                       | Persists provider configs and conversation history locally in `chrome.storage`.                                                                                                    |
-| `notifications`                 | Alerts the user when the agent needs their input while Chrome is not focused.                                                                                                      |
-| `alarms`                        | Wakes a suspended service worker for the MCP bridge's periodic reconnect check — armed only while the bridge is enabled.                                                           |
-| Host permissions (`<all_urls>`) | The agent must be able to navigate, read, and interact with any site the user asks it to use. No network calls are made beyond the user's configured provider and the site itself. |
+| Permission                                    | Justification                                                                                                                                                                                                                              |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `debugger`                                    | Required for trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol, the only way to produce real (trusted) events a site can't ignore.                                                                  |
+| `scripting`                                   | Injects the accessibility-tree snapshot script into the tab the agent reads.                                                                                                                                                               |
+| `sidePanel`                                   | Hosts the chat UI where the user writes tasks and watches the agent run.                                                                                                                                                                   |
+| `tabs`                                        | Reads the active tab's URL/title and switches tabs when a task references another open tab.                                                                                                                                                |
+| `activeTab`                                   | Grants access to the tab the user submits a task from, per action.                                                                                                                                                                         |
+| `storage`                                     | Persists provider configs and conversation history locally in `chrome.storage`.                                                                                                                                                            |
+| `notifications`                               | Alerts the user when the agent needs their input while Chrome is not focused.                                                                                                                                                              |
+| `alarms`                                      | Wakes a suspended service worker for the MCP bridge's periodic reconnect check — armed only while the bridge is enabled.                                                                                                                   |
+| `declarativeNetRequestWithHostAccess`         | Lets the agent's own calls to the user's configured provider present without a browser Origin. Subscription sign-in tokens (Anthropic, OpenAI, Kimi) are refused by the provider's CORS gate when they arrive with an extension Origin; removing that header from requests the extension itself makes to a provider it is configured for is the only way to use a sign-in at all. It never touches requests the page being driven makes — only the extension's own traffic to a provider the user added. |
+| Host permissions (`<all_urls>`)               | The agent must be able to navigate, read, and interact with any site the user asks it to use. No network calls are made beyond the user's configured provider and the site itself.                                                         |
 
 **Single-purpose disclosure:** the extension exists solely to let a user's chosen LLM drive their
 browser on their behalf. It sends data only to the site being driven and to the user-configured
-provider (via their own API key). There is no Regentry server, no analytics, no third-party
-network activity.
+provider (via their own API key or subscription sign-in). There is no Regentry server, no
+analytics, no third-party network activity.
 
 ---
 
@@ -166,9 +229,15 @@ network activity.
 CWS asks for a **single-purpose description** and a **privacy policy URL**. The policy lives in the
 repo at [`PRIVACY.md`](../../PRIVACY.md), served on GitHub:
 
+<div data-copy-block>
+
 ```
 https://github.com/gusnips/regentry/blob/main/PRIVACY.md
 ```
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
 
 Paste that URL into the **Privacy policy** field. (The store's "No privacy policy needed" path is
 not available for extensions that handle personal data — we do process page content, so a policy
@@ -177,10 +246,16 @@ changes what's stored or sent, update the matching section.
 
 Draft single-purpose description (paste into the privacy form):
 
+<div data-copy-block>
+
 > Regentry lets an LLM the user configures drive their browser. It reads page content only while a
 > task is running, sends it to the user's chosen provider, and stores conversation history and
 > provider settings locally in Chrome. No server, no account, no data collection by Regentry, no
 > third-party sharing beyond the provider the user configured and the sites the task touches.
+
+<button class="copy-btn" data-copy onclick="copyBlock(this)">⧉ Copy</button>
+
+</div>
 
 ---
 
