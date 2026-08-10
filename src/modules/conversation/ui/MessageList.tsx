@@ -117,20 +117,33 @@ function StepRow({ msg }: { msg: Message }) {
   // exactly what you open a red row to find out.
   const displaced = msg.ok === false ? hint : hint ? msg.content : undefined;
   const expandable = !msg.live && Boolean(msg.detail || msg.images?.length);
+  // A tool-less step is a local note (slash-command results): no label, and the
+  // text wraps instead of truncating — a note's whole content is the point.
+  const isNote = !msg.tool;
 
   const line = (
     <>
       <StepIcon live={msg.live} ok={msg.ok} />
-      <span className="font-medium">{label}</span>
+      {label && <span className="font-medium">{label}</span>}
       {!msg.live && trailing && (
-        <span className="truncate text-neutral-500 dark:text-neutral-400">{trailing}</span>
+        <span
+          className={
+            isNote
+              ? "min-w-0 whitespace-pre-wrap text-neutral-500 dark:text-neutral-400"
+              : "truncate text-neutral-500 dark:text-neutral-400"
+          }
+        >
+          {trailing}
+        </span>
       )}
     </>
   );
 
   if (!expandable) {
     return (
-      <div className="flex items-center gap-1.5 self-start px-1 text-xs text-neutral-500 dark:text-neutral-400">
+      <div
+        className={`flex gap-1.5 self-start px-1 text-xs text-neutral-500 dark:text-neutral-400 ${isNote ? "items-start" : "items-center"}`}
+      >
         {line}
       </div>
     );

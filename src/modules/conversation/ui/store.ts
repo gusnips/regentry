@@ -75,6 +75,9 @@ interface ConversationState {
   connect: () => void;
   disconnect: () => void;
   sendTask: (task: string, images?: string[]) => void;
+  /** A local, display-only note (slash-command results) — rendered in the
+   *  transcript, never persisted, never part of the model's history. */
+  note: (content: string) => void;
   queueMessage: (text: string) => void;
   unqueueMessage: (id: string) => void;
   /** Cancel this panel's still-waiting queued run. */
@@ -616,6 +619,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     },
 
     sendTask,
+
+    // A tool-less step row is the note: quiet, neutral, and gone on reopen.
+    note: (content) => pushDisplay(makeMsg("step", content)),
 
     cancelQueuedRun: () => {
       const queued = get().queuedRun;

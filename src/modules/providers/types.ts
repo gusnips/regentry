@@ -16,6 +16,21 @@ export type ProviderShape = "openai" | "anthropic" | "responses";
 export const REASONING_EFFORTS = ["none", "low", "medium", "high", "max"] as const;
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
+/** The one place the effort union meets raw input (the pickers, slash commands). */
+export function isEffort(value: string): value is ReasoningEffort {
+  return REASONING_EFFORTS.some((effort) => effort === value);
+}
+
+/** i18n keys for the effort levels — a Record keyed by the union, so a new
+ *  level is a compile error here instead of a silently missing option. */
+export const EFFORT_LABEL_KEYS = {
+  none: "modelPicker.effort.none",
+  low: "modelPicker.effort.low",
+  medium: "modelPicker.effort.medium",
+  high: "modelPicker.effort.high",
+  max: "modelPicker.effort.max",
+} as const satisfies Record<ReasoningEffort, string>;
+
 /**
  * Tokens from a provider's OAuth sign-in, in place of a pasted key. Both
  * tokens rotate on every refresh, so a refresh always persists both.

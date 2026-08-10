@@ -282,6 +282,41 @@
       "action_other": "{{count}} otras acciones"
     }
   },
+  "commands": {
+    "menuAria": "Comandos",
+    "unknown": "El comando /{{name}} no existe — escribe / para ver la lista.",
+    "nextTask": "Se aplica a la próxima tarea, no a la que se está ejecutando.",
+    "background": {
+      "description": "Alterna dónde corre la próxima tarea — esta página o segundo plano",
+      "nowBackground": "Destino → segundo plano — el panel se cierra cuando apruebas el plan; la tarea sigue sin ti.",
+      "nowThisPage": "Destino → esta página — la próxima tarea maneja la pestaña que estás viendo mientras miras."
+    },
+    "effort": {
+      "description": "Fija el esfuerzo de razonamiento — none, low, medium, high, max o default",
+      "current": "Esfuerzo de razonamiento: {{effort}} ({{provider}}) — /effort <nivel> para cambiar.",
+      "set": "Esfuerzo de razonamiento → {{effort}} ({{provider}})",
+      "invalid": "El esfuerzo \"{{value}}\" no existe — elige uno: {{options}}."
+    },
+    "model": {
+      "description": "Fija el modelo del proveedor activo — auto lo deshace",
+      "current": "Modelo: {{model}} ({{provider}}) — /model <id> para fijar, /model auto para el más nuevo del endpoint.",
+      "set": "Modelo → {{model}} ({{provider}})",
+      "auto": "Modelo → auto ({{provider}}) — el más nuevo del endpoint."
+    },
+    "provider": {
+      "description": "Cambia el proveedor activo",
+      "current": "Proveedor: {{name}} — también configurados: {{others}}. /provider <nombre> para cambiar.",
+      "currentOnly": "Proveedor: {{name}} — el único configurado.",
+      "set": "Proveedor → {{name}}",
+      "unknown": "El proveedor \"{{value}}\" no existe — configurados: {{list}}."
+    },
+    "new": {
+      "description": "Empieza un chat nuevo"
+    },
+    "help": {
+      "description": "Lista los comandos"
+    }
+  },
   "indicator": {
     "driving": "TabRunner está controlando esta pestaña"
   },
@@ -410,7 +445,8 @@
     "widget": "La píldora flotante en tus pestañas muestra qué hace TabRunner — haz clic en Abrir para ir al panel.",
     "board": "Las tareas en segundo plano aparecen en la banda Tareas arriba — salta a la pestaña controlada o detén una desde ahí.",
     "memory": "TabRunner recuerda datos útiles de tus tareas — revísalos o bórralos en Ajustes → Lo que TabRunner recuerda.",
-    "usage": "En un proveedor por suscripción, el icono de medidor junto al selector de modelo muestra tu uso de 5 horas y semanal — haz clic para ver cuándo se reinicia."
+    "usage": "En un proveedor por suscripción, el icono de medidor junto al selector de modelo muestra tu uso de 5 horas y semanal — haz clic para ver cuándo se reinicia.",
+    "slashCommands": "Escribe / en el campo de texto para ver comandos — cambia proveedor, modelo o esfuerzo."
   },
   "notify": {
     "doneFallback": "Tarea terminada."

@@ -7,6 +7,9 @@ import { toAttachment } from "./image";
 import { recallStep, sentMessages } from "./history-recall";
 import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
 import { RunTargetToggle } from "./RunTargetToggle";
+import { SlashMenu } from "./SlashMenu";
+import { COMMANDS, executeSlash, slashItems } from "./slash-commands";
+import type { SlashItem } from "./slash-commands";
 import { TipLine } from "@/modules/tips/ui";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
@@ -72,6 +75,20 @@ export function ChatInput() {
   const clearPastedTexts = useConversationStore((s) => s.clearPastedTexts);
   /** Caret a token insert asked for, applied on the next paint. */
   const pendingCaret = useRef<number | null>(null);
+
+  // Slash commands: the menu state derives from the draft ("/" first, one
+  // line). Esc dismisses until the next edit; the highlight resets whenever
+  // the item list changes. Render-time adjustment, like the plan card's —
+  // no effects ferrying keystrokes into state.
+  const slash = useMemo(() => slashItems(text), [text]);
+  const slashKey = slash?.items.map((i) => i.key).join(" ") ?? "";
+  const [slashState, setSlashState] = useState({ key: "", index: 0, nav: false });
+  if (slashState.key !== slashKey) setSlashState({ key: slashKey, index: 0, nav: false });
+  const [slashDismissedFor, setSlashDismissedFor] = useState<string | null>(null);
+  if (slashDismissedFor !== null && slashDismissedFor !== text) setSlashDismissedFor(null);
+  const slashOpen = slash !== null && slash.items.length > 0 && slashDismissedFor === null;
+  const slashIndex = Math.min(slashState.index, Math.max(0, (slash?.items.length ?? 1) - 1));
+  const slashActive = slashOpen && slash ? slash.items[slashIndex] : undefined;
 
   // Autogrow with content, capped at ~6 rows.
   useLayoutEffect(() => {
@@ -150,11 +167,48 @@ export function ChatInput() {
     setText(text.replaceAll(token, "").replace(/ {2,}/g, " ").trim());
   };
 
+  /** A sent message (or a fired command) leaves a pristine composer. */
+  const resetComposer = () => {
+    setText("");
+    // setDraft("") above pruned everything and armed the inline override; a sent
+    // message is a fresh draft, so the fold is fair game again.
+    clearPastedTexts();
+    setAttachError(null);
+    setAttachments([]);
+  };
+
+  /** Click/Enter on a menu row: a no-arg command fires at once; an arg-taking
+   *  one completes into the draft so its candidates can be picked next. */
+  const acceptSlash = (item: SlashItem) => {
+    if (!slash) return;
+    if (slash.parsed.command && slash.parsed.arg !== undefined) {
+      slash.parsed.command.run(item.key);
+      resetComposer();
+      return;
+    }
+    const command = COMMANDS.find((c) => c.name === item.key);
+    if (!command) return;
+    if (command.takesArg) {
+      setText(`/${command.name} `);
+    } else {
+      command.run(undefined);
+      resetComposer();
+    }
+  };
+
   const submit = () => {
     // Collapse tokens expand to their full text before the message goes out —
     // the model never sees a "[Pasted 5 lines]" placeholder.
     const task = expandText(text, pastedTexts).trim();
     if (!task) return;
+    // A leading "/" is a local command — it runs against the panel's stores
+    // and never reaches the model, not even as mid-run steering.
+    const outcome = executeSlash(task);
+    if (outcome !== "not-slash") {
+      if (outcome === "executed") resetComposer();
+      else setText(outcome.complete);
+      return;
+    }
     if (steering) {
       // Inserted between the next tool batches, never mid-stream.
       queueMessage(task);
@@ -163,16 +217,52 @@ export function ChatInput() {
       // reference is how you take an image back out.
       const images = attachments.filter((a) => task.includes(a.token)).map((a) => a.dataUrl);
       sendTask(task, images);
-      setAttachments([]);
     }
-    setText("");
-    // setDraft("") above pruned everything and armed the inline override; a sent
-    // message is a fresh draft, so the fold is fair game again.
-    clearPastedTexts();
-    setAttachError(null);
+    resetComposer();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // An open slash menu owns the keys — its arrows/Tab/Enter/Esc never reach
+    // history recall or submit.
+    if (slashOpen && slash) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const delta = e.key === "ArrowDown" ? 1 : -1;
+        setSlashState({
+          key: slashKey,
+          index: Math.min(Math.max(slashIndex + delta, 0), slash.items.length - 1),
+          nav: true,
+        });
+        return;
+      }
+      if (e.key === "Tab") {
+        // Completion without execution: the command name (plus its arg space),
+        // or the highlighted candidate swapped in for the typed arg.
+        e.preventDefault();
+        if (!slashActive) return;
+        if (slash.parsed.command && slash.parsed.arg !== undefined) {
+          setText(`/${slash.parsed.command.name} ${slashActive.key}`);
+        } else {
+          const command = COMMANDS.find((c) => c.name === slashActive.key);
+          if (command) setText(`/${command.name}${command.takesArg ? " " : ""}`);
+        }
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setSlashDismissedFor(text);
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        const argMode = slash.parsed.command !== undefined && slash.parsed.arg !== undefined;
+        // Arg mode without an explicit highlight defers to what was typed —
+        // the raw arg may complete a unique prefix, or error with the options.
+        if (slashActive && (!argMode || slashState.nav)) acceptSlash(slashActive);
+        else submit();
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();
@@ -298,13 +388,24 @@ export function ChatInput() {
           band carries it then) and while the paste hint is up (one hint at a
           time, and that one is contextual). */}
       {!running && !pastedTexts.some((p) => text.includes(p.token)) && <TipLine />}
-      <div className="flex items-end gap-2">
+      <div className="relative flex items-end gap-2">
+        {slashOpen && slash && (
+          <SlashMenu
+            items={slash.items}
+            index={slashIndex}
+            onHover={(index) => setSlashState({ key: slashKey, index, nav: true })}
+            onPick={acceptSlash}
+          />
+        )}
         <TextArea
           ref={areaRef}
           className="flex-1"
           rows={2}
           autoFocus
           aria-label={t("chat.inputAria")}
+          aria-expanded={slashOpen}
+          aria-controls={slashOpen ? "slash-menu" : undefined}
+          aria-activedescendant={slashActive ? `slash-menu-item-${slashActive.key}` : undefined}
           placeholder={
             steering
               ? t("chat.queuePlaceholder")

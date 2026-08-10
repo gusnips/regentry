@@ -26,9 +26,13 @@ export interface Burst {
 
 export type RenderItem = { kind: "message"; msg: Message } | Burst;
 
-/** An ask_user card is a pause for the user, not an action — it never folds into a burst. */
+/** An ask_user card is a pause for the user, not an action — it never folds into a burst.
+ *  Neither does a tool-less step: those are local notes (slash-command results), and
+ *  folding one in would count it as an "other action" it isn't. */
 function burstable(m: Message): boolean {
-  return m.role === "reasoning" || (m.role === "step" && m.tool !== "ask_user");
+  return (
+    m.role === "reasoning" || (m.role === "step" && m.tool !== undefined && m.tool !== "ask_user")
+  );
 }
 
 export function groupBursts(messages: Message[], running = false): RenderItem[] {

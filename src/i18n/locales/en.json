@@ -282,6 +282,41 @@
       "action_other": "{{count}} other actions"
     }
   },
+  "commands": {
+    "menuAria": "Commands",
+    "unknown": "No command /{{name}} — type / for the list.",
+    "nextTask": "Applies to the next task, not the one running.",
+    "background": {
+      "description": "Toggle where the next task runs — this page, or background",
+      "nowBackground": "Run target → background — the panel closes once you approve the plan; the run carries on without you.",
+      "nowThisPage": "Run target → this page — the next run drives the tab you're looking at while you watch."
+    },
+    "effort": {
+      "description": "Set reasoning effort — none, low, medium, high, max, or default",
+      "current": "Reasoning effort: {{effort}} ({{provider}}) — /effort <level> to change.",
+      "set": "Reasoning effort → {{effort}} ({{provider}})",
+      "invalid": "No effort \"{{value}}\" — pick one: {{options}}."
+    },
+    "model": {
+      "description": "Pin the model for the active provider — auto undoes it",
+      "current": "Model: {{model}} ({{provider}}) — /model <id> to pin one, /model auto for the endpoint's newest.",
+      "set": "Model → {{model}} ({{provider}})",
+      "auto": "Model → auto ({{provider}}) — the endpoint's newest."
+    },
+    "provider": {
+      "description": "Switch the active provider",
+      "current": "Provider: {{name}} — also configured: {{others}}. /provider <name> to switch.",
+      "currentOnly": "Provider: {{name}} — the only one configured.",
+      "set": "Provider → {{name}}",
+      "unknown": "No provider \"{{value}}\" — configured: {{list}}."
+    },
+    "new": {
+      "description": "Start a new chat"
+    },
+    "help": {
+      "description": "List the commands"
+    }
+  },
   "indicator": {
     "driving": "TabRunner is controlling this tab"
   },
@@ -410,7 +445,8 @@
     "widget": "The floating pill on your tabs shows what TabRunner is doing — click Open to jump to the panel.",
     "board": "Background tasks are tracked in the Tasks band at the top — jump to the driven tab or stop one from there.",
     "memory": "TabRunner remembers useful facts from your tasks — review or prune them under Settings → What TabRunner remembers.",
-    "usage": "On a subscription provider, the gauge icon next to the model picker shows your 5-hour and weekly usage — click it for the reset times."
+    "usage": "On a subscription provider, the gauge icon next to the model picker shows your 5-hour and weekly usage — click it for the reset times.",
+    "slashCommands": "Type / in the composer for commands — switch provider, model, or effort mid-chat."
   },
   "notify": {
     "doneFallback": "Task finished."

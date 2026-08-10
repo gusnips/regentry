@@ -282,6 +282,41 @@
       "action_other": "{{count}} outras ações"
     }
   },
+  "commands": {
+    "menuAria": "Comandos",
+    "unknown": "O comando /{{name}} não existe — digite / para ver a lista.",
+    "nextTask": "Vale para a próxima tarefa, não para a que está rodando.",
+    "background": {
+      "description": "Alterna onde a próxima tarefa roda — nesta página ou em segundo plano",
+      "nowBackground": "Destino → segundo plano — o painel fecha quando você aprova o plano; a tarefa continua sem você.",
+      "nowThisPage": "Destino → esta página — a próxima tarefa dirige a aba que você está vendo enquanto você acompanha."
+    },
+    "effort": {
+      "description": "Define o esforço de raciocínio — none, low, medium, high, max ou default",
+      "current": "Esforço de raciocínio: {{effort}} ({{provider}}) — /effort <nível> para mudar.",
+      "set": "Esforço de raciocínio → {{effort}} ({{provider}})",
+      "invalid": "O esforço \"{{value}}\" não existe — escolha um: {{options}}."
+    },
+    "model": {
+      "description": "Fixa o modelo do provedor ativo — auto desfaz",
+      "current": "Modelo: {{model}} ({{provider}}) — /model <id> para fixar, /model auto para o mais novo do endpoint.",
+      "set": "Modelo → {{model}} ({{provider}})",
+      "auto": "Modelo → auto ({{provider}}) — o mais novo do endpoint."
+    },
+    "provider": {
+      "description": "Troca o provedor ativo",
+      "current": "Provedor: {{name}} — também configurados: {{others}}. /provider <nome> para trocar.",
+      "currentOnly": "Provedor: {{name}} — o único configurado.",
+      "set": "Provedor → {{name}}",
+      "unknown": "O provedor \"{{value}}\" não existe — configurados: {{list}}."
+    },
+    "new": {
+      "description": "Começa uma nova conversa"
+    },
+    "help": {
+      "description": "Lista os comandos"
+    }
+  },
   "indicator": {
     "driving": "O TabRunner está controlando esta aba"
   },
@@ -410,7 +445,8 @@
     "widget": "A pílula flutuante nas abas mostra o que o TabRunner está fazendo — clique em Abrir para ir ao painel.",
     "board": "Tarefas em segundo plano aparecem na faixa Tarefas no topo — pule para a aba controlada ou pare uma por ali.",
     "memory": "O TabRunner lembra fatos úteis das suas tarefas — revise ou apague em Configurações → O que o TabRunner lembra.",
-    "usage": "Num provedor por assinatura, o ícone de medidor ao lado do seletor de modelo mostra seu uso de 5 horas e semanal — clique para ver quando reinicia."
+    "usage": "Num provedor por assinatura, o ícone de medidor ao lado do seletor de modelo mostra seu uso de 5 horas e semanal — clique para ver quando reinicia.",
+    "slashCommands": "Digite / no campo de texto para ver comandos — troque provedor, modelo ou esforço no chat."
   },
   "notify": {
     "doneFallback": "Tarefa concluída."

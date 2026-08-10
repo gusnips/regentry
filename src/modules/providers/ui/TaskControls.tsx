@@ -6,8 +6,8 @@ import { AddProviderDialog } from "./AddProviderDialog";
 import { listModels, pickLatestModel } from "../models";
 import { PRESETS, providerDisplayName } from "../presets";
 import { supportsUsage } from "../usage";
-import { REASONING_EFFORTS } from "../types";
-import type { ModelInfo, ProviderConfig, ProviderShape, ReasoningEffort } from "../types";
+import { EFFORT_LABEL_KEYS, isEffort, REASONING_EFFORTS } from "../types";
+import type { ModelInfo, ProviderConfig, ProviderShape } from "../types";
 import { UsageIndicator } from "./UsageIndicator";
 import { Select } from "@/components/Select";
 import type { SelectOption } from "@/components/Select";
@@ -15,20 +15,6 @@ import { TextField } from "@/components/TextField";
 
 /** Sentinel option value — opens the add-provider dialog instead of switching. */
 const ADD_NEW = "__add__";
-
-/** i18n keys for the effort levels — a Record keyed by the union, so a new
- *  level is a compile error here instead of a silently missing option. */
-const EFFORT_LABEL_KEYS = {
-  none: "modelPicker.effort.none",
-  low: "modelPicker.effort.low",
-  medium: "modelPicker.effort.medium",
-  high: "modelPicker.effort.high",
-  max: "modelPicker.effort.max",
-} as const satisfies Record<ReasoningEffort, string>;
-
-function isEffort(value: string): value is ReasoningEffort {
-  return REASONING_EFFORTS.some((effort) => effort === value);
-}
 
 interface ModelsTarget {
   shape: ProviderShape;
