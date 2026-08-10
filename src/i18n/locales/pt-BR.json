@@ -316,6 +316,10 @@
     "new": {
       "description": "Começa uma nova conversa"
     },
+    "usage": {
+      "description": "Mostra as janelas de uso da assinatura ativa",
+      "unsupported": "{{provider}} usa uma chave de API — janelas de uso só existem nos provedores por assinatura (Anthropic, ChatGPT, Kimi)."
+    },
     "help": {
       "description": "Lista os comandos"
     }

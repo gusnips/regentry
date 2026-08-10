@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   COMMANDS,
   executeSlash,
@@ -127,6 +127,50 @@ describe("executeSlash", () => {
     });
     executeSlash("/provider open");
     expect(lastNote()).toContain("→ OpenAI");
+  });
+
+  it("answers /usage on an API-key provider without fetching", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    executeSlash("/usage");
+    expect(lastNote()).toContain("API key");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("reports /usage windows for a subscription provider", async () => {
+    useProvidersStore.setState({
+      providers: [
+        {
+          ...PROVIDER,
+          id: "claude",
+          apiKey: "",
+          auth: {
+            accessToken: "at",
+            refreshToken: "rt",
+            expiresAt: Date.now() + 60_000,
+          },
+        },
+      ],
+      activeId: "claude",
+      loaded: true,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          five_hour: { utilization: 42 },
+          seven_day: { utilization: 68 },
+        }),
+      ),
+    );
+    executeSlash("/usage");
+    await vi.waitFor(() => {
+      expect(lastNote()).toContain("42%");
+    });
+    expect(lastNote()).toContain("Anthropic");
+    expect(lastNote()).toContain("68%");
+    vi.unstubAllGlobals();
   });
 });
 

@@ -1,7 +1,10 @@
 import { i18n } from "@/i18n";
 import { knownModels, pickLatestModel } from "@/modules/providers/models";
 import { providerDisplayName } from "@/modules/providers/presets";
+import { formatResetRelative } from "@/modules/providers/rate-limit";
 import { EFFORT_LABEL_KEYS, isEffort, REASONING_EFFORTS } from "@/modules/providers/types";
+import { fetchProviderUsage, supportsUsage } from "@/modules/providers/usage";
+import type { UsageWindow } from "@/modules/providers/usage";
 import { useProvidersStore } from "@/modules/providers/ui";
 import { useConversationStore } from "./store";
 
@@ -34,6 +37,7 @@ type CommandDescriptionKey =
   | "commands.effort.description"
   | "commands.model.description"
   | "commands.provider.description"
+  | "commands.usage.description"
   | "commands.new.description"
   | "commands.help.description";
 
@@ -94,6 +98,14 @@ function nextTaskSuffix(): string {
 
 /** The effort picker's full set, as typable tokens — never translated. */
 const EFFORT_OPTIONS = ["default", ...REASONING_EFFORTS].join(", ");
+
+/** One usage window as a line: "5-hour window: 42% used · resets in 1h 12m". */
+function windowLine(label: string, window: UsageWindow): string {
+  const used = i18n.t("usage.usedPercent", { percent: window.usedPercent });
+  return window.resetsAtMs === undefined
+    ? `${label}: ${used}`
+    : `${label}: ${used} · ${i18n.t("usage.resets", { reset: formatResetRelative(window.resetsAtMs, Date.now()) })}`;
+}
 
 export const COMMANDS: readonly SlashCommand[] = [
   {
@@ -257,6 +269,32 @@ export const COMMANDS: readonly SlashCommand[] = [
       }
       void useProvidersStore.getState().activate(pick.id);
       note(i18n.t("commands.provider.set", { name: providerDisplayName(pick) }) + nextTaskSuffix());
+    },
+  },
+  {
+    name: "usage",
+    descriptionKey: "commands.usage.description",
+    run: () => {
+      const provider = activeProvider();
+      if (!provider) return;
+      if (!supportsUsage(provider.id)) {
+        note(i18n.t("commands.usage.unsupported", { provider: providerDisplayName(provider) }));
+        return;
+      }
+      // A typed /usage is a deliberate ask and wants fresh numbers — the header
+      // gauge's TTL cache exists for its remount churn, not for this.
+      void fetchProviderUsage(provider).then(
+        (usage) => {
+          const name = providerDisplayName(provider) + (usage.plan ? ` (${usage.plan})` : "");
+          const windows: string[] = [];
+          if (usage.fiveHour) windows.push(windowLine(i18n.t("usage.window5h"), usage.fiveHour));
+          if (usage.weekly) windows.push(windowLine(i18n.t("usage.windowWeekly"), usage.weekly));
+          note([name, ...(windows.length > 0 ? windows : [i18n.t("usage.empty")])].join("\n"));
+        },
+        // fetchProviderUsage's message is already classified — auth failures
+        // arrive worded as the sign-in fix.
+        (e: unknown) => note(e instanceof Error ? e.message : String(e)),
+      );
     },
   },
   {

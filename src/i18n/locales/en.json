@@ -316,6 +316,10 @@
     "new": {
       "description": "Start a new chat"
     },
+    "usage": {
+      "description": "Show the active subscription's usage windows",
+      "unsupported": "{{provider}} runs on an API key — usage windows only exist for subscription sign-ins (Anthropic, ChatGPT, Kimi)."
+    },
     "help": {
       "description": "List the commands"
     }

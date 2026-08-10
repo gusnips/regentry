@@ -316,6 +316,10 @@
     "new": {
       "description": "Empieza un chat nuevo"
     },
+    "usage": {
+      "description": "Muestra las ventanas de uso de la suscripción activa",
+      "unsupported": "{{provider}} usa una clave de API — las ventanas de uso solo existen en los proveedores por suscripción (Anthropic, ChatGPT, Kimi)."
+    },
     "help": {
       "description": "Lista los comandos"
     }
