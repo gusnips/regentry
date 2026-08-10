@@ -9,5 +9,6 @@ export {
   waitAgentIndicator,
   clearAgentWait,
 } from "./indicator";
+export { syncActionBadge } from "./action-badge";
 export { SUPPORTED_KEYS, waitForLoad } from "./cdp-driver";
 export { isRestrictedUrl } from "./restricted-url";

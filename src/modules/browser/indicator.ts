@@ -33,8 +33,11 @@ const RESTORE_LINK_ID = "tabrunner-agent-favicon-restore";
  * away: "being controlled" is no longer true. The wait clears when the next
  * run starts (an answer is a run) or the tab is otherwise unmarked.
  *
- * Best-effort by design: restricted pages (chrome://, the Web Store) reject
+ * Best-effort by design: restricted pages (chrome://, the Web Store), a PDF
+ * viewer, a `file://` url without file access and a hostile CSP all reject
  * injection, and a run must not fail because its marks could not be drawn.
+ * That is survivable only because it is not the last line: the run's green tab
+ * group and the toolbar badge (action-badge.ts) need no injection at all.
  */
 
 /** The label every mark carries, while any run is driving. */
@@ -201,30 +204,49 @@ function stopPulse(tabId: TabId): void {
   pulseTimers.delete(tabId);
 }
 
+/** False when the page refused the script — the caller decides what that costs. */
 async function inject(
   tabId: TabId,
   func: (...args: string[]) => void,
   args: string[],
-): Promise<void> {
+): Promise<boolean> {
   try {
     await chrome.scripting.executeScript({ target: { tabId }, func, args });
+    return true;
   } catch (e) {
     log.debug("indicator injection skipped:", e instanceof Error ? e.message : String(e));
+    return false;
   }
 }
 
-export async function showAgentIndicator(tabId: TabId, label: string): Promise<void> {
-  activeLabel = label;
-  waitingTabId = null;
-  markedTabs.add(tabId);
-  startPulse(tabId);
-  await inject(tabId, paintIndicator, [
+/**
+ * A page that refuses the paint refuses every heartbeat frame too — a PDF
+ * viewer, a `file://` url without file access, a CSP that blocks injection. So
+ * the pulse only starts once the badge is actually on the page; otherwise the
+ * run would spend an `executeScript` every 700ms, forever, drawing nothing. The
+ * marks stay tracked either way: a navigation onto a page that does accept them
+ * repaints through refreshAgentIndicator, which picks the heartbeat back up.
+ *
+ * Losing the marks is a degradation, not a dead end — the run's green tab group
+ * and the toolbar badge (action-badge.ts) carry the signal on any page.
+ */
+async function paintMarks(tabId: TabId, label: string): Promise<void> {
+  const painted = await inject(tabId, paintIndicator, [
     HOST_ID,
     label,
     FAVICON_LINK_ID,
     FAVICON_DATA_URL,
     RESTORE_LINK_ID,
   ]);
+  if (painted) startPulse(tabId);
+  else stopPulse(tabId);
+}
+
+export async function showAgentIndicator(tabId: TabId, label: string): Promise<void> {
+  activeLabel = label;
+  waitingTabId = null;
+  markedTabs.add(tabId);
+  await paintMarks(tabId, label);
 }
 
 /** Repaint after a load wiped the document. No-op unless this tab is marked. */
@@ -234,15 +256,7 @@ export async function refreshAgentIndicator(tabId: TabId): Promise<void> {
     await inject(tabId, waitIndicator, [HOST_ID, FAVICON_LINK_ID, FAVICON_WAITING_URL]);
     return;
   }
-  if (activeLabel) {
-    await inject(tabId, paintIndicator, [
-      HOST_ID,
-      activeLabel,
-      FAVICON_LINK_ID,
-      FAVICON_DATA_URL,
-      RESTORE_LINK_ID,
-    ]);
-  }
+  if (activeLabel) await paintMarks(tabId, activeLabel);
 }
 
 export async function hideAgentIndicator(tabId: TabId): Promise<void> {

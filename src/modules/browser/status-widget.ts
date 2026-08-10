@@ -11,6 +11,11 @@ const HOST_ID = "tabrunner-status-widget";
  * the one tab being driven (which the widget always skips); this is the ambient
  * signal on whatever the user is actually looking at.
  *
+ * The richest of the three run signals, and the most fragile: injection can be
+ * refused, and the user can switch the pill off for good (`widgetHidden`).
+ * Neither is a dead end — the toolbar badge (action-badge.ts) is the floor
+ * beneath both, and it is never injected.
+ *
  * Mirrors indicator.ts: a serialized, self-contained page function, a closed
  * shadow root the page cannot restyle or reach into, best-effort injection
  * (restricted pages reject it and must never matter), and repaint-on-load

@@ -5,6 +5,7 @@ import {
   stepFaviconFrame,
   waitIndicator,
   showAgentIndicator,
+  refreshAgentIndicator,
   hideAgentIndicator,
   waitAgentIndicator,
   clearAgentWait,
@@ -174,6 +175,23 @@ describe("worker-driven favicon heartbeat", () => {
     await hideAgentIndicator(1);
     await vi.advanceTimersByTimeAsync(2800);
     expect(frameBeats()).toHaveLength(2); // no beats after hide
+  });
+
+  it("never beats on a page that refused the paint", async () => {
+    // A PDF viewer, a file:// url without file access, a hostile CSP. The
+    // heartbeat would fire an executeScript every 700ms forever, drawing
+    // nothing — the tab group and the toolbar badge carry the signal there.
+    executeScript.mockRejectedValue(new Error("Cannot access contents of the page"));
+    await showAgentIndicator(9, "TabRunner is driving");
+    await vi.advanceTimersByTimeAsync(2800);
+    expect(frameBeats()).toHaveLength(0);
+
+    // Navigating onto a page that does accept them picks the heartbeat back up.
+    executeScript.mockResolvedValue([]);
+    await refreshAgentIndicator(9);
+    await vi.advanceTimersByTimeAsync(700);
+    expect(frameBeats()).toHaveLength(1);
+    await hideAgentIndicator(9);
   });
 
   it("wait marks the strip without a pulse, and clear removes the mark", async () => {

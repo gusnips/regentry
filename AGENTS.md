@@ -86,7 +86,10 @@ never reach the service-worker bundle.
   Action tools
   are gated on user-approved plans; `ask_user` enforces the consequential-action policy.
 - `browser/` — accessibility-tree snapshot, CDP driver (trusted input), on-page badge + pulsing
-  favicon dot on the driven tab, `restricted-url.ts`, `status-widget.ts`. Background-only.
+  favicon dot on the driven tab, `restricted-url.ts`, `status-widget.ts`, `action-badge.ts`.
+  Background-only. The badge and the pill are injected, so both are best-effort and can be
+  absent (PDF, `file://`, CSP, or the `widgetHidden` pref); the toolbar badge is the one run
+  signal that never is. Never let the injected marks be the only thing saying a run is alive.
 - `providers/` — OpenAI/Anthropic/Responses adapters, presets, storage, config UI. Adding a
   provider is a data change in `presets.ts` — never a code change elsewhere.
 - `conversation/` — stored conversations, message types, chat UI. The worker owns transcript

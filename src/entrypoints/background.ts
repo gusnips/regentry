@@ -13,7 +13,7 @@ import type { RunBoard } from "@/modules/agent/run-queue";
 import { appendMessageTo, getActiveId } from "@/modules/conversation";
 import { setActiveConversation } from "@/modules/conversation/conversations";
 import { TranscriptWriter } from "@/modules/conversation/transcript";
-import { hideAgentIndicator, refreshAgentIndicator } from "@/modules/browser";
+import { hideAgentIndicator, refreshAgentIndicator, syncActionBadge } from "@/modules/browser";
 import {
   reconcileStatusWidgets,
   refreshStatusWidget,
@@ -46,6 +46,9 @@ export default defineBackground(() => {
   // A worker killed mid-extraction leaves its keepalive alarm firing forever —
   // a permanent wake loop. Alarms outlive the worker, so clear a stale one here.
   void chrome.alarms.clear(MEMORY_KEEPALIVE_ALARM);
+  // Badges live in the browser process, so they outlive the worker that set
+  // one. A restart holds no runs — clear it before anything else paints.
+  void syncActionBadge(0);
   // Strip Origin from our own provider calls, or a subscription OAuth token is
   // refused by Anthropic's CORS gate before any model code ever runs.
   initProviderOriginStrip();
@@ -76,12 +79,18 @@ export default defineBackground(() => {
     for (const p of panelPorts) send(p, { type: "run_active", active });
   });
 
-  // The floating status widget follows the run board — shown on each window's
+  // Both ambient surfaces follow the run board. The toolbar badge is the floor
+  // — never injected, never suppressed, so "is it still running?" always has an
+  // answer. The floating widget is the richer, best-effort one: each window's
   // active tab (never the driven tab, which has the indicator) while TabRunner
   // has work, gone when idle, suppressed by the hide pref. The same transitions
   // drive the keepalive: a run with a closed panel has no ping to hold the
   // worker up through a long provider silence.
   onBoardChanged((board) => {
+    void syncActionBadge(
+      (board.running ? 1 : 0) + board.queue.length,
+      board.running?.awaiting === true,
+    );
     widgetState = boardToWidget(board);
     const exclude = board.running?.tabId;
     void widgetHidden

@@ -120,6 +120,19 @@ window's active tab while the run board is non-empty — never the driven tab, w
 badge — moved on activation/focus churn, removed everywhere when idle or hidden via the
 `widgetHidden` pref.
 
+**Three ambient signals, and only one of them is guaranteed.** The indicator and the pill
+are both `chrome.scripting.executeScript`, which a restricted page, a PDF viewer, a
+`file://` url without file access, or a hostile CSP can refuse — silently, because a run
+must never fail because its marks could not be drawn. The pill has two more holes:
+`widgetHidden` turns it off for good, and it skips the driven tab, which under tab adoption
+IS the tab the user is looking at. So the injected layer can be entirely absent, and closing
+the panel would leave nothing on screen. `action-badge.ts` is the floor beneath it: a
+toolbar count (or "?" when parked on the user) painted by the browser itself, on every page
+type, whatever the pref says — cleared at worker boot, since badges outlive the worker that
+set them. The run's green tab group is injection-free for the same reason. A refused paint
+is therefore a degradation, never a dead end; `showAgentIndicator` treats it as one and
+skips the favicon heartbeat rather than firing a doomed `executeScript` every 700ms forever.
+
 ### `providers/` — config and sign-in
 
 OpenAI/Anthropic/Responses adapters, presets, storage, config UI (add/edit dialog, list,
