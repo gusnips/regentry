@@ -69,8 +69,8 @@ only the text invents its own wording for options the run is waiting on verbatim
 press_key, scroll) are rejected by the loop until the user approves a plan (`ACTION_TOOLS`
 in `agent/loop.ts` — reads and bookkeeping stay free so the model can look before it
 plans). `switch_tab` is deliberately outside the gate: it changes nothing on any page and
-it is how the agent reaches the page it must read first, which for a background run
-starting in a tab of its own is the normal opening move. A turn's calls run with `plan`
+it is how the agent reaches the page it must read first, which for a run starting
+on the tab it's driving is the normal opening move. A turn's calls run with `plan`
 hoisted first (`planFirst`) — models routinely batch the plan with the step it opens with,
 and in wire order that step would bounce off the gate its own approval was about to open.
 A bounced call gets a step row with a `detail`, so the red ✗ opens like every other row
@@ -232,7 +232,7 @@ char-capped with `to` marking where to continue.
 **Tabs belong to messages, not to the conversation.** One run per message, and the user
 moves between messages: in "this page" mode each user message is stamped with the tab it
 was sent from (shown in the transcript once the conversation spans more than one tab —
-background runs open their own tab, so there is nothing to stamp), and the conversation
+background runs adopt that same tab, so the stamp names the tab the run is about either way), and the conversation
 keeps the tabs its runs drove — deduped by url, newest first, capped. A "this page" run
 starts on the submit-time active tab; the task message names any stored tabs the user is
 not on, so "that email" and "the doc" can find their way back via list_tabs/switch_tab.

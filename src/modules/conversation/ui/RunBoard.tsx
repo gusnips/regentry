@@ -23,10 +23,11 @@ function StopIcon() {
 
 /**
  * What TabRunner is doing anywhere — the running task and the line behind it.
- * Dispatch-and-forget means the action usually lives elsewhere (a background
- * tab, the floating widget), so the panel names it here: jump to the tab, stop
- * the run, cancel a waiter. Reads the same run board the widget paints from,
- * so the two can never disagree. Hidden when idle — no empty chrome.
+ * Dispatch-and-forget means the action usually lives elsewhere (your current
+ * tab, the floating widget, the toolbar badge), so the panel names it here:
+ * jump to the tab, stop the run, cancel a waiter. Reads the same run board the
+ * widget paints from, so the two can never disagree. Hidden when idle — no
+ * empty chrome.
  */
 export function RunBoard() {
   const { t } = useTranslation();

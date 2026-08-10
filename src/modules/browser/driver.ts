@@ -53,12 +53,13 @@ export interface DriverOptions {
   onSwitch?: (tab: TabInfo) => void;
   /**
    * Bring a switched-to tab to the front. On for a run that already owns the
-   * screen (this-page, MCP direct control), off for a background run — a panel
-   * run shows you its tab once, at the start, and after that yanking your
-   * window mid-switch is exactly what "background" promises not to do; CDP
-   * input reaches an inactive tab either way. The cost is that a background tab gets
-   * no rAF ticks, so a page whose UI only advances on animation frames can
-   * stall — a reason to pick "this page" for one, not to steal focus for all.
+   * screen (this-page, adopted, MCP direct control), off for a run that opened
+   * its own tab — that one shows you its tab once, at the start, and after that
+   * yanking your window mid-switch is exactly what "background" promises not to
+   * do; CDP input reaches an inactive tab either way. The cost is that a
+   * background tab gets no rAF ticks, so a page whose UI only advances on
+   * animation frames can stall — a reason to pick "this page" for one, not to
+   * steal focus for all.
    */
   activateOnSwitch?: boolean;
 }

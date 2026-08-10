@@ -120,7 +120,7 @@ describe("runAgentLoop plan approval gate", () => {
 
   it("lets the agent reach the page it must read before it can plan", async () => {
     const calls: string[] = [];
-    // Looking is not acting: a background run starts on a tab of its own, so
+    // Looking is not acting: the run starts on the tab it's driving, so
     // "go to the Gmail tab and see what's there" IS the opening move.
     const provider = scriptedProvider([
       [call("switch_tab", { tab_id: 7 }), call("snapshot")],

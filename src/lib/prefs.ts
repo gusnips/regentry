@@ -17,6 +17,13 @@ export const defaultStartUrl = defineItem<string>("defaultStartUrl", "https://ww
  *  floating pill. */
 export const widgetHidden = defineItem<boolean>("widgetHidden", false);
 
+/** One-shot migration: clear a stored "hide" so the pill's new default — show
+ *  while a run is up — reaches users who turned it off in the fork era.
+ *  Checked before `widgetHidden.remove()` fires, then set so it never runs
+ *  again; the MV3 worker restarts constantly, so without this the user's
+ *  setting would be wiped on every boot. */
+export const widgetResetV1 = defineItem<boolean>("widgetResetV1", false);
+
 /** Rotating tips under the run band and in the composer footer — on unless the
  *  user turns them off in Settings. Checked at pick time, so off applies to the
  *  very next boundary. */

@@ -108,14 +108,14 @@ export function paintWidget(
       background: #34d39933; font-size: 11px;
     }
     .btn {
-      flex: none; border: 0; border-radius: 9999px; padding: 3px 8px;
+      flex: none; border: 0; border-radius: 9999px; padding: 5px 10px;
       background: transparent; color: #6ee7b7; font: inherit; cursor: pointer;
     }
     .btn:hover { background: #34d39933; color: #e8eefb; }
     .mini {
       display: flex; align-items: center; justify-content: center;
-      width: 22px; height: 22px; border: 0; border-radius: 9999px; padding: 0;
-      background: #0b1224ee; box-shadow: 0 2px 12px #0000004d; cursor: pointer;
+      width: 28px; height: 28px; border: 0; border-radius: 9999px; padding: 0;
+      background: #0b1224ee; box-shadow: 0 2px 12px #0000004d, 0 0 0 1px #34d39966; cursor: pointer;
     }
   `;
 

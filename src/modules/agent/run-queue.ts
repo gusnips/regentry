@@ -13,9 +13,9 @@ const log = createLogger("runs");
  * and ownership (who may stop or steer it) never changes hands.
  *
  * Every transition is mirrored to `runBoardItem`, the ambient "what is TabRunner
- * doing" record: the floating widget and the panel's run board read it over
- * storage watch, the MCP bridge forwards it as compact events — no new port
- * plumbing anywhere.
+ * doing" record: the floating widget, the panel's run board, and the toolbar
+ * badge read it over storage watch, the MCP bridge forwards it as compact
+ * events — no new port plumbing anywhere.
  */
 
 /** One queued submission, as the UI and the bridge protocol see it. */

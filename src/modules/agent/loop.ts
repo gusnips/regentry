@@ -52,8 +52,8 @@ const MAX_ATTACHED_IMAGES = 2;
  * model can look at the page before proposing its plan.
  *
  * switch_tab is deliberately NOT here: it changes nothing on any page, it is
- * how the agent reaches the page it must read before it can plan (a background
- * run starts on a tab of its own, so "look at the Gmail tab first" is the
+ * how the agent reaches the page it must read before it can plan (the run
+ * starts on the tab it's driving, so "look at the Gmail tab first" is the
  * normal opening move), and gating it produced a red ✗ on the very first step
  * of runs that were behaving correctly. Focus-stealing is the driver's call
  * (activateOnSwitch), not the gate's.

@@ -19,8 +19,10 @@ import { closingSummary } from "../transcript";
 import { toolVerbKey } from "./tool-labels";
 import type { PastedText } from "./paste-collapse";
 
-/** Where a submitted task drives — a fresh background tab (default), or the
- *  user's current page as an explicit opt-in. */
+/** Where a submitted task drives — the user's current page ("thisPage", the
+ *  default, with the panel open) or the same tab with the panel closed after
+ *  plan approval ("background"). Both drive the tab you're on; the only
+ *  difference is whether you watch or walk away. */
 export type RunTarget = "background" | "thisPage";
 
 interface ConversationState {
@@ -287,10 +289,10 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
   /**
    * Send a task. In "this page" mode it is stamped with the panel's active tab;
-   * a background run opens its own tab, so there is nothing to stamp. Guarded
-   * against the stop redirect: while pendingSend is set, a user's Enter must
-   * not start a third run mid-handoff — the pending send fires from the done
-   * handler.
+   * an adopted background run drives that same tab, so the stamp carries the
+   * tab the run is about either way. Guarded against the stop redirect: while
+   * pendingSend is set, a user's Enter must not start a third run mid-handoff —
+   * the pending send fires from the done handler.
    */
   const sendTask = async (task: string, images?: string[]) => {
     if (get().pendingSend !== null) return;

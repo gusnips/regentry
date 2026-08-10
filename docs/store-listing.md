@@ -336,7 +336,7 @@ Grants access to the tab the user submits a task from, at the moment they submit
 ```
 A task adopts the user's current tab, or opens its own when there's no page to work. TabRunner puts
 that tab in a labelled tab group named after the task, so the user can see at a glance which tab the
-agent is working in and close it in one action. Only groups TabRunner itself creates are touched.
+agent is working in and close it in one action.
 ```
 
 **`storage`**

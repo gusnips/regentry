@@ -218,7 +218,7 @@
     "send": "Send",
     "retry": "Retry",
     "emptyTitle": "What should I do?",
-    "emptyBody": "Describe a task and I'll drive the browser — navigate, read pages, click, type — on the page you're looking at, or in a tab of its own if you switch to Background below. Uses your existing logins.",
+    "emptyBody": "Describe a task and I'll drive the browser — navigate, read pages, click, type — on the page you're looking at, or open its own tab when there's no page to work. Uses your existing logins.",
     "emptyExample": "Example: \"pull the latest invoice from my inbox into the expense report\"",
     "portLost": "Connection to the agent was lost — the run stopped. Send the task again to retry.",
     "reloaded": "TabRunner was reloaded — close and reopen this panel to keep going.",
@@ -377,7 +377,8 @@
     "bridgeStopTitle": "Stops the task and hands the browser back",
     "background": "In background",
     "thisPage": "This page",
-    "targetTitle": "This page keeps the chat open so you watch; In background closes it after you approve the plan and works unattended"
+    "targetAria": "Run target: {{target}}",
+    "targetTitle": "“This page” keeps the chat open so you can watch; “In background” closes it after you approve the plan and works unattended"
   },
   "queue": {
     "position": "Queued · #{{position}}",
@@ -402,11 +403,11 @@
     "label": "Tip",
     "escStop": "Esc stops the running task — anything already typed is sent as the next one.",
     "historyRecall": "Press ↑ any time to walk back through what you've sent — ↓ comes forward, draft and all.",
-    "thisPage": "The task always works the tab you're looking at — “Run in this page” keeps the chat open so you watch; “Run in background” closes it after you approve the plan.",
+    "thisPage": "The task always works the tab you're looking at — “This page” keeps the chat open so you can watch; “In background” closes it after you approve the plan.",
     "queueSteer": "You can keep typing while a task runs — the message queues and steers it between steps.",
     "pasteImage": "Paste a screenshot straight into the composer — the agent can see it.",
     "pasteCollapse": "A long pasted text folds into a neat token — the full text still reaches the agent.",
-    "planApproval": "A task shows its plan before it touches the page — approve it and the panel steps aside while it works, or reply with adjustments and it replans.",
+    "planApproval": "A task shows its plan before it touches the page — approve it and, if the run is set to background, the panel closes while it works; or reply with adjustments and it replans.",
     "planExpand": "Press E to expand/collapse the plan.",
     "widget": "The floating pill on your tabs shows what TabRunner is doing — click Open to jump to the panel.",
     "board": "Background tasks are tracked in the Tasks band at the top — jump to the driven tab or stop one from there.",

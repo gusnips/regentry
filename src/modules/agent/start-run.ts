@@ -43,8 +43,9 @@ export interface StartRunOptions {
   images?: string[];
   /** Where a background run's tab starts — wins over the default start URL. */
   url?: string;
-  /** Drive the user's current tab instead of opening a background one — an
-   *  explicit opt-in, never the default. */
+  /** Drive the user's current tab with the panel left open — the default; the
+   *  "background" toggle drives the same tab but closes the panel after plan
+   *  approval. */
   thisPage?: boolean;
   /** Streams run events to the client — the panel port or the bridge's WS. */
   emit: (event: Event) => void;
@@ -95,11 +96,12 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       return { ok: true };
     }
 
-    // Where the run drives: the user's current tab only when explicitly asked,
-    // a tab of the run's own otherwise — dispatch-and-forget never hijacks what
-    // the user is reading. An answer continues where the question arose: a
-    // transcript parked on an unanswered ask_user goes back to the very tab the
-    // conversation last drove, page state and all.
+    // Where the run drives: the user's current tab by default (adopted or
+    // this-page), a tab of the run's own only when there's no page to work —
+    // dispatch-and-forget never hijacks what the user is reading, but it also
+    // never loses the state the task is about. An answer continues where the
+    // question arose: a transcript parked on an unanswered ask_user goes back to
+    // the very tab the conversation last drove, page state and all.
     const conversationTabs = await getConversationTabsFor(conversationId);
     const continuation = hasPendingQuestion(transcript) ? conversationTabs[0] : undefined;
     const target = await resolveRunTab(opts, continuation);
@@ -108,6 +110,10 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       return { ok: true };
     }
     const { tab, groupId, opened, adopted } = target;
+    // "this page" returns bare — it's the same drive as adoption, just with the
+    // panel left open, so it carries the same whose-tab semantics. The plan
+    // rejection path needs the raw flag to know the tab was adopted, not opened.
+    const onUsersTab = adopted === true || opts.thisPage === true;
     if (!tab.id) {
       emit({ type: "error", message: i18n.t("errors.noActiveTab") });
       return { ok: true };
@@ -204,7 +210,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         previousTabs: previousTabs.length > 0 ? previousTabs : undefined,
         mode: {
           background: opts.thisPage !== true,
-          ...(adopted ? { adopted: true } : {}),
+          ...(onUsersTab ? { adopted: true } : {}),
         },
         drainInjected: () => run.injectedQueue.splice(0, run.injectedQueue.length),
         signal: run.controller.signal,
@@ -302,6 +308,12 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       // glanced at is not where the conversation now lives.
       if (planRejected && opened) {
         await discardRunTab(tab.id);
+      } else if (planRejected && adopted) {
+        // The user said "no, don't touch this" — ungroup the adopted tab rather
+        // than leave a "✓" collapsed group around it. Nothing ran, so there is
+        // no outcome to name.
+        await ungroupRunTab(tab.id);
+        await persistDrivenTabFor(conversationId, drivenTabId);
       } else {
         await persistDrivenTabFor(conversationId, drivenTabId);
         await settleRunTab(
@@ -483,9 +495,14 @@ async function reuseContinuationTab(last: LastTab | undefined): Promise<RunTab |
   if (last?.tabId === undefined) return undefined;
   try {
     const tab = await chrome.tabs.get(last.tabId);
-    // A tab that has moved on is a different page with the same id.
-    if (tab.url !== last.url || isRestrictedUrl(tab.url)) return undefined;
-    return { tab, ...(tab.groupId === last.groupId ? { groupId: last.groupId } : {}) };
+    // The run continues where the question arose — the very tab it was driving,
+    // which under adoption IS the user's tab. The model must hear that, or it
+    // reads the "your own tab is untouched" line while sitting on theirs.
+    return {
+      tab,
+      adopted: true,
+      ...(tab.groupId === last.groupId ? { groupId: last.groupId } : {}),
+    };
   } catch {
     // The tab died while the question waited — open a fresh one on its url.
     return undefined;
@@ -520,6 +537,16 @@ async function discardRunTab(tabId: number): Promise<void> {
   }
 }
 
+/** Ungroup a tab this run adopted and never earned — a plain plan rejection
+ *  leaves the user's tab where it was, not in a collapsed group. */
+async function ungroupRunTab(tabId: number): Promise<void> {
+  try {
+    await chrome.tabs.ungroup(tabId);
+  } catch {
+    // The tab (or its group) died during the run.
+  }
+}
+
 /** Tab-group titles cap at ~25 chars before they ellipsis into noise. */
 const GROUP_TITLE_MAX = 25;
 
@@ -532,7 +559,7 @@ function groupTitle(task: string, mark = ""): string {
 
 /**
  * Group the run's tab and name the group after the task — the strip then says
- * what that background tab is. Best-effort: grouping must never fail a run.
+ * what that tab is. Best-effort: grouping must never fail a run.
  */
 async function labelRunTab(tabId: number, task: string): Promise<number | undefined> {
   try {

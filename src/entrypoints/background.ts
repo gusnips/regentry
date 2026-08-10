@@ -21,7 +21,7 @@ import {
   syncStatusWidget,
 } from "@/modules/browser/status-widget";
 import type { WidgetState } from "@/modules/browser/status-widget";
-import { widgetHidden } from "@/lib/prefs";
+import { widgetHidden, widgetResetV1 } from "@/lib/prefs";
 import { initProviderOriginStrip } from "@/modules/providers/origin";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
@@ -88,9 +88,12 @@ export default defineBackground(() => {
   // worker up through a long provider silence.
   // The pill now defaults ON — under adoption the driven tab is usually yours,
   // so the pill is the primary "is it still running?" marker when you switch
-  // away. Reset a stored "hide" once so the new default reaches everyone;
-  // turning it off again from Settings is deliberate and respected.
-  void widgetHidden.remove();
+  // away. Reset a stored "hide" ONCE so the new default reaches everyone; the
+  // MV3 worker restarts constantly, so gate it behind a versioned flag or the
+  // user's setting is wiped on every boot.
+  void widgetResetV1.get().then((done) => {
+    if (!done) void widgetHidden.remove().then(() => widgetResetV1.set(true));
+  });
 
   onBoardChanged((board) => {
     void syncActionBadge(

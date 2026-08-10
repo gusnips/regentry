@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { Icon } from "@/components/Icon";
 
-/** Two stacked pages — the run gets its own tab, behind yours. */
+/** Two states of the same tab: panel open (you watch) or closed (you walk away). */
 function BackgroundIcon() {
   return (
     <Icon>
@@ -39,7 +39,9 @@ export function RunTargetToggle() {
     <button
       type="button"
       onClick={() => setRunTarget(thisPage ? "background" : "thisPage")}
-      aria-label={t("run.targetTitle")}
+      aria-label={t("run.targetAria", {
+        target: thisPage ? t("run.thisPage") : t("run.background"),
+      })}
       title={t("run.targetTitle")}
       className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
     >

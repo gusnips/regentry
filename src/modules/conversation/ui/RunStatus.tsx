@@ -120,7 +120,7 @@ export function RunStatus() {
         ) : (
           <span className="shimmer-text shrink-0 font-semibold">{verb}…</span>
         )}
-        <span className="telemetry ml-auto shrink-0 text-xs">
+        <span className="telemetry ml-auto shrink-0 text-xs" aria-hidden="true">
           {formatDuration(now - runStartedAt)}
           {tokenNote}
         </span>
@@ -152,22 +152,22 @@ export function RunStatus() {
           <Button
             size="sm"
             variant="ghost"
-            className="text-brand-700 dark:text-brand-300"
             onClick={() => void focusTab(drivingTab.tabId, drivingTab.windowId)}
             title={t("run.showTabTip")}
           >
             {t("run.showTab")}
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-brand-700 dark:text-brand-300"
-          onClick={() => window.close()}
-          title={t("run.runInBackgroundTip")}
-        >
-          {t("run.runInBackground")}
-        </Button>
+        {!awaitingApproval && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => window.close()}
+            title={t("run.runInBackgroundTip")}
+          >
+            {t("run.runInBackground")}
+          </Button>
+        )}
       </div>
     </div>
   );

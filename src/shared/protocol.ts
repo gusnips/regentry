@@ -10,7 +10,8 @@ import type { ErrorKind } from "@/modules/providers/error-classify";
 
 export type Command =
   /** images are data URLs the user attached; the task text references them as "[Image #1]";
-   *  thisPage opts out of the default background tab and drives the user's current one */
+   *  thisPage drives the user's current tab with the panel open; background drives the same
+   *  tab but closes the panel after plan approval */
   | { type: "run"; task: string; images?: string[]; thisPage?: boolean }
   | { type: "stop" }
   /**
