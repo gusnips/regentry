@@ -284,10 +284,13 @@
   },
   "commands": {
     "menuAria": "Comandos",
+    "current": "Actual",
     "unknown": "El comando /{{name}} no existe — escribe / para ver la lista.",
     "nextTask": "Se aplica a la próxima tarea, no a la que se está ejecutando.",
     "background": {
       "description": "Alterna dónde corre la próxima tarea — esta página o segundo plano",
+      "current": "Destino: {{target}}.",
+      "invalid": "El destino \"{{value}}\" no existe — elige on u off.",
       "nowBackground": "Destino → segundo plano — el panel se cierra cuando apruebas el plan; la tarea sigue sin ti.",
       "nowThisPage": "Destino → esta página — la próxima tarea maneja la pestaña que estás viendo mientras miras."
     },

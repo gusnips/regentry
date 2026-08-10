@@ -1,4 +1,5 @@
 import { i18n } from "@/i18n";
+import { knownModels, pickLatestModel } from "@/modules/providers/models";
 import { providerDisplayName } from "@/modules/providers/presets";
 import { EFFORT_LABEL_KEYS, isEffort, REASONING_EFFORTS } from "@/modules/providers/types";
 import { useProvidersStore } from "@/modules/providers/ui";
@@ -12,8 +13,11 @@ import { useConversationStore } from "./store";
  * model's memory — a settings echo would pose as a turn). Each result lands as
  * a display-only note row (a tool-less step message), gone on panel reopen.
  *
- * The escape hatch for a task that must start with "/": any newline, or a
- * space right after the slash, makes it prose again.
+ * A bare picker command (/effort, /model, /provider, /background) opens its
+ * candidates in the menu with the current value checked and pre-highlighted —
+ * arrows + Enter pick, like the header selects. The escape hatch for a task
+ * that must start with "/": any newline, or a space right after the slash,
+ * makes it prose again.
  */
 
 export interface SlashCandidate {
@@ -21,6 +25,8 @@ export interface SlashCandidate {
   value: string;
   /** What the menu shows; matching tries it too, so a localized label completes. */
   label: string;
+  /** A quiet second column (e.g. the model "auto" actually resolves to). */
+  secondary?: string;
 }
 
 type CommandDescriptionKey =
@@ -36,9 +42,11 @@ export interface SlashCommand {
   descriptionKey: CommandDescriptionKey;
   /** Takes an optional argument — running it bare reports the current value. */
   takesArg?: boolean;
-  /** A closed arg set (effort levels, configured providers) — powers menu
-   *  completion. Absent with takesArg: free text (a model id). */
+  /** A closed arg set (effort levels, configured providers) — powers the picker menu. */
   candidates?: () => SlashCandidate[];
+  /** The candidate value in effect right now — the menu checks it and lands
+   *  the highlight on it, so Enter on an untouched picker is a harmless no-op. */
+  current?: () => string | undefined;
   run: (arg: string | undefined) => void;
 }
 
@@ -55,7 +63,15 @@ export interface SlashItem {
   key: string;
   primary: string;
   secondary?: string;
+  /** The value in effect — the menu checks it and lands the highlight on it. */
+  current?: boolean;
 }
+
+/** What the menu shows for a draft: command matches while the name is being
+ *  typed, the command's candidates once the name is exact. */
+export type SlashMenuState =
+  | { kind: "commands"; items: SlashItem[] }
+  | { kind: "candidates"; command: SlashCommand; items: SlashItem[] };
 
 /** The command's own say — a quiet line in the transcript, gone on reopen. */
 function note(content: string): void {
@@ -83,9 +99,27 @@ export const COMMANDS: readonly SlashCommand[] = [
   {
     name: "background",
     descriptionKey: "commands.background.description",
-    run: () => {
+    takesArg: true,
+    candidates: () => [
+      { value: "off", label: i18n.t("run.thisPage") },
+      { value: "on", label: i18n.t("run.background") },
+    ],
+    current: () => (useConversationStore.getState().runTarget === "background" ? "on" : "off"),
+    run: (arg) => {
       const store = useConversationStore.getState();
-      const next = store.runTarget === "thisPage" ? "background" : "thisPage";
+      if (!arg) {
+        note(
+          i18n.t("commands.background.current", {
+            target: i18n.t(store.runTarget === "thisPage" ? "run.thisPage" : "run.background"),
+          }),
+        );
+        return;
+      }
+      if (arg !== "on" && arg !== "off") {
+        note(i18n.t("commands.background.invalid", { value: arg }));
+        return;
+      }
+      const next = arg === "on" ? "background" : "thisPage";
       store.setRunTarget(next);
       note(
         i18n.t(
@@ -104,6 +138,7 @@ export const COMMANDS: readonly SlashCommand[] = [
       { value: "default", label: i18n.t("modelPicker.effort.default") },
       ...REASONING_EFFORTS.map((value) => ({ value, label: i18n.t(EFFORT_LABEL_KEYS[value]) })),
     ],
+    current: () => activeProvider()?.reasoningEffort ?? "default",
     run: (arg) => {
       const provider = activeProvider();
       // Unreachable — the panel onboards instead of showing a composer when
@@ -134,6 +169,23 @@ export const COMMANDS: readonly SlashCommand[] = [
     name: "model",
     descriptionKey: "commands.model.description",
     takesArg: true,
+    // The same list the header picker shows — this session's live listing when
+    // one landed, else the preset's — with "auto" naming what it resolves to.
+    candidates: () => {
+      const provider = activeProvider();
+      if (!provider) return [];
+      const listed = knownModels(provider);
+      const autoTarget = pickLatestModel(listed) ?? listed[0];
+      return [
+        {
+          value: "auto",
+          label: i18n.t("modelPicker.auto"),
+          ...(autoTarget ? { secondary: autoTarget.name ?? autoTarget.id } : {}),
+        },
+        ...listed.map((m) => ({ value: m.id, label: m.name ?? m.id })),
+      ];
+    },
+    current: () => activeProvider()?.model ?? "auto",
     run: (arg) => {
       const provider = activeProvider();
       if (!provider) return;
@@ -166,6 +218,7 @@ export const COMMANDS: readonly SlashCommand[] = [
       useProvidersStore
         .getState()
         .providers.map((p) => ({ value: p.id, label: providerDisplayName(p) })),
+    current: () => activeProvider()?.id,
     run: (arg) => {
       const { providers } = useProvidersStore.getState();
       const current = activeProvider();
@@ -239,28 +292,31 @@ export function parseSlash(text: string): ParsedSlash | null {
 
 /**
  * What the menu shows for a draft: command matches while the name is being
- * typed, arg candidates after the space. An exact name with no space yet shows
- * nothing — completion is done, Enter runs it.
+ * typed; the command's candidates once the name is exact — a bare "/effort"
+ * opens the picker straight away, no trailing space needed. An exact name with
+ * no candidates (or none matching the typed arg) shows nothing — Enter runs it.
  */
-export function slashItems(text: string): { parsed: ParsedSlash; items: SlashItem[] } | null {
+export function slashItems(text: string): SlashMenuState | null {
   const parsed = parseSlash(text);
   if (!parsed) return null;
-  if (parsed.command && parsed.arg !== undefined) {
-    const candidates = parsed.command.candidates?.() ?? [];
-    const q = parsed.arg.toLowerCase();
-    return {
-      parsed,
-      items: candidates
-        .filter(
-          (c) =>
-            !q || c.value.toLowerCase().startsWith(q) || c.label.toLowerCase().startsWith(q),
-        )
-        .map((c) => ({ key: c.value, primary: c.label })),
-    };
+  if (parsed.command) {
+    const command = parsed.command;
+    const current = command.current?.();
+    const q = (parsed.arg ?? "").toLowerCase();
+    const items = (command.candidates?.() ?? [])
+      .filter(
+        (c) => !q || c.value.toLowerCase().startsWith(q) || c.label.toLowerCase().startsWith(q),
+      )
+      .map((c) => ({
+        key: c.value,
+        primary: c.label,
+        ...(c.secondary ? { secondary: c.secondary } : {}),
+        ...(c.value === current ? { current: true } : {}),
+      }));
+    return { kind: "candidates", command, items };
   }
-  if (parsed.command) return { parsed, items: [] };
   return {
-    parsed,
+    kind: "commands",
     items: COMMANDS.filter((c) => c.name.startsWith(parsed.fragment)).map((c) => ({
       key: c.name,
       primary: `/${c.name}`,

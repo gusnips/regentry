@@ -5,6 +5,47 @@ import { classifyProviderError } from "./error-classify";
 import { anthropicHeaders, anthropicOAuthHeaders, apiUrl } from "./http";
 import { i18n } from "@/i18n";
 
+/** What a model listing is keyed on — the connection, never the per-task choices. */
+export type ModelsTarget = Pick<ProviderConfig, "shape" | "baseUrl" | "apiKey" | "auth">;
+
+/** The target for a stored config — an OAuth provider lists with its access token as bearer. */
+export function modelsTarget(p: ProviderConfig): ModelsTarget {
+  return {
+    shape: p.shape,
+    baseUrl: p.baseUrl,
+    apiKey: p.auth?.accessToken ?? p.apiKey,
+    ...(p.auth ? { auth: p.auth } : {}),
+  };
+}
+
+/**
+ * Successful listings, cached per connection.
+ * ponytail: session-long cache with no expiry — the chip row remounts every
+ * time the history view opens and must not refetch identical params. The
+ * ceiling is a stale list if the endpoint's models change mid-session;
+ * upgrade path is a TTL or revalidating on focus.
+ */
+const modelsCache = new Map<string, ModelInfo[]>();
+
+export function readModelsCache(target: ModelsTarget): ModelInfo[] | undefined {
+  return modelsCache.get(JSON.stringify(target));
+}
+
+export function writeModelsCache(target: ModelsTarget, models: ModelInfo[]): void {
+  modelsCache.set(JSON.stringify(target), models);
+}
+
+/**
+ * The models a provider can serve, best-effort and synchronous: this session's
+ * live listing when one already landed, else the preset's static list. The
+ * slash-command picker can't await — a cold cache narrows to presets instead.
+ */
+export function knownModels(p: ProviderConfig): ModelInfo[] {
+  const cached = readModelsCache(modelsTarget(p));
+  if (cached && cached.length > 0) return cached;
+  return PRESETS.find((pr) => pr.id === p.id)?.models.map((id) => ({ id })) ?? [];
+}
+
 /**
  * Live model listing — the anti-staleness seam. Both wire shapes expose a
  * list route (anthropic: GET {base}/v1/models, openai: GET {base}/models);

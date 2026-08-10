@@ -77,10 +77,16 @@ describe("executeSlash", () => {
     expect(useConversationStore.getState().messages).toHaveLength(0);
   });
 
-  it("toggles the run target and notes it", () => {
+  it("reports the run target bare, and sets it explicitly by candidate", () => {
     expect(executeSlash("/background")).toBe("executed");
+    expect(useConversationStore.getState().runTarget).toBe("thisPage"); // untouched
+    expect(lastNote()).toContain("This page");
+    expect(executeSlash("/background on")).toBe("executed");
     expect(useConversationStore.getState().runTarget).toBe("background");
     expect(lastNote()).toContain("background");
+    expect(executeSlash("/background sideways")).toBe("executed");
+    expect(useConversationStore.getState().runTarget).toBe("background"); // invalid changes nothing
+    expect(lastNote()).toContain("sideways");
   });
 
   it("sets a valid effort and flags an invalid one — neither becomes a task", () => {
@@ -107,9 +113,9 @@ describe("executeSlash", () => {
 
   it("completes a unique arg-taking fragment instead of executing it", () => {
     expect(executeSlash("/eff")).toEqual({ complete: "/effort " });
+    expect(executeSlash("/back")).toEqual({ complete: "/background " });
     // A unique no-arg fragment fires — there's nothing left to type.
-    expect(executeSlash("/back")).toBe("executed");
-    expect(useConversationStore.getState().runTarget).toBe("background");
+    expect(executeSlash("/ne")).toBe("executed");
   });
 
   it("switches provider by name prefix", () => {
@@ -125,12 +131,31 @@ describe("executeSlash", () => {
 });
 
 describe("slashItems", () => {
-  it("lists everything on a bare slash, filters by prefix, then swaps to candidates", () => {
+  it("lists everything on a bare slash and filters by prefix", () => {
     expect(slashItems("/")?.items).toHaveLength(COMMANDS.length);
     expect(slashItems("/mo")?.items.map((i) => i.key)).toEqual(["model"]);
-    expect(slashItems("/model")?.items).toEqual([]); // exact name: completion done
-    expect(slashItems("/effort ")?.items.map((i) => i.key)).toContain("high");
-    expect(slashItems("/effort h")?.items.map((i) => i.key)).toEqual(["high"]);
     expect(slashItems("just text")).toBeNull();
+  });
+
+  it("opens a bare picker's candidates with the current value marked", () => {
+    const effort = slashItems("/effort");
+    expect(effort?.kind).toBe("candidates");
+    expect(effort?.items.map((i) => i.key)).toContain("high");
+    // p1 has no persisted effort → "default" is the one checked.
+    expect(effort?.items.find((i) => i.current)?.key).toBe("default");
+
+    const model = slashItems("/model");
+    expect(model?.items.map((i) => i.key)).toContain("auto");
+    expect(model?.items.find((i) => i.current)?.key).toBe("auto");
+
+    const background = slashItems("/background");
+    expect(background?.items.map((i) => i.key)).toEqual(["off", "on"]);
+    expect(background?.items.find((i) => i.current)?.key).toBe("off");
+  });
+
+  it("filters candidates by the typed arg", () => {
+    expect(slashItems("/effort h")?.items.map((i) => i.key)).toEqual(["high"]);
+    // A no-arg command's exact name shows nothing — Enter runs it.
+    expect(slashItems("/new")?.items).toEqual([]);
   });
 });

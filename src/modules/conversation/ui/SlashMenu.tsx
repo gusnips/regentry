@@ -65,6 +65,14 @@ export function SlashMenu({
               {item.secondary}
             </span>
           )}
+          {item.current && (
+            <span
+              className="ml-auto shrink-0 text-brand-600 dark:text-brand-400"
+              title={t("commands.current")}
+            >
+              ✓<span className="sr-only">{t("commands.current")}</span>
+            </span>
+          )}
         </button>
       ))}
     </div>

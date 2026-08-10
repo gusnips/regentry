@@ -284,10 +284,13 @@
   },
   "commands": {
     "menuAria": "Commands",
+    "current": "Current",
     "unknown": "No command /{{name}} — type / for the list.",
     "nextTask": "Applies to the next task, not the one running.",
     "background": {
       "description": "Toggle where the next task runs — this page, or background",
+      "current": "Run target: {{target}}.",
+      "invalid": "No run target \"{{value}}\" — pick on or off.",
       "nowBackground": "Run target → background — the panel closes once you approve the plan; the run carries on without you.",
       "nowThisPage": "Run target → this page — the next run drives the tab you're looking at while you watch."
     },

@@ -126,6 +126,48 @@ describe("ChatInput slash menu", () => {
     await unmount(h);
   });
 
+  it("opens the picker on a bare command, current value highlighted, and picks with arrows", async () => {
+    const h = await renderInput();
+    await type("/effort");
+    const box = menu(h);
+    expect(box?.textContent).toContain("High");
+    // The current value (default — nothing persisted) opens highlighted.
+    const selected = box?.querySelector('[aria-selected="true"]');
+    expect(selected?.textContent).toContain("Default");
+    // Arrow down once (→ none) and Enter picks it.
+    await press(h.area, "ArrowDown");
+    await press(h.area, "Enter");
+    const s = useConversationStore.getState();
+    expect(s.draft).toBe("");
+    expect(s.messages[s.messages.length - 1]?.content).toContain("→ none");
+    await unmount(h);
+  });
+
+  it("Enter on an untouched picker is a no-op re-set of the current value", async () => {
+    const h = await renderInput();
+    await type("/effort");
+    await press(h.area, "Enter");
+    const s = useConversationStore.getState();
+    expect(s.messages[s.messages.length - 1]?.content).toContain("→ default");
+    await unmount(h);
+  });
+
+  it("picks a candidate on mouse down, not just on Enter", async () => {
+    const h = await renderInput();
+    await type("/effort");
+    const row = [...(menu(h)?.querySelectorAll('[role="option"]') ?? [])].find((el) =>
+      el.textContent?.includes("High"),
+    );
+    expect(row).toBeDefined();
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    });
+    const s = useConversationStore.getState();
+    expect(s.draft).toBe("");
+    expect(s.messages[s.messages.length - 1]?.content).toContain("→ high");
+    await unmount(h);
+  });
+
   it("never shows the menu for plain tasks", async () => {
     const h = await renderInput();
     await type("book the flight /model");

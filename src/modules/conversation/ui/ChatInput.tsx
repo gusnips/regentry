@@ -77,13 +77,17 @@ export function ChatInput() {
   const pendingCaret = useRef<number | null>(null);
 
   // Slash commands: the menu state derives from the draft ("/" first, one
-  // line). Esc dismisses until the next edit; the highlight resets whenever
-  // the item list changes. Render-time adjustment, like the plan card's —
-  // no effects ferrying keystrokes into state.
+  // line). Esc dismisses until the next edit; the highlight lands on the
+  // current value and resets whenever the item list changes. Render-time
+  // adjustment, like the plan card's — no effects ferrying keystrokes.
   const slash = useMemo(() => slashItems(text), [text]);
   const slashKey = slash?.items.map((i) => i.key).join(" ") ?? "";
-  const [slashState, setSlashState] = useState({ key: "", index: 0, nav: false });
-  if (slashState.key !== slashKey) setSlashState({ key: slashKey, index: 0, nav: false });
+  const [slashState, setSlashState] = useState({ key: "", index: 0 });
+  if (slashState.key !== slashKey) {
+    // A picker opens with its current value highlighted — Enter untouched is a no-op.
+    const current = slash?.items.findIndex((i) => i.current) ?? -1;
+    setSlashState({ key: slashKey, index: current >= 0 ? current : 0 });
+  }
   const [slashDismissedFor, setSlashDismissedFor] = useState<string | null>(null);
   if (slashDismissedFor !== null && slashDismissedFor !== text) setSlashDismissedFor(null);
   const slashOpen = slash !== null && slash.items.length > 0 && slashDismissedFor === null;
@@ -177,12 +181,13 @@ export function ChatInput() {
     setAttachments([]);
   };
 
-  /** Click/Enter on a menu row: a no-arg command fires at once; an arg-taking
-   *  one completes into the draft so its candidates can be picked next. */
+  /** Click/Enter on a menu row: a candidate runs its command with the row's
+   *  value; a command row fires at once when it takes no argument, and
+   *  completes into the draft otherwise so its picker can open. */
   const acceptSlash = (item: SlashItem) => {
     if (!slash) return;
-    if (slash.parsed.command && slash.parsed.arg !== undefined) {
-      slash.parsed.command.run(item.key);
+    if (slash.kind === "candidates") {
+      slash.command.run(item.key);
       resetComposer();
       return;
     }
@@ -231,7 +236,6 @@ export function ChatInput() {
         setSlashState({
           key: slashKey,
           index: Math.min(Math.max(slashIndex + delta, 0), slash.items.length - 1),
-          nav: true,
         });
         return;
       }
@@ -240,8 +244,8 @@ export function ChatInput() {
         // or the highlighted candidate swapped in for the typed arg.
         e.preventDefault();
         if (!slashActive) return;
-        if (slash.parsed.command && slash.parsed.arg !== undefined) {
-          setText(`/${slash.parsed.command.name} ${slashActive.key}`);
+        if (slash.kind === "candidates") {
+          setText(`/${slash.command.name} ${slashActive.key}`);
         } else {
           const command = COMMANDS.find((c) => c.name === slashActive.key);
           if (command) setText(`/${command.name}${command.takesArg ? " " : ""}`);
@@ -254,11 +258,11 @@ export function ChatInput() {
         return;
       }
       if (e.key === "Enter" && !e.shiftKey) {
+        // The one menu rule: Enter takes the highlighted row. The highlight
+        // opens on the current value, so an untouched picker's Enter is a
+        // no-op set — never an accidental change.
         e.preventDefault();
-        const argMode = slash.parsed.command !== undefined && slash.parsed.arg !== undefined;
-        // Arg mode without an explicit highlight defers to what was typed —
-        // the raw arg may complete a unique prefix, or error with the options.
-        if (slashActive && (!argMode || slashState.nav)) acceptSlash(slashActive);
+        if (slashActive) acceptSlash(slashActive);
         else submit();
         return;
       }
@@ -393,7 +397,7 @@ export function ChatInput() {
           <SlashMenu
             items={slash.items}
             index={slashIndex}
-            onHover={(index) => setSlashState({ key: slashKey, index, nav: true })}
+            onHover={(index) => setSlashState({ key: slashKey, index })}
             onPick={acceptSlash}
           />
         )}

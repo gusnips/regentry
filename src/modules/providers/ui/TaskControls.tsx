@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { AddProviderDialog } from "./AddProviderDialog";
-import { listModels, pickLatestModel } from "../models";
+import { listModels, modelsTarget, pickLatestModel, readModelsCache, writeModelsCache } from "../models";
+import type { ModelsTarget } from "../models";
 import { PRESETS, providerDisplayName } from "../presets";
 import { supportsUsage } from "../usage";
 import { EFFORT_LABEL_KEYS, isEffort, REASONING_EFFORTS } from "../types";
-import type { ModelInfo, ProviderConfig, ProviderShape } from "../types";
+import type { ModelInfo } from "../types";
 import { UsageIndicator } from "./UsageIndicator";
 import { Select } from "@/components/Select";
 import type { SelectOption } from "@/components/Select";
@@ -15,23 +16,6 @@ import { TextField } from "@/components/TextField";
 
 /** Sentinel option value — opens the add-provider dialog instead of switching. */
 const ADD_NEW = "__add__";
-
-interface ModelsTarget {
-  shape: ProviderShape;
-  baseUrl: string;
-  apiKey: string;
-  /** Present on signed-in providers — listModels switches to OAuth-token mode headers. */
-  auth?: ProviderConfig["auth"];
-}
-
-/**
- * Successful listings, cached per connection.
- * ponytail: session-long cache with no expiry — the chip row remounts every
- * time the history view opens and must not refetch identical params. The
- * ceiling is a stale list if the endpoint's models change mid-session;
- * upgrade path is a TTL or revalidating on focus.
- */
-const modelsCache = new Map<string, ModelInfo[]>();
 
 interface ModelsResult {
   key: string;
@@ -45,11 +29,11 @@ function useModels(target: ModelsTarget | null) {
   const [fetched, setFetched] = useState<ModelsResult | null>(null);
 
   useEffect(() => {
-    if (!key || !target || modelsCache.has(key)) return;
+    if (!key || !target || readModelsCache(target)) return;
     let cancelled = false;
     listModels(target)
       .then((models) => {
-        modelsCache.set(key, models);
+        writeModelsCache(target, models);
         if (!cancelled) setFetched({ key, models, error: null });
       })
       .catch(
@@ -67,7 +51,7 @@ function useModels(target: ModelsTarget | null) {
   // Cache hits resolve during render (a remounted or switched picker never
   // waits on a fetch it already paid for); errors are never cached, so a
   // failed listing retries on the next mount.
-  const cached = key ? modelsCache.get(key) : undefined;
+  const cached = target ? readModelsCache(target) : undefined;
   const current: ModelsResult | null =
     key && fetched?.key === key
       ? fetched
@@ -142,18 +126,9 @@ export function ModelControls() {
   const { t } = useTranslation();
   const update = useProvidersStore((s) => s.update);
   const active = useActiveProvider();
-  // Only the connection fields key the fetch — changing model/effort must not refetch.
-  // An OAuth provider stores no key; its access token is the bearer for listing too.
-  const { models, loading, error } = useModels(
-    active
-      ? {
-          shape: active.shape,
-          baseUrl: active.baseUrl,
-          apiKey: active.auth?.accessToken ?? active.apiKey,
-          auth: active.auth,
-        }
-      : null,
-  );
+  // Only the connection fields key the fetch (modelsTarget) — changing
+  // model/effort must not refetch.
+  const { models, loading, error } = useModels(active ? modelsTarget(active) : null);
 
   // The extra "default" option means "don't send the knob at all".
   const effortOptions = [
