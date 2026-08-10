@@ -7,18 +7,17 @@ GitHub Releases URLs below.
 
 ## Download contract
 
-Every pushed `v*` tag builds and attaches four files to the GitHub Release
+Every pushed `v*` tag builds and attaches these to the GitHub Release
 (`.github/workflows/release.yml`):
 
 | URL (stable — hotlink these)                                                                | What                                            |
 | ------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest-chrome.zip` | The download — keyed, installs under the store's id |
 | `https://github.com/gusnips/tabrunner/releases/latest`                                      | Release notes + versioned artifacts             |
-| `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest.crx`        | Signed CRX — published, **never linked** (below) |
 
-The versioned artifacts (`tabrunner-<version>.crx`, `tabrunner-<version>-chrome.zip`) sit on the
-same release for the permanent record; the site links only the `latest` aliases and the release
-page, so shipping a new version requires no site deploy.
+The versioned artifacts (`tabrunner-<version>-chrome.zip`, `-mcp.js`) sit on the same release for
+the permanent record; the site links only the `latest` aliases and the release page, so shipping a
+new version requires no site deploy.
 
 The Chrome Web Store upload is a **third, unlinked artifact** — `tabrunner-<version>-store.zip`,
 built locally by `bun run zip:store`. It is the same build with the manifest `key` removed, since
@@ -32,11 +31,17 @@ unpacked install lands on a per-machine id.
 1. Download and unzip.
 2. `chrome://extensions` → Developer mode → **Load unpacked** → select the unzipped folder.
 
-**Do not link the CRX.** Chrome rejects any sideloaded CRX that carries no Web Store publisher
-proof (`CRX_REQUIRED_PROOF_MISSING`), so drag-and-drop install cannot work — the asset is
-published for the record, not for humans. Store approval does not change this: a GitHub-hosted
-CRX stays unusable, so the flip when the listing lands is **zip → store link**, not zip → CRX.
-Until then the store link is plain text, not a dead button.
+**There is no CRX to link, and never will be.** Chrome only installs a CRX that arrives through
+the store's own flow, and the store signs with a key only Google holds — so a self-signed CRX is
+refused (`CRX_REQUIRED_PROOF_MISSING`) and the store's own CRX has no public URL a site may
+hotlink. The per-revision link the dashboard shows (`.../revision/000NN/package/main/crx/3`) is a
+dashboard preview: it changes every revision and Chrome blocks installing it from a page. So the
+flip when the listing lands is **zip → the listing URL** (`LINKS.store`, an *Add to Chrome*
+button), never zip → any CRX. Until then the store link is plain text, not a dead button.
+
+Releases up to v0.2.2 still carry a `.crx` asset, so the site's "the .crx won't drag-and-drop
+install — use the ZIP" caveat stays accurate and stays up until the store flip rewrites that
+section.
 
 Caveats the site must state plainly:
 

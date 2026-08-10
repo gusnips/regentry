@@ -15,21 +15,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      # The CRX's extension ID derives from this key, so CI must sign with the
-      # same tabrunner-test.pem used locally — stored here as a repo secret.
-      - name: Restore CRX signing key
-        env:
-          CRX_SIGNING_KEY: ${{ secrets.CRX_SIGNING_KEY }}
-        run: |
-          if [ -z "$CRX_SIGNING_KEY" ]; then
-            echo "✗ CRX_SIGNING_KEY secret is empty — set it to the contents of tabrunner-test.pem." >&2
-            exit 1
-          fi
-          printf '%s\n' "$CRX_SIGNING_KEY" > tabrunner-test.pem
+      # The keyed zip — the website's install, loaded unpacked. The store upload
+      # (`bun run zip:store`, key stripped) is built and submitted by hand, so it
+      # is deliberately not an artifact here.
       - run: bun run zip
-      # crx.ts finds a Chromium binary on its own — google-chrome is preinstalled
-      # on the ubuntu-latest runner image.
-      - run: bun run crx
       # The single-file MCP daemon — what Settings → MCP tells users to curl.
       - run: bun run bridge:bundle
       # Versioned names are the permanent record; the `latest` aliases give
@@ -38,7 +27,6 @@ jobs:
       - name: Stable download aliases for tabrunner.app
         run: |
           cp dist/tabrunner-*-chrome.zip dist/tabrunner-latest-chrome.zip
-          cp dist/tabrunner-*.crx dist/tabrunner-latest.crx
           cp dist/tabrunner-*-mcp.js dist/tabrunner-latest-mcp.js
       # Permanent record of the version's artifacts — public download links on
       # the tagged GitHub Release, with auto-generated notes. The CWS dashboard
@@ -48,6 +36,5 @@ jobs:
         with:
           files: |
             dist/tabrunner-*.zip
-            dist/tabrunner-*.crx
             dist/tabrunner-*.js
           generate_release_notes: true

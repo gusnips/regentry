@@ -1,16 +1,16 @@
 /**
- * One-command release: gates → version bump → commit → tag → zip + crx.
+ * One-command release: gates → version bump → commit → tag → zips + daemon.
  *
  *   bun run release patch   # 0.1.0 → 0.1.1
  *   bun run release minor   # 0.1.0 → 0.2.0
  *   bun run release major   # 0.1.0 → 1.0.0
  *
  * package.json `version` is the single source of truth: the git tag (`v0.1.0`)
- * and the artifact names (`dist/tabrunner-0.1.0-chrome.zip`, `-0.1.0.crx`) all
- * derive from it. Never pushes — pushing stays an explicit act; the final line
- * names the command. The push fires the Release workflow, which rebuilds both
- * artifacts and attaches them (plus `latest` aliases the website hotlinks) to
- * the tagged GitHub Release.
+ * and the artifact names (`dist/tabrunner-0.1.0-chrome.zip`, `-store.zip`,
+ * `-mcp.js`) all derive from it. Never pushes — pushing stays an explicit act;
+ * the final line names the command. The push fires the Release workflow, which
+ * rebuilds the artifacts and attaches them (plus `latest` aliases the website
+ * hotlinks) to the tagged GitHub Release.
  */
 import { $ } from "bun";
 import { fileURLToPath } from "node:url";
@@ -142,21 +142,12 @@ try {
   process.exit(1);
 }
 
-// The CRX is a local convenience copy — the canonical one is built and signed
-// by the Release workflow from the CRX_SIGNING_KEY secret. A machine without
-// tabrunner-test.pem therefore warns here instead of blocking the release.
-try {
-  await $`bun run crx`;
-} catch {
-  console.warn("▪ CRX skipped (see above) — the Release workflow will still build and sign it.");
-}
-
-const artifacts = [...new Bun.Glob(`tabrunner-${next}-*.{zip,crx,js}`).scanSync("dist")];
+const artifacts = [...new Bun.Glob(`tabrunner-${next}-*.{zip,js}`).scanSync("dist")];
 console.log(`\n✔ Released v${next}`);
 for (const artifact of artifacts) console.log(`  artifact  dist/${artifact}`);
 console.log(`  tag       v${next}`);
 const storeZip = artifacts.find((a) => a.endsWith("-store.zip"));
-console.log("  publish   git push --follow-tags — CI attaches zip + crx to the GitHub Release");
+console.log("  publish   git push --follow-tags — CI attaches the artifacts to the GitHub Release");
 console.log(
   storeZip
     ? `  store     upload dist/${storeZip} to the Chrome Web Store — the keyed -chrome.zip is the website's download and CWS rejects its manifest key`

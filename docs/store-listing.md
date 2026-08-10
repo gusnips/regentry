@@ -439,7 +439,7 @@ version goes in.
       added between submissions is the thing a reviewer looks at first
 - [ ] Re-confirm the single-purpose description (§5) and the privacy policy URL (§6) survived
 - [ ] Submit, then `git push --follow-tags` so the Action attaches the release's artifacts (the
-      keyed `-chrome.zip` the website links, plus the CRX and the daemon bundle)
+      keyed `-chrome.zip` the website links, plus the daemon bundle)
 
 Unchanged since the first submission: title, descriptions, screenshots, privacy policy URL. The
 extension ID is not — the item was recreated on 2026-08-10, so it is now
@@ -463,9 +463,9 @@ What it costs, and what it retired:
 - **Storage reset for the old self-hosted install.** `chrome.storage` is per-id, so anyone still on
   the pre-swap `dfmcnfgiddfdjciciaflpieglmmgdmhh` build re-enters their provider config once. The
   install base was the author plus a few friends, so this was the cheap moment.
-- **The locally signed CRX is dead.** Its manifest now declares a key it wasn't signed with
-  (`tabrunner-test.pem`), and Chrome already refuses sideloaded CRX installs without a Web Store
-  proof. Do not distribute it.
+- **The locally signed CRX is gone** (removed in the same change). Its manifest would declare a key
+  it wasn't signed with, on top of Chrome already refusing sideloaded CRX installs. Distribution is
+  the keyed zip and the listing.
 
 **What changed in the product**, if a reviewer asks: providers the user _signs in to_ (their
 existing Anthropic, OpenAI or Kimi subscription) now work alongside pasted API keys. That is the

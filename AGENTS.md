@@ -19,7 +19,6 @@ bun run shots      # store screenshots → docs/screenshots/ (+ site sync when .
 bun run shots:ui   # light/dark UI previews → preview/ (gitignored)
 bun run zip        # build + pack dist/tabrunner-<version>-chrome.zip (the website's download)
 bun run zip:store  # same build minus the manifest `key` → dist/tabrunner-<version>-store.zip (CWS)
-bun run crx        # build + sign the public CRX with tabrunner-test.pem (gitignored)
 bun run release    # bun run release <patch|minor|major> — gates, bump, commit, tag, zip
 bun run bridge     # run the MCP daemon by hand (clients spawn it themselves)
 bun run bridge:check # end-to-end check of the MCP bridge — no Chrome needed
@@ -39,7 +38,7 @@ Before submitting work: `compile`, `lint`, `test`, `deadcode`, `i18n:check` — 
 it (the manifest version comes from WXT automatically).
 
 ```bash
-bun run release minor   # gates → bump → commit "Release vX" → tag vX → zips + crx; never pushes
+bun run release minor   # gates → bump → commit "Release vX" → tag vX → zips + daemon; never pushes
 ```
 
 A gate failure writes nothing. Publishing is manual: `git push --follow-tags`, upload
@@ -52,10 +51,15 @@ one id (`ilnohobdcigbmlikjbkdpbkhciephdle`), per
 id from the item record) and its validator rejects a new item's first upload outright ("key field
 is not allowed in manifest"), so stripping is the one path that always uploads. The pushed tag fires `.github/workflows/release.yml`, which attaches
 versioned artifacts plus `tabrunner-latest-*` aliases that tabrunner.app hotlinks (and the MCP
-daemon bundle, `tabrunner-latest-mcp.js`, that Settings → MCP points users at). CI signs the
-CRX with the `CRX_SIGNING_KEY` secret, which must hold the local `tabrunner-test.pem` verbatim —
-a mismatched key splits installs across two extension IDs; the CI-built CRX is canonical. The
-website contract lives in `docs/website-brief.md` — change it and the site repo (`../site`)
+daemon bundle, `tabrunner-latest-mcp.js`, that Settings → MCP points users at). CI does not build
+the store zip — that one is submitted by hand, so it stays out of the public artifacts.
+
+**No CRX.** Retired 2026-08-10. Chrome refuses to install a CRX served from anywhere but the
+store, and the store's own CRX is signed with a key only Google holds, so a self-signed one was
+unusable at both ends. Distribution is the keyed zip (unpacked) and the store listing, nothing
+else. The `CRX_SIGNING_KEY` repo secret and any local `tabrunner-test.pem` are dead — delete them.
+
+The website contract lives in `docs/website-brief.md` — change it and the site repo (`../site`)
 together.
 
 ## Architecture
