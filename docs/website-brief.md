@@ -12,13 +12,18 @@ Every pushed `v*` tag builds and attaches four files to the GitHub Release
 
 | URL (stable — hotlink these)                                                                | What                                            |
 | ------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest-chrome.zip` | The download. Also the exact zip the store gets |
+| `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest-chrome.zip` | The download — keyed, installs under the CRX's id |
 | `https://github.com/gusnips/tabrunner/releases/latest`                                      | Release notes + versioned artifacts             |
 | `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest.crx`        | Signed CRX — published, **never linked** (below) |
 
 The versioned artifacts (`tabrunner-<version>.crx`, `tabrunner-<version>-chrome.zip`) sit on the
 same release for the permanent record; the site links only the `latest` aliases and the release
 page, so shipping a new version requires no site deploy.
+
+The Chrome Web Store upload is a **third, unlinked artifact** — `tabrunner-<version>-store.zip`,
+built locally by `bun run zip:store`. It is the same build with the manifest `key` removed, since
+the store rejects an upload that declares one. Never offer it as a download: without the key an
+unpacked install lands on a per-machine id.
 
 ## Install instructions to present (until the store listing is approved)
 

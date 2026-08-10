@@ -50,8 +50,8 @@ either way the fenced block directly above each one is the string to paste, verb
 | **Visibility**   | Public                                                                        |
 | **Support URL**  | https://github.com/gusnips/tabrunner/issues                                   |
 | **Homepage URL** | https://tabrunner.app                                                         |
-| **Extension ID** | `gkblgkcofolbpcbafkdhiihfbpjhdpgh` (assigned 2026-08-08)                      |
-| **Store URL**    | https://chromewebstore.google.com/detail/gkblgkcofolbpcbafkdhiihfbpjhdpgh     |
+| **Extension ID** | `ilnohobdcigbmlikjbkdpbkhciephdle` (assigned 2026-08-10)                      |
+| **Store URL**    | https://chromewebstore.google.com/detail/ilnohobdcigbmlikjbkdpbkhciephdle     |
 
 **Title field** (≤ 45 chars) — use the plain name, it's the strongest brand:
 
@@ -431,15 +431,35 @@ version goes in.
 - [ ] **Withdraw v0.1.0**: dashboard → TabRunner → Package → **Cancel submission** (the item
       returns to Draft; the listing text, screenshots and store URL all survive)
 - [ ] Gates green: `bun run compile && bun run lint && bun run test && bun run deadcode && bun run i18n:check`
-- [ ] `bun run release minor` → bumps, commits, tags, and writes `dist/tabrunner-<version>-chrome.zip`
-- [ ] Upload that zip (it carries the new `declarativeNetRequestWithHostAccess` permission)
+- [ ] `bun run release minor` → bumps, commits, tags, and writes both zips
+- [ ] Upload **`dist/tabrunner-<version>-store.zip`** — not `-chrome.zip`, which carries the
+      manifest `key` the store rejects ("key field is not allowed in manifest"). Same build
+      otherwise, so it carries the new `declarativeNetRequestWithHostAccess` permission
 - [ ] Paste the **§5** justification for every permission — the new one especially; a permission
       added between submissions is the thing a reviewer looks at first
 - [ ] Re-confirm the single-purpose description (§5) and the privacy policy URL (§6) survived
-- [ ] Submit, then `git push --follow-tags` so the Action attaches the same zip to the release
+- [ ] Submit, then `git push --follow-tags` so the Action attaches the release's artifacts (the
+      keyed `-chrome.zip` the website links, plus the CRX and the daemon bundle)
 
-Unchanged since the first submission: title, descriptions, screenshots, privacy policy URL,
-extension ID `gkblgkcofolbpcbafkdhiihfbpjhdpgh`.
+Unchanged since the first submission: title, descriptions, screenshots, privacy policy URL. The
+extension ID is not — the item was recreated on 2026-08-10, so it is now
+`ilnohobdcigbmlikjbkdpbkhciephdle` (the daemon's trusted set in `daemon/src/index.ts` tracks it).
+
+### Once the listing is approved
+
+The store item's id becomes the canonical one, so the manifest `key` (`wxt.config.ts`) can be
+swapped from the CRX's public key to the store item's — dashboard → the item → **Package** → the
+public key — after which dev and unpacked builds share real users' id and the MCP bridge's
+expected id is right everywhere. Three things to know before doing it:
+
+- `zip:store` stays. The store rejects a declared `key` even when it's the store's own.
+- An id change is a storage reset for the self-hosted zip install: `chrome.storage` is per-id, so
+  existing users would re-enter their provider config. Cheap now, expensive later.
+- The locally signed CRX would then declare a key that disagrees with `tabrunner-test.pem` and
+  stop installing. It's already unlinkable (Chrome blocks sideloaded CRX), so retire it in the
+  same change rather than shipping a broken artifact.
+
+Then update `EXPECTED_EXTENSION_ID` in `daemon/src/index.ts` and its row in `docs/mcp.md`.
 
 **What changed in the product**, if a reviewer asks: providers the user _signs in to_ (their
 existing Anthropic, OpenAI or Kimi subscription) now work alongside pasted API keys. That is the

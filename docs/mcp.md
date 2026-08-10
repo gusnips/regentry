@@ -68,7 +68,7 @@ update it. To run it by hand (to watch its log, say): `bun ~/.tabrunner-mcp.js` 
 | Variable                                 | Default                            | What it does                                                                                                                                                      |
 | ---------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `TABRUNNER_BRIDGE_PORT`                  | `17836`                            | The localhost port. Change it in both places — Settings → MCP in the extension must match.                                                                        |
-| `TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID` | `dfmcnfgiddfdjciciaflpieglmmgdmhh` | The extension `health` expects — the CRX's id, which unpacked dev builds share via the manifest `key`. The Web Store listing will have its own id once published. |
+| `TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID` | the store and self-hosted ids     | Which extension `health` trusts. Defaults to both ids TabRunner ships under: `ilnohobdcigbmlikjbkdpbkhciephdle` (Chrome Web Store) and `dfmcnfgiddfdjciciaflpieglmmgdmhh` (the CRX, shared by the website's unpacked zip and dev builds via the manifest `key`). Set one id, or a comma-separated list, to trust your own build instead. |
 
 ## The tools
 

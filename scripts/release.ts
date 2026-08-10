@@ -115,14 +115,19 @@ try {
   process.exit(1);
 }
 
-try {
-  await $`bun run zip`;
-} catch {
-  console.error(
-    `✗ Zip failed, but v${next} is already committed and tagged. Do NOT re-run release — it bumps again.`,
-  );
-  console.error("  Fix the build, then finish by hand: bun run zip");
-  process.exit(1);
+// Two zips, one per channel: the keyed `-chrome.zip` is the website's install
+// (loaded unpacked, so its manifest `key` pins it to the CRX's id); the
+// `-store.zip` drops the key, which the Chrome Web Store refuses to accept.
+for (const target of ["zip", "zip:store"]) {
+  try {
+    await $`bun run ${target}`;
+  } catch {
+    console.error(
+      `✗ ${target} failed, but v${next} is already committed and tagged. Do NOT re-run release — it bumps again.`,
+    );
+    console.error(`  Fix the build, then finish by hand: bun run ${target}`);
+    process.exit(1);
+  }
 }
 
 // The daemon bundle names itself after the new version, so it builds here,
@@ -150,9 +155,10 @@ const artifacts = [...new Bun.Glob(`tabrunner-${next}-*.{zip,crx,js}`).scanSync(
 console.log(`\n✔ Released v${next}`);
 for (const artifact of artifacts) console.log(`  artifact  dist/${artifact}`);
 console.log(`  tag       v${next}`);
-const zip = artifacts.find((a) => a.endsWith("-chrome.zip"));
+const storeZip = artifacts.find((a) => a.endsWith("-store.zip"));
+console.log("  publish   git push --follow-tags — CI attaches zip + crx to the GitHub Release");
 console.log(
-  zip
-    ? `  publish   git push --follow-tags — CI attaches zip + crx to the GitHub Release; upload dist/${zip} to the Chrome Web Store`
-    : "  publish   git push --follow-tags — zip name unexpected, check dist/",
+  storeZip
+    ? `  store     upload dist/${storeZip} to the Chrome Web Store — the keyed -chrome.zip is the website's download and CWS rejects its manifest key`
+    : "  store     store zip missing — run bun run zip:store, then upload it to the Chrome Web Store",
 );

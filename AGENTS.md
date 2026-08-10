@@ -17,7 +17,8 @@ bun run i18n:check # locale parity + every static t() key resolves (--unused for
 bun run icons      # regenerate public/icon/* + docs/og.png from src/shared/logo.ts
 bun run shots      # store screenshots → docs/screenshots/ (+ site sync when ../site exists)
 bun run shots:ui   # light/dark UI previews → preview/ (gitignored)
-bun run zip        # build + pack dist/tabrunner-<version>-chrome.zip
+bun run zip        # build + pack dist/tabrunner-<version>-chrome.zip (the website's download)
+bun run zip:store  # same build minus the manifest `key` → dist/tabrunner-<version>-store.zip (CWS)
 bun run crx        # build + sign the public CRX with tabrunner-test.pem (gitignored)
 bun run release    # bun run release <patch|minor|major> — gates, bump, commit, tag, zip
 bun run bridge     # run the MCP daemon by hand (clients spawn it themselves)
@@ -38,11 +39,15 @@ Before submitting work: `compile`, `lint`, `test`, `deadcode`, `i18n:check` — 
 it (the manifest version comes from WXT automatically).
 
 ```bash
-bun run release minor   # gates → bump → commit "Release vX" → tag vX → zip + crx; never pushes
+bun run release minor   # gates → bump → commit "Release vX" → tag vX → zips + crx; never pushes
 ```
 
-A gate failure writes nothing. Publishing is manual: `git push --follow-tags`, upload the zip to
-the Chrome Web Store. The pushed tag fires `.github/workflows/release.yml`, which attaches
+A gate failure writes nothing. Publishing is manual: `git push --follow-tags`, upload
+`dist/tabrunner-<version>-store.zip` to the Chrome Web Store. **Two zips ship per version and
+they are not interchangeable**: `-chrome.zip` carries the manifest `key` (it's loaded unpacked
+from tabrunner.app, and the key pins it to the CRX's id), while `-store.zip` is the same build
+with the key dropped — the CWS refuses any upload that declares one ("key field is not allowed
+in manifest") because it mints the listing's id itself. The pushed tag fires `.github/workflows/release.yml`, which attaches
 versioned artifacts plus `tabrunner-latest-*` aliases that tabrunner.app hotlinks (and the MCP
 daemon bundle, `tabrunner-latest-mcp.js`, that Settings → MCP points users at). CI signs the
 CRX with the `CRX_SIGNING_KEY` secret, which must hold the local `tabrunner-test.pem` verbatim —
