@@ -7,7 +7,6 @@ import { pendingAskId } from "./ask-gate";
 import { useNow } from "./hooks";
 import { TipLine } from "@/modules/tips/ui";
 import { Button } from "@/components/Button";
-import { focusTab } from "@/modules/browser";
 import type { BridgeActive } from "@/shared/protocol";
 import { formatDuration, formatTokens } from "@/lib/format";
 
@@ -142,22 +141,11 @@ export function RunStatus() {
           Claude Code's spinner-tip slot; idle/footer gets the same line. */}
       <TipLine className="text-brand-800/60 dark:text-brand-200/50" />
       {/* Every run is born backgrounded — the tab is grouped, the badge and
-          favicon dot are lit, and closing the panel never stops it. So the two
-          directions of the attended↔background flip live here: Show tab brings
-          the driven tab forward to watch (the chip above names it, this button
-          says it); Run in background closes the panel (the run keeps going
-          untouched). Same flow, two triggers. */}
+          favicon dot are lit, and closing the panel never stops it. The chip
+          above carries the whole "bring the driven tab forward" affordance;
+          this row is the one walk-away: Run in background closes the panel
+          (the run keeps going untouched). */}
       <div className="flex items-center justify-end gap-1">
-        {drivingTab && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => void focusTab(drivingTab.tabId, drivingTab.windowId)}
-            title={t("run.showTabTip")}
-          >
-            {t("run.showTab")}
-          </Button>
-        )}
         {!awaitingApproval && (
           <Button
             size="sm"
