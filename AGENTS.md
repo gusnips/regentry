@@ -44,10 +44,13 @@ bun run release minor   # gates → bump → commit "Release vX" → tag vX → 
 
 A gate failure writes nothing. Publishing is manual: `git push --follow-tags`, upload
 `dist/tabrunner-<version>-store.zip` to the Chrome Web Store. **Two zips ship per version and
-they are not interchangeable**: `-chrome.zip` carries the manifest `key` (it's loaded unpacked
-from tabrunner.app, and the key pins it to the CRX's id), while `-store.zip` is the same build
-with the key dropped — the CWS refuses any upload that declares one ("key field is not allowed
-in manifest") because it mints the listing's id itself. The pushed tag fires `.github/workflows/release.yml`, which attaches
+they are not interchangeable**: `-chrome.zip` carries the manifest `key` — the store listing's own
+public key, which is what pins the unpacked install from tabrunner.app and every dev build to the
+one id (`ilnohobdcigbmlikjbkdpbkhciephdle`), per
+[Chrome's consistent-ID guidance](https://developer.chrome.com/docs/extensions/reference/manifest/key).
+`-store.zip` is the same build with that field dropped. The store never needs it (it derives the
+id from the item record) and its validator rejects a new item's first upload outright ("key field
+is not allowed in manifest"), so stripping is the one path that always uploads. The pushed tag fires `.github/workflows/release.yml`, which attaches
 versioned artifacts plus `tabrunner-latest-*` aliases that tabrunner.app hotlinks (and the MCP
 daemon bundle, `tabrunner-latest-mcp.js`, that Settings → MCP points users at). CI signs the
 CRX with the `CRX_SIGNING_KEY` secret, which must hold the local `tabrunner-test.pem` verbatim —

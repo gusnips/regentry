@@ -445,21 +445,27 @@ Unchanged since the first submission: title, descriptions, screenshots, privacy 
 extension ID is not — the item was recreated on 2026-08-10, so it is now
 `ilnohobdcigbmlikjbkdpbkhciephdle` (the daemon's trusted set in `daemon/src/index.ts` tracks it).
 
-### Once the listing is approved
+### One id everywhere (done 2026-08-10)
 
-The store item's id becomes the canonical one, so the manifest `key` (`wxt.config.ts`) can be
-swapped from the CRX's public key to the store item's — dashboard → the item → **Package** → the
-public key — after which dev and unpacked builds share real users' id and the MCP bridge's
-expected id is right everywhere. Three things to know before doing it:
+`manifest.key` in `wxt.config.ts` holds **the store item's own public key** — dashboard → the item
+→ **Package** → *View public key*, PEM armor and newlines stripped. That is
+[Chrome's documented way](https://developer.chrome.com/docs/extensions/reference/manifest/key) to
+keep one extension ID across channels: the store install, the website's unpacked zip, and every
+dev load all come up as `ilnohobdcigbmlikjbkdpbkhciephdle`, so `daemon/src/index.ts` expects the
+id real users have. Using your own item's key this way breaks no store rule — the key is public by
+design and ships in every CRX header.
 
-- `zip:store` stays. The store rejects a declared `key` even when it's the store's own.
-- An id change is a storage reset for the self-hosted zip install: `chrome.storage` is per-id, so
-  existing users would re-enter their provider config. Cheap now, expensive later.
-- The locally signed CRX would then declare a key that disagrees with `tabrunner-test.pem` and
-  stop installing. It's already unlinkable (Chrome blocks sideloaded CRX), so retire it in the
-  same change rather than shipping a broken artifact.
+What it costs, and what it retired:
 
-Then update `EXPECTED_EXTENSION_ID` in `daemon/src/index.ts` and its row in `docs/mcp.md`.
+- **One build loaded at a time.** Chrome keys its extension registry by id, so a store install and
+  an unpacked build with this key can't sit side by side. Uninstall one to test the other.
+- **`zip:store` stays** — see `wxt.config.ts` for why the store gets the key-less zip.
+- **Storage reset for the old self-hosted install.** `chrome.storage` is per-id, so anyone still on
+  the pre-swap `dfmcnfgiddfdjciciaflpieglmmgdmhh` build re-enters their provider config once. The
+  install base was the author plus a few friends, so this was the cheap moment.
+- **The locally signed CRX is dead.** Its manifest now declares a key it wasn't signed with
+  (`tabrunner-test.pem`), and Chrome already refuses sideloaded CRX installs without a Web Store
+  proof. Do not distribute it.
 
 **What changed in the product**, if a reviewer asks: providers the user _signs in to_ (their
 existing Anthropic, OpenAI or Kimi subscription) now work alongside pasted API keys. That is the

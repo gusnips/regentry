@@ -21,21 +21,12 @@ import pkg from "../package.json" with { type: "json" };
 
 const PORT = Number(process.env.TABRUNNER_BRIDGE_PORT ?? 17_836);
 /**
- * Both ids TabRunner ships under — a store install and a self-hosted one are
- * equally canonical, so health accepts either: the Chrome Web Store listing,
- * and the CRX signed with tabrunner-test.pem, whose id the website's unpacked
- * zip and every dev build share via the manifest `key`. Anything else is
+ * One id for every channel — the store listing's, which the manifest `key`
+ * also pins the website's unpacked zip and every dev load to. Anything else is
  * someone's own build, which health names instead of trusting silently.
- * Override with one id or a comma-separated list.
  */
-const EXPECTED_EXTENSION_IDS = (
-  process.env.TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID?.split(",") ?? [
-    "ilnohobdcigbmlikjbkdpbkhciephdle",
-    "dfmcnfgiddfdjciciaflpieglmmgdmhh",
-  ]
-)
-  .map((id) => id.trim())
-  .filter(Boolean);
+const EXPECTED_EXTENSION_ID =
+  process.env.TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID ?? "ilnohobdcigbmlikjbkdpbkhciephdle";
 
 /** Under a client's own timeout, so a wait ends as an answer, not a failure. */
 const DEFAULT_WAIT_SECONDS = 30;
@@ -181,13 +172,13 @@ server.registerTool(
       "Check that the browser agent is reachable before driving it. Reports whether the TabRunner extension is connected to this bridge, which extension it is, whether it has a provider ready to think with, and what to do when any of that is missing. Call this first, and again after any connection error.",
   },
   async () => {
-    const match = link.extension ? EXPECTED_EXTENSION_IDS.includes(link.extension.id) : null;
+    const match = link.extension ? link.extension.id === EXPECTED_EXTENSION_ID : null;
     const provider = link.connected ? await providerInfo() : null;
     const lines = [
       `connected: ${link.connected}`,
       `port: ${PORT}`,
       `extension: ${link.extension ? `${link.extension.id} (v${link.extension.version})` : "none"}`,
-      `expected extension: ${EXPECTED_EXTENSION_IDS.join(" or ")}`,
+      `expected extension: ${EXPECTED_EXTENSION_ID}`,
     ];
     if (provider) lines.push(`provider: ${describeProvider(provider)}`);
 

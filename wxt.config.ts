@@ -2,11 +2,15 @@ import { defineConfig } from "wxt";
 import tailwindcss from "@tailwindcss/vite";
 
 /**
- * The Chrome Web Store rejects an uploaded manifest that carries `key` ("key
- * field is not allowed in manifest") — it mints the listing's id itself. Every
- * other channel wants the key (see below), so the store upload is its own
- * build target: `bun run zip:store`, which writes `dist/chrome-mv3-store` and
- * `dist/tabrunner-<version>-store.zip` and leaves the keyed artifacts alone.
+ * The store upload is its own build target — `bun run zip:store`, which writes
+ * `dist/chrome-mv3-store` and `dist/tabrunner-<version>-store.zip` and leaves
+ * the keyed artifacts alone — because the store and every other channel
+ * disagree about `key`. The store derives the id from its own item record, so
+ * the field is at best redundant there and its validator rejects a new item's
+ * first upload for carrying one ("key field is not allowed in manifest").
+ * Reports of that firing on later uploads too are common enough that stripping
+ * it is the only upload path that always works. Everywhere else the key is what
+ * gives us one id (see below).
  */
 const STORE = !!process.env.TABRUNNER_STORE;
 
@@ -25,14 +29,18 @@ export default defineConfig({
     description: "__MSG_extDescription__",
     default_locale: "en",
     homepage_url: "https://tabrunner.app",
-    // Public half of tabrunner-test.pem — pins every unpacked/dev load to the
-    // CRX's id (dfmcnfgiddfdjciciaflpieglmmgdmhh) instead of a per-machine one,
-    // so the MCP bridge's expected id holds in dev too, and the zip the website
-    // ships installs under the same id as the CRX. The store build drops it
-    // (STORE above); that listing gets its own CWS-owned id.
+    // Public half of the Chrome Web Store item's key, straight from the
+    // dashboard. It pins every unpacked and dev load to the store's own id,
+    // ilnohobdcigbmlikjbkdpbkhciephdle, so one id covers every channel and the
+    // MCP bridge expects the id real users actually have. The store build drops
+    // the field (STORE above) and CWS re-derives the same id from its own copy.
+    //
+    // Consequence to know: a store install and an unpacked build can no longer
+    // be loaded side by side — Chrome keys its registry by id and refuses the
+    // second. Uninstall one to test the other.
     key: STORE
       ? undefined
-      : "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3ZlVSo9td5K/VDX4FnlLA9c+HyCesWBcxD3ZtseoOqGvxOLtFcDmjlrQC334scbMAFvKR2udEVT0HrwtlhkJWdXKMloxwTvpeFZ1aAKmf7hmia9LhylqXiugykS7/aARuJITvxVZ/hG40HvZ42T8T57SUNmefPXQDKl2YggQunNPlfYw7LodPS7gcUwWcgxK8+09E3RUam+FZ3ry32yIHWExkw23CoNRsBaMrYA+n1R/LAgK6g7/r4FXbngNpw39Kn/9ytE3hGLXM89x6M4iN01WQ4dyRWT9xYD2pN8Ydcgrf2UP+IWBWROJyMPpp9Vay5A4j5/1jS6yRPCMtKu7OQIDAQAB",
+      : "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr8xjfiPm9mUAaxGNJ0zla9zh5+VZrRBvvTWy6QgNNucXYro47OPOUSroT6r2+4Xl3ZFJ372UD/EOB/OvAljGYOHmvhoHLpFNthHYKl6xv/LhtEte2Op8KTuu3giXc6U+fV48NfQQbIb32xnc6QZIDXjwCPkvR1ZBvMgZ62w3j9tnzht/UTTMkWKcXOv3Fd60ZnixoGlNqb0Fd34NzpG4CGkvVPkf0Mc/NLh09n4ZTJZuMVWfkSNBAmKSXC56gNkiD1pAX2YzISMqaSjaAVeX6pIweK+D0vqV/ZtJcNQYH6ff1WEBxIRG6W2seQEpb53wn/fYzgT1tqDiFBtUAbpLVQIDAQAB",
     icons: {
       16: "icon/16.png",
       32: "icon/32.png",

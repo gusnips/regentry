@@ -12,7 +12,7 @@ Every pushed `v*` tag builds and attaches four files to the GitHub Release
 
 | URL (stable — hotlink these)                                                                | What                                            |
 | ------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest-chrome.zip` | The download — keyed, installs under the CRX's id |
+| `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest-chrome.zip` | The download — keyed, installs under the store's id |
 | `https://github.com/gusnips/tabrunner/releases/latest`                                      | Release notes + versioned artifacts             |
 | `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest.crx`        | Signed CRX — published, **never linked** (below) |
 

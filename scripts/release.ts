@@ -116,8 +116,8 @@ try {
 }
 
 // Two zips, one per channel: the keyed `-chrome.zip` is the website's install
-// (loaded unpacked, so its manifest `key` pins it to the CRX's id); the
-// `-store.zip` drops the key, which the Chrome Web Store refuses to accept.
+// (loaded unpacked, so its manifest `key` pins it to the store listing's id);
+// `-store.zip` drops the key, which the store neither needs nor reliably accepts.
 for (const target of ["zip", "zip:store"]) {
   try {
     await $`bun run ${target}`;
