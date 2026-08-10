@@ -150,6 +150,6 @@ const storeZip = artifacts.find((a) => a.endsWith("-store.zip"));
 console.log("  publish   git push --follow-tags — CI attaches the artifacts to the GitHub Release");
 console.log(
   storeZip
-    ? `  store     upload dist/${storeZip} to the Chrome Web Store — the keyed -chrome.zip is the website's download and CWS rejects its manifest key`
+    ? `  store     upload dist/${storeZip} to the Chrome Web Store — never -chrome.zip, whose manifest key the store does not need and may reject`
     : "  store     store zip missing — run bun run zip:store, then upload it to the Chrome Web Store",
 );
