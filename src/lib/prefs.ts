@@ -12,7 +12,9 @@ export const showReasoning = defineItem<boolean>("showReasoning", false);
 export const defaultStartUrl = defineItem<string>("defaultStartUrl", "https://www.google.com");
 
 /** The floating run-status widget's hide preference — respected across runs;
- *  re-enabled from Settings. */
+ *  re-enabled from Settings. The toolbar badge is the injection-free floor
+ *  beneath it, so hiding this never leaves a run invisible — it only drops the
+ *  floating pill. */
 export const widgetHidden = defineItem<boolean>("widgetHidden", false);
 
 /** Rotating tips under the run band and in the composer footer — on unless the

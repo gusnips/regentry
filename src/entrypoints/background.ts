@@ -86,6 +86,12 @@ export default defineBackground(() => {
   // has work, gone when idle, suppressed by the hide pref. The same transitions
   // drive the keepalive: a run with a closed panel has no ping to hold the
   // worker up through a long provider silence.
+  // The pill now defaults ON — under adoption the driven tab is usually yours,
+  // so the pill is the primary "is it still running?" marker when you switch
+  // away. Reset a stored "hide" once so the new default reaches everyone;
+  // turning it off again from Settings is deliberate and respected.
+  void widgetHidden.remove();
+
   onBoardChanged((board) => {
     void syncActionBadge(
       (board.running ? 1 : 0) + board.queue.length,

@@ -334,9 +334,9 @@ Grants access to the tab the user submits a task from, at the moment they submit
 **`tabGroups`**
 
 ```
-A task the user sends to the background opens its own tab. TabRunner puts that tab in a labelled
-tab group named after the task, so the user can see at a glance which tab the agent is working in
-and close it in one action. Only groups TabRunner itself creates are touched.
+A task adopts the user's current tab, or opens its own when there's no page to work. TabRunner puts
+that tab in a labelled tab group named after the task, so the user can see at a glance which tab the
+agent is working in and close it in one action. Only groups TabRunner itself creates are touched.
 ```
 
 **`storage`**
@@ -349,9 +349,10 @@ their own device. Nothing is uploaded — there is no TabRunner server.
 **`notifications`**
 
 ```
-Tasks run in their own background tab and keep working after the side panel closes. A
-notification reports when a task finishes or fails, and when it pauses to ask the user a
-question (for example, before sending something on their behalf). Fired only while the panel
+A task adopts the user's current tab, or opens its own when there's no page to work, and keeps
+working after the side panel closes. A notification reports when a task finishes or fails, and
+when it pauses to ask the user a question (for example, before sending something on their behalf).
+Fired only while the panel
 is closed — never for runs the user stopped themselves.
 ```
 

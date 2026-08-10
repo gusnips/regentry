@@ -75,8 +75,9 @@ data.
   again any time.
 - **Stop anytime** — Esc or the Stop button in the panel, the stop in the Run Board's task list,
   or closing the tab a task is driving stops its run. Closing the panel does NOT stop a run:
-  tasks run in their own background tab and keep working after the panel closes — that's the
-  point of dispatch-and-forget. Nothing is sent after a run stops.
+  a task adopts your current tab (or opens its own when there's no page to work) and keeps
+  working after the panel closes — that's the point of dispatch-and-forget. Nothing is sent
+  after a run stops.
 - **Uninstall** — removing the extension from `chrome://extensions` deletes all of its local
   storage.
 
@@ -87,9 +88,9 @@ data.
 | `debugger`                      | Real trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol so sites can't ignore them.                                            |
 | `scripting`                     | Injects the accessibility-tree snapshot script into the tab TabRunner reads.                                                                                       |
 | `sidePanel`                     | Hosts the chat UI where you write tasks and watch the run.                                                                                                         |
-| `tabs`                          | Opens each task's background tab, reads URL/title, and switches tabs when a task references another open tab.                                                      |
+| `tabs`                          | Adopts your current tab or opens a task's own tab, reads URL/title, and switches tabs when a task references another open tab.                                      |
 | `activeTab`                     | Grants access to the tab you submit a task from, per action.                                                                                                       |
-| `tabGroups`                     | Groups each background task's tab and labels the group with the task (✓/✗/? when it finishes, then collapses it).                                                  |
+| `tabGroups`                     | Groups each task's tab and labels the group with the task (✓/✗/? when it finishes, then collapses it).                                                              |
 | `storage`                       | Persists provider configs, history, and memory locally.                                                                                                            |
 | `notifications`                 | Tells you when a background task finishes, errs, or stops to ask you something while the panel is closed.                                                          |
 | `alarms`                        | Periodic wake-ups: reconnects the local MCP bridge, and keeps the worker alive through a long task while the panel is closed. It runs no task and touches no page. |

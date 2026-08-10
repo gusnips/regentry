@@ -143,9 +143,10 @@ export function RunStatus() {
       <TipLine className="text-brand-800/60 dark:text-brand-200/50" />
       {/* Every run is born backgrounded — the tab is grouped, the badge and
           favicon dot are lit, and closing the panel never stops it. So the two
-          directions of the attended↔background flip live here: Take over brings
-          the driven tab forward to watch; Run in background closes the panel
-          (the run keeps going untouched). Same flow, two triggers. */}
+          directions of the attended↔background flip live here: Show tab brings
+          the driven tab forward to watch (the chip above names it, this button
+          says it); Run in background closes the panel (the run keeps going
+          untouched). Same flow, two triggers. */}
       <div className="flex items-center justify-end gap-1">
         {drivingTab && (
           <Button
@@ -153,9 +154,9 @@ export function RunStatus() {
             variant="ghost"
             className="text-brand-700 dark:text-brand-300"
             onClick={() => void focusTab(drivingTab.tabId, drivingTab.windowId)}
-            title={t("run.takeOverTip")}
+            title={t("run.showTabTip")}
           >
-            {t("run.takeOver")}
+            {t("run.showTab")}
           </Button>
         )}
         <Button

@@ -24,11 +24,11 @@ rejection, not a reason to have forked the tab. Only a tab the run *opened* is t
 back on a rejected plan — an adopted tab is the user's own and is never closed.
 
 The run still gets a tab of its own when there is no page to work: a blank/new-tab page,
-a restricted page (chrome://, the Web Store — the model is told via `mode.blockedStart`
-so it asks instead of answering about a page it never saw), an MCP client (no current
-tab at all — its sessions start on the neutral default), or a run the client pointed at
-an explicit URL. Those forks open on `defaultStartUrl` (then google), inactive, labelled
-with the task, and — for the panel only — brought forward once they're loaded and
+a restricted page (chrome://, the Web Store — those error out of `resolveRunTab` before a
+run exists, so the model never has to be told about a page it never saw), an MCP client
+(no current tab at all — its sessions start on the neutral default), or a run the client
+pointed at an explicit URL. Those forks open on `defaultStartUrl` (then google), inactive,
+labelled with the task, and — for the panel only — brought forward once they're loaded and
 grouped, so a run that fails to start takes its tab back without the user ever seeing it
 blink past.
 

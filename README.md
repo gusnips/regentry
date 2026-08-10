@@ -74,8 +74,8 @@ side panel (React) ──Port──▶ background service worker ──▶ provi
                                   └─▶ actions: trusted input via chrome.debugger (CDP)
 ```
 
-1. You send a task. The background worker opens its own background tab (or drives the current
-   one when you ask for "this page") and snapshots its accessibility tree.
+1. You send a task. The run adopts your current tab (or opens its own tab when there's no
+   page to work) and snapshots its accessibility tree.
 2. The provider streams a reply; tool calls (`navigate`, `click`, `type`, `scroll`, `snapshot`,
    `screenshot`, `done`) execute against the real tab.
 3. Results feed back into the conversation until the model calls `done` — or you hit Stop.
