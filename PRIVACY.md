@@ -1,7 +1,7 @@
 # TabRunner Privacy Policy
 
 _Last updated: 2026-08-08 · Applies to TabRunner for Chromium browsers (Chrome, Brave, Edge, Arc,
-Opera, Vivaldi), version 0.1.0._
+Opera, Vivaldi)._
 
 **The short version:** TabRunner is a browser agent you run. There is no TabRunner server, no
 account, no telemetry, and no analytics. Everything you type or configure stays on your device, in
