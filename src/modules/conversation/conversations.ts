@@ -14,6 +14,14 @@ export interface LastTab {
   groupId?: number;
 }
 
+/** A run's closing numbers — how long it went and what it cost. */
+export interface RunSummary {
+  startedAt: number;
+  endedAt: number;
+  input: number;
+  output: number;
+}
+
 /** List-view metadata — the list reads only this, never the message arrays. */
 export interface ConversationMeta {
   id: string;
@@ -24,6 +32,12 @@ export interface ConversationMeta {
   messageCount: number;
   /** Tabs this conversation's runs drove, most recently worked first. */
   tabs?: LastTab[];
+  /**
+   * The last run's closing numbers, stamped when it ended. The status band a
+   * reopened panel shows above the composer reads this — the run's own panel
+   * state died with the close. Retired by the next user message.
+   */
+  lastRun?: RunSummary;
   /**
    * The external client that drove this conversation ("Claude Code"), when it
    * wasn't the user's own panel. History shows it: a transcript the user never
@@ -99,6 +113,19 @@ export async function recordDrivenTabFor(id: string, tab: LastTab): Promise<void
         : c,
     ),
   );
+}
+
+/**
+ * Stamps the conversation's index row with its just-ended run's summary.
+ * Serialized with the transcript writes so the record never lands ahead of the
+ * run's own closing messages. A conversation deleted mid-run stays deleted.
+ */
+export function recordRunSummary(id: string, run: RunSummary): Promise<void> {
+  return serialized(async () => {
+    const list = await indexItem.get();
+    if (!list.some((c) => c.id === id)) return;
+    await indexItem.set(list.map((c) => (c.id === id ? { ...c, lastRun: run } : c)));
+  });
 }
 
 /**
@@ -218,6 +245,9 @@ async function appendTo(id: string | null, msg: Message): Promise<string> {
     updatedAt: msg.timestamp,
     messageCount: messages.length,
   };
+  // A fresh task retires the last run's summary — the band above the composer
+  // keeps it only until the next message.
+  if (msg.role === "user") delete updated.lastRun;
   // Re-heading the index is what keeps it sorted by recency.
   const list = await indexItem.get();
   await indexItem.set([updated, ...list.filter((c) => c.id !== meta.id)]);

@@ -53,6 +53,7 @@ export function ChatInput() {
   const boardRunHere = useConversationStore(
     (s) => s.activeId !== null && s.board.running?.conversationId === s.activeId,
   );
+  const bridgeActive = useConversationStore((s) => s.bridgeActive);
   const areaRef = useRef<HTMLTextAreaElement>(null);
   /** Monotonic, so removing #1 never lets a later paste reuse its token. */
   const imageCount = useRef(0);
@@ -388,10 +389,13 @@ export function ChatInput() {
       {/* The tip gets the panel's full width on its own row — squeezed next to
           the run-target select it truncated to a few useless words. It stacks
           with the conditional rows above the input so the two permanent rows
-          (input, footer) stay adjacent. Hidden while a run is live (the status
-          band carries it then) and while the paste hint is up (one hint at a
-          time, and that one is contextual). */}
-      {!running && !pastedTexts.some((p) => text.includes(p.token)) && <TipLine />}
+          (input, footer) stay adjacent. Hidden while the run band is up — it
+          carries the tip then, whether the run is this panel's own or one the
+          board reports here after a reopen (a bridge band has no tip slot) —
+          and while the paste hint is up (one hint at a time, and that one is
+          contextual). */}
+      {!(running || (boardRunHere && !bridgeActive)) &&
+        !pastedTexts.some((p) => text.includes(p.token)) && <TipLine />}
       <div className="relative flex items-end gap-2">
         {slashOpen && slash && (
           <SlashMenu

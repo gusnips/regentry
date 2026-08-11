@@ -38,6 +38,9 @@ export interface RunBoard {
     conversationId: string;
     task: string;
     owner: RunOwner;
+    /** When the run claimed the slot — a panel that reopened mid-run reads its
+     *  elapsed clock from here, its own run-state having died with the close. */
+    startedAt: number;
     tabId?: number;
     /** Parked on the user's answer (plan approval) — alive, but not working. */
     awaiting?: boolean;
@@ -60,7 +63,12 @@ export type SubmitOutcome = { started: true } | { queued: number; id: string };
  */
 export function submitRun(entry: Omit<QueueEntry, "id" | "enqueuedAt">): SubmitOutcome {
   if (!getActiveRun()) {
-    running = { conversationId: entry.conversationId, task: entry.task, owner: entry.owner };
+    running = {
+      conversationId: entry.conversationId,
+      task: entry.task,
+      owner: entry.owner,
+      startedAt: Date.now(),
+    };
     entry.launch();
     void writeBoard();
     return { started: true };
@@ -147,7 +155,12 @@ onRunReleased(() => {
     void writeBoard();
     return;
   }
-  running = { conversationId: next.conversationId, task: next.task, owner: next.owner };
+  running = {
+    conversationId: next.conversationId,
+    task: next.task,
+    owner: next.owner,
+    startedAt: Date.now(),
+  };
   log.info("queued run starting", {
     owner: next.owner,
     task: truncate(next.task, 120),

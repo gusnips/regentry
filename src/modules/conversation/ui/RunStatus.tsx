@@ -28,15 +28,40 @@ export function RunStatus() {
   const awaitingAnswer = useConversationStore(
     (s) => pendingAskId(s.messages, s.status) !== undefined,
   );
+  // A reopened panel holds no run state of its own — these ambient records
+  // stand in. The board names a run still in flight on this conversation (its
+  // startedAt drives the elapsed clock; the plan peek reads the transcript as
+  // of reopen, not a stream); the index row keeps the summary of the run that
+  // ended while the panel was away, retired by the next user message.
+  const boardRun = useConversationStore((s) =>
+    s.activeId !== null && s.board.running?.conversationId === s.activeId
+      ? s.board.running
+      : undefined,
+  );
+  const lastRun = useConversationStore(
+    (s) => s.conversations.find((c) => c.id === s.activeId)?.lastRun,
+  );
 
   const idleVerbs = t("run.idle", { returnObjects: true });
   const [verbIdx, setVerbIdx] = useState(0);
 
-  const running = status === "running" && runStartedAt !== null;
+  // This panel's own run when it has one; the board's record of the run it
+  // reopened into otherwise — but never a bridge session's: that one keeps its
+  // own band, which names the client and this one cannot.
+  const localLive = status === "running" && runStartedAt !== null;
+  const liveStartedAt = localLive
+    ? runStartedAt
+    : !bridgeActive && boardRun
+      ? boardRun.startedAt
+      : null;
+  const running = liveStartedAt !== null;
   const now = useNow(running);
+  // Parked speaks "waiting": the armed approval card (panel memory, re-armed
+  // on reconnect) or the board's mark (a run parked while this panel was away).
+  const awaiting = awaitingApproval || boardRun?.awaiting === true;
 
   useEffect(() => {
-    if (!running || awaitingApproval) return;
+    if (!running || awaiting) return;
     let rotate: ReturnType<typeof setTimeout>;
     const schedule = () => {
       // Random 1–2 min. Tools churn in under a second, so a verb that tracked
@@ -64,7 +89,7 @@ export function RunStatus() {
     };
     schedule();
     return () => clearTimeout(rotate);
-  }, [running, awaitingApproval, idleVerbs.length]);
+  }, [running, awaiting, idleVerbs.length]);
 
   const totalTokens = usage.input + usage.output;
   const tokenNote =
@@ -72,19 +97,28 @@ export function RunStatus() {
 
   // What the last run cost, kept up after it ends: while it streams the numbers
   // move too fast to read, and they are gone by the time you look.
-  if (!running) {
+  if (liveStartedAt === null) {
     // An external agent's work outranks the last run's summary — it is
     // happening now, and the browser is not the user's while it does. This is
     // the same run already blinking the driven tab's favicon, named here.
     if (bridgeActive) return <BridgeActiveBand active={bridgeActive} />;
-    if (runStartedAt === null || runEndedAt === null) return null;
+    // This panel watched its run end; otherwise the stored summary of the run
+    // that ended while the panel was closed stands in — same band either way.
+    const finished =
+      runStartedAt !== null && runEndedAt !== null
+        ? { startedAt: runStartedAt, endedAt: runEndedAt, ...usage }
+        : lastRun;
+    if (!finished) return null;
+    const finishedTokens = finished.input + finished.output;
+    const finishedNote =
+      finishedTokens > 0 ? ` · ${t("run.tokens", { count: formatTokens(finishedTokens) })}` : "";
     return (
       <div className="flex flex-col gap-0.5 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
         <div className="flex items-center gap-2">
           <span>{awaitingAnswer ? t("run.awaitingAnswer") : t("run.finished")}</span>
           <span className="telemetry">
-            {formatDuration(runEndedAt - runStartedAt)}
-            {tokenNote}
+            {formatDuration(finished.endedAt - finished.startedAt)}
+            {finishedNote}
           </span>
         </div>
         {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
@@ -110,7 +144,7 @@ export function RunStatus() {
       <div className="flex items-center gap-2 text-sm">
         {/* One motion only — the shimmering verb is the live signal, so the dot stays still. */}
         <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400" />
-        {awaitingApproval ? (
+        {awaiting ? (
           // Parked on the user's answer: the run is alive (the timer keeps
           // counting) but nothing is working — the shimmer would be lying.
           <span className="shrink-0 font-semibold text-brand-700 dark:text-brand-300">
@@ -120,7 +154,7 @@ export function RunStatus() {
           <span className="shimmer-text shrink-0 font-semibold">{verb}…</span>
         )}
         <span className="telemetry ml-auto shrink-0 text-xs" aria-hidden="true">
-          {formatDuration(now - runStartedAt)}
+          {formatDuration(now - liveStartedAt)}
           {tokenNote}
         </span>
       </div>
@@ -146,7 +180,7 @@ export function RunStatus() {
           this row is the one walk-away: Run in background closes the panel
           (the run keeps going untouched). */}
       <div className="flex items-center justify-end gap-1">
-        {!awaitingApproval && (
+        {!awaiting && (
           <Button
             size="sm"
             variant="ghost"

@@ -177,7 +177,12 @@ ConversationList). `transcript.ts` is the persistence half of the event stream,
 background-safe: one `TranscriptWriter` per run turns run events into stored messages. The
 worker owns it for every run (panel runs included — the panel closes itself after submit,
 so a panel-side writer would die with it); the panel store only renders. Two views of one
-event stream, and they must stay in lockstep.
+event stream, and they must stay in lockstep. The writer also stamps the run's closing
+numbers (span, tokens) onto the conversation's index row (`recordRunSummary`), because the
+panel's own run state dies with the panel: a reopened panel renders the status band from
+the ambient records — the board's running entry (`startedAt`, `awaiting`) while the run is
+live, the stored `lastRun` once it ends — so the band and its plan peek survive the close,
+until the next user message retires the record.
 
 ### `tips/` — rotating tips
 

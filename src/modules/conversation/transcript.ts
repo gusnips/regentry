@@ -1,6 +1,6 @@
 import type { Event } from "@/shared/protocol";
 import type { Message } from "./types";
-import { appendMessageTo, replaceMessageTo } from "./conversations";
+import { appendMessageTo, recordRunSummary, replaceMessageTo } from "./conversations";
 import { buildProgressNote } from "./progress-note";
 import type { ProgressStep } from "./progress-note";
 import { createLogger } from "@/lib/logger";
@@ -61,6 +61,12 @@ export class TranscriptWriter {
   private planMsg: Message | null = null;
   /** The run's real steps, so an interrupted run can still leave a progress note. */
   private progressSteps: ProgressStep[] = [];
+  /** Constructed at run launch — the summary's start line. */
+  private readonly startedAt = Date.now();
+  /** Cumulative tokens, from the run's usage events. */
+  private usage = { input: 0, output: 0 };
+  /** done after an error is the same end unwinding — stamp the summary once. */
+  private summaryRecorded = false;
 
   constructor(private readonly conversationId: string) {}
 
@@ -74,6 +80,24 @@ export class TranscriptWriter {
   private replace(msg: Message): void {
     void replaceMessageTo(this.conversationId, msg).catch((e) => {
       log.debug("transcript replace failed:", e instanceof Error ? e.message : String(e));
+    });
+  }
+
+  /**
+   * The run's closing numbers, stamped on the conversation's index row — the
+   * "Done · 2m · 40k" band a reopened panel shows reads it, the panel's own
+   * run state having died with the close. The next user message retires it.
+   */
+  private recordSummary(): void {
+    if (this.summaryRecorded) return;
+    this.summaryRecorded = true;
+    void recordRunSummary(this.conversationId, {
+      startedAt: this.startedAt,
+      endedAt: Date.now(),
+      input: this.usage.input,
+      output: this.usage.output,
+    }).catch((e) => {
+      log.debug("run summary write failed:", e instanceof Error ? e.message : String(e));
     });
   }
 
@@ -181,6 +205,10 @@ export class TranscriptWriter {
         break;
 
       case "usage":
+        this.usage.input += event.input;
+        this.usage.output += event.output;
+        break;
+
       case "driving":
         break;
 
@@ -192,6 +220,7 @@ export class TranscriptWriter {
         // history, so without the note the next run would start blind.
         this.writeProgressNote(event.message);
         this.append(makeMsg("error", event.message, { kind: event.kind }));
+        this.recordSummary();
         break;
 
       case "done": {
@@ -212,6 +241,7 @@ export class TranscriptWriter {
           // that reuses the work — doesn't start from nothing.
           this.writeProgressNote();
         }
+        this.recordSummary();
         break;
       }
     }
