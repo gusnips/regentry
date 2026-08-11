@@ -104,7 +104,11 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     // the very tab the conversation last drove, page state and all.
     const conversationTabs = await getConversationTabsFor(conversationId);
     const continuation = hasPendingQuestion(transcript) ? conversationTabs[0] : undefined;
-    const target = await resolveRunTab(opts, continuation);
+    const target = await resolveRunTab(
+      opts,
+      continuation,
+      await liveThreadGroup(conversationTabs),
+    );
     if ("error" in target) {
       emit({ type: "error", message: target.error });
       return { ok: true };
@@ -313,9 +317,9 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         // than leave a "✓" collapsed group around it. Nothing ran, so there is
         // no outcome to name.
         await ungroupRunTab(tab.id);
-        await persistDrivenTabFor(conversationId, drivenTabId);
+        await persistDrivenTabFor(conversationId, drivenTabId, groupId);
       } else {
-        await persistDrivenTabFor(conversationId, drivenTabId);
+        await persistDrivenTabFor(conversationId, drivenTabId, groupId);
         await settleRunTab(
           groupId,
           task,
@@ -404,6 +408,7 @@ function isBlankPage(url: string | undefined): boolean {
 async function resolveRunTab(
   opts: StartRunOptions,
   continuation?: LastTab,
+  threadGroupId?: number,
 ): Promise<RunTab | { error: string }> {
   const reveal = opts.owner === "panel";
   if (opts.thisPage) {
@@ -418,7 +423,7 @@ async function resolveRunTab(
     // Every run is born backgrounded — even "this page" gets the task group, so
     // walking away (closing the panel) leaves the same labeled, blinking marker
     // a background run leaves. "Supervised" only ever meant the panel stays open.
-    const groupId = await labelRunTab(tab.id, opts.task);
+    const groupId = await labelRunTab(tab.id, opts.task, threadGroupId);
     return { tab, ...(groupId !== undefined ? { groupId } : {}) };
   }
 
