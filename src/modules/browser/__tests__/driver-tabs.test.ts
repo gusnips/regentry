@@ -30,8 +30,12 @@ interface TabRecord {
 const tabs: Record<number, TabRecord> = {
   1: { id: 1, windowId: 10, title: "First", url: "https://a.example" },
   2: { id: 2, windowId: 10, title: "Second", url: "https://b.example" },
+  3: { id: 3, windowId: 20, title: "Elsewhere", url: "https://c.example" },
 };
+/** The one live tab group, sitting in window 10 with tabs 1-2. */
+const groups: Record<number, { windowId: number }> = { 7: { windowId: 10 } };
 const updates: { id?: number; window?: number; props: Record<string, unknown> }[] = [];
+const groupCalls: { tabIds: number | number[]; groupId?: number }[] = [];
 
 // The chrome stub must exist before driver/cdp-driver import — cdp-driver
 // registers its listeners at module scope.
@@ -49,6 +53,17 @@ const updates: { id?: number; window?: number; props: Record<string, unknown> }[
       return tabs[id];
     },
     query: async () => Object.values(tabs),
+    group: async (opts: { tabIds: number | number[]; groupId?: number }) => {
+      groupCalls.push(opts);
+      return opts.groupId ?? 42;
+    },
+  },
+  tabGroups: {
+    get: async (id: number) => {
+      const g = groups[id];
+      if (!g) throw new Error(`No group with id: ${id}`);
+      return g;
+    },
   },
   windows: {
     update: async (windowId: number, props: Record<string, unknown>) => {
@@ -63,6 +78,7 @@ const { createDriver } = await import("../driver");
 describe("driver tab switching", () => {
   beforeEach(() => {
     updates.length = 0;
+    groupCalls.length = 0;
   });
 
   it("switchTab re-targets later actions and brings the tab forward", async () => {
@@ -102,7 +118,28 @@ describe("driver tab switching", () => {
   it("listTabs reports every open tab", async () => {
     const driver = createDriver(1);
     const listed = await driver.listTabs();
-    expect(listed.map((t) => t.id)).toEqual([1, 2]);
+    expect(listed.map((t) => t.id)).toEqual([1, 2, 3]);
     expect(listed[0]).toMatchObject({ title: "First", url: "https://a.example", active: false });
+  });
+
+  it("groupTab files a tab into the run's group without retargeting the driver", async () => {
+    const driver = createDriver(1);
+    const info = await driver.groupTab(2, 7);
+    expect(info).toMatchObject({ id: 2, title: "Second" });
+    expect(groupCalls).toEqual([{ tabIds: 2, groupId: 7 }]);
+    // Filing is organization, not a drive — the target stays on the run's tab.
+    await expect(driver.snapshot()).resolves.toMatchObject({ pageContent: "snap:1" });
+  });
+
+  it("groupTab refuses a tab in another window — groups can't span windows", async () => {
+    const driver = createDriver(1);
+    await expect(driver.groupTab(3, 7)).rejects.toThrow("another window");
+    expect(groupCalls).toEqual([]);
+  });
+
+  it("groupTab surfaces a dead group or tab as a thrown error", async () => {
+    const driver = createDriver(1);
+    await expect(driver.groupTab(2, 99)).rejects.toThrow("No group with id: 99");
+    await expect(driver.groupTab(99, 7)).rejects.toThrow("No tab with id: 99");
   });
 });

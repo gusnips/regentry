@@ -104,11 +104,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     // the very tab the conversation last drove, page state and all.
     const conversationTabs = await getConversationTabsFor(conversationId);
     const continuation = hasPendingQuestion(transcript) ? conversationTabs[0] : undefined;
-    const target = await resolveRunTab(
-      opts,
-      continuation,
-      await liveThreadGroup(conversationTabs),
-    );
+    const target = await resolveRunTab(opts, continuation, await liveThreadGroup(conversationTabs));
     if ("error" in target) {
       emit({ type: "error", message: target.error });
       return { ok: true };
@@ -208,6 +204,9 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         driver,
         task,
         conversationId,
+        // The group this run labeled — group_tab files the task's other tabs
+        // under it. Undefined when grouping was skipped; the tool says so.
+        ...(groupId !== undefined ? { runGroupId: groupId } : {}),
         images,
         supportsImages: resolvedProvider?.supportsImages,
         history: history.length > 0 ? history : undefined,
@@ -597,9 +596,9 @@ export async function labelRunTab(
     const groupId =
       threadGroupId === undefined
         ? await chrome.tabs.group({ tabIds: tabId })
-        : await chrome.tabs.group({ tabIds: tabId, groupId: threadGroupId }).catch(
-            () => chrome.tabs.group({ tabIds: tabId }),
-          );
+        : await chrome.tabs
+            .group({ tabIds: tabId, groupId: threadGroupId })
+            .catch(() => chrome.tabs.group({ tabIds: tabId }));
     // Re-open a settled (collapsed) group: the user just pressed send and is
     // watching this tab — a collapsed group would swallow it.
     await chrome.tabGroups.update(groupId, {
@@ -653,9 +652,7 @@ async function persistDrivenTabFor(
       // Only the group this run labeled counts as the thread's: a tab the run
       // switched into mid-flight may sit in a group of the user's own, and that
       // label is theirs — never ours to reuse or retitle.
-      ...(runGroupId !== undefined && tab.groupId === runGroupId
-        ? { groupId: tab.groupId }
-        : {}),
+      ...(runGroupId !== undefined && tab.groupId === runGroupId ? { groupId: tab.groupId } : {}),
     });
   } catch {
     // The tab died during the run — nothing left to remember.

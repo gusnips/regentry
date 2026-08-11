@@ -18,9 +18,16 @@ default run adopts the current tab: groups it under the task's name, drives it w
 `activateOnSwitch` on, and settles the group with ✓/?/✗ when it lets go. The composer
 toggle's `thisPage` is the same drive minus the group bookkeeping.
 
+The group is the conversation's, not the run's: a follow-up message files its tab under
+the group the thread already has (`liveThreadGroup` — reused only while the newest
+recorded tab still sits in its recorded group), and only mints a fresh one when the user
+has closed, emptied, or taken that one back. The model can pull the task's other open
+tabs into it with `group_tab` (same window only — Chrome groups can't span windows), so
+a "copy from Docs into this site" run shows the whole working set under one strip.
+
 Adoption is safe because of the plan gate, not instead of it: the run reads the page and
 proposes a plan before any action tool unlocks, so "don't touch this draft" is a plan
-rejection, not a reason to have forked the tab. Only a tab the run *opened* is taken
+rejection, not a reason to have forked the tab. Only a tab the run _opened_ is taken
 back on a rejected plan — an adopted tab is the user's own and is never closed.
 
 The run still gets a tab of its own when there is no page to work: a blank/new-tab page,
@@ -70,7 +77,8 @@ press_key, scroll) are rejected by the loop until the user approves a plan (`ACT
 in `agent/loop.ts` — reads and bookkeeping stay free so the model can look before it
 plans). `switch_tab` is deliberately outside the gate: it changes nothing on any page and
 it is how the agent reaches the page it must read first, which for a run starting
-on the tab it's driving is the normal opening move. A turn's calls run with `plan`
+on the tab it's driving is the normal opening move. `group_tab` rides the same exemption —
+it rearranges the strip, never the page, and the run already groups its start tab unasked. A turn's calls run with `plan`
 hoisted first (`planFirst`) — models routinely batch the plan with the step it opens with,
 and in wire order that step would bounce off the gate its own approval was about to open.
 A bounced call gets a step row with a `detail`, so the red ✗ opens like every other row
@@ -243,6 +251,8 @@ background runs adopt that same tab, so the stamp names the tab the run is about
 keeps the tabs its runs drove — deduped by url, newest first, capped. A "this page" run
 starts on the submit-time active tab; the task message names any stored tabs the user is
 not on, so "that email" and "the doc" can find their way back via list_tabs/switch_tab.
-The stored tab keeps its `tabId` and the `groupId` of the group that run created — the
-first so a continuation can return to the live tab, the second so it retitles only a group
-it owns and never a group the user filed the tab into.
+The stored tab keeps its `tabId` and — only when it ended its run inside the group that
+run labeled — the thread's `groupId`: the first so a continuation can return to the live
+tab, the second so follow-ups file under it and the run retitles only a group of its own,
+never a group the user filed the tab into (a mid-run `switch_tab` into a user's group
+records no `groupId` at all).

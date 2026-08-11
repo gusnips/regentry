@@ -11,6 +11,7 @@ import {
   ensureAttached,
 } from "./cdp-driver";
 import { focusTab } from "./focus-tab";
+import { i18n } from "@/i18n";
 import { truncate } from "@/lib/logger";
 import type { TabId } from "@/shared/types";
 
@@ -43,6 +44,12 @@ export interface BrowserDriver {
   listTabs(): Promise<TabInfo[]>;
   /** Re-targets every later action at this tab — foregrounding it is `activateOnSwitch`'s call. */
   switchTab(tabId: TabId): Promise<TabInfo>;
+  /**
+   * Files another open tab into the run's task group. Chrome constraint: groups
+   * are window-scoped, so a tab in another window can't join — moving it across
+   * windows would rip it out of the user's screen setup, which is theirs to do.
+   */
+  groupTab(tabId: TabId, groupId: number): Promise<TabInfo>;
 }
 
 export interface DriverOptions {
@@ -62,6 +69,19 @@ export interface DriverOptions {
    * steal focus for all.
    */
   activateOnSwitch?: boolean;
+}
+
+/** One open tab, shaped for the model — undefined for the id-less records a query can return. */
+function toTabInfo(t: chrome.tabs.Tab): TabInfo | undefined {
+  if (t.id === undefined) return undefined;
+  return {
+    id: t.id,
+    windowId: t.windowId,
+    title: truncate(t.title ?? "", 80),
+    url: truncate(t.url ?? "", 120),
+    active: t.active === true,
+    ...(t.favIconUrl ? { favIconUrl: t.favIconUrl } : {}),
+  };
 }
 
 export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): BrowserDriver {
@@ -120,20 +140,23 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
 
     async listTabs() {
       const tabs = await chrome.tabs.query({});
-      return tabs.flatMap((t) =>
-        t.id === undefined
-          ? []
-          : [
-              {
-                id: t.id,
-                windowId: t.windowId,
-                title: truncate(t.title ?? "", 80),
-                url: truncate(t.url ?? "", 120),
-                active: t.active === true,
-                ...(t.favIconUrl ? { favIconUrl: t.favIconUrl } : {}),
-              },
-            ],
-      );
+      return tabs.flatMap((t) => toTabInfo(t) ?? []);
+    },
+
+    async groupTab(tabId, groupId) {
+      // Both throws land as tool errors the model can act on: a dead tab id
+      // means re-list, a dead group means the run's strip is gone.
+      const [tab, group] = await Promise.all([
+        chrome.tabs.get(tabId),
+        chrome.tabGroups.get(groupId),
+      ]);
+      if (tab.windowId !== group.windowId) {
+        throw new Error(i18n.t("errors.tabGroupOtherWindow"));
+      }
+      await chrome.tabs.group({ tabIds: tabId, groupId });
+      const info = toTabInfo(tab);
+      if (!info) throw new Error(i18n.t("errors.noActiveTab"));
+      return info;
     },
 
     async switchTab(tabId) {

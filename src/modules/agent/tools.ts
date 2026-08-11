@@ -21,6 +21,9 @@ export interface ToolResult {
 export interface ToolContext {
   /** The run's conversation — read_history reads its stored transcript. Absent under direct control, which has none. */
   conversationId?: string;
+  /** The group this run's tab was filed under — group_tab's target. Absent when
+   *  grouping was skipped (or under direct control, which has no group). */
+  runGroupId?: number;
 }
 
 /** Execute a single tool call against the browser driver. */
@@ -42,6 +45,14 @@ export async function executeTool(
 
       case "switch_tab": {
         const tab = await driver.switchTab(call.args.tab_id as number);
+        return { ok: true, data: tab };
+      }
+
+      case "group_tab": {
+        if (ctx.runGroupId === undefined) {
+          return { ok: false, error: i18n.t("errors.noRunGroup") };
+        }
+        const tab = await driver.groupTab(call.args.tab_id as number, ctx.runGroupId);
         return { ok: true, data: tab };
       }
 
@@ -161,6 +172,9 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
   }
   if (tool === "switch_tab" && data && typeof data === "object") {
     return i18n.t("errors.switchedTo", { title: (data as { title?: string }).title ?? "" });
+  }
+  if (tool === "group_tab" && data && typeof data === "object") {
+    return i18n.t("errors.tabGrouped", { title: (data as { title?: string }).title ?? "" });
   }
   if (tool === "list_tabs" && data && typeof data === "object") {
     const tabs = (data as { tabs?: unknown[] }).tabs;

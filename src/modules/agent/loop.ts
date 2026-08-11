@@ -127,6 +127,8 @@ export interface LoopOptions {
    * transcript. Absent only in tests.
    */
   conversationId?: string;
+  /** The tab group this run labeled — group_tab files the task's other tabs under it. */
+  runGroupId?: number;
   /** Data-URL images the user attached to the task, referenced in the text as "[Image #1]". */
   images?: string[];
   /**
@@ -241,6 +243,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     driver,
     task,
     conversationId,
+    runGroupId,
     images,
     supportsImages: supportsImagesOpt,
     previousTabs,
@@ -398,7 +401,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // rather than adding a row, so it gets no spinner and no step of its own.
       const bookkeeping = call.name === "plan";
       if (!bookkeeping) callbacks.onStepStart?.(call.name, call.args);
-      const result = await executeTool(call, driver, { conversationId });
+      const result = await executeTool(call, driver, { conversationId, runGroupId });
       if (!result.ok) log.warn(`tool ${call.name} failed:`, result.error);
 
       if (bookkeeping && result.ok) {
