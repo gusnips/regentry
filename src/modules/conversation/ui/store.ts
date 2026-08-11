@@ -53,6 +53,9 @@ interface ConversationState {
   planMsgId: string | null;
   /** A proposed plan parked on the user's answer — the run resumes on approve, ends on reject. */
   planApproval: { steps: string[]; reapproval: boolean } | null;
+  /** This run's plan has the user's yes — the walk-away gate. Closing the panel
+   *  before it strands the approval prompt on an OS notification. */
+  planApproved: boolean;
   /** Messages typed mid-run, waiting for the next tool boundary. */
   queued: { id: string; text: string }[];
   /** Joined queued text waiting to auto-run once the current run fully unwinds (a stop redirect). */
@@ -172,6 +175,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     pendingStepId: null,
     planMsgId: null,
     planApproval: null,
+    planApproved: false,
     queued: [],
     pendingSend: null,
     draft: "",
@@ -229,9 +233,11 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       status,
       runEndedAt: Date.now(),
       pendingStepId: null,
+      planMsgId: null,
       planApproval: null,
       drivingTab: null,
       queuedRun: null,
+      planApproved: false,
     }));
   };
 
@@ -281,6 +287,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       // A new run draws its own card — never revives the last run's checklist.
       planMsgId: null,
       planApproval: null,
+      planApproved: false,
     });
     p.postMessage({
       type: "run",
@@ -455,8 +462,12 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
       case "plan_approval":
         // The loop is parked until the user answers — the plan card above
-        // already shows what is being asked; this arms the approval card.
-        set({ planApproval: { steps: event.steps, reapproval: event.reapproval } });
+        // already shows what is being asked; this arms the approval card. A
+        // fresh gate means no approved plan is in force (reapproval included).
+        set({
+          planApproval: { steps: event.steps, reapproval: event.reapproval },
+          planApproved: false,
+        });
         break;
 
       case "usage":
@@ -562,6 +573,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     pendingStepId: null,
     planMsgId: null,
     planApproval: null,
+    planApproved: false,
     queued: [],
     pendingSend: null,
     draft: "",
@@ -712,7 +724,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     approvePlan: () => {
       if (!get().planApproval) return;
       post({ type: "plan_approval", approved: true });
-      set({ planApproval: null });
+      // Approval is the handover: the gate is behind the run, so the band's
+      // walk-away button unlocks (and a dispatched background run auto-closes).
+      set({ planApproval: null, planApproved: true });
       // Approval is the handover: from here the run is unattended, so a
       // background one this panel dispatched takes the panel with it and gets
       // out of the way. The close waits for the next event — proof the approval
@@ -735,7 +749,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       const note = feedback.trim();
       if (!note) return;
       post({ type: "plan_approval", approved: false, feedback: note });
-      set({ planApproval: null });
+      // The gate re-arms: the REVISED plan must earn the walk-away back.
+      set({ planApproval: null, planApproved: false });
       // The note is a user message like any other: the transcript shows what
       // the plan was sent back with, and the next run reads it as history.
       void pushMsg(makeMsg("user", note));

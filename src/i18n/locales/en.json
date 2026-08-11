@@ -413,6 +413,7 @@
     "drivingTabTip": "Show the tab TabRunner is controlling",
     "runInBackground": "Run in background",
     "runInBackgroundTip": "Close this panel — the task keeps running and tells you when it's done",
+    "runInBackgroundWait": "Approve the plan and you can walk away — the run keeps going",
     "bridgeTask": "{{client}} is running a task in your browser",
     "bridgeDriving": "{{client}} is driving your browser",
     "bridgeStopTitle": "Stops the task and hands the browser back",

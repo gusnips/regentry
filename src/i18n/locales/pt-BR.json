@@ -413,6 +413,7 @@
     "drivingTabTip": "Mostrar a aba que o TabRunner está controlando",
     "runInBackground": "Rodar em segundo plano",
     "runInBackgroundTip": "Fecha este painel — a tarefa continua rodando e te avisa quando terminar",
+    "runInBackgroundWait": "Aprove o plano e você pode sair — a tarefa continua rodando",
     "bridgeTask": "{{client}} está executando uma tarefa no seu navegador",
     "bridgeDriving": "{{client}} está controlando seu navegador",
     "bridgeStopTitle": "Interrompe a tarefa e devolve o navegador",
