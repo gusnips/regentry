@@ -449,7 +449,7 @@ async function resolveRunTab(
       } catch (e) {
         return { error: e instanceof Error ? e.message : String(e) };
       }
-      const groupId = await labelRunTab(tab.id, opts.task);
+      const groupId = await labelRunTab(tab.id, opts.task, threadGroupId);
       return { tab, adopted: true, ...(groupId !== undefined ? { groupId } : {}) };
     }
   }
@@ -476,7 +476,7 @@ async function resolveRunTab(
   }
   // Re-read after the wait — the created record predates the navigation.
   const loaded = await chrome.tabs.get(tab.id);
-  const groupId = await labelRunTab(tab.id, opts.task);
+  const groupId = await labelRunTab(tab.id, opts.task, threadGroupId);
   // Loaded and grouped before it is shown: a run that never got off the ground
   // takes its tab back without the user ever having seen it blink past.
   if (reveal) await focusTab(tab.id, loaded.windowId);
@@ -563,13 +563,50 @@ function groupTitle(task: string, mark = ""): string {
 }
 
 /**
- * Group the run's tab and name the group after the task — the strip then says
- * what that tab is. Best-effort: grouping must never fail a run.
+ * The group the thread's tabs live under, when it is still the thread's: a
+ * recorded tab must still be sitting in its recorded group — the same rule
+ * reuseContinuationTab applies. A group the user has closed, emptied, or moved
+ * its tab out of is theirs again, and the next run starts a fresh one.
  */
-async function labelRunTab(tabId: number, task: string): Promise<number | undefined> {
+export async function liveThreadGroup(tabs: LastTab[]): Promise<number | undefined> {
+  for (const t of tabs) {
+    if (t.tabId === undefined || t.groupId === undefined) continue;
+    try {
+      const tab = await chrome.tabs.get(t.tabId);
+      if (tab.groupId === t.groupId) return t.groupId;
+    } catch {
+      // The tab died — its group id may be stale; try the next record.
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Group the run's tab and name the group after the task — the strip then says
+ * what that tab is. A follow-up in the same thread files its tab under the
+ * group the thread already has (one labeled strip per conversation, not one
+ * per run); a stale id — closed group, or the group lives in another window —
+ * falls back to a fresh group. Best-effort: grouping must never fail a run.
+ */
+export async function labelRunTab(
+  tabId: number,
+  task: string,
+  threadGroupId?: number,
+): Promise<number | undefined> {
   try {
-    const groupId = await chrome.tabs.group({ tabIds: tabId });
-    await chrome.tabGroups.update(groupId, { title: groupTitle(task), color: "green" });
+    const groupId =
+      threadGroupId === undefined
+        ? await chrome.tabs.group({ tabIds: tabId })
+        : await chrome.tabs.group({ tabIds: tabId, groupId: threadGroupId }).catch(
+            () => chrome.tabs.group({ tabIds: tabId }),
+          );
+    // Re-open a settled (collapsed) group: the user just pressed send and is
+    // watching this tab — a collapsed group would swallow it.
+    await chrome.tabGroups.update(groupId, {
+      title: groupTitle(task),
+      color: "green",
+      collapsed: false,
+    });
     return groupId;
   } catch (e) {
     log.debug("tab grouping skipped:", e instanceof Error ? e.message : String(e));
@@ -601,7 +638,11 @@ async function settleRunTab(
  * go back to the tab itself when it answers a question. The final state is read
  * fresh: navigations mid-run leave the start-time title, url and group stale.
  */
-async function persistDrivenTabFor(conversationId: string, tabId: number): Promise<void> {
+async function persistDrivenTabFor(
+  conversationId: string,
+  tabId: number,
+  runGroupId: number | undefined,
+): Promise<void> {
   try {
     const tab = await chrome.tabs.get(tabId);
     if (!tab.url) return;
@@ -609,8 +650,12 @@ async function persistDrivenTabFor(conversationId: string, tabId: number): Promi
       url: tab.url,
       title: tab.title ?? "",
       tabId,
-      // Only a real group: TAB_GROUP_ID_NONE is -1, and reuse compares ids.
-      ...(tab.groupId >= 0 ? { groupId: tab.groupId } : {}),
+      // Only the group this run labeled counts as the thread's: a tab the run
+      // switched into mid-flight may sit in a group of the user's own, and that
+      // label is theirs — never ours to reuse or retitle.
+      ...(runGroupId !== undefined && tab.groupId === runGroupId
+        ? { groupId: tab.groupId }
+        : {}),
     });
   } catch {
     // The tab died during the run — nothing left to remember.

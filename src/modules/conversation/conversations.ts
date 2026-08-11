@@ -10,7 +10,8 @@ export interface LastTab {
   title: string;
   /** Opportunistic hint only — may point at a long-closed tab. */
   tabId?: number;
-  /** The tab group that run created, when it made one — reused only if it still matches. */
+  /** The thread's tab group, when the tab ended its run in one a run labeled —
+   *  reused only if it still matches. */
   groupId?: number;
 }
 
