@@ -78,20 +78,6 @@ function planFirst(calls: ToolCall[]): ToolCall[] {
   return [...calls].sort((a, b) => Number(b.name === "plan") - Number(a.name === "plan"));
 }
 
-/**
- * Does an updated plan deviate from what the user approved? Only the UPCOMING
- * steps matter — advancing `current` is progress, and rewriting finished steps
- * changes nothing the user is still exposed to. Any upcoming step that was not
- * in the approved remainder re-opens approval. The comparison is plain string
- * equality on purpose: a reworded step re-asks too, because for a gate whose
- * whole job is "nothing runs that you didn't see", over-asking beats
- * under-asking.
- */
-export function planNeedsReapproval(approved: PlanPayload, next: PlanPayload): boolean {
-  const remaining = new Set(approved.steps.slice(approved.current));
-  return next.steps.slice(next.current).some((step) => !remaining.has(step));
-}
-
 /** The user's answer to a parked plan. */
 export interface PlanApprovalOutcome {
   /** false ends the run — unless `feedback` rides along. */
@@ -419,9 +405,12 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
         const plan = result.data as PlanPayload;
         // Shown before the answer arrives — the user approves what they see.
         callbacks.onPlan?.(plan);
-        // The first proposal always asks; a later one asks again only when it
-        // deviates from the approved plan — progress alone never re-prompts.
-        const needsApproval = !approvedPlan || planNeedsReapproval(approvedPlan, plan);
+        // The first proposal always asks. A later one asks again only when the
+        // model flags its own update as a deviation (`deviates_from_approved`):
+        // string-diffing re-asked on every reworded step, so what is worth a
+        // fresh approval is the plan writer's call, not the gate's. An absent
+        // flag means silent — under-asking is the chosen failure direction.
+        const needsApproval = !approvedPlan || call.args.deviates_from_approved === true;
         if (needsApproval) {
           const outcome = (await callbacks.onPlanApproval?.(plan.steps, approvedPlan !== null)) ?? {
             approved: true,

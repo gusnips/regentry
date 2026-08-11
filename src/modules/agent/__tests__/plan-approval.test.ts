@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { runAgentLoop, planNeedsReapproval } from "../loop";
+import { runAgentLoop } from "../loop";
 import { i18n } from "@/i18n";
 import type { BrowserDriver } from "@/modules/browser";
 import type { SnapshotResult } from "@/modules/browser/snapshot";
 import type { ChatMessage, ChatProvider, ToolCall } from "@/modules/providers/types";
-import type { PlanPayload } from "@/shared/protocol";
 
 // Storage stand-in and i18n come from src/test-setup.ts (vitest setupFiles).
 
@@ -51,31 +50,12 @@ const call = (name: string, args: Record<string, unknown> = {}): ToolCall => ({
   args,
 });
 
-const planCall = (steps: string[], current = 0): ToolCall => call("plan", { steps, current });
-
-describe("planNeedsReapproval", () => {
-  const approved: PlanPayload = { steps: ["a", "b", "c"], current: 0 };
-
-  it("does not re-ask when only progress advances", () => {
-    expect(planNeedsReapproval(approved, { steps: ["a", "b", "c"], current: 2 })).toBe(false);
+const planCall = (steps: string[], current = 0, deviates?: boolean): ToolCall =>
+  call("plan", {
+    steps,
+    current,
+    ...(deviates !== undefined ? { deviates_from_approved: deviates } : {}),
   });
-
-  it("re-asks when an upcoming step is new", () => {
-    expect(planNeedsReapproval(approved, { steps: ["a", "b", "d"], current: 1 })).toBe(true);
-  });
-
-  it("re-asks when an upcoming step is reworded", () => {
-    expect(planNeedsReapproval(approved, { steps: ["a", "b", "C"], current: 1 })).toBe(true);
-  });
-
-  it("does not re-ask when upcoming work only shrinks", () => {
-    expect(planNeedsReapproval(approved, { steps: ["a", "b"], current: 1 })).toBe(false);
-  });
-
-  it("ignores edits to finished steps", () => {
-    expect(planNeedsReapproval(approved, { steps: ["A!", "b", "c"], current: 1 })).toBe(false);
-  });
-});
 
 describe("runAgentLoop plan approval gate", () => {
   it("blocks an action tool called before any plan is approved", async () => {
@@ -274,13 +254,36 @@ describe("runAgentLoop plan approval gate", () => {
     expect(approvals).toHaveLength(1); // only the first proposal asked
   });
 
-  it("re-asks when a mid-run replan changes the upcoming steps", async () => {
+  it("does not re-ask when a replan rewords steps without flagging a deviation", async () => {
+    const approvals: { steps: string[]; reapproval: boolean }[] = [];
+    // The whole point of the flag: a reworded upcoming step is not a fresh ask.
+    const provider = scriptedProvider([
+      [planCall(["Go to X", "Read X"])],
+      [planCall(["Go to X", "Read the X docs"], 1, false)],
+    ]);
+    await runAgentLoop({
+      provider,
+      driver: makeDriver(),
+      task: "go to x",
+      signal: new AbortController().signal,
+      callbacks: {
+        onPlanApproval: async (steps, reapproval) => {
+          approvals.push({ steps, reapproval });
+          return { approved: true };
+        },
+      },
+    });
+
+    expect(approvals).toHaveLength(1); // only the first proposal asked
+  });
+
+  it("re-asks when the model flags its replan as deviating from the approved plan", async () => {
     const calls: string[] = [];
     const approvals: { steps: string[]; reapproval: boolean }[] = [];
     const provider = scriptedProvider([
       [planCall(["Go to X", "Read X"])],
       [call("navigate", { url: "https://x.com" })],
-      [planCall(["Go to X", "Buy the thing"], 1)], // deviation — must re-ask
+      [planCall(["Go to X", "Buy the thing"], 1, true)], // flagged deviation — must re-ask
       [call("click")],
     ]);
     await runAgentLoop({

@@ -84,9 +84,11 @@ beside the resolver: the card lives only in panel memory, so a panel that closed
 back (exactly what clicking the away notification does) re-arms it from the worker's
 `query_run` answer — otherwise the notification led to a question with no way to say yes.
 Mid-run replans
-re-ask only when the UPCOMING steps deviate from what was approved (`planNeedsReapproval`
-— plain string equality, so a reworded step re-asks too; for a safety gate, over-asking
-beats under-asking). A bare rejection ends the run with `errors.planRejected` as the done
+re-ask only when the model says the update deviates from what was approved
+(`deviates_from_approved`, a required arg on the plan call). The judgment is the plan
+writer's, not a diff's: string equality re-asked on every reworded step, which taught
+users to approve without reading. An unflagged update — progress, rewording,
+reordering — never interrupts. A bare rejection ends the run with `errors.planRejected` as the done
 summary; a rejection WITH feedback is a revision request instead — the note rides back
 inside the plan tool's own result (a separate user message would collide with the
 tool_results turn, which Anthropic forbids), the gate re-arms, and the revised plan is

@@ -6,7 +6,7 @@ const BASE_PROMPT = `You are TabRunner, a browser automation agent. You control 
 
 ## Workflow
 
-- Plan first, always. Before ANY action that changes the browser (navigate, click, type, press_key, scroll), call "plan" with your intended steps — the run pauses there and the user must approve the plan before any action executes, and tools called before approval are rejected. The user may instead send the plan back with requested changes (the note arrives in the plan tool's result): revise your steps and call "plan" again — the revised plan goes back to the user for approval too. Looking is always allowed, so look before you plan: snapshot, screenshot, list_tabs and switch_tab run without approval, and a plan written from the real page beats one written from the task alone. Call "plan" again each time you finish a step; if you change the upcoming steps, the user is asked to approve the new plan. A purely read-only task ("what's on this page") needs no plan — answer and call "done".
+- Plan first, always. Before ANY action that changes the browser (navigate, click, type, press_key, scroll), call "plan" with your intended steps — the run pauses there and the user must approve the plan before any action executes, and tools called before approval are rejected. The user may instead send the plan back with requested changes (the note arrives in the plan tool's result): revise your steps and call "plan" again — the revised plan goes back to the user for approval too. Looking is always allowed, so look before you plan: snapshot, screenshot, list_tabs and switch_tab run without approval, and a plan written from the real page beats one written from the task alone. Call "plan" again each time you finish a step — progress updates never interrupt the user; only a plan you flag as deviating from what they approved ("deviates_from_approved") is asked about again, and that judgment is yours. A purely read-only task ("what's on this page") needs no plan — answer and call "done".
 - Always call snapshot first to see the page before interacting with it, and use its ref ids (e.g. "e12") for click and type.
 - If the task needs a page that is already open in another tab, switch to it (list_tabs, then switch_tab) instead of navigating to it fresh — the user's logged-in session lives there.
 - Navigate only to URLs the task or the current page gave you, or to a site's root or search page. Never guess a deep URL — a hallucinated path lands on a 404 or, worse, a wrong page that looks right.
@@ -317,7 +317,7 @@ const TOOL_DEFS: ToolDef[] = [
   {
     name: "plan",
     description:
-      "Post or update your plan for the task. The FIRST plan of a run pauses execution until the user approves it — no page action runs before that. The user may instead send it back with requested changes (delivered in this tool's result): revise the steps and call plan again. Call it again whenever you finish a step (pass the whole list with `current` advanced); if the upcoming steps change, the user approves the new plan before you continue. Always pass the WHOLE list — it replaces the previous one.",
+      "Post or update your plan for the task. The FIRST plan of a run pauses execution until the user approves it — no page action runs before that. The user may instead send it back with requested changes (delivered in this tool's result): revise the steps and call plan again. Call it again whenever you finish a step (pass the whole list with `current` advanced). A later plan re-prompts the user only when you flag it as deviating from what they approved (`deviates_from_approved`) — progress, rewording, and reordering never interrupt them. Always pass the WHOLE list — it replaces the previous one.",
     params: {
       type: "object",
       properties: {
@@ -331,8 +331,13 @@ const TOOL_DEFS: ToolDef[] = [
           description:
             "0-based index of the step you are working on now. Pass the number of steps once every one is finished.",
         },
+        deviates_from_approved: {
+          type: "boolean",
+          description:
+            "Your judgment, not a diff: true only when this update meaningfully changes the upcoming steps the user approved — a new destination, account, or target, a different kind of action, added or dropped work they would want to veto. Rewording, reordering, splitting a step, and marking progress are all false. true parks the run for a fresh approval, so reserve it for changes worth the interruption.",
+        },
       },
-      required: ["steps", "current"],
+      required: ["steps", "current", "deviates_from_approved"],
     },
   },
   {
