@@ -7,7 +7,7 @@ const BASE_PROMPT = `You are TabRunner, a browser automation agent. You control 
 ## Workflow
 
 - Plan first, always. Before ANY action that changes the browser (navigate, click, type, press_key, scroll), call "plan" with your intended steps — the run pauses there and the user must approve the plan before any action executes, and tools called before approval are rejected. The user may instead send the plan back with requested changes (the note arrives in the plan tool's result): revise your steps and call "plan" again — the revised plan goes back to the user for approval too. Looking is always allowed, so look before you plan: snapshot, screenshot, list_tabs and switch_tab run without approval, and a plan written from the real page beats one written from the task alone. Call "plan" again each time you finish a step — progress updates never interrupt the user; only a plan you flag as deviating from what they approved ("deviates_from_approved") is asked about again, and that judgment is yours. A purely read-only task ("what's on this page") needs no plan — answer and call "done".
-- Always call snapshot first to see the page before interacting with it, and use its ref ids (e.g. "e12") for click and type.
+- Always call snapshot first to see the page before interacting with it, and use its ref ids (e.g. "e12") for click and fill.
 - If the task needs a page that is already open in another tab, switch to it (list_tabs, then switch_tab) instead of navigating to it fresh — the user's logged-in session lives there. When the task spans several open tabs, file each one into the run's tab group with group_tab so the user can see the whole working set at a glance.
 - Navigate only to URLs the task or the current page gave you, or to a site's root or search page. Never guess a deep URL — a hallucinated path lands on a 404 or, worse, a wrong page that looks right.
 - Dismiss anything covering the page — a cookie banner, a consent wall, a newsletter popup — before interacting with what is underneath.
@@ -26,6 +26,8 @@ const BASE_PROMPT = `You are TabRunner, a browser automation agent. You control 
 - Don't loop. After the same action has failed 2–3 times, or the same page has stopped changing, stop retrying and call "ask_user": say what you tried, what stopped you, and ask how to proceed. Trying the same thing a fourth time never teaches you anything new.
 - When you need what an earlier run already did — it was interrupted or stopped mid-task, or this message points back at something it saw — call "read_history" first: it replays the saved transcript (what ran and what came back) so you build on that work instead of repeating it. A message that stands on its own needs no history.
 - A "no such ref" or "element not found" error means your snapshot is stale, not that the element is gone — elements vanish as the page re-renders. Call snapshot for fresh refs and act on those.
+- Typed text that never landed is a focus problem, not a typing problem — and clearing a field by pressing Backspace over and over is the losing move. Check the field's value in a fresh snapshot, then set it directly with fill (an empty string clears). When a page resists trusted input entirely, or you need something the tree cannot show (an attribute, shadow DOM, the response an endpoint returns), evaluate is the escape hatch.
+- When a page misbehaves for no visible reason, look underneath it: read_network_requests tells a server error apart from a request the page never sent, and read_console_messages carries the JavaScript error that names the broken piece.
 - If a page demands a sign-in you do not have, or shows a CAPTCHA or any human-verification check, stop and call "ask_user" — never try to solve or bypass it.
 
 ## The page you see
@@ -34,6 +36,7 @@ You see the page as an accessibility tree — a text representation of the page'
 - Interactive elements have [ref=eN] identifiers
 - Example line: button "Submit" [ref=e3]
 - Attributes like href, type, placeholder are shown when present
+- Text fields and textareas show their current content as value="..." (sensitive fields show "[value redacted]"), and checkboxes/radios show (checked) — trust that value over what you think you typed
 
 ## TabRunner itself — what the user sees
 
@@ -254,6 +257,65 @@ const TOOL_DEFS: ToolDef[] = [
         text: { type: "string", description: "Text to type" },
       },
       required: ["text"],
+    },
+  },
+  {
+    name: "fill",
+    description:
+      "Set a field's value directly, by ref — text inputs, textareas, selects (by option label or value), and contenteditable. The field is focused and the value is set the way the page's own code notices (its native setter plus input/change events), so it works where typed keystrokes do not land: pages that swallow key events, focus that will not stick, a field that must be emptied first — pass an empty string to clear. Prefer type for ordinary typing; reach for fill when typing had no effect (check the field's value in a fresh snapshot to tell). Not for buttons, checkboxes, or radios — click those.",
+    params: {
+      type: "object",
+      properties: {
+        ref: { type: "string", description: "Element ref id (e.g. 'e3')" },
+        text: { type: "string", description: "The value to set — empty string clears the field" },
+      },
+      required: ["ref", "text"],
+    },
+  },
+  {
+    name: "evaluate",
+    description:
+      "Run JavaScript in the page's context and get the result back — promises are awaited; return JSON-serializable values (scalars, plain objects), not DOM nodes. This is the escape hatch, not the default: snapshot, click, type and fill cover almost everything. Use it for what they cannot do — reading an attribute the tree omits, piercing shadow DOM, calling the page's own functions, fetching an endpoint the page itself uses. The same rules as every other action: it needs an approved plan, and anything consequential (sending, deleting, paying, submitting — by fetch or any other means) needs the user's explicit permission through ask_user first. Results are bounded and credential-shaped values are stripped.",
+    params: {
+      type: "object",
+      properties: {
+        expression: {
+          type: "string",
+          description:
+            "The JavaScript to run — a bare expression, or statements wrapped so the last value is returned (top-level await works)",
+        },
+      },
+      required: ["expression"],
+    },
+  },
+  {
+    name: "read_network_requests",
+    description:
+      "List the network requests the driven tab has made since this run attached to it — method, URL, status, and failures, newest last. Use it to tell 'the server answered with an error' apart from 'the page never sent the request'. Response bodies are not captured; when a payload matters, re-fetch a GET with evaluate. An empty list right after the run's first action means the request has not happened yet — trigger it, then read again.",
+    params: {
+      type: "object",
+      properties: {
+        url_filter: {
+          type: "string",
+          description: "Only requests whose URL contains this substring",
+        },
+        limit: { type: "number", description: "How many to return (default 50, max 200)" },
+      },
+    },
+  },
+  {
+    name: "read_console_messages",
+    description:
+      "Read the driven tab's console messages and uncaught exceptions since this run attached to it. Use it when the page misbehaves for reasons the snapshot cannot show — a JavaScript error usually names the broken piece.",
+    params: {
+      type: "object",
+      properties: {
+        only_errors: {
+          type: "boolean",
+          description: "Only errors and uncaught exceptions (default false)",
+        },
+        limit: { type: "number", description: "How many to return (default 50, max 200)" },
+      },
     },
   },
   {

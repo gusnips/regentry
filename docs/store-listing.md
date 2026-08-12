@@ -297,7 +297,9 @@ works.
 ```
 TabRunner clicks and types on the user's behalf. Chrome only produces trusted input events through
 the DevTools Protocol; events dispatched from a content script are synthetic, and login forms,
-payment fields and most modern web apps ignore them. TabRunner attaches to the single tab the
+payment fields and most modern web apps ignore them. The same channel runs the agent's short
+in-page scripts (an approved plan covers every action) and reads the tab's network and console
+activity — addresses and statuses, never response bodies. TabRunner attaches to the single tab the
 user's task is running in and detaches when the task ends. Chrome's "started debugging" banner
 stays visible for the whole run, so the user always knows.
 ```
@@ -307,7 +309,8 @@ stays visible for the whole run, so the user always knows.
 ```
 Injects the script that turns the current page into a compact accessibility tree (roles, names and
 element references) for the AI model to read. This is what lets the model work without ever
-receiving the page's raw HTML.
+receiving the page's raw HTML. The same mechanism sets a form field's value when trusted
+keystrokes don't land on a misbehaving page.
 ```
 
 **`sidePanel`**

@@ -70,6 +70,33 @@ export async function executeTool(
         await driver.type(call.args.text as string);
         return { ok: true };
 
+      case "fill":
+        await driver.fill(call.args.ref as string, call.args.text as string);
+        return { ok: true };
+
+      case "evaluate": {
+        const value = await driver.evaluate(call.args.expression as string);
+        return { ok: true, data: { result: value ?? null } };
+      }
+
+      case "read_network_requests":
+        return {
+          ok: true,
+          data: await driver.readNetworkRequests(
+            call.args.url_filter as string | undefined,
+            call.args.limit as number | undefined,
+          ),
+        };
+
+      case "read_console_messages":
+        return {
+          ok: true,
+          data: await driver.readConsoleMessages(
+            call.args.only_errors as boolean | undefined,
+            call.args.limit as number | undefined,
+          ),
+        };
+
       case "press_key":
         await driver.key(call.args.key as string);
         return { ok: true };
@@ -166,6 +193,22 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
   }
   if (tool === "press_key") {
     return i18n.t("errors.keyPressed");
+  }
+  if (tool === "fill") {
+    return i18n.t("errors.fieldFilled");
+  }
+  if (tool === "evaluate") {
+    return i18n.t("errors.evaluated");
+  }
+  if (tool === "read_network_requests" && data && typeof data === "object") {
+    return i18n.t("errors.requestsRead", {
+      count: (data as { total?: number }).total ?? 0,
+    });
+  }
+  if (tool === "read_console_messages" && data && typeof data === "object") {
+    return i18n.t("errors.messagesRead", {
+      count: (data as { total?: number }).total ?? 0,
+    });
   }
   if (tool === "navigate") {
     return i18n.t("errors.navigated");

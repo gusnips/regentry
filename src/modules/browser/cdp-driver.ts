@@ -54,6 +54,10 @@ async function attach(tabId: TabId): Promise<void> {
     await chrome.debugger.attach({ tabId }, "1.3");
     attachedTabs.add(tabId);
     activeTab = tabId;
+    // Feed the run's network/console capture (inspect.ts) from the attach on —
+    // by the time the model looks, the failing request is already in the log.
+    await send("Network.enable");
+    await send("Runtime.enable");
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("Another debugger is already attached")) {
@@ -197,6 +201,51 @@ export async function screenshot(): Promise<string> {
     quality: 80,
   })) as { data: string };
   return `data:image/jpeg;base64,${result.data}`;
+}
+
+/** A runaway page script gets this long before CDP terminates the evaluation. */
+const EVAL_TIMEOUT_MS = 30_000;
+
+interface EvalResponse {
+  result: { type: string; value?: unknown; description?: string };
+  exceptionDetails?: { text: string; exception?: { description?: string } };
+}
+
+/**
+ * Run JavaScript in the page's main world — the model's escape hatch when the
+ * tree and trusted input can't do the job. CDP rather than executeScript:
+ * page CSP does not apply to debugger evaluation (a string eval injected into
+ * the MAIN world dies on any strict script-src page), awaitPromise and
+ * replMode come free, and the debugger is already attached for trusted input.
+ */
+export async function evaluateRaw(expression: string): Promise<unknown> {
+  const attempt = (expr: string, replMode: boolean) =>
+    send("Runtime.evaluate", {
+      expression: expr,
+      returnByValue: true,
+      awaitPromise: true,
+      replMode,
+      // What the DevTools console grants: clicks and popups the code triggers
+      // behave as if the user had acted.
+      userGesture: true,
+      timeout: EVAL_TIMEOUT_MS,
+    }) as Promise<EvalResponse>;
+
+  let r = await attempt(expression, true);
+  // Models write statements with a top-level `return`, which REPL mode
+  // rejects — rerun wrapped as an async IIFE, the console's own fallback.
+  if (r.exceptionDetails && /Illegal return statement/.test(r.exceptionDetails.text)) {
+    r = await attempt(`(async () => {\n${expression}\n})()`, false);
+  }
+  if (r.exceptionDetails) {
+    throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
+  }
+  const { result } = r;
+  if (result.value !== undefined) return result.value;
+  if (result.type === "undefined") return null;
+  // returnByValue drops what JSON can't carry (a DOM node, a function) — the
+  // description ("div.cart-summary") tells the model to serialize it in-page.
+  return result.description ?? null;
 }
 
 /** Navigate the tab to a URL via chrome.tabs (not CDP — works pre-attach). */

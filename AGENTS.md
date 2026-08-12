@@ -85,7 +85,10 @@ never reach the service-worker bundle.
   or an explicit URL. Runs survive panel close.
   Action tools
   are gated on user-approved plans; `ask_user` enforces the consequential-action policy.
-- `browser/` — accessibility-tree snapshot, CDP driver (trusted input), on-page badge + pulsing
+- `browser/` — accessibility-tree snapshot, CDP driver (trusted input), `fill.ts` (page-side
+  field set when keystrokes don't land), `evaluate` via `Runtime.evaluate` (CSP-exempt) behind
+  `sanitize.ts` (credential-blocking output caps), `inspect.ts` (network/console rings fed at
+  debugger attach), `inject.ts` (the one executeScript helper), on-page badge + pulsing
   favicon dot on the driven tab, `restricted-url.ts`, `status-widget.ts`, `action-badge.ts`.
   Background-only. The badge and the pill are injected, so both are best-effort and can be
   absent (PDF, `file://`, CSP, or the `widgetHidden` pref); the toolbar badge is the one run

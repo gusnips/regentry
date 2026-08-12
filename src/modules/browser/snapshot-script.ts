@@ -125,10 +125,6 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
 
   function resolveName(el: HTMLElement): string {
     const tag = el.tagName.toLowerCase();
-    if (isSensitive(el)) {
-      if (tag === "select") return (el as HTMLSelectElement).value ? "[value redacted]" : "";
-      return (el as HTMLInputElement).value ? "[value redacted]" : "";
-    }
     if (tag === "select") {
       const sel = el as HTMLSelectElement;
       const opt = sel.querySelector("option[selected]") || sel.options[sel.selectedIndex];
@@ -155,11 +151,11 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
       }
     }
     if (tag === "input") {
+      // A submit button's value IS its visible label — any other input's value
+      // is field state, which formatLine shows as its own attribute.
       const ie = el as HTMLInputElement;
-      const type = ie.getAttribute("type") || "";
       const val = ie.getAttribute("value");
-      if (type === "submit" && val?.trim()) return val.trim();
-      if (ie.value && ie.value.length < 50 && ie.value.trim()) return ie.value.trim();
+      if ((ie.getAttribute("type") || "") === "submit" && val?.trim()) return val.trim();
     }
     if (tag === "button" || tag === "a" || tag === "summary") {
       const t = directText(el);
@@ -258,6 +254,21 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
     if (type) line += ` type="${type}"`;
     const ph = el.getAttribute("placeholder");
     if (ph) line += ` placeholder="${ph}"`;
+    // Field state the tree otherwise hides: the current value (a long pasted
+    // value is exactly the one the model needs to see) and the checked mark.
+    const tag = el.tagName.toLowerCase();
+    if (tag === "input" || tag === "textarea") {
+      const input = el as HTMLInputElement;
+      const type = (input.getAttribute("type") || "").toLowerCase();
+      if (type === "checkbox" || type === "radio") {
+        if (input.checked) line += " (checked)";
+      } else if (input.value) {
+        const shown = isSensitive(input)
+          ? "[value redacted]"
+          : input.value.replace(/\s+/g, " ").substring(0, 80).replace(/"/g, '\\"');
+        line += ` value="${shown}"`;
+      }
+    }
     return line;
   }
 

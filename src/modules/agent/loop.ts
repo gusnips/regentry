@@ -57,11 +57,18 @@ const MAX_ATTACHED_IMAGES = 2;
  * normal opening move), and gating it produced a red ✗ on the very first step
  * of runs that were behaving correctly. Focus-stealing is the driver's call
  * (activateOnSwitch), not the gate's.
+ *
+ * evaluate IS here: page-context JS can do anything a click can and more, so
+ * it waits for the same approval — the code itself rides in the step row's
+ * args, which is the transparency the gate's yes rests on. read_network_requests
+ * and read_console_messages stay free: they only watch what the tab already did.
  */
 const ACTION_TOOLS = new Set([
   "navigate",
   "click",
   "type",
+  "fill",
+  "evaluate",
   "press_key",
   "scroll_down",
   "scroll_up",

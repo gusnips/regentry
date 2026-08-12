@@ -93,9 +93,13 @@ opens a direct-control session, and every `browser_*` tool drives the real tab:
 | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `browser_start(goal)`                       | Take the wheel, and get the first snapshot. The goal names the conversation the user sees. |
 | `browser_snapshot()`                        | The page as an accessibility tree, with a `ref` on every interactive element.              |
+| `browser_network_requests(filter?, limit?)` | What the tab asked the network — method, URL, status, failures. No bodies.                 |
+| `browser_console_messages(errors?, limit?)` | The tab's console output and uncaught exceptions.                                          |
 | `browser_navigate(url)`                     | Go somewhere.                                                                              |
 | `browser_click(ref)`                        | Click by ref — a real trusted event, not a synthetic dispatch.                             |
 | `browser_type(text)`                        | Type into whatever is focused (click the field first).                                     |
+| `browser_fill(ref, text)`                   | Set a field's value by ref — lands where typed keystrokes don't; `""` clears.              |
+| `browser_evaluate(js)`                      | Run JS in the page — attributes, shadow DOM, the page's own fetch. Bounded, credential-stripped. |
 | `browser_press_key(key)`                    | `Enter`, `Escape`, `Tab`, an arrow.                                                        |
 | `browser_scroll(direction, amount?)`        | Content below the fold isn't in a snapshot until you scroll to it.                         |
 | `browser_tabs()` / `browser_switch_tab(id)` | Find another tab, re-target every later action at it.                                      |

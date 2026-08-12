@@ -459,11 +459,24 @@ function renderToolResult(
   tool: string,
   result: { ok?: boolean; data?: unknown; error?: string },
 ): string {
-  const data = (result.data ?? {}) as { pageContent?: string; tabs?: unknown[]; url?: string };
+  const data = (result.data ?? {}) as {
+    pageContent?: string;
+    tabs?: unknown[];
+    url?: string;
+    result?: unknown;
+    requests?: unknown[];
+    messages?: unknown[];
+    note?: string;
+  };
   const parts: string[] = [`${tool}: ${result.ok === false ? "failed" : "ok"}`];
   if (result.error) parts.push(`error: ${result.error}`);
   if (data.url) parts.push(`url: ${data.url}`);
   if (data.tabs) parts.push(JSON.stringify(data.tabs, null, 2));
+  // evaluate's payload — already sanitized and bounded extension-side.
+  if (data.result !== undefined) parts.push("result:", JSON.stringify(data.result, null, 2));
+  if (data.requests) parts.push("requests:", JSON.stringify(data.requests, null, 2));
+  if (data.messages) parts.push("messages:", JSON.stringify(data.messages, null, 2));
+  if (data.note) parts.push(`note: ${data.note}`);
   if (data.pageContent) {
     parts.push(
       "",
@@ -509,6 +522,42 @@ server.registerTool(
 );
 
 server.registerTool(
+  "browser_network_requests",
+  {
+    title: "List network requests",
+    description:
+      "The requests the driven tab has made since the session attached — method, URL, status, failures. Tells 'the server answered with an error' apart from 'the page never sent it'. Response bodies are not captured; re-fetch a GET with browser_evaluate when the payload matters.",
+    inputSchema: {
+      url_filter: z.string().optional().describe("Only URLs containing this substring."),
+      limit: z.number().optional().describe("How many to return (default 50, max 200)."),
+    },
+  },
+  async ({ url_filter, limit }) =>
+    act("read_network_requests", {
+      ...(url_filter ? { url_filter } : {}),
+      ...(limit === undefined ? {} : { limit }),
+    }),
+);
+
+server.registerTool(
+  "browser_console_messages",
+  {
+    title: "Read console output",
+    description:
+      "The driven tab's console messages and uncaught exceptions since the session attached. When a page misbehaves for no visible reason, the JavaScript error usually names the broken piece.",
+    inputSchema: {
+      only_errors: z.boolean().optional().describe("Only errors and exceptions (default false)."),
+      limit: z.number().optional().describe("How many to return (default 50, max 200)."),
+    },
+  },
+  async ({ only_errors, limit }) =>
+    act("read_console_messages", {
+      ...(only_errors ? { only_errors } : {}),
+      ...(limit === undefined ? {} : { limit }),
+    }),
+);
+
+server.registerTool(
   "browser_navigate",
   {
     title: "Go to a URL",
@@ -538,6 +587,35 @@ server.registerTool(
     inputSchema: { text: z.string().describe("The text to type.") },
   },
   async ({ text: body }) => act("type", { text: body }),
+);
+
+server.registerTool(
+  "browser_fill",
+  {
+    title: "Set a field's value",
+    description:
+      "Set the value of a field by ref — text inputs, textareas, selects (by option label or value), contenteditable. The value is set the way the page's own code notices, so it lands where typed keystrokes don't (pages that swallow key events, focus that won't stick) — pass an empty string to clear a field. Returns the resulting page.",
+    inputSchema: {
+      ref: z.string().describe('A ref from the latest snapshot, e.g. "e12".'),
+      text: z.string().describe("The value to set — empty string clears the field."),
+    },
+  },
+  async ({ ref, text: body }) => act("fill", { ref, text: body }),
+);
+
+server.registerTool(
+  "browser_evaluate",
+  {
+    title: "Run JavaScript in the page",
+    description:
+      "Run JavaScript in the driven tab's page context and get the result back — promises awaited, JSON-serializable values only (not DOM nodes). For what the other tools cannot do: reading an attribute the tree omits, piercing shadow DOM, calling the page's own functions, fetching an endpoint the page itself uses. Results are bounded and credential-shaped values are stripped. A direct session has no plan gate — the code runs exactly as written, so the consequential-action rule (paying, sending on the user's behalf, deleting, submitting, by fetch or any other means) is yours to put to the user first. Returns the resulting page.",
+    inputSchema: {
+      expression: z
+        .string()
+        .describe("The JavaScript to run — top-level await works; the last value is returned."),
+    },
+  },
+  async ({ expression }) => act("evaluate", { expression }),
 );
 
 server.registerTool(

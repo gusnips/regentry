@@ -37,7 +37,12 @@ accessibility-tree snapshot** (`[ref=e12] button "Submit"`) — not raw HTML, no
 or media. That snapshot, your task text, the conversation so far, and (when it captures one) a
 screenshot of the page are sent **to the provider you configured**, using your own API key, over
 HTTPS. The provider's replies and its tool calls come back to the extension, which executes them
-in your browser as real user input.
+in your browser as real user input. When the tree and keystrokes aren't enough, a tool call can
+also **run a short script inside the page** (to set a stubborn field's value, or read something
+the tree omits) and read the tab's **network and console activity** (addresses and statuses —
+never response bodies). Script results are size-bounded and stripped of anything that looks like
+a credential before they join the conversation, and — like every other action — they run only
+inside a task whose plan you approved.
 
 **TabRunner never uploads your data anywhere else.** The complete list of network recipients is:
 
@@ -59,7 +64,9 @@ data.
 ## 3. What stays private
 
 - **Sensitive fields never leave the page.** Password, card-number, and other `password`/sensitive
-  inputs are excluded from the accessibility tree, so they are not sent to the model.
+  inputs are excluded from the accessibility tree, so they are not sent to the model. And before
+  any script result can join the conversation, values that look like credentials — tokens, API
+  keys, cookies — are stripped.
 - **Screenshots are transient.** A screenshot taken for the model's context is compressed (JPEG
   q80) and is stripped before the conversation is saved to storage. Your own image attachments,
   when the model supports images, are stored as part of that conversation.
@@ -85,8 +92,8 @@ data.
 
 | Permission                      | What it's for                                                                                                                                                      |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `debugger`                      | Real trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol so sites can't ignore them.                                            |
-| `scripting`                     | Injects the accessibility-tree snapshot script into the tab TabRunner reads.                                                                                       |
+| `debugger`                      | Real trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol so sites can't ignore them. Also the channel for the in-page script tool and the network/console log, all inside the task you approved. |
+| `scripting`                     | Injects the accessibility-tree snapshot script into the tab TabRunner reads, and the one that sets a field's value when keystrokes don't land.                                                                                       |
 | `sidePanel`                     | Hosts the chat UI where you write tasks and watch the run.                                                                                                         |
 | `tabs`                          | Adopts your current tab or opens a task's own tab, reads URL/title, and switches tabs when a task references another open tab.                                      |
 | `activeTab`                     | Grants access to the tab you submit a task from, per action.                                                                                                       |

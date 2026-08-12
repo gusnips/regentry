@@ -18,7 +18,7 @@ if (typeof globalThis.chrome === "undefined") {
   const noop = { addListener: () => {}, removeListener: () => {} };
   (globalThis as Record<string, unknown>).chrome = {
     tabs: { onRemoved: noop, onUpdated: noop },
-    debugger: { onDetach: noop },
+    debugger: { onDetach: noop, onEvent: noop },
   };
 }
 

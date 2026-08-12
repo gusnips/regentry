@@ -1,5 +1,9 @@
 import { captureSnapshot, resolveRefRect } from "./snapshot";
 import type { SnapshotOptions, SnapshotResult } from "./snapshot";
+import { fillField } from "./fill";
+import { sanitizeForModel } from "./sanitize";
+import { listRequests, listConsoleMessages } from "./inspect";
+import type { RequestEntry, ConsoleEntry } from "./inspect";
 import {
   clickAt,
   typeText,
@@ -7,6 +11,7 @@ import {
   pressKey,
   scroll,
   screenshot,
+  evaluateRaw,
   navigateToUrl,
   ensureAttached,
 } from "./cdp-driver";
@@ -36,6 +41,26 @@ export interface BrowserDriver {
   click(ref: string): Promise<{ x: number; y: number }>;
   type(text: string): Promise<void>;
   insert(text: string): Promise<void>;
+  /**
+   * Set a field's value page-side (native setter + input/change) — the fallback
+   * for when trusted keystrokes don't land. Runs via scripting, no debugger.
+   */
+  fill(ref: string, text: string): Promise<void>;
+  /**
+   * Run JS in the page's main world (CDP — CSP-exempt, promises awaited) and
+   * hand back the sanitized, bounded result. Needs the debugger.
+   */
+  evaluate(expression: string): Promise<unknown>;
+  /** The tab's network log since attach — method, url, status, failure; no bodies. */
+  readNetworkRequests(
+    urlFilter?: string,
+    limit?: number,
+  ): Promise<{ requests: RequestEntry[]; total: number; note?: string }>;
+  /** The tab's console output and uncaught exceptions since attach. */
+  readConsoleMessages(
+    onlyErrors?: boolean,
+    limit?: number,
+  ): Promise<{ messages: ConsoleEntry[]; total: number; note?: string }>;
   key(key: string): Promise<void>;
   scrollDown(amount?: number): Promise<void>;
   scrollUp(amount?: number): Promise<void>;
@@ -112,6 +137,28 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
     async insert(text) {
       await ensureAttached(current);
       await insertText(text);
+    },
+
+    async fill(ref, text) {
+      // Page-side by design: no debugger, no infobar — the same mechanism the
+      // snapshot uses, aimed at one element.
+      await fillField(current, ref, text);
+    },
+
+    async evaluate(expression) {
+      await ensureAttached(current);
+      return sanitizeForModel(await evaluateRaw(expression));
+    },
+
+    async readNetworkRequests(urlFilter, limit) {
+      // Attach first so the capture is live even on a run that has only read.
+      await ensureAttached(current);
+      return listRequests(current, urlFilter, limit);
+    },
+
+    async readConsoleMessages(onlyErrors, limit) {
+      await ensureAttached(current);
+      return listConsoleMessages(current, onlyErrors, limit);
     },
 
     async key(key) {

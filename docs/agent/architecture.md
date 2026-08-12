@@ -130,6 +130,31 @@ window's active tab while the run board is non-empty — never the driven tab, w
 badge — moved on activation/focus churn, removed everywhere when idle or hidden via the
 `widgetHidden` pref.
 
+**The tree stays primary, but it is not the whole toolbox.** Form fields carry their
+current state in the snapshot (`value="…"`, redacted when sensitive; `(checked)` on
+checkbox/radio) because the one value the model must verify is the one a buggy page eats.
+When trusted keystrokes don't land — swallowed handlers, focus that won't stick, a field
+to clear — `fill(ref, text)` (`fill.ts`) sets the value page-side through the element's
+own prototype setter plus input/change, the one path every framework treats as real input
+(contenteditable goes through `execCommand("insertText")`, deprecated but the only
+insertion rich-text editors respect). When the tree can't answer at all — an attribute it
+omits, shadow DOM, the page's own functions, an endpoint the page uses — `evaluate`
+(`cdp-driver.ts`'s `evaluateRaw`) runs the model's JS via CDP `Runtime.evaluate`: exempt
+from page CSP (a string eval injected into the MAIN world would die on strict
+`script-src`), promises awaited, replMode with an async-IIFE retry for top-level
+`return`. Its result crosses `sanitize.ts` before the model sees it: depth/string/array
+caps plus a total budget, and credential-shaped values (JWTs, bearer strings, cookie
+pairs, key names like `token`/`secret`) blocked outright — the run drives logged-in
+sessions, so blocking beats leaking into the transcript and the provider's logs. Both sit
+in `ACTION_TOOLS`: page-context JS can do anything a click can, so it waits for the same
+plan approval, with the code visible in the step row's args. The read half —
+`read_network_requests`, `read_console_messages` (`inspect.ts`) — stays outside the gate:
+per-tab ring buffers fed by the Network/Runtime domains enabled at debugger attach, so
+the failing request is already in the log when the model thinks to look. Requests carry
+no bodies by design (bodies are where tokens live; evaluate can re-fetch a GET). All
+page-side injection goes through `inject.ts`'s `runInPage`, the one home of the
+transient-vs-restricted error mapping.
+
 **Three ambient signals, and only one of them is guaranteed.** The indicator and the pill
 are both `chrome.scripting.executeScript`, which a restricted page, a PDF viewer, a
 `file://` url without file access, or a hostile CSP can refuse — silently, because a run

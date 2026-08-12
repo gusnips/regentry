@@ -70,7 +70,10 @@ const groupCalls: { tabIds: number | number[]; groupId?: number }[] = [];
       updates.push({ window: windowId, props });
     },
   },
-  debugger: { onDetach: { addListener: () => {} } },
+  debugger: {
+    onDetach: { addListener: () => {} },
+    onEvent: { addListener: () => {} },
+  },
 };
 
 const { createDriver } = await import("../driver");

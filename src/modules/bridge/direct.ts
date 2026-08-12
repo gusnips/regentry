@@ -36,7 +36,16 @@ const log = createLogger("bridge");
  */
 
 /** Actions that change the page, and therefore invalidate every existing ref. */
-const MUTATING = new Set(["navigate", "click", "type", "press_key", "scroll_down", "scroll_up"]);
+const MUTATING = new Set([
+  "navigate",
+  "click",
+  "type",
+  "fill",
+  "evaluate",
+  "press_key",
+  "scroll_down",
+  "scroll_up",
+]);
 
 /**
  * ponytail: a session left open would hold the run slot against the panel
