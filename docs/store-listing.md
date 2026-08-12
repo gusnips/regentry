@@ -14,6 +14,11 @@ the matching block here first.
 > This is a metadata-only fix: **paste the corrected §2 blocks into the dashboard and resubmit the
 > same v0.2.3 upload** — no new package, per [§5](#5-when-review-returns). The review is no longer
 > in flight, so editing the listing now is safe; the clock restarts on resubmission either way.
+>
+> Also staged for the same resubmission: §2's example task is now the site's flagship
+> (invoice → expense report, same wording in all three locales), and step 2 dropped the
+> accessibility-tree jargon — the agent reads pages and manipulates the DOM, and the listing
+> doesn't need either term.
 
 ---
 
@@ -92,9 +97,10 @@ sites you already use, until the task you described is done.
 
 ## How it works
 
-1. Describe a task in the side panel — e.g. "open my inbox and summarize the last 3 emails".
-2. Approve the plan it comes back with. TabRunner reads the page's accessibility tree and drives
-   the tab: navigate, click, type, scroll, screenshot — as real user input.
+1. Describe a task in the side panel — e.g. "pull the invoice from my inbox into the expense
+   report".
+2. Approve the plan it comes back with. TabRunner then works the tab like you would — reading the
+   page, clicking, typing, scrolling — with real user input.
 3. Watch it work step by step, or send it to the background and get a notification when it's done.
 
 ## Private by design
@@ -148,10 +154,10 @@ você já usa, até concluir a tarefa que você descreveu.
 
 ## Como funciona
 
-1. Descreva uma tarefa no painel lateral — por exemplo: "abra minha caixa de entrada e resuma os 3
-   últimos e-mails".
-2. Aprove o plano que ele propõe. O TabRunner lê a árvore de acessibilidade da página e conduz a
-   aba: navegar, clicar, digitar, rolar, capturar tela — como entrada real do usuário.
+1. Descreva uma tarefa no painel lateral — por exemplo: "pegue a nota fiscal no meu e-mail e lance
+   no relatório de despesas".
+2. Aprove o plano que ele propõe. O TabRunner então usa a aba como você faria — lendo a página,
+   clicando, digitando, rolando — com entrada real do usuário.
 3. Acompanhe passo a passo, ou mande a tarefa para segundo plano e receba uma notificação quando
    terminar.
 
@@ -206,11 +212,10 @@ sitios que ya usas, hasta terminar la tarea que describiste.
 
 ## Cómo funciona
 
-1. Describe una tarea en el panel lateral — por ejemplo: "abre mi bandeja de entrada y resume los
-   últimos 3 correos".
-2. Aprueba el plan que propone. TabRunner lee el árbol de accesibilidad de la página y conduce la
-   pestaña: navegar, hacer clic, escribir, desplazar, capturar pantalla — como entrada real del
-   usuario.
+1. Describe una tarea en el panel lateral — por ejemplo: "pasa la factura de mi correo al informe
+   de gastos".
+2. Aprueba el plan que propone. TabRunner entonces usa la pestaña como lo harías tú — leyendo la
+   página, haciendo clic, escribiendo, desplazando — con entrada real del usuario.
 3. Míralo paso a paso, o envía la tarea al segundo plano y recibe una notificación cuando termine.
 
 ## Privado por diseño
