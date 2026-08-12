@@ -338,6 +338,7 @@
     "adjust": "Ajustar",
     "adjustPlaceholder": "O que deve mudar?",
     "revisionNote": "The user sent this plan back with requested changes. Call `plan` again with a revised list — it goes back to the user for approval, and no page action runs before that.",
+    "narrowedNote": "This list dropped steps the run already finished — the progress card lost them. Call `plan` again with the whole arc (finished steps included, cursor past them) unless the user cancelled those steps.",
     "reject": "Rejeitar"
   },
   "run": {

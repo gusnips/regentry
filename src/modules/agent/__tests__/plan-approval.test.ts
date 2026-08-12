@@ -382,4 +382,34 @@ describe("runAgentLoop plan approval gate", () => {
 
     expect(calls).toEqual(["navigate"]);
   });
+
+  it("nudges for the whole arc when a replan drops finished steps, and lands anyway", async () => {
+    const plans: string[][] = [];
+    const provider = scriptedProvider([
+      [planCall(["Go to X", "Read X", "Wrap up"], 2)],
+      [planCall(["Wrap up"], 0, false)], // narrowed — the finished steps vanished
+      [planCall(["Go to X", "Read X", "Wrap up"], 2)], // re-sent whole after the note
+    ]);
+    const wire: ChatMessage[] = await runAgentLoop({
+      provider,
+      driver: makeDriver(),
+      task: "go to x",
+      signal: new AbortController().signal,
+      callbacks: {
+        onPlanApproval: async () => ({ approved: true }),
+        onPlan: (p) => plans.push(p.steps),
+      },
+    });
+
+    // The narrowed list still became the card — the model is the list's one
+    // writer; the note only asks it to re-send the whole arc.
+    expect(plans[1]).toEqual(["Wrap up"]);
+    const planResults = wire
+      .filter((m) => m.role === "tool_results")
+      .flatMap((m) => m.toolResults ?? [])
+      .filter((r) => r.id === "c-plan");
+    expect(planResults[0]?.content).not.toContain("whole arc");
+    expect(planResults[1]?.content).toContain(i18n.t("plan.narrowedNote"));
+    expect(planResults[2]?.content).not.toContain("whole arc"); // converged, no repeat
+  });
 });

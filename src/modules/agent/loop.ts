@@ -387,6 +387,9 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // result (a separate user message would butt against the tool_results
       // one, and Anthropic rejects consecutive same-role turns).
       let revision: string | undefined;
+      // A whole-arc nudge for the plan call's result — set when a replan
+      // shrinks below work the run already finished.
+      let note: string | undefined;
 
       // The gate: no page action runs before the user has approved a plan.
       // The tool-result error tells the model exactly how to unblock itself.
@@ -452,7 +455,17 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
             approvedPlan = null;
           }
         }
-        if (!revision) approvedPlan = plan;
+        if (!revision) {
+          // The cursor moving backwards is the one smell a narrowed list can't
+          // hide: the new arc claims less done than the run already finished,
+          // so the card just lost its history. The update still lands (the
+          // model is the list's one writer — merging lists would put words in
+          // its mouth); the note asks it to re-send the whole arc.
+          if (approvedPlan && plan.current < approvedPlan.current) {
+            note = i18n.t("plan.narrowedNote");
+          }
+          approvedPlan = plan;
+        }
       } else {
         callbacks.onStep?.({
           tool: call.name,
@@ -492,7 +505,9 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
               ? { error: result.error }
               : revision
                 ? { revision, note: i18n.t("plan.revisionNote") }
-                : (result.data ?? { ok: true }),
+                : note
+                  ? { ...(result.data as PlanPayload), note }
+                  : (result.data ?? { ok: true }),
           ),
           // The screenshot tool is withheld from text-only models, so images can't
           // normally get here — the guard keeps any future image tool off the wire.

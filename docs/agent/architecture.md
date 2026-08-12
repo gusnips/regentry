@@ -111,7 +111,11 @@ users to approve without reading. An unflagged update — progress, rewording,
 reordering — never interrupts, and dropping work is never a deviation: doing less
 cannot exceed the yes already given. Every plan call carries the run's whole arc,
 finished steps included — the card is the progress display, so a remainder-only list
-would erase what the run already did; only steps the user cancelled come off. A bare rejection ends the run with `errors.planRejected` as the done
+would erase what the run already did; only steps the user cancelled come off. The
+backstop for a model that narrows anyway is the cursor, not a diff: a replan whose
+`current` moves backwards dropped finished steps, so the plan tool's result appends a
+whole-arc note (`plan.narrowedNote`) — the update still lands, since the model is the
+list's one writer and a merged list would put words in its mouth. A bare rejection ends the run with `errors.planRejected` as the done
 summary; a rejection WITH feedback is a revision request instead — the note rides back
 inside the plan tool's own result (a separate user message would collide with the
 tool_results turn, which Anthropic forbids), the gate re-arms, and the revised plan is
