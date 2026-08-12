@@ -25,10 +25,12 @@ export function RunStatus() {
   // the user; an ask_user ends it with the question still open. Both speak
   // "waiting", never the working shimmer/pulse.
   const awaitingApproval = useConversationStore((s) => s.planApproval !== null);
-  const planApproved = useConversationStore((s) => s.planApproved);
   const awaitingAnswer = useConversationStore(
     (s) => pendingAskId(s.messages, s.status) !== undefined,
   );
+  // The composer holding queued items makes the whole footer tall — the band's
+  // tip yields then (same eviction rule as the composer's own tip slot).
+  const queueBusy = useConversationStore((s) => s.queued.length > 0 || s.queuedRun !== null);
   // A reopened panel holds no run state of its own — these ambient records
   // stand in. The board names a run still in flight on this conversation (its
   // startedAt drives the elapsed clock; the plan peek reads the transcript as
@@ -60,16 +62,6 @@ export function RunStatus() {
   // Parked speaks "waiting": the armed approval card (panel memory, re-armed
   // on reconnect) or the board's mark (a run parked while this panel was away).
   const awaiting = awaitingApproval || boardRun?.awaiting === true;
-  // Walking away follows the same rule as approvePlan's auto-close: the plan
-  // gate must be behind the run, or the approval strands on an OS notification
-  // the user has to click their way back from. A panel reopened mid-run missed
-  // the handshake, so the transcript stands in — a plan card from THIS run
-  // means the gate is past (a parked one re-arms planApproval, and `awaiting`
-  // hides this row outright). The timestamp also keeps a previous run's card
-  // in this conversation from passing for the live run's.
-  const walkAwayReady = localLive
-    ? planApproved
-    : plan !== undefined && plan.timestamp >= (liveStartedAt ?? 0);
 
   useEffect(() => {
     if (!running || awaiting) return;
@@ -183,32 +175,8 @@ export function RunStatus() {
       )}
       {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
       {/* The working band is the one place the user watches while waiting —
-          Claude Code's spinner-tip slot; idle/footer gets the same line. */}
-      <TipLine className="text-brand-800/60 dark:text-brand-200/50" />
-      {/* Every run is born backgrounded — the tab is grouped, the badge and
-          favicon dot are lit, and closing the panel never stops it. The chip
-          above carries the whole "bring the driven tab forward" affordance;
-          this row is the one walk-away: Run in background closes the panel
-          (the run keeps going untouched). It unlocks with the plan approval —
-          before that the panel is the only place the gate can be answered,
-          so a muted hint holds the button's spot. */}
-      <div className="flex items-center justify-end gap-1">
-        {!awaiting &&
-          (walkAwayReady ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => window.close()}
-              title={t("run.runInBackgroundTip")}
-            >
-              {t("run.runInBackground")}
-            </Button>
-          ) : (
-            <span className="px-2 py-1 text-xs text-brand-800/60 dark:text-brand-200/50">
-              {t("run.runInBackgroundWait")}
-            </span>
-          ))}
-      </div>
+          Claude Code's spinner-tip slot; idle/composer gets the same line. */}
+      {!queueBusy && <TipLine className="text-brand-800/60 dark:text-brand-200/50" />}
     </div>
   );
 }

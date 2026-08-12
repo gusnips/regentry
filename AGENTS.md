@@ -105,9 +105,10 @@ never reach the service-worker bundle.
   extension — the filenames are the mental model, not a path).
 - `bridge/` — the MCP bridge's extension half. Background-only.
 - `tips/` — the rotating "Tip: …" line; i18n data + cooldown scheduler (panel opens,
-  least-recently-shown wins, re-picked on panel open / run end). Shows in the running run band,
-  or on its own full-width row above the composer input when idle — never sharing the footer row
-  with the run-target select. Shipping a user-facing gesture, shortcut, or tucked-away control?
+  least-recently-shown wins, re-picked on panel open / run end). Shows in the running run
+  band, or above the composer card when idle — and yields whenever the zone is already
+  full (queued cards, attachments, a paste hint), so a crowded footer never carries one.
+  Shipping a user-facing gesture, shortcut, or tucked-away control?
   Add a tip with it: id + cooldown in `registry.ts`, copy in all three `tips.*` catalogs. Keep the
   copy short — one idea, ≤ ~90 chars; `TipLine` clamps at two lines, so a tip that needs more is
   two tips.

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
+import { useWalkAwayReady } from "./hooks";
 import { Icon } from "@/components/Icon";
 
 /** Two states of the same tab: panel open (you watch) or closed (you walk away). */
@@ -23,22 +24,31 @@ function ThisPageIcon() {
 }
 
 /**
- * Where the next run drives, as the composer footer's left anchor. Two states,
- * so a click flips it — no popup for one bit of information. The current mode
- * is the label (self-explanatory, and the footer row exists anyway); the
- * tooltip says what the other mode does. The row is permanent because of this
- * control, so transient hints on the right never shift the layout.
+ * Where the run drives, as the composer card's left anchor. Two states, so a
+ * click flips it — no popup for one bit of information. The current mode is the
+ * label (self-explanatory); the tooltip says what the other mode does. Mid-run
+ * the flip is live: turning "In background" on with the plan gate behind the
+ * run closes the panel on the spot — the walk-away the run band used to carry
+ * as a separate button, folded into the one control that already meant it.
+ * Before the gate (and whenever idle) it is only a preference for the run.
  */
 export function RunTargetToggle() {
   const { t } = useTranslation();
   const runTarget = useConversationStore((s) => s.runTarget);
   const setRunTarget = useConversationStore((s) => s.setRunTarget);
+  const walkAwayReady = useWalkAwayReady();
   const thisPage = runTarget === "thisPage";
+
+  const flip = () => {
+    const next = thisPage ? "background" : "thisPage";
+    setRunTarget(next);
+    if (next === "background" && walkAwayReady) window.close();
+  };
 
   return (
     <button
       type="button"
-      onClick={() => setRunTarget(thisPage ? "background" : "thisPage")}
+      onClick={flip}
       aria-label={t("run.targetAria", {
         target: thisPage ? t("run.thisPage") : t("run.background"),
       })}

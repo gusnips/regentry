@@ -13,13 +13,77 @@ import type { SlashItem } from "./slash-commands";
 import { TipLine } from "@/modules/tips/ui";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
-import { XIcon } from "@/components/Icon";
+import { Icon, XIcon } from "@/components/Icon";
 import { ZoomableImage } from "@/components/ZoomableImage";
 
 interface Attachment {
   /** The "[Image #1]" token that stands in for this image inside the task text. */
   token: string;
   dataUrl: string;
+}
+
+/** The send glyph — arrow up, the agentic-composer idiom. */
+function SendIcon() {
+  return (
+    <Icon>
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
+    </Icon>
+  );
+}
+
+/** Filled square — stop, solid on the danger circle. */
+function StopIcon() {
+  return (
+    <Icon>
+      <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none" />
+    </Icon>
+  );
+}
+
+/**
+ * A committed item waiting its turn — the dashed one-liner this replaced read
+ * as a draft. The amber accent bar is the panel's parked/waiting language (the
+ * awaiting dot, the board's "?"), the chip numbers the line like the run board
+ * does, and two lines of text beat a truncated one.
+ */
+function QueueCard({
+  chip,
+  title,
+  text,
+  onRemove,
+  removeAria,
+}: {
+  chip: string;
+  title: string;
+  text: string;
+  onRemove: () => void;
+  removeAria: string;
+}) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-amber-400 bg-neutral-50 px-2.5 py-1.5 dark:border-neutral-800 dark:border-l-amber-500 dark:bg-neutral-900">
+      <span
+        title={title}
+        className="mt-px shrink-0 rounded border border-amber-300 px-1 py-px text-[10px] font-medium text-amber-700 dark:border-amber-700 dark:text-amber-300"
+      >
+        {chip}
+      </span>
+      <span
+        title={text}
+        className="min-w-0 flex-1 line-clamp-2 text-xs text-neutral-700 dark:text-neutral-300"
+      >
+        {text}
+      </span>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={removeAria}
+        className="flex shrink-0 items-center rounded px-1 text-neutral-500 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
+      >
+        <XIcon />
+      </button>
+    </div>
+  );
 }
 
 export function ChatInput() {
@@ -67,6 +131,11 @@ export function ChatInput() {
   // panel's own run in flight, or one the board reports here after a reopen.
   // While our own submission waits in the queue, input starts another task.
   const steering = queuedRun ? false : running || boardRunHere;
+  // The composer's one button is a single morphing slot (the agentic-IDE idiom):
+  // ■ Stop appears only while a live run owns this conversation AND the input is
+  // empty — the moment there's text, ↑ Send/Queue takes the slot back, so the
+  // two never compete for the same click.
+  const stopVisible = steering && !text.trim();
   // Composer sub-state lives in the store alongside the draft: the draft itself
   // has store-side writers (recalls, conversation resets), and those must reset
   // the collapse state too — two copies would drift.
@@ -314,47 +383,26 @@ export function ChatInput() {
     <div className="flex flex-col gap-2 border-t border-neutral-200 p-3 dark:border-neutral-800">
       {queued.length > 0 && (
         <div className="flex flex-col gap-1">
-          {queued.map((q) => (
-            <div
+          {queued.map((q, i) => (
+            <QueueCard
               key={q.id}
-              className="flex items-center gap-1.5 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-2 py-1 text-xs text-neutral-600 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-300"
-            >
-              <span className="shrink-0 rounded border border-neutral-300 px-1 py-px text-[10px] font-medium dark:border-neutral-600">
-                {t("chat.queuedBadge")}
-              </span>
-              <span className="min-w-0 flex-1 truncate">{q.text}</span>
-              <button
-                type="button"
-                onClick={() => unqueueMessage(q.id)}
-                aria-label={t("chat.unqueueAria")}
-                className="flex shrink-0 items-center rounded px-1 text-neutral-500 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
-              >
-                <XIcon />
-              </button>
-            </div>
+              chip={String(i + 1)}
+              title={t("chat.queuedSteerTitle")}
+              text={q.text}
+              onRemove={() => unqueueMessage(q.id)}
+              removeAria={t("chat.unqueueAria")}
+            />
           ))}
-          <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-            {t("chat.queuedHint")}
-          </p>
         </div>
       )}
       {queuedRun && (
-        <div className="flex items-center gap-1.5 rounded-lg border border-dashed border-brand-300 bg-brand-50 px-2 py-1 text-xs text-brand-700 dark:border-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
-          <span className="shrink-0 rounded border border-brand-300 px-1 py-px text-[10px] font-medium dark:border-brand-700">
-            {t("queue.position", { position: queuedPosition })}
-          </span>
-          <span className="min-w-0 flex-1 truncate" title={t("queue.queuedTitle")}>
-            {queuedRun.task}
-          </span>
-          <button
-            type="button"
-            onClick={cancelQueuedRun}
-            aria-label={t("queue.cancel")}
-            className="flex shrink-0 items-center rounded px-1 text-brand-500 hover:bg-brand-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-brand-400 dark:hover:bg-brand-900"
-          >
-            <XIcon />
-          </button>
-        </div>
+        <QueueCard
+          chip={t("queue.position", { position: queuedPosition })}
+          title={t("queue.queuedTitle")}
+          text={queuedRun.task}
+          onRemove={cancelQueuedRun}
+          removeAria={t("queue.cancel")}
+        />
       )}
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -386,17 +434,19 @@ export function ChatInput() {
           {attachError}
         </p>
       )}
-      {/* The tip gets the panel's full width on its own row — squeezed next to
-          the run-target select it truncated to a few useless words. It stacks
-          with the conditional rows above the input so the two permanent rows
-          (input, footer) stay adjacent. Hidden while the run band is up — it
-          carries the tip then, whether the run is this panel's own or one the
-          board reports here after a reopen (a bridge band has no tip slot) —
-          and while the paste hint is up (one hint at a time, and that one is
-          contextual). */}
+      {/* The tip is this zone's lowest-priority tenant: it renders only while
+          idle with a pristine composer — a queue card, an attachment or a paste
+          hint already makes the footer tall, and the run band carries the tip
+          while working (under the same eviction rule). */}
       {!(running || (boardRunHere && !bridgeActive)) &&
+        queued.length === 0 &&
+        !queuedRun &&
+        attachments.length === 0 &&
         !pastedTexts.some((p) => text.includes(p.token)) && <TipLine />}
-      <div className="relative flex items-end gap-2">
+      {/* One card, two tenants: the bare input on top, a footer row below with
+          the run target on the left and the morph button on the right — so the
+          textarea never shares its width with a button column. */}
+      <div className="relative rounded-xl border border-neutral-300 transition-colors focus-within:border-brand-500 dark:border-neutral-600">
         {slashOpen && slash && (
           <SlashMenu
             items={slash.items}
@@ -406,8 +456,9 @@ export function ChatInput() {
           />
         )}
         <TextArea
+          bare
           ref={areaRef}
-          className="flex-1"
+          className="w-full"
           rows={2}
           autoFocus
           aria-label={t("chat.inputAria")}
@@ -426,38 +477,40 @@ export function ChatInput() {
           onKeyDown={onKeyDown}
           onPaste={(e) => void onPaste(e)}
         />
-        {steering && (
-          <Button onClick={submit} disabled={!text.trim()} title={t("chat.queueTitle")}>
-            {t("chat.queue")}
-          </Button>
-        )}
-        {queuedRun ? (
-          <Button onClick={submit} disabled={!text.trim()}>
-            {t("chat.send")}
-          </Button>
-        ) : steering ? (
-          <Button variant="danger" onClick={stop} title={t("chat.stopTitle")}>
-            {t("chat.stop")}
-          </Button>
-        ) : (
-          <Button onClick={submit} disabled={!text.trim()}>
-            {t("chat.send")}
-          </Button>
-        )}
-      </div>
-      {/* Composer footer: the run-target toggle anchors the left (permanent, so
-          the row never collapses), the paste hint takes the right when it's
-          live — its coming and going never moves the control. */}
-      <div className="flex items-center justify-between gap-2">
-        <RunTargetToggle />
-        {pastedTexts.some((p) => text.includes(p.token)) && (
-          <p
-            className="min-w-0 truncate text-right text-[11px] italic text-neutral-500 dark:text-neutral-400"
-            title={t("chat.pasteHint")}
-          >
-            {t("chat.pasteHint")}
-          </p>
-        )}
+        <div className="flex items-center gap-1 px-1.5 pb-1.5">
+          <RunTargetToggle />
+          {pastedTexts.some((p) => text.includes(p.token)) && (
+            <p
+              className="min-w-0 flex-1 truncate text-right text-[11px] italic text-neutral-500 dark:text-neutral-400"
+              title={t("chat.pasteHint")}
+            >
+              {t("chat.pasteHint")}
+            </p>
+          )}
+          {stopVisible ? (
+            <Button
+              size="icon"
+              variant="danger"
+              className="ml-auto shrink-0"
+              onClick={stop}
+              title={t("chat.stopTitle")}
+              aria-label={t("chat.stop")}
+            >
+              <StopIcon />
+            </Button>
+          ) : (
+            <Button
+              size="icon"
+              className="ml-auto shrink-0"
+              onClick={submit}
+              disabled={!text.trim()}
+              title={steering ? t("chat.queueTitle") : t("chat.sendTitle")}
+              aria-label={steering ? t("chat.queue") : t("chat.send")}
+            >
+              <SendIcon />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

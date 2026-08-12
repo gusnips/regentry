@@ -195,8 +195,10 @@ until the next user message retires the record.
 ### `tips/` — rotating tips
 
 The rotating "Tip: …" line (Claude Code's spinner-tip pattern, reduced): a dim hint under
-the running run band and in the composer footer's right slot (the paste hint outranks it
-there). Tips are i18n data (`tips.*` keys, object-map variant of the `run.idle` array
+the running run band, or above the composer card while idle. It is the footer's
+lowest-priority tenant — a queue card, an attachment, or a paste hint evicts it (the
+band's slot yields to a busy composer; the composer's to anything in it). Tips are i18n
+data (`tips.*` keys, object-map variant of the `run.idle` array
 pattern); `registry.ts` owns ids and per-tip cooldowns in panel opens; `scheduler.ts`
 picks least-recently-shown among the cooled-down (never-shown is always eligible) and
 persists `tipStats`. Re-picked only at boundaries — panel open and each run end, from the

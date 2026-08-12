@@ -2,7 +2,7 @@ import { Button as BaseButton } from "@base-ui-components/react";
 import type { ComponentProps } from "react";
 
 type Variant = "primary" | "danger" | "ghost" | "ghost-danger" | "outline" | "choice" | "nav";
-type Size = "sm" | "md";
+type Size = "sm" | "md" | "icon";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-brand-500 text-brand-950 hover:bg-brand-600",
@@ -21,14 +21,16 @@ const VARIANTS: Record<Variant, string> = {
 };
 
 const SIZES: Record<Size, string> = {
-  sm: "px-2 py-1 text-xs",
-  md: "px-3 py-2 text-sm",
+  sm: "rounded-lg px-2 py-1 text-xs",
+  md: "rounded-lg px-3 py-2 text-sm",
+  // The one circular button: the composer's send/stop glyph (agentic-IDE idiom).
+  icon: "rounded-full p-1.5",
 };
 
 /** Class helper for places that render a button through another Base UI part
  *  (e.g. AlertDialog.Close) and can't use the Button component itself. */
 export function buttonClasses(variant: Variant = "primary", size: Size = "md"): string {
-  return `rounded-lg font-medium transition-colors cursor-pointer disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 ${VARIANTS[variant]} ${SIZES[size]}`;
+  return `font-medium transition-colors cursor-pointer disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 ${VARIANTS[variant]} ${SIZES[size]}`;
 }
 
 export function Button({
