@@ -9,14 +9,19 @@ const TOOL_VERB_KEYS = {
   navigate: "run.tool.navigate",
   list_tabs: "run.tool.list_tabs",
   switch_tab: "run.tool.switch_tab",
+  group_tab: "run.tool.group_tab",
   snapshot: "run.tool.snapshot",
   click: "run.tool.click",
   type: "run.tool.type",
+  fill: "run.tool.fill",
+  evaluate: "run.tool.evaluate",
   press_key: "run.tool.press_key",
   scroll_down: "run.tool.scroll",
   scroll_up: "run.tool.scroll",
   screenshot: "run.tool.screenshot",
   read_history: "run.tool.read_history",
+  read_network_requests: "run.tool.read_network_requests",
+  read_console_messages: "run.tool.read_console_messages",
   remember: "run.tool.remember",
   ask_user: "run.tool.ask_user",
   done: "run.tool.done",
@@ -62,6 +67,7 @@ export function toolHint(
     case "navigate":
       return host(args.url);
     case "switch_tab":
+    case "group_tab":
       // The id is all the call carries; the tab's title arrives in the result,
       // which the summary already shows on a success. On a failure this is the
       // only trace of what it reached for.
@@ -70,6 +76,17 @@ export function toolHint(
       return text(args.ref);
     case "type":
       return text(args.text);
+    case "fill": {
+      // Ref and value both matter — "e12: 93619-…" says what went where.
+      const ref = text(args.ref, 12);
+      const value = text(args.text);
+      return ref && value ? `${ref}: ${value}` : (ref ?? value);
+    }
+    case "evaluate":
+      // The code is the action — the row must show what ran, not just that it ran.
+      return text(args.expression);
+    case "read_network_requests":
+      return text(args.url_filter);
     case "press_key":
       return text(args.key);
     case "scroll_down":

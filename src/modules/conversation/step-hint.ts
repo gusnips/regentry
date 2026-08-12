@@ -28,7 +28,23 @@ export function stepHint(
       return text(args.ref);
     case "type":
       return text(args.text);
+    case "fill": {
+      const ref = typeof args.ref === "string" ? truncateTo(args.ref, 12) : undefined;
+      const value = text(args.text);
+      return ref && value ? `${ref}: ${value}` : (ref ?? value);
+    }
+    case "evaluate":
+      // The code is the action — the trace must show what ran, not just that it ran.
+      return text(args.expression);
+    case "read_network_requests":
+      return text(args.url_filter);
+    case "press_key":
+      return text(args.key);
+    case "scroll_down":
+    case "scroll_up":
+      return typeof args.amount === "number" ? `${args.amount}px` : undefined;
     case "switch_tab":
+    case "group_tab":
       return typeof args.tab_id === "number" ? `#${args.tab_id}` : undefined;
     default:
       return undefined;

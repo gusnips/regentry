@@ -191,6 +191,7 @@ export class DirectSession {
     result: ToolResult,
   ): Promise<void> {
     if (!this.conversationId) return;
+    const detail = formatDetail(tool, result, args);
     await appendMessageTo(this.conversationId, {
       id: crypto.randomUUID(),
       role: "step",
@@ -201,7 +202,7 @@ export class DirectSession {
       args,
       ok: result.ok,
       timestamp: Date.now(),
-      ...(formatDetail(tool, result) ? { detail: formatDetail(tool, result) } : {}),
+      ...(detail ? { detail } : {}),
     });
   }
 

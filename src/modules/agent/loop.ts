@@ -451,7 +451,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
             : i18n.t("errors.failed", { error: result.error }),
           ok: result.ok,
           args: call.args,
-          detail: formatDetail(call.name, result),
+          detail: formatDetail(call.name, result, call.args),
           images: result.images,
         });
       }

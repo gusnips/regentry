@@ -165,8 +165,20 @@ export async function executeTool(
 }
 
 /** Result payload for the panel's expandable row — bounded, never a whole page. */
-export function formatDetail(tool: string, result: ToolResult): string | undefined {
+export function formatDetail(
+  tool: string,
+  result: ToolResult,
+  args?: Record<string, unknown>,
+): string | undefined {
   if (!result.ok) return result.error;
+  if (tool === "evaluate") {
+    // The code IS the action: the drawer audits what ran first, what came back second.
+    const code = typeof args?.expression === "string" ? args.expression.trim() : "";
+    const json = result.data === undefined ? "" : JSON.stringify(result.data, null, 2);
+    const body = json && json !== "{}" ? json : "";
+    const detail = [code, body].filter(Boolean).join("\n\n");
+    return detail ? truncate(detail, MAX_DETAIL) : undefined;
+  }
   if (tool === "snapshot") {
     const snapshot = result.data as { pageContent?: string } | undefined;
     return snapshot?.pageContent ? truncate(snapshot.pageContent, MAX_DETAIL) : undefined;
