@@ -31,7 +31,7 @@ the matching block here first.
 | **Default language** | English (listing localized: en / pt-BR / es)                              |
 | **Visibility**       | Public                                                                    |
 | **Homepage URL**     | https://tabrunner.app                                                     |
-| **Support URL**      | https://github.com/gusnips/tabrunner/issues                               |
+| **Support URL**      | https://github.com/tabrunner/tabrunner/issues                               |
 | **Privacy policy**   | https://tabrunner.app/privacy                                             |
 | **Extension ID**     | `ilnohobdcigbmlikjbkdpbkhciephdle`                                        |
 | **Store URL**        | https://chromewebstore.google.com/detail/ilnohobdcigbmlikjbkdpbkhciephdle |
@@ -288,7 +288,7 @@ https://tabrunner.app/privacy
 
 The page is client-rendered, so the text appears once JS runs — fine for a reviewer opening it in a
 browser. The JS-free mirror, if anyone ever needs one, is
-[`PRIVACY.md`](https://github.com/gusnips/tabrunner/blob/main/PRIVACY.md) on GitHub; the site syncs
+[`PRIVACY.md`](https://github.com/tabrunner/tabrunner/blob/main/PRIVACY.md) on GitHub; the site syncs
 from it (`site/ bun run sync:legal`), so the two never drift.
 
 ### Permission justifications

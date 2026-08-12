@@ -12,8 +12,8 @@ Every pushed `v*` tag builds and attaches these to the GitHub Release
 
 | URL (stable — hotlink these)                                                                | What                                            |
 | ------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest-chrome.zip` | The download — keyed, installs under the store's id |
-| `https://github.com/gusnips/tabrunner/releases/latest`                                      | Release notes + versioned artifacts             |
+| `https://github.com/tabrunner/tabrunner/releases/latest/download/tabrunner-latest-chrome.zip` | The download — keyed, installs under the store's id |
+| `https://github.com/tabrunner/tabrunner/releases/latest`                                      | Release notes + versioned artifacts             |
 
 The versioned artifacts (`tabrunner-<version>-chrome.zip`, `-mcp.js`) sit on the same release for
 the permanent record; the site links only the `latest` aliases and the release page, so shipping a

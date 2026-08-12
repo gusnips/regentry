@@ -44,7 +44,7 @@ never dials the port at all.
 **3. Fetch the daemon.** It's one file, and [bun](https://bun.sh) runs it as-is:
 
 ```bash
-curl -fsSL https://github.com/gusnips/tabrunner/releases/latest/download/tabrunner-latest-mcp.js -o ~/.tabrunner-mcp.js
+curl -fsSL https://github.com/tabrunner/tabrunner/releases/latest/download/tabrunner-latest-mcp.js -o ~/.tabrunner-mcp.js
 ```
 
 **4. Register it** with your client:

@@ -64,6 +64,6 @@ the version that carries it.
 
 ## 8. Contact
 
-This project is maintained on GitHub at [gusnips/tabrunner](https://github.com/gusnips/tabrunner).
+This project is maintained on GitHub at [tabrunner/tabrunner](https://github.com/tabrunner/tabrunner).
 Questions about these terms: open an issue
-([github.com/gusnips/tabrunner/issues](https://github.com/gusnips/tabrunner/issues)).
+([github.com/tabrunner/tabrunner/issues](https://github.com/tabrunner/tabrunner/issues)).
