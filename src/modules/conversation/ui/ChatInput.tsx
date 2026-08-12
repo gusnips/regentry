@@ -493,7 +493,7 @@ export function ChatInput() {
               variant="danger"
               className="ml-auto shrink-0"
               onClick={stop}
-              title={t("chat.stopTitle")}
+              title={queued.length > 0 ? t("chat.stopTitleQueued") : t("chat.stopTitle")}
               aria-label={t("chat.stop")}
             >
               <StopIcon />
