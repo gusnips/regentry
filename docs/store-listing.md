@@ -5,14 +5,15 @@ Source of truth for the store submission. Every block below is pasted verbatim i
 groups them: **Store listing** (§1–§3) and **Privacy practices** (§4). When a feature lands, update
 the matching block here first.
 
-> ### Status — in review since 2026-08-10
+> ### Status — rejected 2026-08-12 (keyword spam), fix staged
 >
-> **v0.2.3 submitted.** Chrome Web Store review takes up to **two weeks**; the verdict arrives by
-> email on the developer account. Nothing to do until then.
+> **v0.2.3 rejected** — "Keyword Spam" (ref Yellow Argon): the provider bullet in §2 enumerated
+> every preset by name, and review read it as an excessive keyword list. The names are out of all
+> three locales — providers and browser compatibility are now described generically.
 >
-> Uploading a package or editing the listing while it is under review **restarts the clock** — so
-> stage copy changes in this file and apply them to the dashboard only once it clears (or if a
-> reviewer asks for one). See [§5](#5-when-review-returns).
+> This is a metadata-only fix: **paste the corrected §2 blocks into the dashboard and resubmit the
+> same v0.2.3 upload** — no new package, per [§5](#5-when-review-returns). The review is no longer
+> in flight, so editing the listing now is safe; the clock restarts on resubmission either way.
 
 ---
 
@@ -79,10 +80,9 @@ sites you already use, until the task you described is done.
 
 - **Works in your real browser** — your existing logins are its sessions. No setup on every site,
   no fake profile, no separate account.
-- **Bring your own provider** — sign in with a subscription you already pay for (Anthropic,
-  OpenAI, Kimi) or paste an API key, across 15 presets (Anthropic, OpenAI, Kimi, Z.ai, Qwen,
-  DeepSeek, Gemini, OpenRouter, Groq, Mistral, xAI, Ollama) plus any endpoint speaking the OpenAI
-  or Anthropic wire format. No vendor lock-in, no relay, no TabRunner server.
+- **Bring your own provider** — sign in with an AI subscription you already pay for, or paste an
+  API key: 15 presets cover the major cloud and local providers, and a custom endpoint accepts
+  anything speaking a standard API format. No vendor lock-in, no relay, no TabRunner server.
 - **Your credentials stay yours** — a key or a sign-in goes straight from the extension to your
   provider. Nothing is stored outside Chrome. No account, no telemetry.
 - **Trusted input** — clicks and keystrokes go through the Chrome DevTools Protocol, so they are
@@ -103,7 +103,7 @@ sites you already use, until the task you described is done.
 - Provider configs and conversation history live in `chrome.storage` on this device.
 - The model never receives raw HTML — it works from a compact semantic tree of the page, and
   sensitive fields (passwords, one-time codes, card numbers) never leave the page.
-- Works on Chrome, Brave, Edge, Arc, Opera and Vivaldi.
+- Works on Chrome and other Chromium-based browsers.
 
 ## Guardrails
 
@@ -135,10 +135,10 @@ você já usa, até concluir a tarefa que você descreveu.
 
 - **Funciona no seu navegador de verdade** — seus logins atuais são as sessões dele. Sem configurar
   cada site, sem perfil falso, sem conta separada.
-- **Traga o seu provedor** — entre com uma assinatura que você já paga (Anthropic, OpenAI, Kimi) ou
-  cole uma chave de API, entre 15 presets (Anthropic, OpenAI, Kimi, Z.ai, Qwen, DeepSeek, Gemini,
-  OpenRouter, Groq, Mistral, xAI, Ollama), além de qualquer endpoint que fale o formato OpenAI ou
-  Anthropic. Sem lock-in, sem relay, sem servidor do TabRunner.
+- **Traga o seu provedor** — entre com uma assinatura de IA que você já paga, ou cole uma chave de
+  API: 15 presets cobrem os principais provedores em nuvem e locais, e um endpoint personalizado
+  aceita qualquer serviço em um formato de API padrão. Sem lock-in, sem relay, sem servidor do
+  TabRunner.
 - **Suas credenciais continuam suas** — a chave ou o login vai direto da extensão para o seu
   provedor. Nada é guardado fora do Chrome. Sem conta, sem telemetria.
 - **Entrada confiável** — cliques e teclas passam pelo Chrome DevTools Protocol, então são eventos
@@ -161,7 +161,7 @@ você já usa, até concluir a tarefa que você descreveu.
 - Configurações de provedor e histórico de conversas ficam no `chrome.storage`, neste dispositivo.
 - O modelo nunca recebe o HTML bruto — ele trabalha com uma árvore semântica compacta da página, e
   campos sensíveis (senhas, códigos de uso único, números de cartão) não saem da página.
-- Funciona no Chrome, Brave, Edge, Arc, Opera e Vivaldi.
+- Funciona no Chrome e em outros navegadores baseados em Chromium.
 
 ## Limites e controle
 
@@ -193,11 +193,10 @@ sitios que ya usas, hasta terminar la tarea que describiste.
 
 - **Funciona en tu navegador real** — tus accesos actuales son sus sesiones. Sin configurar cada
   sitio, sin perfil falso, sin cuenta aparte.
-- **Trae tu propio proveedor** — inicia sesión con una suscripción que ya pagas (Anthropic, OpenAI,
-  Kimi) o pega una clave de API, entre 15 preajustes (Anthropic, OpenAI, Kimi, Z.ai, Qwen,
-  DeepSeek, Gemini, OpenRouter, Groq, Mistral, xAI, Ollama), además de cualquier endpoint que hable
-  el formato OpenAI o Anthropic. Sin dependencia de un proveedor, sin relay, sin servidor de
-  TabRunner.
+- **Trae tu propio proveedor** — inicia sesión con una suscripción de IA que ya pagas, o pega una
+  clave de API: 15 preajustes cubren los principales proveedores en la nube y locales, y un
+  endpoint personalizado acepta cualquier servicio con un formato de API estándar. Sin dependencia
+  de un proveedor, sin relay, sin servidor de TabRunner.
 - **Tus credenciales siguen siendo tuyas** — la clave o el inicio de sesión va directo de la
   extensión a tu proveedor. Nada se guarda fuera de Chrome. Sin cuenta, sin telemetría.
 - **Entrada confiable** — los clics y las teclas pasan por el Chrome DevTools Protocol, así que son
@@ -222,7 +221,7 @@ sitios que ya usas, hasta terminar la tarea que describiste.
 - El modelo nunca recibe el HTML crudo — trabaja con un árbol semántico compacto de la página, y
   los campos sensibles (contraseñas, códigos de un solo uso, números de tarjeta) no salen de la
   página.
-- Funciona en Chrome, Brave, Edge, Arc, Opera y Vivaldi.
+- Funciona en Chrome y otros navegadores basados en Chromium.
 
 ## Límites y control
 
@@ -402,7 +401,11 @@ network destination is the AI provider the user configured.
 - Store installs and the unpacked build share one extension ID (`manifest.key`), so a user with the
   website's zip must uninstall it before installing from the store; Chrome will not run both.
 
-**Rejected** — the email names the policy clause. Fix, then `bun run release patch` and upload the
-new `dist/tabrunner-<version>-store.zip` (never `-chrome.zip`; see
-[AGENTS.md → Releasing](../AGENTS.md#releasing)). A rejection does not clear the listing text,
+**Rejected** — the email names the policy clause. A rejection does not clear the listing text,
 screenshots or privacy answers — they survive for the next submission.
+
+- **Listing/metadata violation** (the wording lives in this file, not the package): fix the block
+  here, paste it into the dashboard, and resubmit the same upload — no new version, no new zip.
+- **Package violation**: fix the code, then `bun run release patch` and upload the new
+  `dist/tabrunner-<version>-store.zip` (never `-chrome.zip`; see
+  [AGENTS.md → Releasing](../AGENTS.md#releasing)).
