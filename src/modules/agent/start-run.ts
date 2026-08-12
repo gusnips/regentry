@@ -28,6 +28,7 @@ import { acquireRun, releaseRun } from "./active-runs";
 import type { ActiveRun, RunOwner } from "./active-runs";
 import type { PlanApprovalOutcome } from "./loop";
 import { markRunningAwaiting, markRunningTab } from "./run-queue";
+import type { RunGroup } from "./tools";
 
 const log = createLogger("bg");
 
@@ -109,7 +110,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       emit({ type: "error", message: target.error });
       return { ok: true };
     }
-    const { tab, groupId, opened, adopted } = target;
+    const { tab, opened, adopted } = target;
     // "this page" returns bare — it's the same drive as adoption, just with the
     // panel left open, so it carries the same whose-tab semantics: the plan
     // rejection path hands the tab back whichever mode drove it.
@@ -143,6 +144,16 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     // re-target itself with switch_tab — badge, panel chip and fail-fast all follow.
     let drivenTabId = tab.id;
     let drivenTitle = tabLabel(tab);
+    // The strip is born lazy: nothing is grouped at send time (the user may just
+    // be passing through the tab they sent from) — the loop touches it into
+    // being when the run lands its first action, and group_tab can mint it too.
+    const runGroup = createRunGroup({
+      task,
+      keepName: target.resumed === true,
+      mintOnTouch: target.resumed !== true,
+      ...(target.threadGroupId !== undefined ? { seedGroupId: target.threadGroupId } : {}),
+      drivenTabId: () => drivenTabId,
+    });
     const driver = createDriver(tab.id, {
       // A run that drives the user's own tab (this-page, or an adopted one) or
       // answers to a person watching may bring it forward; a run in a tab of its
@@ -204,9 +215,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         driver,
         task,
         conversationId,
-        // The group this run labeled — group_tab files the task's other tabs
-        // under it. Undefined when grouping was skipped; the tool says so.
-        ...(groupId !== undefined ? { runGroupId: groupId } : {}),
+        runGroup,
         images,
         supportsImages: resolvedProvider?.supportsImages,
         history: history.length > 0 ? history : undefined,
@@ -306,21 +315,21 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       if (endedOnQuestion) void waitAgentIndicator(drivenTabId);
       else void hideAgentIndicator(drivenTabId);
       // Runs whatever unwinds the loop — done, error, stop, question. A "no" to
-      // the plan is the exception: nothing ran, so the tab the dispatch opened
-      // goes away instead of settling into a ✗ group, and a page the agent only
+      // the plan is the exception: the tab this run opened for the job is litter
+      // to take back rather than a result to keep, and a page the agent only
       // glanced at is not where the conversation now lives.
       if (planRejected && opened) {
         await discardRunTab(tab.id);
       } else if (planRejected && onUsersTab) {
-        // "No, don't touch this": nothing ran, so there is no outcome to name.
-        // Hand the user's tab back as the run found it — unfiled when this run
-        // filed it, still in the thread's strip when it already was.
-        if (!target.keptGroup) await ungroupRunTab(tab.id);
-        await persistDrivenTabFor(conversationId, drivenTabId, groupId);
+        // "No, don't touch this" names no outcome. Nothing is unfiled: the gate
+        // means a first-plan rejection happens before any grouping, and after a
+        // mid-run replan the strip holds real work. Just put it away.
+        await collapseRunGroup(runGroup.groupId);
+        await persistDrivenTabFor(conversationId, drivenTabId, runGroup.groupId);
       } else {
-        await persistDrivenTabFor(conversationId, drivenTabId, groupId);
+        await persistDrivenTabFor(conversationId, drivenTabId, runGroup.groupId);
         await settleRunTab(
-          groupId,
+          runGroup.groupId,
           task,
           runFailed ? "failed" : endedOnQuestion ? "question" : "done",
         );
@@ -359,14 +368,14 @@ function hasPendingQuestion(transcript: Message[]): boolean {
 
 interface RunTab {
   tab: chrome.tabs.Tab;
-  /** The run's tab group, when it owns one — retitled with the outcome on the way out. */
-  groupId?: number;
-  /** The tab's grouping predates this run — already in the thread's strip, or a
-   *  reused continuation the run never re-filed. A rejected plan leaves it alone. */
-  keptGroup?: boolean;
+  /** The thread's live strip, resolved at run start — the seed the run's own
+   *  labeling joins. Never the run's group: the run has none until its first action. */
+  threadGroupId?: number;
+  /** The run continues a parked question — it joins its strip without renaming it. */
+  resumed?: boolean;
   /** This run opened the tab, so a rejected plan can take it back. */
   opened?: boolean;
-  /** This run took over the user's current tab — drive it, group it, never close it. */
+  /** This run took over the user's current tab — drive it, never close it. */
   adopted?: boolean;
 }
 
@@ -393,8 +402,9 @@ function isBlankPage(url: string | undefined): boolean {
  * nowhere else, and re-visiting its url in a fresh tab would both lose it and
  * open a second live session the site may read as a bot. So the run takes the
  * tab as-is and the plan gate carries the "don't touch this" decision to the
- * user; the tab is grouped under the task's name so the user can see at a glance
- * that it's being driven, and it is never the run's to close.
+ * user; the tab is never the run's to close. Grouping waits for the first
+ * action — a message sent in passing must not file the tab the user happens to
+ * be on.
  *
  * Only when there is no page to adopt — a blank/new-tab page, a page Chrome
  * forbids, an MCP client (nowhere near a browser), or an explicit target URL —
@@ -422,24 +432,15 @@ async function resolveRunTab(
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
-    // Every run is born backgrounded — even "this page" gets the task group, so
-    // walking away (closing the panel) leaves the same labeled, blinking marker
-    // a background run leaves. "Supervised" only ever meant the panel stays open.
-    const threadGroup = await liveThreadGroup(conversationTabs, tab);
-    const groupId = await labelRunTab(tab.id, opts.task, threadGroup);
-    return {
-      tab,
-      ...(groupId !== undefined ? { groupId } : {}),
-      ...(threadGroup !== undefined && tab.groupId === threadGroup ? { keptGroup: true } : {}),
-    };
+    // No grouping at send time — the user may just be passing through this tab.
+    // The thread's strip is only resolved so the run's first action joins it.
+    const threadGroupId = await liveThreadGroup(conversationTabs, tab);
+    return { tab, ...(threadGroupId !== undefined ? { threadGroupId } : {}) };
   }
 
   const reused = await reuseContinuationTab(continuation);
   if (reused) {
     if (reveal && reused.tab.id !== undefined) await focusTab(reused.tab.id, reused.tab.windowId);
-    // The question settled the strip ("?", collapsed); the answer re-opens it —
-    // the run works again, and the user just pressed send on the tab it holds.
-    if (reused.groupId !== undefined) await resumeRunGroup(reused.groupId);
     return reused;
   }
 
@@ -459,13 +460,11 @@ async function resolveRunTab(
       } catch (e) {
         return { error: e instanceof Error ? e.message : String(e) };
       }
-      const threadGroup = await liveThreadGroup(conversationTabs, tab);
-      const groupId = await labelRunTab(tab.id, opts.task, threadGroup);
+      const threadGroupId = await liveThreadGroup(conversationTabs, tab);
       return {
         tab,
         adopted: true,
-        ...(groupId !== undefined ? { groupId } : {}),
-        ...(threadGroup !== undefined && tab.groupId === threadGroup ? { keptGroup: true } : {}),
+        ...(threadGroupId !== undefined ? { threadGroupId } : {}),
       };
     }
   }
@@ -492,16 +491,16 @@ async function resolveRunTab(
   }
   // Re-read after the wait — the created record predates the navigation.
   const loaded = await chrome.tabs.get(tab.id);
-  // A brand-new tab has no group of its own to keep — only the records can
-  // point at the thread's strip.
-  const groupId = await labelRunTab(tab.id, opts.task, await liveThreadGroup(conversationTabs));
-  // Loaded and grouped before it is shown: a run that never got off the ground
-  // takes its tab back without the user ever having seen it blink past.
+  // A brand-new tab has no strip of its own to keep — only the records can
+  // point at the thread's. Grouping itself waits for the first action.
+  const threadGroupId = await liveThreadGroup(conversationTabs);
+  // Loaded before it is shown: a run that never got off the ground takes its
+  // tab back without the user ever having seen it blink past.
   if (reveal) await focusTab(tab.id, loaded.windowId);
   return {
     tab: loaded,
     opened: true,
-    ...(groupId !== undefined ? { groupId } : {}),
+    ...(threadGroupId !== undefined ? { threadGroupId } : {}),
   };
 }
 
@@ -509,11 +508,10 @@ async function resolveRunTab(
  * The very tab the question was asked on, when it is still alive and still
  * there. Re-opening its url would also "continue where the question arose", but
  * a fresh load throws away the state the question was ABOUT — the half-filled
- * booking form, the search results, the scrolled thread. The group is adopted
- * only when it is the one that run created (its id was recorded alongside the
- * tab), so a tab the user has since filed into a group of their own keeps the
- * label they gave it. The run files nothing here either way — keptGroup says
- * so, so a rejected plan leaves the tab's grouping exactly as found.
+ * booking form, the search results, the scrolled thread. The parked strip is
+ * the join seed only while the tab still sits in it: a tab the user refiled
+ * while the question waited is theirs, and the continuation neither renames it
+ * nor rips it out (its touch mints nothing around a grouped tab).
  */
 async function reuseContinuationTab(last: LastTab | undefined): Promise<RunTab | undefined> {
   if (last?.tabId === undefined) return undefined;
@@ -525,8 +523,10 @@ async function reuseContinuationTab(last: LastTab | undefined): Promise<RunTab |
     return {
       tab,
       adopted: true,
-      keptGroup: true,
-      ...(tab.groupId === last.groupId ? { groupId: last.groupId } : {}),
+      resumed: true,
+      ...(tab.groupId === last.groupId && last.groupId !== undefined
+        ? { threadGroupId: last.groupId }
+        : {}),
     };
   } catch {
     // The tab died while the question waited — open a fresh one on its url.
@@ -562,13 +562,13 @@ async function discardRunTab(tabId: number): Promise<void> {
   }
 }
 
-/** Ungroup a tab this run adopted and never earned — a plain plan rejection
- *  leaves the user's tab where it was, not in a collapsed group. */
-async function ungroupRunTab(tabId: number): Promise<void> {
+/** Put the strip away without naming an outcome — a rejected plan's settle. */
+async function collapseRunGroup(groupId: number | undefined): Promise<void> {
+  if (groupId === undefined) return;
   try {
-    await chrome.tabs.ungroup(tabId);
+    await chrome.tabGroups.update(groupId, { collapsed: true });
   } catch {
-    // The tab (or its group) died during the run.
+    // The group died during the run.
   }
 }
 
@@ -585,17 +585,16 @@ function groupTitle(task: string, mark = ""): string {
 /**
  * The group the thread's tabs live under, when it is still the thread's.
  *
- * Given the tab the run is about to label, the strongest signal needs no
- * records at all: the tab already sits in a group AND this conversation has
- * driven its url before (urls are the stable key — tab and group ids die with
- * a browser restart, urls survive them). A page the thread worked, still
- * grouped, is sitting in the thread's strip — keep it, never mint a second
- * group around it.
+ * The tab in hand is the strongest signal: already sitting in a group AND its
+ * url is one this conversation drove (urls are the stable key — tab and group
+ * ids die with a browser restart, urls survive them). A page the thread worked,
+ * still grouped, is sitting in the thread's strip — never rip the tab the user
+ * is looking at out of it to mint a second one.
  *
- * Otherwise fall back to the records: a recorded tab must still be sitting in
- * its recorded group — the same rule reuseContinuationTab applies. A group the
- * user has closed, emptied, or moved its tab out of is theirs again, and the
- * next run starts a fresh one.
+ * Otherwise the records, by group liveness: strips outlive their tabs (the
+ * driven tab gets closed once the task is done; the group_tab'd ones stay), so
+ * a recorded group that still exists IS the thread's even when the tab that
+ * earned the record is gone. A group the user closed away is simply not there.
  */
 export async function liveThreadGroup(
   tabs: LastTab[],
@@ -604,13 +603,15 @@ export async function liveThreadGroup(
   if (forTab?.url && forTab.groupId >= 0 && tabs.some((t) => t.url === forTab.url)) {
     return forTab.groupId;
   }
+  const seen = new Set<number>();
   for (const t of tabs) {
-    if (t.tabId === undefined || t.groupId === undefined) continue;
+    if (t.groupId === undefined || seen.has(t.groupId)) continue;
+    seen.add(t.groupId);
     try {
-      const tab = await chrome.tabs.get(t.tabId);
-      if (tab.groupId === t.groupId) return t.groupId;
+      await chrome.tabGroups.get(t.groupId);
+      return t.groupId;
     } catch {
-      // The tab died — its group id may be stale; try the next record.
+      // Dead group — try the next record.
     }
   }
   return undefined;
@@ -621,12 +622,16 @@ export async function liveThreadGroup(
  * what that tab is. A follow-up in the same thread files its tab under the
  * group the thread already has (one labeled strip per conversation, not one
  * per run); a stale id — closed group, or the group lives in another window —
- * falls back to a fresh group. Best-effort: grouping must never fail a run.
+ * falls back to a fresh group. keepName is for continuations: the strip keeps
+ * the name it parked with (unmarked, re-expanded), because the task at hand is
+ * the user's answer fragment, not a name. Best-effort: grouping must never
+ * fail a run.
  */
 export async function labelRunTab(
   tabId: number,
   task: string,
   threadGroupId?: number,
+  keepName = false,
 ): Promise<number | undefined> {
   try {
     const groupId =
@@ -635,18 +640,78 @@ export async function labelRunTab(
         : await chrome.tabs
             .group({ tabIds: tabId, groupId: threadGroupId })
             .catch(() => chrome.tabs.group({ tabIds: tabId }));
+    let title = groupTitle(task);
+    if (keepName) {
+      try {
+        const group = await chrome.tabGroups.get(groupId);
+        const base = group.title?.replace(SETTLE_MARK, "").trim();
+        if (base) title = base;
+      } catch {
+        // The group's name is unreadable — the task title stands.
+      }
+    }
     // Re-open a settled (collapsed) group: the user just pressed send and is
     // watching this tab — a collapsed group would swallow it.
-    await chrome.tabGroups.update(groupId, {
-      title: groupTitle(task),
-      color: "green",
-      collapsed: false,
-    });
+    await chrome.tabGroups.update(groupId, { title, color: "green", collapsed: false });
     return groupId;
   } catch (e) {
     log.debug("tab grouping skipped:", e instanceof Error ? e.message : String(e));
     return undefined;
   }
+}
+
+/**
+ * The run's strip, minted on first touch (see RunGroup in tools.ts for the
+ * contract). Joins the thread's seed strip when one was resolved at run start;
+ * otherwise mints around the first tab the run acts on. A continuation never
+ * mints around a grouped tab — a group the user chose while the question
+ * waited is theirs, not the run's to rip.
+ */
+export function createRunGroup(opts: {
+  task: string;
+  /** A continuation joins its parked strip without renaming it. */
+  keepName: boolean;
+  /** False only for continuations: never mint around (rip) a tab the user
+   *  grouped while the question waited. */
+  mintOnTouch: boolean;
+  /** The thread's live strip, resolved at run start — the run's labeling joins it. */
+  seedGroupId?: number;
+  drivenTabId: () => number;
+}): RunGroup {
+  let groupId: number | undefined;
+
+  const label = async (tabId: number, mayMint: boolean): Promise<number | undefined> => {
+    if (groupId !== undefined) {
+      // The strip exists — file the tab into it. Best-effort: a tab in another
+      // window can't join, and a run never fails over its strip.
+      try {
+        await chrome.tabs.group({ tabIds: tabId, groupId });
+      } catch {
+        // Cross-window or gone — the tab stays where it is.
+      }
+      return groupId;
+    }
+    if (!mayMint && opts.seedGroupId === undefined) {
+      try {
+        const t = await chrome.tabs.get(tabId);
+        if (t.groupId >= 0) return undefined; // the user's own group — not ours to rip
+      } catch {
+        return undefined; // the tab died between the tool call and here
+      }
+    }
+    groupId = await labelRunTab(tabId, opts.task, opts.seedGroupId, opts.keepName);
+    return groupId;
+  };
+
+  return {
+    get groupId() {
+      return groupId;
+    },
+    touch: async () => {
+      await label(opts.drivenTabId(), opts.mintOnTouch);
+    },
+    file: (tabId) => label(tabId, true),
+  };
 }
 
 /** The outcome mark a run leaves on its group's title — resume strips it, settle re-marks it. */
@@ -672,25 +737,6 @@ export async function settleRunTab(
     await chrome.tabGroups.update(groupId, { title: groupTitle(base, mark), collapsed: true });
   } catch {
     // The tab (and its group) died during the run.
-  }
-}
-
-/**
- * The answer to a parked question re-opens the strip the question settled:
- * strip the "?" and expand — the run works again, and the user just pressed
- * send on the tab a collapsed group would swallow. The name is left alone — it
- * still names the task the question was about, not the answer. Best-effort.
- */
-export async function resumeRunGroup(groupId: number): Promise<void> {
-  try {
-    const group = await chrome.tabGroups.get(groupId);
-    const base = group.title?.replace(SETTLE_MARK, "");
-    await chrome.tabGroups.update(groupId, {
-      ...(base ? { title: base } : {}),
-      collapsed: false,
-    });
-  } catch {
-    // The group died while the question waited — the run drives on regardless.
   }
 }
 

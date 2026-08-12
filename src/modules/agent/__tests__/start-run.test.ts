@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { labelRunTab, liveThreadGroup, resumeRunGroup, settleRunTab } from "../start-run";
+import { createRunGroup, labelRunTab, liveThreadGroup, settleRunTab } from "../start-run";
 import type { LastTab } from "@/modules/conversation/conversations";
 
 // One thread, one strip: follow-up messages file their tab under the group the
-// thread already has — until the user takes the group back (closes it, empties
-// it, moves the tab out), after which the next run starts a fresh one.
+// thread already has — until the user closes that strip away, after which the
+// next run starts a fresh one.
 
 const recorded = (tabId: number, groupId?: number): LastTab => ({
   url: `https://example.com/${tabId}`,
@@ -37,33 +37,42 @@ describe("thread tab group", () => {
   });
 
   describe("liveThreadGroup", () => {
-    it("is undefined without a usable record", async () => {
+    it("is undefined without a recorded group", async () => {
       expect(await liveThreadGroup([])).toBeUndefined();
-      // No group recorded, and a bare url with neither tab nor group.
+      // Bare urls with no group recorded.
       expect(await liveThreadGroup([recorded(1), recorded(2)])).toBeUndefined();
-      expect(tabsGet).not.toHaveBeenCalled();
+      expect(groupGet).not.toHaveBeenCalled();
     });
 
-    it("is the newest recorded group whose tab still sits in it", async () => {
-      tabsGet.mockResolvedValue({ groupId: 7 });
+    it("is the newest recorded group that is still alive", async () => {
+      groupGet.mockResolvedValue({ title: "book the flight" });
       const tabs = [recorded(1, 7), recorded(2, 9)];
       expect(await liveThreadGroup(tabs)).toBe(7);
       // Newest first: the older record is never even checked.
-      expect(tabsGet).toHaveBeenCalledTimes(1);
-      expect(tabsGet).toHaveBeenCalledWith(1);
+      expect(groupGet).toHaveBeenCalledTimes(1);
+      expect(groupGet).toHaveBeenCalledWith(7);
     });
 
-    it("skips records the user has taken back — dead tab, or tab moved out", async () => {
-      tabsGet
-        .mockRejectedValueOnce(new Error("no tab with id 1")) // died mid-question
-        .mockResolvedValueOnce({ groupId: 5 }) // alive, but the user regrouped it
-        .mockResolvedValueOnce({ groupId: 9 });
+    it("outlives the tab that earned the record — strips outlive their tabs", async () => {
+      // The driven tab was closed once the task ended; the strip of group_tab'd
+      // tabs lives on. A live recorded group IS the thread's — minting a second
+      // one alongside it is the bug this fixes. No tab lookup is even made.
+      groupGet.mockResolvedValue({ title: "book the flight" });
+      expect(await liveThreadGroup([recorded(1, 7)])).toBe(7);
+      expect(tabsGet).not.toHaveBeenCalled();
+    });
+
+    it("skips dead groups, dedupes records, and falls to older ones", async () => {
+      groupGet
+        .mockRejectedValueOnce(new Error("No group with id: 7"))
+        .mockResolvedValueOnce({ title: "older strip" });
       const tabs = [recorded(1, 7), recorded(2, 7), recorded(3, 9)];
       expect(await liveThreadGroup(tabs)).toBe(9);
+      expect(groupGet).toHaveBeenCalledTimes(2); // 7 checked once, then 9
     });
 
-    it("is undefined when every recorded group changed hands", async () => {
-      tabsGet.mockResolvedValue({ groupId: 5 });
+    it("is undefined when every recorded group is gone", async () => {
+      groupGet.mockRejectedValue(new Error("No group"));
       expect(await liveThreadGroup([recorded(1, 7), recorded(2, 9)])).toBeUndefined();
     });
 
@@ -75,23 +84,23 @@ describe("thread tab group", () => {
       // The records are all stale (closed tabs, a browser restart) — the tab
       // itself is the proof: the conversation drove this url, and it still
       // sits grouped. Minting a second group around it is the bug this fixes.
-      tabsGet.mockRejectedValue(new Error("No tab with id"));
+      groupGet.mockRejectedValue(new Error("No group with id"));
       const tabs = [recorded(1, 7)];
       const onIt = tabOn("https://example.com/1", 4);
       expect(await liveThreadGroup(tabs, onIt)).toBe(4);
-      expect(tabsGet).not.toHaveBeenCalled();
+      expect(groupGet).not.toHaveBeenCalled();
     });
 
     it("ignores the tab in hand's group when the thread never drove its url", async () => {
       // A url the conversation never touched, sitting in a group of the user's
       // own — that group is theirs, not the thread's. Fall to the records.
-      tabsGet.mockResolvedValue({ groupId: 7 });
+      groupGet.mockResolvedValue({ title: "book the flight" });
       const onIt = tabOn("https://unrelated.example", 4);
       expect(await liveThreadGroup([recorded(1, 7)], onIt)).toBe(7);
     });
 
     it("ignores an ungrouped tab in hand", async () => {
-      tabsGet.mockResolvedValue({ groupId: 7 });
+      groupGet.mockResolvedValue({ title: "book the flight" });
       const onIt = tabOn("https://example.com/1", -1);
       expect(await liveThreadGroup([recorded(1, 7)], onIt)).toBe(7);
     });
@@ -126,6 +135,30 @@ describe("thread tab group", () => {
       tabsGroup.mockRejectedValue(new Error("cannot group"));
       expect(await labelRunTab(42, "book the flight")).toBeUndefined();
       expect(groupUpdate).not.toHaveBeenCalled();
+    });
+
+    it("keeps the parked strip's name on a continuation, unmarking it", async () => {
+      // The continuation's task is the answer fragment — the strip keeps naming
+      // the task the question was about.
+      tabsGroup.mockResolvedValue(7);
+      groupGet.mockResolvedValue({ title: "? book the flight" });
+      expect(await labelRunTab(42, "yes, the March one", 7, true)).toBe(7);
+      expect(groupUpdate).toHaveBeenCalledWith(7, {
+        title: "book the flight",
+        color: "green",
+        collapsed: false,
+      });
+    });
+
+    it("names a freshly minted strip after the task even on a continuation", async () => {
+      tabsGroup.mockResolvedValue(7);
+      groupGet.mockResolvedValue({}); // a minted group carries no name
+      expect(await labelRunTab(42, "yes, the March one", undefined, true)).toBe(7);
+      expect(groupUpdate).toHaveBeenCalledWith(7, {
+        title: "yes, the March one",
+        color: "green",
+        collapsed: false,
+      });
     });
   });
 
@@ -166,35 +199,74 @@ describe("thread tab group", () => {
     });
   });
 
-  describe("resumeRunGroup", () => {
-    it("strips the waiting mark and expands — the run works again", async () => {
-      groupGet.mockResolvedValue({ title: "? book the flight" });
-      await resumeRunGroup(7);
-      expect(groupUpdate).toHaveBeenCalledWith(7, {
-        title: "book the flight",
-        collapsed: false,
+  describe("createRunGroup", () => {
+    const runGroupFor = (over: Partial<Parameters<typeof createRunGroup>[0]> = {}) =>
+      createRunGroup({
+        task: "book the flight",
+        keepName: false,
+        mintOnTouch: true,
+        drivenTabId: () => 42,
+        ...over,
       });
+
+    it("mints the strip around the driven tab on the first action", async () => {
+      tabsGroup.mockResolvedValue(7);
+      const rg = runGroupFor();
+      expect(rg.groupId).toBeUndefined();
+      await rg.touch();
+      expect(tabsGroup).toHaveBeenCalledWith({ tabIds: 42 });
+      expect(rg.groupId).toBe(7);
     });
 
-    it("keeps a name the user gave the strip", async () => {
-      groupGet.mockResolvedValue({ title: "travel stuff" });
-      await resumeRunGroup(7);
-      expect(groupUpdate).toHaveBeenCalledWith(7, {
-        title: "travel stuff",
-        collapsed: false,
-      });
+    it("files later touches into the same strip", async () => {
+      tabsGroup.mockResolvedValue(7);
+      const driven = { id: 42 };
+      const rg = runGroupFor({ drivenTabId: () => driven.id });
+      await rg.touch();
+      driven.id = 43; // the run switched tabs mid-flight
+      await rg.touch();
+      expect(tabsGroup).toHaveBeenLastCalledWith({ tabIds: 43, groupId: 7 });
     });
 
-    it("only expands an untitled group", async () => {
-      groupGet.mockResolvedValue({});
-      await resumeRunGroup(7);
-      expect(groupUpdate).toHaveBeenCalledWith(7, { collapsed: false });
+    it("joins the thread's seed strip when one was resolved", async () => {
+      tabsGroup.mockResolvedValue(7);
+      const rg = runGroupFor({ seedGroupId: 5 });
+      await rg.touch();
+      expect(tabsGroup).toHaveBeenCalledWith({ tabIds: 42, groupId: 5 });
     });
 
-    it("never fails a run over a dead group", async () => {
-      groupGet.mockRejectedValue(new Error("No group with id: 7"));
-      await resumeRunGroup(7);
-      expect(groupUpdate).not.toHaveBeenCalled();
+    it("never mints around a tab the user grouped while the question waited", async () => {
+      const rg = runGroupFor({ keepName: true, mintOnTouch: false });
+      tabsGet.mockResolvedValue({ groupId: 3 }); // a group of the user's own
+      await rg.touch();
+      expect(tabsGroup).not.toHaveBeenCalled();
+      expect(rg.groupId).toBeUndefined();
+    });
+
+    it("mints for a continuation whose tab sits ungrouped", async () => {
+      tabsGroup.mockResolvedValue(7);
+      const rg = runGroupFor({ keepName: true, mintOnTouch: false });
+      tabsGet.mockResolvedValue({ groupId: -1 });
+      await rg.touch();
+      expect(tabsGroup).toHaveBeenCalledWith({ tabIds: 42 });
+    });
+
+    it("stays silent when a later touch can't join — no second strip", async () => {
+      tabsGroup.mockResolvedValueOnce(7).mockRejectedValue(new Error("different window"));
+      const driven = { id: 42 };
+      const rg = runGroupFor({ drivenTabId: () => driven.id });
+      await rg.touch();
+      driven.id = 43;
+      await rg.touch(); // cross-window: no throw, no fresh mint
+      expect(rg.groupId).toBe(7);
+      expect(tabsGroup).toHaveBeenCalledTimes(2);
+    });
+
+    it("file mints the strip around the filed tab and returns its id", async () => {
+      tabsGroup.mockResolvedValue(9);
+      const rg = runGroupFor();
+      await expect(rg.file(55)).resolves.toBe(9);
+      expect(tabsGroup).toHaveBeenCalledWith({ tabIds: 55 });
     });
   });
 });

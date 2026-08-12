@@ -14,6 +14,7 @@ import { i18n, currentLanguageName } from "@/i18n";
 import { loadAgentContext } from "@/modules/memory";
 import type { ToolDef } from "@/modules/providers/types";
 import { executeTool, formatDetail, formatSuccessSummary } from "./tools";
+import type { RunGroup } from "./tools";
 import { buildSystemPrompt, buildTaskMessage, buildToolDefs } from "./prompt";
 import type { PreviousTab, RunMode } from "./prompt";
 
@@ -134,8 +135,8 @@ export interface LoopOptions {
    * transcript. Absent only in tests.
    */
   conversationId?: string;
-  /** The tab group this run labeled — group_tab files the task's other tabs under it. */
-  runGroupId?: number;
+  /** The run's tab strip — minted at the first action, group_tab's target. */
+  runGroup?: RunGroup;
   /** Data-URL images the user attached to the task, referenced in the text as "[Image #1]". */
   images?: string[];
   /**
@@ -250,7 +251,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     driver,
     task,
     conversationId,
-    runGroupId,
+    runGroup,
     images,
     supportsImages: supportsImagesOpt,
     previousTabs,
@@ -415,7 +416,11 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // rather than adding a row, so it gets no spinner and no step of its own.
       const bookkeeping = call.name === "plan";
       if (!bookkeeping) callbacks.onStepStart?.(call.name, call.args);
-      const result = await executeTool(call, driver, { conversationId, runGroupId });
+      const result = await executeTool(call, driver, { conversationId, runGroup });
+      // The strip appears when the work does: landing a gated action files the
+      // driven tab into the run's group. Reads never group — a tab the user was
+      // merely passing through stays exactly as they filed it.
+      if (result.ok && ACTION_TOOLS.has(call.name)) await runGroup?.touch();
       if (!result.ok) log.warn(`tool ${call.name} failed:`, result.error);
 
       if (bookkeeping && result.ok) {

@@ -18,12 +18,26 @@ export interface ToolResult {
   images?: string[];
 }
 
+/**
+ * The run's tab strip, created lazily: it appears when the run lands its first
+ * action on a page — not when the message was sent, since the user may just be
+ * passing through the tab they sent from. All best-effort: the strip is the
+ * ambient signal, never something a run fails over.
+ */
+export interface RunGroup {
+  /** The labeled group — undefined until the first action or group_tab mints it. */
+  readonly groupId: number | undefined;
+  /** File the currently-driven tab after a successful action. */
+  touch(): Promise<void>;
+  /** group_tab's target: the run's group, minted around this tab when the run has none. */
+  file(tabId: number): Promise<number | undefined>;
+}
+
 export interface ToolContext {
   /** The run's conversation — read_history reads its stored transcript. Absent under direct control, which has none. */
   conversationId?: string;
-  /** The group this run's tab was filed under — group_tab's target. Absent when
-   *  grouping was skipped (or under direct control, which has no group). */
-  runGroupId?: number;
+  /** The run's tab strip — group_tab's target. Absent under direct control, which has none. */
+  runGroup?: RunGroup;
 }
 
 /** Execute a single tool call against the browser driver. */
@@ -49,10 +63,14 @@ export async function executeTool(
       }
 
       case "group_tab": {
-        if (ctx.runGroupId === undefined) {
-          return { ok: false, error: i18n.t("errors.noRunGroup") };
-        }
-        const tab = await driver.groupTab(call.args.tab_id as number, ctx.runGroupId);
+        if (!ctx.runGroup) return { ok: false, error: i18n.t("errors.noRunGroup") };
+        // When the strip exists, the driver's window check gives the model a
+        // clear error — joining across windows would otherwise silently mint a
+        // second strip over there.
+        const groupId =
+          ctx.runGroup.groupId ?? (await ctx.runGroup.file(call.args.tab_id as number));
+        if (groupId === undefined) return { ok: false, error: i18n.t("errors.noRunGroup") };
+        const tab = await driver.groupTab(call.args.tab_id as number, groupId);
         return { ok: true, data: tab };
       }
 

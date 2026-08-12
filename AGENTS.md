@@ -79,8 +79,9 @@ never reach the service-worker bundle.
 ### Modules
 
 - `agent/` — agent loop, tools, system prompt, run slot + FIFO queue, run start. Panel runs
-  **work the user's current tab by default** — adopt it, group it under the task's name,
-  drive it (the plan gate protects a page the user didn't want touched). It opens its own
+  **work the user's current tab by default** — adopt it and drive it (the plan gate protects
+  a page the user didn't want touched); every tab the run acts on joins one green strip per
+  conversation, minted at the first action, never at send time. It opens its own
   tab only when there's no page to work: blank/new-tab, a restricted page, an MCP client,
   or an explicit URL. Runs survive panel close.
   Action tools

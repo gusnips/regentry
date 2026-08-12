@@ -14,39 +14,50 @@ A panel run **works the tab the user is looking at by default** (`resolveRunTab`
 the state the task is about — the half-filled form, the search results, the scrolled
 thread — lives in that tab and nowhere else, and re-visiting its url in a fresh tab
 would both lose it and open a second live session the site may read as a bot. So the
-default run adopts the current tab: groups it under the task's name, drives it with
-`activateOnSwitch` on, and settles the group with ✓/?/✗ when it lets go. The composer
-toggle's `thisPage` is the same drive minus the group bookkeeping.
+default run adopts the current tab and drives it with `activateOnSwitch` on. The
+composer toggle's `thisPage` is the same drive with the panel left open.
 
-The group is the conversation's, not the run's: a follow-up message files its tab under
-the group the thread already has, and only mints a fresh one when the user has closed,
-emptied, or taken that one back. `liveThreadGroup` resolves it — first from the tab in
-hand (already grouped, and its url is one the conversation drove: ids die with a browser
-restart, urls survive them), then from the records (the newest recorded tab must still
-sit in its recorded group). The model can pull the task's other open tabs into it with
-`group_tab` (same window only — Chrome groups can't span windows), so a "copy from Docs
-into this site" run shows the whole working set under one strip. The strip's name is
-written once, at labeling; afterwards a run only changes its mark. Settle re-marks the
-name the group already carries — it never renames, because a continuation's task is the
-user's answer fragment ("the March one"), and a name the user gave the strip themselves
-is theirs — and answering a parked question does the reverse first: strip the "?" and
-re-expand, since the user just pressed send on a tab a collapsed group would swallow.
+The strip is the run's working set, and it appears when the work does: sending a
+message groups nothing — the user may just be passing through the tab they sent from.
+The first successful action a gated tool lands on a tab files that tab into a green
+group named after the task (`runGroup.touch()` where the plan gate stands — passing
+the gate IS the start of work), and every later action joins the same strip. Tabs the
+agent only reads stay out of it unless it files them itself with `group_tab` (same
+window only — Chrome groups can't span windows): an acted-on tab is never the model's
+call; a read tab that belongs in the visible set — the Docs tab a "copy from Docs"
+run reads — always is. A read-only run leaves no strip at all.
+
+The group is the conversation's, not the run's: a follow-up joins the strip the thread
+already has and mints a fresh one only when that one is gone. `liveThreadGroup`
+resolves it — first from the tab in hand (already grouped, and its url is one the
+conversation drove: never rip the tab the user is looking at out of its strip; ids die
+with a browser restart, urls survive them), then from the records by group liveness —
+strips outlive their tabs (the driven tab gets closed once the task ends, the
+group_tab'd ones stay), so a recorded group that still exists IS the thread's even
+when its recorded tab is gone. The strip's name is written once, at labeling;
+afterwards a run only changes its mark. Settle re-marks the name the group already
+carries (✓/?/✗, collapsed) — it never renames, because a continuation's task is the
+user's answer fragment ("the March one"), and a name the user gave the strip
+themselves is theirs. A continuation joins the parked strip without renaming it, and
+only while the reused tab still sits in its recorded group — a tab the user refiled
+while the question waited is theirs, and the run's touch mints nothing around it.
 
 Adoption is safe because of the plan gate, not instead of it: the run reads the page and
 proposes a plan before any action tool unlocks, so "don't touch this draft" is a plan
-rejection, not a reason to have forked the tab. A rejected plan names no outcome — nothing
-ran: a tab the run _opened_ is taken back, while the user's own tab (adopted or this-page)
-goes back exactly as found — unfiled when the run filed it into a group, still in the
-thread's strip when it was already sitting there. It is never closed.
+rejection, not a reason to have forked the tab. A rejected plan names no outcome: a tab
+the run _opened_ is taken back; the user's own tab keeps whatever grouping it had —
+grouping starts at the first action, so a first-plan rejection happens before any of
+it, and a strip that already exists (a rejected mid-run replan) just collapses. The
+tab itself is never closed.
 
 The run still gets a tab of its own when there is no page to work: a blank/new-tab page,
 a restricted page (chrome://, the Web Store — those error out of `resolveRunTab` before a
 run exists, so the model never has to be told about a page it never saw), an MCP client
 (no current tab at all — its sessions start on the neutral default), or a run the client
 pointed at an explicit URL. Those forks open on `defaultStartUrl` (then google), inactive,
-labelled with the task, and — for the panel only — brought forward once they're loaded and
-grouped, so a run that fails to start takes its tab back without the user ever seeing it
-blink past.
+and — for the panel only — brought forward once they're loaded, so a run that fails to
+start takes its tab back without the user ever seeing it blink past. Their strip appears
+at the first action like any other run's.
 
 An unanswered question is the one case the run goes back to a tab it had before: it
 returns to the **very tab** the question was asked on when that tab is still alive and
@@ -87,7 +98,7 @@ in `agent/loop.ts` — reads and bookkeeping stay free so the model can look bef
 plans). `switch_tab` is deliberately outside the gate: it changes nothing on any page and
 it is how the agent reaches the page it must read first, which for a run starting
 on the tab it's driving is the normal opening move. `group_tab` rides the same exemption —
-it rearranges the strip, never the page, and the run already groups its start tab unasked. A turn's calls run with `plan`
+it rearranges the strip, never the page. A turn's calls run with `plan`
 hoisted first (`planFirst`) — models routinely batch the plan with the step it opens with,
 and in wire order that step would bounce off the gate its own approval was about to open.
 A bounced call gets a step row with a `detail`, so the red ✗ opens like every other row

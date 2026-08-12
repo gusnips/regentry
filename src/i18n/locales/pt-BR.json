@@ -498,7 +498,7 @@
     "navigated": "Navegação concluída",
     "switchedTo": "Alternou para {{title}}",
     "tabGrouped": "Agrupou {{title}}",
-    "noRunGroup": "Esta execução não tem um grupo de abas para organizar — o agrupamento não estava disponível. switch_tab ainda dirige qualquer aba.",
+    "noRunGroup": "Não foi possível agrupar essa aba — ela pode ter sido fechada, ou o agrupamento não está disponível nesta sessão. Você ainda pode usar switch_tab nela e trabalhar lá.",
     "tabGroupOtherWindow": "Essa aba está em outra janela — grupos de abas não abrangem janelas. Você ainda pode usar switch_tab nela e trabalhar lá; ela só fica fora do grupo.",
     "tabsListed_one": "Listou {{count}} aba aberta",
     "tabsListed_other": "Listou {{count}} abas abertas",

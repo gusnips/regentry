@@ -11,7 +11,7 @@ export interface LastTab {
   /** Opportunistic hint only — may point at a long-closed tab. */
   tabId?: number;
   /** The thread's tab group, when the tab ended its run in one a run labeled —
-   *  reused only if it still matches. */
+   *  reused only while the group is still alive (strips outlive their tabs). */
   groupId?: number;
 }
 

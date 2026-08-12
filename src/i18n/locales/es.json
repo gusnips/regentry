@@ -498,7 +498,7 @@
     "navigated": "Navegación completada",
     "switchedTo": "Cambió a {{title}}",
     "tabGrouped": "Agrupó {{title}}",
-    "noRunGroup": "Esta ejecución no tiene un grupo de pestañas para organizar — el agrupamiento no estaba disponible. switch_tab aún controla cualquier pestaña.",
+    "noRunGroup": "No se pudo agrupar esa pestaña — puede haberse cerrado, o el agrupamiento no está disponible en esta sesión. Aún puedes usar switch_tab y trabajar allí.",
     "tabGroupOtherWindow": "Esa pestaña está en otra ventana — los grupos de pestañas no abarcan varias ventanas. Aún puedes usar switch_tab y trabajar allí; simplemente queda fuera del grupo.",
     "tabsListed_one": "Listó {{count}} pestaña abierta",
     "tabsListed_other": "Listó {{count}} pestañas abiertas",
