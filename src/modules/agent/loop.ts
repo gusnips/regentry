@@ -292,6 +292,10 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
   // Action tools are gated on it, so a model that skips planning gets an error
   // tool-result pointing it back at the plan tool instead of a free pass.
   let approvedPlan: PlanPayload | null = null;
+  // Set when the user's own mid-run message lands between plan calls: the next
+  // replan answers their words, and their words already approved what they
+  // asked for — parking there would be requesting permission to obey.
+  let steeredSincePlan = false;
 
   for (let step = 0; step < MAX_STEPS; step++) {
     if (signal.aborted) {
@@ -415,12 +419,18 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
         const plan = result.data as PlanPayload;
         // Shown before the answer arrives — the user approves what they see.
         callbacks.onPlan?.(plan);
+        // A replan written in answer to the user's own mid-run message never
+        // asks — their message already approved what it asked for. The flag is
+        // consumed either way, so a later self-initiated deviation still asks.
+        const steered = steeredSincePlan;
+        steeredSincePlan = false;
         // The first proposal always asks. A later one asks again only when the
         // model flags its own update as a deviation (`deviates_from_approved`):
         // string-diffing re-asked on every reworded step, so what is worth a
         // fresh approval is the plan writer's call, not the gate's. An absent
         // flag means silent — under-asking is the chosen failure direction.
-        const needsApproval = !approvedPlan || call.args.deviates_from_approved === true;
+        const needsApproval =
+          !approvedPlan || (call.args.deviates_from_approved === true && !steered);
         if (needsApproval) {
           const outcome = (await callbacks.onPlanApproval?.(plan.steps, approvedPlan !== null)) ?? {
             approved: true,
@@ -506,6 +516,9 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       log.info("injected mid-run message:", truncate(item.text, 120));
       messages.push({ role: "user", content: item.text });
       callbacks.onInjected?.(item.id, item.text);
+      // The user just redirected the run — the replan it triggers carries
+      // their yes with it (see the plan gate above).
+      steeredSincePlan = true;
     }
 
     if (taskDone) return messages;

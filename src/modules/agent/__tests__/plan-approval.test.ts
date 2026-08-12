@@ -306,6 +306,66 @@ describe("runAgentLoop plan approval gate", () => {
     expect(calls).toEqual(["navigate", "click"]);
   });
 
+  it("does not re-ask a replan that answers the user's own mid-run message", async () => {
+    const calls: string[] = [];
+    const approvals: { steps: string[]; reapproval: boolean }[] = [];
+    const queue = [{ id: "m1", text: "the purchase is handled already, move on" }];
+    const provider = scriptedProvider([
+      [planCall(["Go to X", "Buy the thing", "Confirm it"])],
+      [call("navigate", { url: "https://x.com" })],
+      // Answering the user's message: drops the purchase and flags the drop as
+      // a deviation. Their message already approved what it asked for.
+      [planCall(["Go to X", "Confirm it"], 1, true)],
+      [call("click", { ref: "e1" })],
+    ]);
+    await runAgentLoop({
+      provider,
+      driver: makeDriver(calls),
+      task: "buy the thing on x",
+      signal: new AbortController().signal,
+      drainInjected: () => queue.splice(0, queue.length),
+      callbacks: {
+        onPlanApproval: async (steps, reapproval) => {
+          approvals.push({ steps, reapproval });
+          return { approved: true };
+        },
+      },
+    });
+
+    expect(approvals).toHaveLength(1); // only the first proposal asked
+    expect(calls).toEqual(["navigate", "click"]); // the gate stayed open
+  });
+
+  it("re-asks a self-initiated deviation once the steering replan has passed", async () => {
+    const approvals: { steps: string[]; reapproval: boolean }[] = [];
+    const queue = [{ id: "m1", text: "skip the reading" }];
+    const provider = scriptedProvider([
+      [planCall(["Go to X", "Read X", "Wrap up"])],
+      [planCall(["Go to X", "Wrap up"], 1, true)], // answering the user — silent
+      [planCall(["Go to X", "Buy the thing"], 1, true)], // the model's own idea — asks
+    ]);
+    await runAgentLoop({
+      provider,
+      driver: makeDriver(),
+      task: "go to x",
+      signal: new AbortController().signal,
+      drainInjected: () => queue.splice(0, queue.length),
+      callbacks: {
+        onPlanApproval: async (steps, reapproval) => {
+          approvals.push({ steps, reapproval });
+          return { approved: true };
+        },
+      },
+    });
+
+    // The steering yes is consumed by the first replan it prompted — a later
+    // self-initiated deviation parks on its own.
+    expect(approvals).toEqual([
+      { steps: ["Go to X", "Read X", "Wrap up"], reapproval: false },
+      { steps: ["Go to X", "Buy the thing"], reapproval: true },
+    ]);
+  });
+
   it("auto-approves when no onPlanApproval callback is wired", async () => {
     const calls: string[] = [];
     const provider = scriptedProvider([

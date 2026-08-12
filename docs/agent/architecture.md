@@ -102,10 +102,16 @@ back (exactly what clicking the away notification does) re-arms it from the work
 `query_run` answer — otherwise the notification led to a question with no way to say yes.
 Mid-run replans
 re-ask only when the model says the update deviates from what was approved
-(`deviates_from_approved`, a required arg on the plan call). The judgment is the plan
+(`deviates_from_approved`, a required arg on the plan call) — and not even then when the
+replan answers the user's own injected mid-run message: their message already approved
+what it asked for, so the loop applies that one replan silently and consumes the
+steering (a later self-initiated deviation asks on its own). The judgment is the plan
 writer's, not a diff's: string equality re-asked on every reworded step, which taught
 users to approve without reading. An unflagged update — progress, rewording,
-reordering — never interrupts. A bare rejection ends the run with `errors.planRejected` as the done
+reordering — never interrupts, and dropping work is never a deviation: doing less
+cannot exceed the yes already given. Every plan call carries the run's whole arc,
+finished steps included — the card is the progress display, so a remainder-only list
+would erase what the run already did; only steps the user cancelled come off. A bare rejection ends the run with `errors.planRejected` as the done
 summary; a rejection WITH feedback is a revision request instead — the note rides back
 inside the plan tool's own result (a separate user message would collide with the
 tool_results turn, which Anthropic forbids), the gate re-arms, and the revised plan is
