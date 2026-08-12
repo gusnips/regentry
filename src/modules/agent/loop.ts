@@ -335,8 +335,15 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
         return messages;
       }
       const msg = e instanceof Error ? e.message : String(e);
-      log.error(`run failed at step ${step + 1}:`, msg);
       const kind = e instanceof ProviderError ? e.kind : undefined;
+      // A classified state (rate limit, quota, auth…) isn't a run fault — warn keeps
+      // it off chrome://extensions' Errors page. Unclassified shapes stay errors:
+      // they're the signal that a provider changed something we don't know yet.
+      if (kind) {
+        log.warn(`run failed at step ${step + 1}:`, msg);
+      } else {
+        log.error(`run failed at step ${step + 1}:`, msg);
+      }
       // A classified provider error leads with its own complete line ("…hit your
       // weekly usage limit — resets…") — wrapping it in "Provider error:" would
       // frame a state as a failure. Unclassified errors keep the envelope.

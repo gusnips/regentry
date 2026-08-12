@@ -175,7 +175,6 @@ export async function* streamSse(opts: {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    log.error(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
     const now = Date.now();
     // Headers are authoritative (Anthropic names the window); the body fills
     // gaps (ChatGPT's codex backend carries the reset only in the 429 body).
@@ -200,6 +199,15 @@ export async function* streamSse(opts: {
       reset,
       now,
     );
+    // A classified failure (rate limit, quota, auth…) is an expected provider state
+    // the chat already surfaces with its fix — warn keeps it off chrome://extensions'
+    // Errors page, which console.error feeds. Only an unclassified shape belongs
+    // there: it's the signal that a provider changed something we don't know yet.
+    if (kind) {
+      log.warn(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
+    } else {
+      log.error(`HTTP ${res.status} from ${url}: ${truncate(text)}`);
+    }
     throw new ProviderError(message, res.status, kind, reset.retryAfterMs);
   }
 
