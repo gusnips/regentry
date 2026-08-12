@@ -111,8 +111,8 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     }
     const { tab, groupId, opened, adopted } = target;
     // "this page" returns bare — it's the same drive as adoption, just with the
-    // panel left open, so it carries the same whose-tab semantics. The plan
-    // rejection path needs the raw flag to know the tab was adopted, not opened.
+    // panel left open, so it carries the same whose-tab semantics: the plan
+    // rejection path hands the tab back whichever mode drove it.
     const onUsersTab = adopted === true || opts.thisPage === true;
     if (!tab.id) {
       emit({ type: "error", message: i18n.t("errors.noActiveTab") });
@@ -311,11 +311,11 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       // glanced at is not where the conversation now lives.
       if (planRejected && opened) {
         await discardRunTab(tab.id);
-      } else if (planRejected && adopted) {
-        // The user said "no, don't touch this" — ungroup the adopted tab rather
-        // than leave a "✓" collapsed group around it. Nothing ran, so there is
-        // no outcome to name.
-        await ungroupRunTab(tab.id);
+      } else if (planRejected && onUsersTab) {
+        // "No, don't touch this": nothing ran, so there is no outcome to name.
+        // Hand the user's tab back as the run found it — unfiled when this run
+        // filed it, still in the thread's strip when it already was.
+        if (!target.keptGroup) await ungroupRunTab(tab.id);
         await persistDrivenTabFor(conversationId, drivenTabId, groupId);
       } else {
         await persistDrivenTabFor(conversationId, drivenTabId, groupId);
@@ -361,6 +361,9 @@ interface RunTab {
   tab: chrome.tabs.Tab;
   /** The run's tab group, when it owns one — retitled with the outcome on the way out. */
   groupId?: number;
+  /** The tab's grouping predates this run — already in the thread's strip, or a
+   *  reused continuation the run never re-filed. A rejected plan leaves it alone. */
+  keptGroup?: boolean;
   /** This run opened the tab, so a rejected plan can take it back. */
   opened?: boolean;
   /** This run took over the user's current tab — drive it, group it, never close it. */
@@ -422,17 +425,21 @@ async function resolveRunTab(
     // Every run is born backgrounded — even "this page" gets the task group, so
     // walking away (closing the panel) leaves the same labeled, blinking marker
     // a background run leaves. "Supervised" only ever meant the panel stays open.
-    const groupId = await labelRunTab(
-      tab.id,
-      opts.task,
-      await liveThreadGroup(conversationTabs, tab),
-    );
-    return { tab, ...(groupId !== undefined ? { groupId } : {}) };
+    const threadGroup = await liveThreadGroup(conversationTabs, tab);
+    const groupId = await labelRunTab(tab.id, opts.task, threadGroup);
+    return {
+      tab,
+      ...(groupId !== undefined ? { groupId } : {}),
+      ...(threadGroup !== undefined && tab.groupId === threadGroup ? { keptGroup: true } : {}),
+    };
   }
 
   const reused = await reuseContinuationTab(continuation);
   if (reused) {
     if (reveal && reused.tab.id !== undefined) await focusTab(reused.tab.id, reused.tab.windowId);
+    // The question settled the strip ("?", collapsed); the answer re-opens it —
+    // the run works again, and the user just pressed send on the tab it holds.
+    if (reused.groupId !== undefined) await resumeRunGroup(reused.groupId);
     return reused;
   }
 
@@ -452,12 +459,14 @@ async function resolveRunTab(
       } catch (e) {
         return { error: e instanceof Error ? e.message : String(e) };
       }
-      const groupId = await labelRunTab(
-        tab.id,
-        opts.task,
-        await liveThreadGroup(conversationTabs, tab),
-      );
-      return { tab, adopted: true, ...(groupId !== undefined ? { groupId } : {}) };
+      const threadGroup = await liveThreadGroup(conversationTabs, tab);
+      const groupId = await labelRunTab(tab.id, opts.task, threadGroup);
+      return {
+        tab,
+        adopted: true,
+        ...(groupId !== undefined ? { groupId } : {}),
+        ...(threadGroup !== undefined && tab.groupId === threadGroup ? { keptGroup: true } : {}),
+      };
     }
   }
 
@@ -503,7 +512,8 @@ async function resolveRunTab(
  * booking form, the search results, the scrolled thread. The group is adopted
  * only when it is the one that run created (its id was recorded alongside the
  * tab), so a tab the user has since filed into a group of their own keeps the
- * label they gave it.
+ * label they gave it. The run files nothing here either way — keptGroup says
+ * so, so a rejected plan leaves the tab's grouping exactly as found.
  */
 async function reuseContinuationTab(last: LastTab | undefined): Promise<RunTab | undefined> {
   if (last?.tabId === undefined) return undefined;
@@ -515,6 +525,7 @@ async function reuseContinuationTab(last: LastTab | undefined): Promise<RunTab |
     return {
       tab,
       adopted: true,
+      keptGroup: true,
       ...(tab.groupId === last.groupId ? { groupId: last.groupId } : {}),
     };
   } catch {
@@ -638,12 +649,17 @@ export async function labelRunTab(
   }
 }
 
+/** The outcome mark a run leaves on its group's title — resume strips it, settle re-marks it. */
+const SETTLE_MARK = /^[✓✗?] /;
+
 /**
  * Retitle the run's tab group with the outcome and collapse it — the strip
- * keeps saying what happened, out of the user's way. Best-effort: the tab may
- * already be gone.
+ * keeps saying what happened, out of the user's way. Only the mark changes: the
+ * name the group already carries survives, because on a continuation the task
+ * at hand is the user's answer fragment ("the March one"), and a name the user
+ * gave the strip themselves is theirs. Best-effort: the tab may already be gone.
  */
-async function settleRunTab(
+export async function settleRunTab(
   groupId: number | undefined,
   task: string,
   outcome: "done" | "failed" | "question",
@@ -651,9 +667,30 @@ async function settleRunTab(
   if (groupId === undefined) return;
   const mark = outcome === "failed" ? "✗ " : outcome === "question" ? "? " : "✓ ";
   try {
-    await chrome.tabGroups.update(groupId, { title: groupTitle(task, mark), collapsed: true });
+    const group = await chrome.tabGroups.get(groupId);
+    const base = group.title?.replace(SETTLE_MARK, "").trim() || task;
+    await chrome.tabGroups.update(groupId, { title: groupTitle(base, mark), collapsed: true });
   } catch {
     // The tab (and its group) died during the run.
+  }
+}
+
+/**
+ * The answer to a parked question re-opens the strip the question settled:
+ * strip the "?" and expand — the run works again, and the user just pressed
+ * send on the tab a collapsed group would swallow. The name is left alone — it
+ * still names the task the question was about, not the answer. Best-effort.
+ */
+export async function resumeRunGroup(groupId: number): Promise<void> {
+  try {
+    const group = await chrome.tabGroups.get(groupId);
+    const base = group.title?.replace(SETTLE_MARK, "");
+    await chrome.tabGroups.update(groupId, {
+      ...(base ? { title: base } : {}),
+      collapsed: false,
+    });
+  } catch {
+    // The group died while the question waited — the run drives on regardless.
   }
 }
 

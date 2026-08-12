@@ -25,12 +25,19 @@ hand (already grouped, and its url is one the conversation drove: ids die with a
 restart, urls survive them), then from the records (the newest recorded tab must still
 sit in its recorded group). The model can pull the task's other open tabs into it with
 `group_tab` (same window only — Chrome groups can't span windows), so a "copy from Docs
-into this site" run shows the whole working set under one strip.
+into this site" run shows the whole working set under one strip. The strip's name is
+written once, at labeling; afterwards a run only changes its mark. Settle re-marks the
+name the group already carries — it never renames, because a continuation's task is the
+user's answer fragment ("the March one"), and a name the user gave the strip themselves
+is theirs — and answering a parked question does the reverse first: strip the "?" and
+re-expand, since the user just pressed send on a tab a collapsed group would swallow.
 
 Adoption is safe because of the plan gate, not instead of it: the run reads the page and
 proposes a plan before any action tool unlocks, so "don't touch this draft" is a plan
-rejection, not a reason to have forked the tab. Only a tab the run _opened_ is taken
-back on a rejected plan — an adopted tab is the user's own and is never closed.
+rejection, not a reason to have forked the tab. A rejected plan names no outcome — nothing
+ran: a tab the run _opened_ is taken back, while the user's own tab (adopted or this-page)
+goes back exactly as found — unfiled when the run filed it into a group, still in the
+thread's strip when it was already sitting there. It is never closed.
 
 The run still gets a tab of its own when there is no page to work: a blank/new-tab page,
 a restricted page (chrome://, the Web Store — those error out of `resolveRunTab` before a

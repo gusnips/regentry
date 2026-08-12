@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { labelRunTab, liveThreadGroup } from "../start-run";
+import { labelRunTab, liveThreadGroup, resumeRunGroup, settleRunTab } from "../start-run";
 import type { LastTab } from "@/modules/conversation/conversations";
 
 // One thread, one strip: follow-up messages file their tab under the group the
@@ -17,16 +17,18 @@ describe("thread tab group", () => {
   const chromeBackup = globalThis.chrome;
   let tabsGet: ReturnType<typeof vi.fn>;
   let tabsGroup: ReturnType<typeof vi.fn>;
+  let groupGet: ReturnType<typeof vi.fn>;
   let groupUpdate: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     tabsGet = vi.fn();
     tabsGroup = vi.fn();
+    groupGet = vi.fn();
     groupUpdate = vi.fn().mockResolvedValue(undefined);
     (globalThis as Record<string, unknown>).chrome = {
       ...chromeBackup,
       tabs: { ...chromeBackup.tabs, get: tabsGet, group: tabsGroup },
-      tabGroups: { update: groupUpdate },
+      tabGroups: { get: groupGet, update: groupUpdate },
     };
   });
 
@@ -123,6 +125,75 @@ describe("thread tab group", () => {
     it("never fails a run over grouping", async () => {
       tabsGroup.mockRejectedValue(new Error("cannot group"));
       expect(await labelRunTab(42, "book the flight")).toBeUndefined();
+      expect(groupUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("settleRunTab", () => {
+    it("re-marks the name the group already carries, not the task at hand", async () => {
+      // A continuation's task is the user's answer fragment — the strip keeps
+      // naming the task the question was about.
+      groupGet.mockResolvedValue({ title: "book the flight" });
+      await settleRunTab(7, "yes, the March one", "done");
+      expect(groupUpdate).toHaveBeenCalledWith(7, {
+        title: "✓ book the flight",
+        collapsed: true,
+      });
+    });
+
+    it("replaces the mark a previous run left", async () => {
+      groupGet.mockResolvedValue({ title: "? book the flight" });
+      await settleRunTab(7, "yes, the March one", "done");
+      expect(groupUpdate).toHaveBeenCalledWith(7, {
+        title: "✓ book the flight",
+        collapsed: true,
+      });
+    });
+
+    it("falls back to the task when the group carries no name", async () => {
+      groupGet.mockResolvedValue({});
+      await settleRunTab(7, "book the flight", "failed");
+      expect(groupUpdate).toHaveBeenCalledWith(7, {
+        title: "✗ book the flight",
+        collapsed: true,
+      });
+    });
+
+    it("never fails a run over a dead group", async () => {
+      groupGet.mockRejectedValue(new Error("No group with id: 7"));
+      await settleRunTab(7, "book the flight", "done");
+      expect(groupUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("resumeRunGroup", () => {
+    it("strips the waiting mark and expands — the run works again", async () => {
+      groupGet.mockResolvedValue({ title: "? book the flight" });
+      await resumeRunGroup(7);
+      expect(groupUpdate).toHaveBeenCalledWith(7, {
+        title: "book the flight",
+        collapsed: false,
+      });
+    });
+
+    it("keeps a name the user gave the strip", async () => {
+      groupGet.mockResolvedValue({ title: "travel stuff" });
+      await resumeRunGroup(7);
+      expect(groupUpdate).toHaveBeenCalledWith(7, {
+        title: "travel stuff",
+        collapsed: false,
+      });
+    });
+
+    it("only expands an untitled group", async () => {
+      groupGet.mockResolvedValue({});
+      await resumeRunGroup(7);
+      expect(groupUpdate).toHaveBeenCalledWith(7, { collapsed: false });
+    });
+
+    it("never fails a run over a dead group", async () => {
+      groupGet.mockRejectedValue(new Error("No group with id: 7"));
+      await resumeRunGroup(7);
       expect(groupUpdate).not.toHaveBeenCalled();
     });
   });
