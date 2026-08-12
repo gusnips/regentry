@@ -19,11 +19,13 @@ default run adopts the current tab: groups it under the task's name, drives it w
 toggle's `thisPage` is the same drive minus the group bookkeeping.
 
 The group is the conversation's, not the run's: a follow-up message files its tab under
-the group the thread already has (`liveThreadGroup` — reused only while the newest
-recorded tab still sits in its recorded group), and only mints a fresh one when the user
-has closed, emptied, or taken that one back. The model can pull the task's other open
-tabs into it with `group_tab` (same window only — Chrome groups can't span windows), so
-a "copy from Docs into this site" run shows the whole working set under one strip.
+the group the thread already has, and only mints a fresh one when the user has closed,
+emptied, or taken that one back. `liveThreadGroup` resolves it — first from the tab in
+hand (already grouped, and its url is one the conversation drove: ids die with a browser
+restart, urls survive them), then from the records (the newest recorded tab must still
+sit in its recorded group). The model can pull the task's other open tabs into it with
+`group_tab` (same window only — Chrome groups can't span windows), so a "copy from Docs
+into this site" run shows the whole working set under one strip.
 
 Adoption is safe because of the plan gate, not instead of it: the run reads the page and
 proposes a plan before any action tool unlocks, so "don't touch this draft" is a plan

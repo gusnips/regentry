@@ -64,6 +64,35 @@ describe("thread tab group", () => {
       tabsGet.mockResolvedValue({ groupId: 5 });
       expect(await liveThreadGroup([recorded(1, 7), recorded(2, 9)])).toBeUndefined();
     });
+
+    // A chrome.tabs.Tab needs a dozen fields the shortcut never reads.
+    const tabOn = (url: string, groupId: number) =>
+      ({ url, groupId }) as unknown as chrome.tabs.Tab;
+
+    it("keeps the group the tab in hand already sits in when the thread drove its url", async () => {
+      // The records are all stale (closed tabs, a browser restart) — the tab
+      // itself is the proof: the conversation drove this url, and it still
+      // sits grouped. Minting a second group around it is the bug this fixes.
+      tabsGet.mockRejectedValue(new Error("No tab with id"));
+      const tabs = [recorded(1, 7)];
+      const onIt = tabOn("https://example.com/1", 4);
+      expect(await liveThreadGroup(tabs, onIt)).toBe(4);
+      expect(tabsGet).not.toHaveBeenCalled();
+    });
+
+    it("ignores the tab in hand's group when the thread never drove its url", async () => {
+      // A url the conversation never touched, sitting in a group of the user's
+      // own — that group is theirs, not the thread's. Fall to the records.
+      tabsGet.mockResolvedValue({ groupId: 7 });
+      const onIt = tabOn("https://unrelated.example", 4);
+      expect(await liveThreadGroup([recorded(1, 7)], onIt)).toBe(7);
+    });
+
+    it("ignores an ungrouped tab in hand", async () => {
+      tabsGet.mockResolvedValue({ groupId: 7 });
+      const onIt = tabOn("https://example.com/1", -1);
+      expect(await liveThreadGroup([recorded(1, 7)], onIt)).toBe(7);
+    });
   });
 
   describe("labelRunTab", () => {

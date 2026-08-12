@@ -104,7 +104,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     // the very tab the conversation last drove, page state and all.
     const conversationTabs = await getConversationTabsFor(conversationId);
     const continuation = hasPendingQuestion(transcript) ? conversationTabs[0] : undefined;
-    const target = await resolveRunTab(opts, continuation, await liveThreadGroup(conversationTabs));
+    const target = await resolveRunTab(opts, continuation, conversationTabs);
     if ("error" in target) {
       emit({ type: "error", message: target.error });
       return { ok: true };
@@ -406,8 +406,8 @@ function isBlankPage(url: string | undefined): boolean {
  */
 async function resolveRunTab(
   opts: StartRunOptions,
-  continuation?: LastTab,
-  threadGroupId?: number,
+  continuation: LastTab | undefined,
+  conversationTabs: LastTab[],
 ): Promise<RunTab | { error: string }> {
   const reveal = opts.owner === "panel";
   if (opts.thisPage) {
@@ -422,7 +422,11 @@ async function resolveRunTab(
     // Every run is born backgrounded — even "this page" gets the task group, so
     // walking away (closing the panel) leaves the same labeled, blinking marker
     // a background run leaves. "Supervised" only ever meant the panel stays open.
-    const groupId = await labelRunTab(tab.id, opts.task, threadGroupId);
+    const groupId = await labelRunTab(
+      tab.id,
+      opts.task,
+      await liveThreadGroup(conversationTabs, tab),
+    );
     return { tab, ...(groupId !== undefined ? { groupId } : {}) };
   }
 
@@ -448,7 +452,11 @@ async function resolveRunTab(
       } catch (e) {
         return { error: e instanceof Error ? e.message : String(e) };
       }
-      const groupId = await labelRunTab(tab.id, opts.task, threadGroupId);
+      const groupId = await labelRunTab(
+        tab.id,
+        opts.task,
+        await liveThreadGroup(conversationTabs, tab),
+      );
       return { tab, adopted: true, ...(groupId !== undefined ? { groupId } : {}) };
     }
   }
@@ -475,7 +483,9 @@ async function resolveRunTab(
   }
   // Re-read after the wait — the created record predates the navigation.
   const loaded = await chrome.tabs.get(tab.id);
-  const groupId = await labelRunTab(tab.id, opts.task, threadGroupId);
+  // A brand-new tab has no group of its own to keep — only the records can
+  // point at the thread's strip.
+  const groupId = await labelRunTab(tab.id, opts.task, await liveThreadGroup(conversationTabs));
   // Loaded and grouped before it is shown: a run that never got off the ground
   // takes its tab back without the user ever having seen it blink past.
   if (reveal) await focusTab(tab.id, loaded.windowId);
@@ -562,12 +572,27 @@ function groupTitle(task: string, mark = ""): string {
 }
 
 /**
- * The group the thread's tabs live under, when it is still the thread's: a
- * recorded tab must still be sitting in its recorded group — the same rule
- * reuseContinuationTab applies. A group the user has closed, emptied, or moved
- * its tab out of is theirs again, and the next run starts a fresh one.
+ * The group the thread's tabs live under, when it is still the thread's.
+ *
+ * Given the tab the run is about to label, the strongest signal needs no
+ * records at all: the tab already sits in a group AND this conversation has
+ * driven its url before (urls are the stable key — tab and group ids die with
+ * a browser restart, urls survive them). A page the thread worked, still
+ * grouped, is sitting in the thread's strip — keep it, never mint a second
+ * group around it.
+ *
+ * Otherwise fall back to the records: a recorded tab must still be sitting in
+ * its recorded group — the same rule reuseContinuationTab applies. A group the
+ * user has closed, emptied, or moved its tab out of is theirs again, and the
+ * next run starts a fresh one.
  */
-export async function liveThreadGroup(tabs: LastTab[]): Promise<number | undefined> {
+export async function liveThreadGroup(
+  tabs: LastTab[],
+  forTab?: chrome.tabs.Tab,
+): Promise<number | undefined> {
+  if (forTab?.url && forTab.groupId >= 0 && tabs.some((t) => t.url === forTab.url)) {
+    return forTab.groupId;
+  }
   for (const t of tabs) {
     if (t.tabId === undefined || t.groupId === undefined) continue;
     try {
