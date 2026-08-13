@@ -14,8 +14,10 @@ A panel run **works the tab the user is looking at by default** (`resolveRunTab`
 the state the task is about — the half-filled form, the search results, the scrolled
 thread — lives in that tab and nowhere else, and re-visiting its url in a fresh tab
 would both lose it and open a second live session the site may read as a bot. So the
-default run adopts the current tab and drives it with `activateOnSwitch` on. The
-composer toggle's `thisPage` is the same drive with the panel left open.
+default run adopts the current tab and drives it in silence — a background run
+never activates anything. The composer toggle's `thisPage` is the same drive with
+the panel left open: the watched run, whose switches the driver may follow
+(`activateOnSwitch`).
 
 The strip is the run's working set, and it appears when the work does: sending a
 message groups nothing — the user may just be passing through the tab they sent from.
@@ -55,9 +57,9 @@ a restricted page (chrome://, the Web Store — those error out of `resolveRunTa
 run exists, so the model never has to be told about a page it never saw), an MCP client
 (no current tab at all — its sessions start on the neutral default), or a run the client
 pointed at an explicit URL. Those forks open on `defaultStartUrl` (then google), inactive,
-and — for the panel only — brought forward once they're loaded, so a run that fails to
-start takes its tab back without the user ever seeing it blink past. Their strip appears
-at the first action like any other run's.
+and are never brought forward — only background runs take this path, and background
+means the user's screen never moves; the badge and widget say the work exists. Their
+strip appears at the first action like any other run's.
 
 An unanswered question is the one case the run goes back to a tab it had before: it
 returns to the **very tab** the question was asked on when that tab is still alive and

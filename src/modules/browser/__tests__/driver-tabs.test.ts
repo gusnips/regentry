@@ -77,6 +77,7 @@ const groupCalls: { tabIds: number | number[]; groupId?: number }[] = [];
 };
 
 const { createDriver } = await import("../driver");
+const { focusTab } = await import("../focus-tab");
 
 describe("driver tab switching", () => {
   beforeEach(() => {
@@ -84,7 +85,15 @@ describe("driver tab switching", () => {
     groupCalls.length = 0;
   });
 
-  it("switchTab re-targets later actions and brings the tab forward", async () => {
+  it("focusTab pulls the window by default — the pull belongs to the user's own clicks", async () => {
+    await focusTab(2, 10);
+    expect(updates).toEqual([
+      { window: 10, props: { focused: true } },
+      { id: 2, props: { active: true } },
+    ]);
+  });
+
+  it("switchTab re-targets later actions and brings the tab forward — without raising the window", async () => {
     const switches: number[] = [];
     const driver = createDriver(1, { onSwitch: (info) => switches.push(info.id) });
 
@@ -93,11 +102,9 @@ describe("driver tab switching", () => {
     const info = await driver.switchTab(2);
     expect(info).toMatchObject({ id: 2, title: "Second" });
     expect(switches).toEqual([2]);
-    // Window first, then the tab — so the window never flashes its old tab.
-    expect(updates).toEqual([
-      { window: 10, props: { focused: true } },
-      { id: 2, props: { active: true } },
-    ]);
+    // The tab activates, but the window is never pulled — the agent's moves
+    // must not yank Chrome out of another app (that pull is the user's chips).
+    expect(updates).toEqual([{ id: 2, props: { active: true } }]);
 
     await expect(driver.snapshot()).resolves.toMatchObject({ pageContent: "snap:2" });
   });

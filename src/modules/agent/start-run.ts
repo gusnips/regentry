@@ -163,10 +163,11 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       drivenTabId: () => drivenTabId,
     });
     const driver = createDriver(tab.id, {
-      // A run that drives the user's own tab (this-page, or an adopted one) or
-      // answers to a person watching may bring it forward; a run in a tab of its
-      // own never pulls the window to itself.
-      activateOnSwitch: opts.thisPage === true || adopted === true,
+      // Only a watched run may follow its own switches — "this page" leaves the
+      // panel open precisely so the user can follow the work. A background run
+      // (adopted or in a tab of its own) re-targets in silence: "trabalhando
+      // sozinho" must never move the user's screen.
+      activateOnSwitch: opts.thisPage === true,
       onSwitch: (info) => {
         void hideAgentIndicator(drivenTabId);
         drivenTabId = info.id;
@@ -422,14 +423,15 @@ function isBlankPage(url: string | undefined): boolean {
  *
  * Only when there is no page to adopt — a blank/new-tab page, a page Chrome
  * forbids, an MCP client (nowhere near a browser), or an explicit target URL —
- * does the run open a tab of its own, on the start-page preference. A panel
- * run's own tab is brought forward once it's loaded and grouped: the user just
- * pressed send and is watching, and a run that fails to start takes its tab back
- * without the user ever seeing it blink past. Mid-run the driver's
- * `activateOnSwitch` keeps its hands off the window, so the run stops taking the
- * browser the moment the user turns to something else. An MCP client's run is
- * never revealed: nobody is at the browser, and reaching over to raise Chrome
- * over the editor they ARE looking at is the hijack this all avoids.
+ * does the run open a tab of its own, on the start-page preference. It opens
+ * inactive and is never brought forward: this path serves background runs, and
+ * "background" means the user's screen never moves — the badge and the widget
+ * say the work exists, and the panel's chip is the way to look at it. A
+ * this-page run is the watched one: the driver may follow its own switches,
+ * and an answer to a parked question reveals the tab the question arose on —
+ * the user just pressed send. An MCP client's run is never revealed either:
+ * nobody is at the browser, and reaching over to raise Chrome over the editor
+ * they ARE looking at is the hijack this all avoids.
  */
 async function resolveRunTab(
   opts: StartRunOptions,
@@ -508,9 +510,10 @@ async function resolveRunTab(
   // A brand-new tab has no strip of its own to keep — only the records can
   // point at the thread's. Grouping itself waits for the first action.
   const threadGroupId = await liveThreadGroup(conversationTabs);
-  // Loaded before it is shown: a run that never got off the ground takes its
-  // tab back without the user ever having seen it blink past.
-  if (reveal) await focusTab(tab.id, loaded.windowId);
+  // Never revealed: only background runs open a tab of their own (a this-page
+  // run adopted the tab above), and "background" means the user's screen never
+  // moves. The badge and the widget say the work exists; the panel's chip is
+  // the way to look at it.
   return {
     tab: loaded,
     opened: true,

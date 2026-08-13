@@ -424,7 +424,7 @@
     "background": "En segundo plano",
     "thisPage": "Esta página",
     "targetAria": "Destino: {{target}}",
-    "targetTitle": "“Esta página” deja el chat abierto para que lo veas; “En segundo plano” cierra el panel y sigue trabajando solo — cambiar durante la tarea se aplica al momento (con el plan aprobado)"
+    "targetTitle": "“Esta página” deja el chat abierto para que lo veas; “En segundo plano” cierra el panel y sigue trabajando solo, sin mover tu pantalla — cambiar durante la tarea se aplica al momento (con el plan aprobado)"
   },
   "queue": {
     "position": "En cola · n.º {{position}}",

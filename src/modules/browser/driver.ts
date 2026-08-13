@@ -84,14 +84,14 @@ export interface DriverOptions {
    */
   onSwitch?: (tab: TabInfo) => void;
   /**
-   * Bring a switched-to tab to the front. On for a run that already owns the
-   * screen (this-page, adopted, MCP direct control), off for a run that opened
-   * its own tab — that one shows you its tab once, at the start, and after that
-   * yanking your window mid-switch is exactly what "background" promises not to
-   * do; CDP input reaches an inactive tab either way. The cost is that a
-   * background tab gets no rAF ticks, so a page whose UI only advances on
-   * animation frames can stall — a reason to pick "this page" for one, not to
-   * steal focus for all.
+   * Bring a switched-to tab to the front. On only for a watched run — "this
+   * page", where the user asked to follow the work — and for MCP direct
+   * control, whose client steers tab by tab explicitly. A background run never
+   * activates anything: yanking the user's window mid-switch is exactly what
+   * "background" promises not to do, and CDP input reaches an inactive tab
+   * either way. The cost is that a background tab gets no rAF ticks, so a page
+   * whose UI only advances on animation frames can stall — a reason to pick
+   * "this page" for one, not to steal focus for all.
    */
   activateOnSwitch?: boolean;
 }
@@ -209,8 +209,9 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
     async switchTab(tabId) {
       // chrome.tabs.get throws for a dead id — the model then re-lists.
       const tab = await chrome.tabs.get(tabId);
-      // Bring it forward, the way the panel's chip does.
-      if (activateOnSwitch) await focusTab(tabId, tab.windowId);
+      // Bring it forward, the way the panel's chip does — but never pull the
+      // window out of another app: that's the user's call, not the run's.
+      if (activateOnSwitch) await focusTab(tabId, tab.windowId, { pullWindow: false });
       current = tabId;
       const info: TabInfo = {
         id: tabId,
