@@ -14,6 +14,11 @@ export function stepHint(
   if (!tool || !args) return undefined;
   const text = (value: unknown): string | undefined =>
     typeof value === "string" && value.trim() ? truncateTo(value, 48) : undefined;
+  // Tools that declare an `intent` (agent/prompt.ts) — see the panel twin.
+  if (tool === "click" || tool === "fill" || tool === "evaluate") {
+    const intent = text(args.intent);
+    if (intent) return intent;
+  }
   switch (tool) {
     case "navigate": {
       const url = text(args.url);

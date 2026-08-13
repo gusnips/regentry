@@ -1,4 +1,4 @@
-import type { ToolDef } from "@/modules/providers/types";
+import type { JSONSchemaProperty, ToolDef } from "@/modules/providers/types";
 import { DURABLE_FACT_RULES, type AgentContext } from "@/modules/memory";
 import { SUPPORTED_KEYS } from "@/modules/browser";
 
@@ -182,6 +182,24 @@ export function buildTaskMessage(task: string, pageContent: string, ctx: TaskCon
   return parts.join("\n\n");
 }
 
+/**
+ * The model's own words for what an action is for. Only the tools whose
+ * arguments say nothing to a human get one — a ref (`e27`) and a line of page
+ * JavaScript are opaque by construction, while a URL, a key name and a pixel
+ * count already read fine. The panel renders it after the tool's verb
+ * ("Clicking · the account menu"), so the phrase names the target and skips the
+ * verb. Optional: a model that omits it falls back to the mechanical hint, and
+ * transcripts written before this still render.
+ */
+function intentParam(...examples: string[]): JSONSchemaProperty {
+  return {
+    type: "string",
+    description: `What this acts on, in the language the user reads — 2-5 words, no verb. It is shown to the user right after the verb, so name the target the way they would: ${examples
+      .map((e) => `"${e}"`)
+      .join(", ")}. Write one every call.`,
+  };
+}
+
 const TOOL_DEFS: ToolDef[] = [
   {
     name: "navigate",
@@ -243,6 +261,7 @@ const TOOL_DEFS: ToolDef[] = [
       type: "object",
       properties: {
         ref: { type: "string", description: "Element ref id (e.g. 'e3')" },
+        intent: intentParam("the account menu", "Add to cart", "the cookie banner"),
       },
       required: ["ref"],
     },
@@ -268,6 +287,7 @@ const TOOL_DEFS: ToolDef[] = [
       properties: {
         ref: { type: "string", description: "Element ref id (e.g. 'e3')" },
         text: { type: "string", description: "The value to set — empty string clears the field" },
+        intent: intentParam("the email field", "the search box", "the ZIP code"),
       },
       required: ["ref", "text"],
     },
@@ -284,6 +304,7 @@ const TOOL_DEFS: ToolDef[] = [
           description:
             "The JavaScript to run — a bare expression, or statements wrapped so the last value is returned (top-level await works)",
         },
+        intent: intentParam("the cart total", "the hidden order id", "the review count"),
       },
       required: ["expression"],
     },

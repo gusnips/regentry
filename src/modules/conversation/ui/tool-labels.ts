@@ -55,6 +55,13 @@ function host(value: unknown): string | undefined {
 }
 
 /**
+ * Tools that declare an `intent` (agent/prompt.ts) — the ones whose arguments a
+ * human cannot read. The model's phrase wins over the mechanical hint; the
+ * argument it displaces is still one click away in the row's drawer.
+ */
+const INTENT_TOOLS = new Set(["click", "fill", "evaluate"]);
+
+/**
  * The distinguishing argument of a tool call, short enough for one row:
  * "Navigating · news.ycombinator.com" beats three identical "Navigating" lines.
  */
@@ -63,6 +70,10 @@ export function toolHint(
   args: Record<string, unknown> | undefined,
 ): string | undefined {
   if (!tool || !args) return undefined;
+  if (INTENT_TOOLS.has(tool)) {
+    const intent = text(args.intent);
+    if (intent) return intent;
+  }
   switch (tool) {
     case "navigate":
       return host(args.url);
@@ -83,7 +94,8 @@ export function toolHint(
       return ref && value ? `${ref}: ${value}` : (ref ?? value);
     }
     case "evaluate":
-      // The code is the action — the row must show what ran, not just that it ran.
+      // Without an intent the code is the action — the row must show what ran,
+      // not just that it ran.
       return text(args.expression);
     case "read_network_requests":
       return text(args.url_filter);

@@ -28,6 +28,27 @@ describe("toolHint", () => {
     expect(toolHint("evaluate", { expression: "document.title" })).toBe("document.title");
   });
 
+  it("prefers the model's intent over the argument a human cannot read", () => {
+    expect(toolHint("click", { ref: "e27", intent: "the account menu" })).toBe("the account menu");
+    expect(toolHint("fill", { ref: "e12", text: "93619-155", intent: "the ZIP code" })).toBe(
+      "the ZIP code",
+    );
+    expect(toolHint("evaluate", { expression: "document.title", intent: "the cart total" })).toBe(
+      "the cart total",
+    );
+  });
+
+  it("keeps the mechanical hint when the model skips the intent", () => {
+    expect(toolHint("click", { ref: "e27", intent: "  " })).toBe("e27");
+    expect(toolHint("click", { ref: "e27" })).toBe("e27");
+  });
+
+  it("never lets a stray intent displace an argument that already reads well", () => {
+    expect(toolHint("navigate", { url: "https://example.com", intent: "the homepage" })).toBe(
+      "example.com",
+    );
+  });
+
   it("has no hint for tools that take no distinguishing argument", () => {
     expect(toolHint("snapshot", {})).toBeUndefined();
     expect(toolHint("screenshot", {})).toBeUndefined();
@@ -56,7 +77,10 @@ describe("toolHint / stepHint parity", () => {
     ["switch_tab", { tab_id: 42 }],
     ["group_tab", { tab_id: 42 }],
     ["click", { ref: "e3" }],
+    ["click", { ref: "e3", intent: "the account menu" }],
     ["fill", { ref: "e3", text: "hello" }],
+    ["fill", { ref: "e3", text: "hello", intent: "the email field" }],
+    ["evaluate", { expression: "document.title", intent: "the page title" }],
     ["type", { text: "hello" }],
     ["press_key", { key: "Enter" }],
     ["scroll_down", { amount: 800 }],
