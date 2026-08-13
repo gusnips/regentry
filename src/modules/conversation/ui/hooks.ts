@@ -2,6 +2,19 @@ import { useEffect, useState } from "react";
 import { useConversationStore } from "./store";
 
 /**
+ * Is a queue holding the footer busy? Queued steering lines, a queued run
+ * waiting its turn, or a stop-redirect's joined text still in transit — all
+ * crowd the footer, so the tip slot yields (the composer's own and the run
+ * band's alike). One rule with one home: it lived at both tip sites and
+ * drifted once already.
+ */
+export function useQueueBusy(): boolean {
+  return useConversationStore(
+    (s) => s.queued.length > 0 || s.queuedRun !== null || s.pendingSend !== null,
+  );
+}
+
+/**
  * Ticking Date.now() for duration displays ("for 3m 48s"). Runs one interval
  * only while active — idle transcripts pay no timer.
  */

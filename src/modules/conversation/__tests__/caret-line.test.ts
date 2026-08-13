@@ -20,7 +20,7 @@ function fakeTextarea(value: string, caret: number): HTMLTextAreaElement {
   return { value, selectionStart: caret, clientWidth: 320 } as HTMLTextAreaElement;
 }
 
-function stubLayout(): void {
+function stubLayout(computedLineHeight = `${LINE_H}px`): void {
   let mirror = { textContent: "" };
   vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
     if (tag === "div") {
@@ -51,7 +51,7 @@ function stubLayout(): void {
     paddingRight: "12px",
     paddingTop: "8px",
     paddingBottom: "8px",
-    lineHeight: `${LINE_H}px`,
+    lineHeight: computedLineHeight,
   } as unknown as CSSStyleDeclaration);
 }
 
@@ -71,5 +71,10 @@ describe("caretVisualLine", () => {
   it("keeps a trailing newline's empty line alive via the marker", () => {
     stubLayout();
     expect(caretVisualLine(fakeTextarea("a\n", 2))).toEqual({ line: 1, lines: 2 });
+  });
+
+  it("measures the line-height when the computed style says 'normal'", () => {
+    stubLayout("normal");
+    expect(caretVisualLine(fakeTextarea("a\nbb", 4))).toEqual({ line: 1, lines: 2 });
   });
 });

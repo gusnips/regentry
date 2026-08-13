@@ -34,12 +34,15 @@ export function caretVisualLine(el: HTMLTextAreaElement): { line: number; lines:
   document.body.appendChild(mirror);
   try {
     // The mirror carries no padding, so its offsets and height measure pure
-    // content lines. The resolved line-height (the computed value can be
-    // "normal") is the height difference between one line and two.
-    mirror.textContent = "x";
-    const one = mirror.clientHeight;
-    mirror.textContent = "x\nx";
-    const lineH = mirror.clientHeight - one;
+    // content lines. The computed style usually states the line-height; only
+    // "normal" names no number and needs measuring (one line vs two).
+    let lineH = parseFloat(cs.lineHeight);
+    if (Number.isNaN(lineH)) {
+      mirror.textContent = "x";
+      const one = mirror.clientHeight;
+      mirror.textContent = "x\nx";
+      lineH = mirror.clientHeight - one;
+    }
 
     // The zero-width marker keeps an empty wrapped/trailing line alive.
     const caret = el.selectionStart;

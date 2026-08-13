@@ -4,7 +4,7 @@ import { useConversationStore } from "./store";
 import { DrivenTabChip } from "./DrivenTabChip";
 import { PlanMark } from "./PlanMark";
 import { pendingAskId } from "./ask-gate";
-import { useNow } from "./hooks";
+import { useNow, useQueueBusy } from "./hooks";
 import { TipLine } from "@/modules/tips/ui";
 import { Button } from "@/components/Button";
 import type { BridgeActive } from "@/shared/protocol";
@@ -28,12 +28,9 @@ export function RunStatus() {
   const awaitingAnswer = useConversationStore(
     (s) => pendingAskId(s.messages, s.status) !== undefined,
   );
-  // The composer holding queued items makes the whole footer tall — the band's
-  // tip yields then (same eviction rule as the composer's own tip slot). A stop
-  // redirect counts too: its cards are gone but the queue is still in transit.
-  const queueBusy = useConversationStore(
-    (s) => s.queued.length > 0 || s.queuedRun !== null || s.pendingSend !== null,
-  );
+  // A crowded footer (queued lines, a queued run, a stop-redirect in transit)
+  // evicts the band's tip — one shared rule, see useQueueBusy.
+  const queueBusy = useQueueBusy();
   // A reopened panel holds no run state of its own — these ambient records
   // stand in. The board names a run still in flight on this conversation (its
   // startedAt drives the elapsed clock; the plan peek reads the transcript as
@@ -50,8 +47,6 @@ export function RunStatus() {
 
   const idleVerbs = t("run.idle", { returnObjects: true });
   const [verbIdx, setVerbIdx] = useState(0);
-  // An errored run's band says so — "Concluído" over a 429 reads as a lie.
-  const errored = useConversationStore((s) => s.status === "error");
 
   // This panel's own run when it has one; the board's record of the run it
   // reopened into otherwise — but never a bridge session's: that one keeps its
@@ -112,9 +107,10 @@ export function RunStatus() {
     if (bridgeActive) return <BridgeActiveBand active={bridgeActive} />;
     // This panel watched its run end; otherwise the stored summary of the run
     // that ended while the panel was closed stands in — same band either way.
+    // A live error marks the band failed: "Done" over a 429 reads as a lie.
     const finished =
       runStartedAt !== null && runEndedAt !== null
-        ? { startedAt: runStartedAt, endedAt: runEndedAt, ...usage, ok: !errored }
+        ? { startedAt: runStartedAt, endedAt: runEndedAt, ...usage, ok: status !== "error" }
         : lastRun;
     if (!finished) return null;
     const finishedTokens = finished.input + finished.output;

@@ -19,7 +19,7 @@ import {
 } from "@/modules/providers";
 import type { ResolvedProviderConfig } from "@/modules/providers/types";
 import { getConversationTabsFor, getMessages, recordDrivenTabFor } from "@/modules/conversation";
-import type { LastTab } from "@/modules/conversation/conversations";
+import { flushConversationWrites, type LastTab } from "@/modules/conversation/conversations";
 import type { Message } from "@/modules/conversation/types";
 import { defaultStartUrl } from "@/lib/prefs";
 import { createLogger, truncate } from "@/lib/logger";
@@ -50,14 +50,6 @@ export interface StartRunOptions {
   thisPage?: boolean;
   /** Streams run events to the client — the panel port or the bridge's WS. */
   emit: (event: Event) => void;
-  /**
-   * Resolves when the run's transcript writes have all committed. Awaited before
-   * the run slot (and its board entry) is released: the panel reloads the
-   * transcript the moment the board clears, and a read that beats a pending
-   * append paints a transcript missing the run's closing messages over the live
-   * view that just received them.
-   */
-  flushWrites?: () => Promise<void>;
   /** The run ended on an ask_user question; the client may want to react
    *  (the panel fires an OS notification, the bridge records a pending answer). */
   onAskUser?: (question: string, choices?: string[]) => void;
@@ -345,9 +337,12 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       }
     }
   } finally {
-    // The transcript must be durable before the board moves — see flushWrites.
+    // The transcript must be durable before the board moves: the panel reloads
+    // it the moment the slot clears, and a read that beats a pending append
+    // paints a transcript missing the run's closing messages over the live view
+    // that just received them (see flushConversationWrites).
     try {
-      await opts.flushWrites?.();
+      await flushConversationWrites();
     } catch {
       // Best effort — a stuck flush must never pin the run slot.
     }
@@ -510,10 +505,7 @@ async function resolveRunTab(
   // A brand-new tab has no strip of its own to keep — only the records can
   // point at the thread's. Grouping itself waits for the first action.
   const threadGroupId = await liveThreadGroup(conversationTabs);
-  // Never revealed: only background runs open a tab of their own (a this-page
-  // run adopted the tab above), and "background" means the user's screen never
-  // moves. The badge and the widget say the work exists; the panel's chip is
-  // the way to look at it.
+  // Never revealed — only background runs open a tab of their own (above).
   return {
     tab: loaded,
     opened: true,

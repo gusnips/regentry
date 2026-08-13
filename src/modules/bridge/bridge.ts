@@ -4,7 +4,6 @@ import { cancelQueued, listQueue, onBoardChanged, submitRun } from "@/modules/ag
 import { startAgentRun } from "@/modules/agent/start-run";
 import { captureVisibleTab } from "@/modules/browser";
 import { appendMessageTo, openAgentConversation } from "@/modules/conversation";
-import { flushConversationWrites } from "@/modules/conversation/conversations";
 import { DirectSession } from "./direct";
 import { TranscriptWriter } from "@/modules/conversation/transcript";
 import { getActiveProvider } from "@/modules/providers";
@@ -384,7 +383,6 @@ export class Bridge {
       url,
       thisPage: background ? undefined : true,
       emit: (event) => this.onRunEvent(event),
-      flushWrites: flushConversationWrites,
       onAskUser: (question, choices) => this.onQuestion(question, choices),
     });
     if (!result.ok) {

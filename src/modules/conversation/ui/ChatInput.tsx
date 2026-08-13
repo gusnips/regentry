@@ -6,6 +6,7 @@ import { pendingAskId } from "./ask-gate";
 import { toAttachment } from "./image";
 import { recallStep, sentMessages } from "./history-recall";
 import { caretVisualLine } from "./caret-line";
+import { useQueueBusy } from "./hooks";
 import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
 import { RunTargetToggle } from "./RunTargetToggle";
 import { SlashMenu } from "./SlashMenu";
@@ -101,10 +102,7 @@ export function ChatInput() {
   // placeholder says so (the card's chips/hint use the same gate, ask-gate.ts).
   const questionPending = pendingAskId(messages, status) !== undefined;
   const queued = useConversationStore((s) => s.queued);
-  // A stop with a full queue is a redirect, not an idle composer: the cards
-  // clear but the joined text is already the next task in transit — the tip
-  // slot stays evicted until it lands (or comes back as a draft on error).
-  const redirectPending = useConversationStore((s) => s.pendingSend !== null);
+  const queueBusy = useQueueBusy();
   const sendTask = useConversationStore((s) => s.sendTask);
   const queueMessage = useConversationStore((s) => s.queueMessage);
   const unqueueMessage = useConversationStore((s) => s.unqueueMessage);
@@ -211,32 +209,34 @@ export function ChatInput() {
     areaRef.current?.focus({ preventScroll: true });
   }, []);
 
+  // The theft's focus grab can land after the event that caused it — one shared
+  // retry covers both triggers. The timer re-checks `composing` at fire time,
+  // so a deliberate panel move inside the window is never yanked back.
+  const restoreRetry = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restoreWithRetry = useCallback(() => {
+    if (!composing.current) return;
+    restoreComposerFocus();
+    if (restoreRetry.current) clearTimeout(restoreRetry.current);
+    restoreRetry.current = setTimeout(restoreComposerFocus, 350);
+  }, [restoreComposerFocus]);
+
   // A driving event (run start, switch_tab) is always the agent moving tabs.
   useEffect(() => {
-    restoreComposerFocus();
-    // The activation's focus grab can land after the event — one retry covers it.
-    const retry = setTimeout(restoreComposerFocus, 350);
-    return () => clearTimeout(retry);
-  }, [drivingTab, restoreComposerFocus]);
+    restoreWithRetry();
+  }, [drivingTab, restoreWithRetry]);
 
   // A navigation commit on the driven tab, gated on recent agent work.
   useEffect(() => {
     const tabId = drivingTab?.tabId;
     if (tabId === undefined) return;
-    let retry: ReturnType<typeof setTimeout> | undefined;
     const onUpdated = (id: number, info: chrome.tabs.OnUpdatedInfo) => {
       if (id !== tabId || info.status !== "loading") return;
       if (!stepBusy && Date.now() - lastStepFlip.current > 3000) return;
-      restoreComposerFocus();
-      // The commit's focus grab can land after the event — one retry covers it.
-      retry = setTimeout(restoreComposerFocus, 350);
+      restoreWithRetry();
     };
     chrome.tabs.onUpdated.addListener(onUpdated);
-    return () => {
-      chrome.tabs.onUpdated.removeListener(onUpdated);
-      if (retry !== undefined) clearTimeout(retry);
-    };
-  }, [drivingTab?.tabId, stepBusy, restoreComposerFocus]);
+    return () => chrome.tabs.onUpdated.removeListener(onUpdated);
+  }, [drivingTab?.tabId, stepBusy, restoreWithRetry]);
 
   const onComposerFocus = () => {
     composing.current = true;
@@ -448,8 +448,14 @@ export function ChatInput() {
     }
     // The caret's VISUAL line decides (soft wraps count): away from the edge
     // row the arrow moves the caret; only the first/last row reaches history.
+    // Skip the mirror-div layout when no recall is possible anyway — ↓ with no
+    // browse in flight and ↑ into an empty history always return null, and an
+    // empty draft sits trivially at both edges.
+    const canRecall =
+      text.length > 0 &&
+      (browse.current.index !== null || (e.key === "ArrowUp" && sentHistory.length > 0));
     const el = areaRef.current;
-    const pos = el ? caretVisualLine(el) : { line: 0, lines: 1 };
+    const pos = el && canRecall ? caretVisualLine(el) : { line: 0, lines: 1 };
     const atEdge = e.key === "ArrowUp" ? pos.line === 0 : pos.line === pos.lines - 1;
     const recall = recallStep(e.key, sentHistory, {
       ...browse.current,
@@ -522,9 +528,7 @@ export function ChatInput() {
           hint already makes the footer tall, and the run band carries the tip
           while working (under the same eviction rule). */}
       {!(running || (boardRunHere && !bridgeActive)) &&
-        queued.length === 0 &&
-        !queuedRun &&
-        !redirectPending &&
+        !queueBusy &&
         attachments.length === 0 &&
         !pastedTexts.some((p) => text.includes(p.token)) && <TipLine />}
       {/* One card, two tenants: the bare input on top, a footer row below with
