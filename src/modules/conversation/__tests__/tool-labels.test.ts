@@ -28,25 +28,39 @@ describe("toolHint", () => {
     expect(toolHint("evaluate", { expression: "document.title" })).toBe("document.title");
   });
 
-  it("prefers the model's intent over the argument a human cannot read", () => {
+  it("prefers the model's intent over the locator a human cannot read", () => {
     expect(toolHint("click", { ref: "e27", intent: "the account menu" })).toBe("the account menu");
-    expect(toolHint("fill", { ref: "e12", text: "93619-155", intent: "the ZIP code" })).toBe(
-      "the ZIP code",
-    );
     expect(toolHint("evaluate", { expression: "document.title", intent: "the cart total" })).toBe(
       "the cart total",
     );
   });
 
+  it("replaces only the locator — a readable value keeps its place", () => {
+    expect(toolHint("fill", { ref: "e12", text: "93619-155", intent: "the ZIP code" })).toBe(
+      "the ZIP code: 93619-155",
+    );
+  });
+
+  it("never hides where the browser went behind the model's phrase", () => {
+    expect(
+      toolHint("navigate", {
+        url: "https://www.amazon.com/gp/css/order-history",
+        intent: "orders",
+      }),
+    ).toBe("amazon.com: orders");
+  });
+
   it("keeps the mechanical hint when the model skips the intent", () => {
     expect(toolHint("click", { ref: "e27", intent: "  " })).toBe("e27");
     expect(toolHint("click", { ref: "e27" })).toBe("e27");
+    expect(toolHint("navigate", { url: "https://example.com" })).toBe("example.com");
   });
 
   it("never lets a stray intent displace an argument that already reads well", () => {
-    expect(toolHint("navigate", { url: "https://example.com", intent: "the homepage" })).toBe(
-      "example.com",
+    expect(toolHint("type", { text: "gus@example.com", intent: "the email field" })).toBe(
+      "gus@example.com",
     );
+    expect(toolHint("press_key", { key: "Enter", intent: "submit the form" })).toBe("Enter");
   });
 
   it("has no hint for tools that take no distinguishing argument", () => {
@@ -74,6 +88,7 @@ describe("toolHint", () => {
 describe("toolHint / stepHint parity", () => {
   const CASES: [string, Record<string, unknown>][] = [
     ["navigate", { url: "https://www.example.com/a" }],
+    ["navigate", { url: "https://www.example.com/a", intent: "the search results" }],
     ["switch_tab", { tab_id: 42 }],
     ["group_tab", { tab_id: 42 }],
     ["click", { ref: "e3" }],

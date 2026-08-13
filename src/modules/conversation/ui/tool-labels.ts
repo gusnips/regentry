@@ -56,10 +56,10 @@ function host(value: unknown): string | undefined {
 
 /**
  * Tools that declare an `intent` (agent/prompt.ts) — the ones whose arguments a
- * human cannot read. The model's phrase wins over the mechanical hint; the
- * argument it displaces is still one click away in the row's drawer.
+ * human cannot read. The phrase replaces the opaque locator only; a value the
+ * call also carries is already readable and stays beside it.
  */
-const INTENT_TOOLS = new Set(["click", "fill", "evaluate"]);
+const INTENT_TOOLS = new Set(["navigate", "click", "fill", "evaluate"]);
 
 /**
  * The distinguishing argument of a tool call, short enough for one row:
@@ -70,13 +70,15 @@ export function toolHint(
   args: Record<string, unknown> | undefined,
 ): string | undefined {
   if (!tool || !args) return undefined;
-  if (INTENT_TOOLS.has(tool)) {
-    const intent = text(args.intent);
-    if (intent) return intent;
-  }
+  const intent = INTENT_TOOLS.has(tool) ? text(args.intent) : undefined;
   switch (tool) {
-    case "navigate":
-      return host(args.url);
+    case "navigate": {
+      // The host is the row's only trace of where the browser went — the result
+      // summary just says "Navigated successfully". On a browser agent that fact
+      // outranks the model's phrase, so it leads and the phrase follows.
+      const where = host(args.url);
+      return where && intent ? `${where}: ${intent}` : (intent ?? where);
+    }
     case "switch_tab":
     case "group_tab":
       // The id is all the call carries; the tab's title arrives in the result,
@@ -84,19 +86,20 @@ export function toolHint(
       // only trace of what it reached for.
       return typeof args.tab_id === "number" ? `#${args.tab_id}` : undefined;
     case "click":
-      return text(args.ref);
+      return intent ?? text(args.ref);
     case "type":
       return text(args.text);
     case "fill": {
-      // Ref and value both matter — "e12: 93619-…" says what went where.
-      const ref = text(args.ref, 12);
+      // Where and what both matter — "the ZIP code: 93619-…" says what went
+      // where. Only the locator is opaque, so only the locator is replaced.
+      const where = intent ?? text(args.ref, 12);
       const value = text(args.text);
-      return ref && value ? `${ref}: ${value}` : (ref ?? value);
+      return where && value ? `${where}: ${value}` : (where ?? value);
     }
     case "evaluate":
       // Without an intent the code is the action — the row must show what ran,
       // not just that it ran.
-      return text(args.expression);
+      return intent ?? text(args.expression);
     case "read_network_requests":
       return text(args.url_filter);
     case "press_key":

@@ -208,6 +208,7 @@ const TOOL_DEFS: ToolDef[] = [
       type: "object",
       properties: {
         url: { type: "string", description: "The URL to navigate to" },
+        intent: intentParam("your order history", "the checkout page", "the search results"),
       },
       required: ["url"],
     },

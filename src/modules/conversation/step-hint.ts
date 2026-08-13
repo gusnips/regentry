@@ -14,33 +14,36 @@ export function stepHint(
   if (!tool || !args) return undefined;
   const text = (value: unknown): string | undefined =>
     typeof value === "string" && value.trim() ? truncateTo(value, 48) : undefined;
-  // Tools that declare an `intent` (agent/prompt.ts) — see the panel twin.
-  if (tool === "click" || tool === "fill" || tool === "evaluate") {
-    const intent = text(args.intent);
-    if (intent) return intent;
-  }
+  // Tools that declare an `intent` (agent/prompt.ts) — see the panel twin for
+  // why the phrase replaces the locator but never a readable value.
+  const intent =
+    tool === "navigate" || tool === "click" || tool === "fill" || tool === "evaluate"
+      ? text(args.intent)
+      : undefined;
   switch (tool) {
     case "navigate": {
       const url = text(args.url);
-      if (!url) return undefined;
+      if (!url) return intent;
+      let where = url;
       try {
-        return new URL(url).host.replace(/^www\./, "");
+        where = new URL(url).host.replace(/^www\./, "");
       } catch {
-        return url;
+        // Not a parseable URL — the raw value is the best trace there is.
       }
+      return intent ? `${where}: ${intent}` : where;
     }
     case "click":
-      return text(args.ref);
+      return intent ?? text(args.ref);
     case "type":
       return text(args.text);
     case "fill": {
-      const ref = typeof args.ref === "string" ? truncateTo(args.ref, 12) : undefined;
+      const where = intent ?? (typeof args.ref === "string" ? truncateTo(args.ref, 12) : undefined);
       const value = text(args.text);
-      return ref && value ? `${ref}: ${value}` : (ref ?? value);
+      return where && value ? `${where}: ${value}` : (where ?? value);
     }
     case "evaluate":
       // The code is the action — the trace must show what ran, not just that it ran.
-      return text(args.expression);
+      return intent ?? text(args.expression);
     case "read_network_requests":
       return text(args.url_filter);
     case "press_key":
