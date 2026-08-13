@@ -3,9 +3,9 @@
 <p>
   <img src="public/icon/128.png?v=2" width="64" height="64" alt="TabRunner comet mark" align="left" />
   <strong>You give the goal. It runs the tabs.</strong><br/>
-  A Chromium extension that lets an LLM drive your <em>real</em> browser — your tabs, your
-  sessions, your logged-in accounts — through any provider you choose. You describe a task in the
-  side panel; TabRunner reads pages, clicks, types, and navigates until the job is done.
+  An AI agent that drives your <em>real</em> browser — your tabs, your sessions, your logged-in
+  accounts — through any provider you choose. Describe a task in the side panel; TabRunner reads
+  pages, clicks, types, and navigates until the job is done.
 </p>
 
 <br/>
@@ -27,11 +27,16 @@ vendor lock-in, no relay, no account with us. Your API key — or the subscripti
   subscription) plus any custom endpoint speaking the OpenAI or Anthropic wire format.
 - **Real trusted input** — clicks and keystrokes go through the Chrome DevTools Protocol, so they
   are genuine trusted events, not synthetic JS dispatches that sites can ignore.
-- **Accessibility-tree snapshots** — the model sees a compact semantic tree
-  (`[ref=e12] button "Submit"`), not raw HTML. Small prompts, stable refs, sensitive fields
-  (passwords, card numbers) never leave the page.
-- **Agent loop with guardrails** — streamed tool calls, automatic retry with backoff on transient
-  provider errors, a step budget, truncation detection, and a Stop button that actually stops.
+- **Sees the page, not the HTML** — the model works from a compact semantic tree
+  (`[ref=e12] button "Submit"`): small prompts, stable refs, and sanitized, capped results —
+  passwords, one-time codes and card numbers never leave the page.
+- **Page-internals tools** — when keystrokes won't land, the agent acts directly in the page
+  (`fill`, `evaluate`); read-only network and console rings let it see a failing request or a
+  script error itself.
+- **Guardrails that hold** — you approve the plan before anything happens, and consequential
+  actions (paying, sending, deleting) come back for confirmation. Automatic retry with backoff on
+  transient provider errors, a step budget, truncation detection, and a Stop button that actually
+  stops.
 - **Live run status** — current action, elapsed time, and token spend while the agent works,
   Claude Code-style.
 - **Reasoning effort control** — optional per-provider effort (`none` → `max`), mapped to each
@@ -39,6 +44,8 @@ vendor lock-in, no relay, no account with us. Your API key — or the subscripti
 - **Auto model resolution** — leave the model on Auto and TabRunner runs the newest model the
   endpoint lists, showing you which one that is; pin a model and effort per task from the panel
   header.
+- **Remembers across runs** — your standing instructions (`AGENTS.md`) and the agent's own notes
+  (`MEMORY.md`) load into every run. Editable on the options page, off with one toggle.
 - **Drivable over MCP** — Claude Code, Claude Desktop, or any Model Context Protocol client can
   hand TabRunner a task and follow it to the answer, using the same browser and the same logins.
   The client says what it wants done and TabRunner's own model does it — or, when the job is small
