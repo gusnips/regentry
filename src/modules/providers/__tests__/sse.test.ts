@@ -142,7 +142,8 @@ describe("OpenAI provider SSE parsing", () => {
     expect((error as ProviderError).message).toContain("Test rejected the API key");
     // The raw body still rides along for the Details disclosure.
     expect((error as ProviderError).message).toContain("Unauthorized");
-    expect(isRetryable(error)).toBe(false);
+    // Retried as a probe — a real bad key says the same thing on every attempt.
+    expect(isRetryable(error)).toBe(true);
     vi.restoreAllMocks();
   });
 

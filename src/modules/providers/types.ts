@@ -193,8 +193,8 @@ export class ProviderError extends Error {
   }
 }
 
-/** Permanent failures — no amount of backoff fixes an empty balance or a bad key. */
-const NON_RETRYABLE_KINDS: readonly ErrorKind[] = ["entitlement", "quota", "auth", "model"];
+/** Permanent failures — no amount of backoff fixes an empty balance or a missing model. */
+const NON_RETRYABLE_KINDS: readonly ErrorKind[] = ["entitlement", "quota", "model"];
 
 /**
  * Longest server-requested wait worth holding a run for. Beyond it the limit
@@ -204,16 +204,26 @@ const NON_RETRYABLE_KINDS: readonly ErrorKind[] = ["entitlement", "quota", "auth
 const MAX_RETRY_WAIT_MS = 60_000;
 
 /**
- * 429 and 5xx are transient — retry in place. 4xx auth/request errors are not.
+ * 429 and 5xx are transient — retry in place. Other 4xx request errors are not.
  * A classified permanent failure never retries even when its status looks
  * transient: OpenAI files "insufficient_quota" under 429. A 429 whose
  * retry-after exceeds MAX_RETRY_WAIT_MS isn't transient either.
+ *
+ * Auth is the one kind a single response can't settle. Coding-plan gateways —
+ * Kimi most visibly — reject roughly one request in fifty with
+ * `authentication_error` on a credential that works on the next call, and that
+ * body is indistinguishable from a real rejection. So the retry IS the test: a
+ * key that is genuinely invalid loses all of the loop's attempts and still
+ * reports itself with its "check the key" fix, while a gateway blip clears on
+ * the second. Only the streaming endpoint gets here — a dead OAuth refresh
+ * throws from start-run, and a mistyped key fails model listing in Settings,
+ * both well outside the loop.
  */
 export function isRetryable(e: unknown): boolean {
   if (e instanceof ProviderError) {
     if (e.kind && NON_RETRYABLE_KINDS.includes(e.kind)) return false;
     if (e.retryAfterMs !== undefined && e.retryAfterMs > MAX_RETRY_WAIT_MS) return false;
-    return e.status === 429 || e.status >= 500;
+    return e.kind === "auth" || e.status === 429 || e.status >= 500;
   }
   // Network-level failures (TypeError from fetch) have no status — retryable
   return e instanceof TypeError;

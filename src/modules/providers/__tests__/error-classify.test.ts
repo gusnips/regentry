@@ -79,8 +79,16 @@ describe("isRetryable with classified kinds", () => {
     // The one that bites in practice: OpenAI insufficient_quota is a 429.
     expect(isRetryable(new ProviderError("quota", 429, "quota"))).toBe(false);
     expect(isRetryable(new ProviderError("entitled", 429, "entitlement"))).toBe(false);
-    expect(isRetryable(new ProviderError("auth", 503, "auth"))).toBe(false);
     expect(isRetryable(new ProviderError("model", 500, "model"))).toBe(false);
+  });
+
+  it("probes an auth rejection instead of trusting it — Kimi flakes on good keys", () => {
+    const body =
+      '{"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}';
+    expect(classifyProviderError(401, body)).toBe("auth");
+    expect(isRetryable(new ProviderError("auth", 401, "auth"))).toBe(true);
+    // Still permanent once the body names a cause backoff can't fix.
+    expect(isRetryable(new ProviderError("quota", 401, "quota"))).toBe(false);
   });
 
   it("still retries transient kinds and unclassified transient statuses", () => {
