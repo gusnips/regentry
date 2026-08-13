@@ -17,30 +17,29 @@ const COPY_PROPS = [
   "textTransform",
   "textIndent",
   "tabSize",
+  "overflowWrap",
 ] as const;
 
 export function caretVisualLine(el: HTMLTextAreaElement): { line: number; lines: number } {
   const cs = getComputedStyle(el);
-  const padT = parseFloat(cs.paddingTop);
-  const padB = parseFloat(cs.paddingBottom);
   const mirror = document.createElement("div");
   const style = mirror.style;
   style.position = "absolute";
   style.visibility = "hidden";
   style.whiteSpace = "pre-wrap";
-  style.overflowWrap = "break-word";
   style.boxSizing = "content-box";
   // Content width, not element width: clientWidth includes the padding.
   style.width = `${el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)}px`;
   for (const p of COPY_PROPS) style[p] = cs[p];
   document.body.appendChild(mirror);
   try {
-    // The resolved line-height (the computed value can be "normal"): the
-    // height difference between one line and two.
+    // The mirror carries no padding, so its offsets and height measure pure
+    // content lines. The resolved line-height (the computed value can be
+    // "normal") is the height difference between one line and two.
     mirror.textContent = "x";
-    const one = mirror.clientHeight - padT - padB;
+    const one = mirror.clientHeight;
     mirror.textContent = "x\nx";
-    const lineH = mirror.clientHeight - padT - padB - one;
+    const lineH = mirror.clientHeight - one;
 
     // The zero-width marker keeps an empty wrapped/trailing line alive.
     const caret = el.selectionStart;
@@ -48,10 +47,10 @@ export function caretVisualLine(el: HTMLTextAreaElement): { line: number; lines:
     const marker = document.createElement("span");
     marker.textContent = "\u200B";
     mirror.appendChild(marker);
-    const line = Math.round((marker.offsetTop - padT) / lineH);
+    const line = Math.round(marker.offsetTop / lineH);
 
     mirror.textContent = `${el.value}\u200B`;
-    const lines = Math.round((mirror.clientHeight - padT - padB) / lineH);
+    const lines = Math.round(mirror.clientHeight / lineH);
     return { line: Math.min(line, lines - 1), lines };
   } finally {
     mirror.remove();

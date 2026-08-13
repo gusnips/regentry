@@ -223,15 +223,19 @@ export function ChatInput() {
   useEffect(() => {
     const tabId = drivingTab?.tabId;
     if (tabId === undefined) return;
+    let retry: ReturnType<typeof setTimeout> | undefined;
     const onUpdated = (id: number, info: chrome.tabs.OnUpdatedInfo) => {
       if (id !== tabId || info.status !== "loading") return;
       if (!stepBusy && Date.now() - lastStepFlip.current > 3000) return;
       restoreComposerFocus();
       // The commit's focus grab can land after the event — one retry covers it.
-      setTimeout(restoreComposerFocus, 350);
+      retry = setTimeout(restoreComposerFocus, 350);
     };
     chrome.tabs.onUpdated.addListener(onUpdated);
-    return () => chrome.tabs.onUpdated.removeListener(onUpdated);
+    return () => {
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      if (retry !== undefined) clearTimeout(retry);
+    };
   }, [drivingTab?.tabId, stepBusy, restoreComposerFocus]);
 
   const onComposerFocus = () => {

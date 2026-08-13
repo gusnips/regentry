@@ -13,11 +13,11 @@ serial queue, run start.
 A panel run **works the tab the user is looking at by default** (`resolveRunTab`):
 the state the task is about — the half-filled form, the search results, the scrolled
 thread — lives in that tab and nowhere else, and re-visiting its url in a fresh tab
-would both lose it and open a second live session the site may read as a bot. So the
-default run adopts the current tab and drives it in silence — a background run
-never activates anything. The composer toggle's `thisPage` is the same drive with
-the panel left open: the watched run, whose switches the driver may follow
-(`activateOnSwitch`).
+would both lose it and open a second live session the site may read as a bot. So a
+background run adopts the current tab and drives it in silence — background
+never activates anything. The composer toggle's `thisPage`, the default, is the
+same drive with the panel left open: the watched run, whose switches the driver
+may follow (`activateOnSwitch`).
 
 The strip is the run's working set, and it appears when the work does: sending a
 message groups nothing — the user may just be passing through the tab they sent from.
