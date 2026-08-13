@@ -64,6 +64,57 @@ describe("runAgentLoop image handling", () => {
   });
 });
 
+describe("runAgentLoop mid-run queue", () => {
+  it("drains the queue at a tool boundary — the model sees it and the panel is told", async () => {
+    const queue = [{ id: "m1", text: "also check this" }];
+    const injected: string[] = [];
+    let calls = 0;
+    let sawSteer = false;
+    const provider: ChatProvider = {
+      async *stream(messages) {
+        calls++;
+        // The turn after the snapshot must already carry the user's message.
+        if (calls === 2) {
+          sawSteer = messages.some((m) => m.role === "user" && m.content === "also check this");
+          yield { type: "tool_use", id: "d1", name: "done", args: { summary: "ok" } };
+        } else {
+          yield { type: "tool_use", id: `c${calls}`, name: "snapshot", args: {} };
+        }
+        yield { type: "done" };
+      },
+    };
+    await runAgentLoop({
+      provider,
+      driver,
+      task: "do it",
+      signal: new AbortController().signal,
+      drainInjected: () => queue.splice(0, queue.length),
+      callbacks: { onInjected: (id, text) => injected.push(text) },
+    });
+
+    expect(injected).toEqual(["also check this"]);
+    expect(queue).toHaveLength(0);
+    expect(sawSteer).toBe(true);
+  });
+
+  it("leaves the queue alone when the run ends — the panel recalls it, no phantom bubble", async () => {
+    const queue = [{ id: "m1", text: "one more thing" }];
+    const injected: string[] = [];
+    await runAgentLoop({
+      provider: providerThatEndsWithDone({}),
+      driver,
+      task: "do it",
+      signal: new AbortController().signal,
+      drainInjected: () => queue.splice(0, queue.length),
+      callbacks: { onInjected: (id, text) => injected.push(text) },
+    });
+
+    // Draining on the done step would bubble a message the model never saw.
+    expect(injected).toEqual([]);
+    expect(queue).toHaveLength(1);
+  });
+});
+
 describe("runAgentLoop step budget", () => {
   it("lets the model ask the user whether to continue as the budget runs out", async () => {
     const question = "I've filled 12 of 20 fields on the quote form. Keep digging?";

@@ -50,6 +50,14 @@ export interface StartRunOptions {
   thisPage?: boolean;
   /** Streams run events to the client — the panel port or the bridge's WS. */
   emit: (event: Event) => void;
+  /**
+   * Resolves when the run's transcript writes have all committed. Awaited before
+   * the run slot (and its board entry) is released: the panel reloads the
+   * transcript the moment the board clears, and a read that beats a pending
+   * append paints a transcript missing the run's closing messages over the live
+   * view that just received them.
+   */
+  flushWrites?: () => Promise<void>;
   /** The run ended on an ask_user question; the client may want to react
    *  (the panel fires an OS notification, the bridge records a pending answer). */
   onAskUser?: (question: string, choices?: string[]) => void;
@@ -336,6 +344,12 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       }
     }
   } finally {
+    // The transcript must be durable before the board moves — see flushWrites.
+    try {
+      await opts.flushWrites?.();
+    } catch {
+      // Best effort — a stuck flush must never pin the run slot.
+    }
     releaseRun(run);
   }
   return { ok: true };

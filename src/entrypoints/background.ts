@@ -11,7 +11,7 @@ import {
 } from "@/modules/agent/run-queue";
 import type { RunBoard } from "@/modules/agent/run-queue";
 import { appendMessageTo, getActiveId } from "@/modules/conversation";
-import { setActiveConversation } from "@/modules/conversation/conversations";
+import { flushConversationWrites, setActiveConversation } from "@/modules/conversation/conversations";
 import { TranscriptWriter } from "@/modules/conversation/transcript";
 import { hideAgentIndicator, refreshAgentIndicator, syncActionBadge } from "@/modules/browser";
 import {
@@ -149,6 +149,7 @@ export default defineBackground(() => {
                   notifyRunEnded(conversationId, msg.task, event);
                 }
               },
+              flushWrites: flushConversationWrites,
               onAskUser: (question) =>
                 void notifyIfAway("tabrunner-question", question, conversationId),
               onPlanApprovalRequest: (steps, reapproval) =>

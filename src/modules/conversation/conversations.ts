@@ -21,6 +21,8 @@ export interface RunSummary {
   endedAt: number;
   input: number;
   output: number;
+  /** False when the run ended on an error — the band names it, never "done". */
+  ok?: boolean;
 }
 
 /** List-view metadata — the list reads only this, never the message arrays. */
@@ -222,6 +224,17 @@ function serialized<T>(op: () => Promise<T>): Promise<T> {
   // The chain must survive a failed write — swallow here, callers still see it.
   writes = next.catch(() => {});
   return next;
+}
+
+/**
+ * Resolves once every write issued so far has committed. A run's board entry must
+ * clear only after its transcript is durably stored: the panel reloads the
+ * transcript the moment the board moves, and a read that beats a pending append
+ * wipes the run's closing messages (the error bubble, an injected line) off the
+ * screen they were just painted on.
+ */
+export function flushConversationWrites(): Promise<void> {
+  return serialized(async () => {});
 }
 
 /** Appends to the active conversation and returns its id. */

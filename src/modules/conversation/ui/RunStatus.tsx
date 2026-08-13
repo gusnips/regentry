@@ -29,8 +29,11 @@ export function RunStatus() {
     (s) => pendingAskId(s.messages, s.status) !== undefined,
   );
   // The composer holding queued items makes the whole footer tall — the band's
-  // tip yields then (same eviction rule as the composer's own tip slot).
-  const queueBusy = useConversationStore((s) => s.queued.length > 0 || s.queuedRun !== null);
+  // tip yields then (same eviction rule as the composer's own tip slot). A stop
+  // redirect counts too: its cards are gone but the queue is still in transit.
+  const queueBusy = useConversationStore(
+    (s) => s.queued.length > 0 || s.queuedRun !== null || s.pendingSend !== null,
+  );
   // A reopened panel holds no run state of its own — these ambient records
   // stand in. The board names a run still in flight on this conversation (its
   // startedAt drives the elapsed clock; the plan peek reads the transcript as
@@ -47,6 +50,8 @@ export function RunStatus() {
 
   const idleVerbs = t("run.idle", { returnObjects: true });
   const [verbIdx, setVerbIdx] = useState(0);
+  // An errored run's band says so — "Concluído" over a 429 reads as a lie.
+  const errored = useConversationStore((s) => s.status === "error");
 
   // This panel's own run when it has one; the board's record of the run it
   // reopened into otherwise — but never a bridge session's: that one keeps its
@@ -109,16 +114,23 @@ export function RunStatus() {
     // that ended while the panel was closed stands in — same band either way.
     const finished =
       runStartedAt !== null && runEndedAt !== null
-        ? { startedAt: runStartedAt, endedAt: runEndedAt, ...usage }
+        ? { startedAt: runStartedAt, endedAt: runEndedAt, ...usage, ok: !errored }
         : lastRun;
     if (!finished) return null;
     const finishedTokens = finished.input + finished.output;
     const finishedNote =
       finishedTokens > 0 ? ` · ${t("run.tokens", { count: formatTokens(finishedTokens) })}` : "";
+    const failed = finished.ok === false;
     return (
       <div className="flex flex-col gap-0.5 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
         <div className="flex items-center gap-2">
-          <span>{awaitingAnswer ? t("run.awaitingAnswer") : t("run.finished")}</span>
+          <span className={failed ? "text-red-600 dark:text-red-400" : undefined}>
+            {awaitingAnswer
+              ? t("run.awaitingAnswer")
+              : failed
+                ? t("run.failed")
+                : t("run.finished")}
+          </span>
           <span className="telemetry">
             {formatDuration(finished.endedAt - finished.startedAt)}
             {finishedNote}

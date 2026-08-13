@@ -1,10 +1,11 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { pendingAskId } from "./ask-gate";
 import { toAttachment } from "./image";
 import { recallStep, sentMessages } from "./history-recall";
+import { caretVisualLine } from "./caret-line";
 import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
 import { RunTargetToggle } from "./RunTargetToggle";
 import { SlashMenu } from "./SlashMenu";
@@ -100,6 +101,10 @@ export function ChatInput() {
   // placeholder says so (the card's chips/hint use the same gate, ask-gate.ts).
   const questionPending = pendingAskId(messages, status) !== undefined;
   const queued = useConversationStore((s) => s.queued);
+  // A stop with a full queue is a redirect, not an idle composer: the cards
+  // clear but the joined text is already the next task in transit — the tip
+  // slot stays evicted until it lands (or comes back as a draft on error).
+  const redirectPending = useConversationStore((s) => s.pendingSend !== null);
   const sendTask = useConversationStore((s) => s.sendTask);
   const queueMessage = useConversationStore((s) => s.queueMessage);
   const unqueueMessage = useConversationStore((s) => s.unqueueMessage);
@@ -118,6 +123,8 @@ export function ChatInput() {
     (s) => s.activeId !== null && s.board.running?.conversationId === s.activeId,
   );
   const bridgeActive = useConversationStore((s) => s.bridgeActive);
+  const drivingTab = useConversationStore((s) => s.drivingTab);
+  const stepBusy = useConversationStore((s) => s.pendingStepId !== null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
   /** Monotonic, so removing #1 never lets a later paste reuse its token. */
   const imageCount = useRef(0);
@@ -182,6 +189,73 @@ export function ChatInput() {
       pendingCaret.current = null;
     }
   }, [text]);
+
+  /**
+   * Focus theft, handed back. A navigation commit (or tab activation) in the
+   * driven tab pulls keyboard focus out of the side panel mid-typing — Chromium
+   * focuses web contents, and the user keeps typing into the void. The panel
+   * can't veto the theft, so it restores the composer's focus — but ONLY for
+   * the agent's own: a driving event is always agent-initiated, and a
+   * navigation counts only while a step is in flight or just finished. A
+   * deliberate omnibox trip or page click never gets yanked back.
+   */
+  const composing = useRef(false);
+  const composingExpire = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastStepFlip = useRef(0);
+  useEffect(() => {
+    lastStepFlip.current = Date.now();
+  }, [stepBusy]);
+
+  const restoreComposerFocus = useCallback(() => {
+    if (!composing.current) return;
+    areaRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  // A driving event (run start, switch_tab) is always the agent moving tabs.
+  useEffect(() => {
+    restoreComposerFocus();
+    // The activation's focus grab can land after the event — one retry covers it.
+    const retry = setTimeout(restoreComposerFocus, 350);
+    return () => clearTimeout(retry);
+  }, [drivingTab, restoreComposerFocus]);
+
+  // A navigation commit on the driven tab, gated on recent agent work.
+  useEffect(() => {
+    const tabId = drivingTab?.tabId;
+    if (tabId === undefined) return;
+    const onUpdated = (id: number, info: chrome.tabs.OnUpdatedInfo) => {
+      if (id !== tabId || info.status !== "loading") return;
+      if (!stepBusy && Date.now() - lastStepFlip.current > 3000) return;
+      restoreComposerFocus();
+      // The commit's focus grab can land after the event — one retry covers it.
+      setTimeout(restoreComposerFocus, 350);
+    };
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    return () => chrome.tabs.onUpdated.removeListener(onUpdated);
+  }, [drivingTab?.tabId, stepBusy, restoreComposerFocus]);
+
+  const onComposerFocus = () => {
+    composing.current = true;
+    if (composingExpire.current) clearTimeout(composingExpire.current);
+  };
+
+  const onComposerBlur = () => {
+    // Defer the verdict: focus landing on another panel control is a deliberate
+    // move; the panel ending up unfocused is a theft or a page click. A theft's
+    // own trigger (driving event, navigation commit) lands within moments, so
+    // composing expires fast — a deliberate page click never yanks focus back
+    // minutes later.
+    setTimeout(() => {
+      if (document.hasFocus()) {
+        composing.current = false;
+        return;
+      }
+      if (composingExpire.current) clearTimeout(composingExpire.current);
+      composingExpire.current = setTimeout(() => {
+        composing.current = false;
+      }, 2000);
+    }, 0);
+  };
 
   /**
    * Pasted images become a "[Image #N]" token in the text plus a thumbnail.
@@ -368,10 +442,15 @@ export function ChatInput() {
       recallQueued();
       return;
     }
+    // The caret's VISUAL line decides (soft wraps count): away from the edge
+    // row the arrow moves the caret; only the first/last row reaches history.
+    const el = areaRef.current;
+    const pos = el ? caretVisualLine(el) : { line: 0, lines: 1 };
+    const atEdge = e.key === "ArrowUp" ? pos.line === 0 : pos.line === pos.lines - 1;
     const recall = recallStep(e.key, sentHistory, {
       ...browse.current,
       text,
-      caret: areaRef.current?.selectionStart ?? text.length,
+      atEdge,
     });
     if (!recall) return;
     e.preventDefault();
@@ -441,6 +520,7 @@ export function ChatInput() {
       {!(running || (boardRunHere && !bridgeActive)) &&
         queued.length === 0 &&
         !queuedRun &&
+        !redirectPending &&
         attachments.length === 0 &&
         !pastedTexts.some((p) => text.includes(p.token)) && <TipLine />}
       {/* One card, two tenants: the bare input on top, a footer row below with
@@ -476,6 +556,8 @@ export function ChatInput() {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
           onPaste={(e) => void onPaste(e)}
+          onFocus={onComposerFocus}
+          onBlur={onComposerBlur}
         />
         <div className="flex items-center gap-1 px-1.5 pb-1.5">
           <RunTargetToggle />

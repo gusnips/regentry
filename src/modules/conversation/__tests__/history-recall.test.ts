@@ -34,11 +34,11 @@ describe("sentMessages", () => {
 
 describe("recallStep", () => {
   const history = ["newest", "middle", "oldest"];
-  /** Composer state, caret at the end of the text unless a test says otherwise. */
-  const at = (index: number | null, text: string, draft = "", caret = text.length) => ({
+  /** Composer state, on the caret's edge line (recall position) unless said otherwise. */
+  const at = (index: number | null, text: string, draft = "", atEdge = true) => ({
     index,
     text,
-    caret,
+    atEdge,
     draft,
   });
 
@@ -82,15 +82,21 @@ describe("recallStep", () => {
     });
   });
 
-  it("leaves the caret alone inside a multi-line draft", () => {
-    // ↑ from the second line moves up a line; ↓ from the first moves down one.
-    expect(recallStep("ArrowUp", history, at(null, "one\ntwo"))).toBeNull();
-    expect(recallStep("ArrowDown", history, at(null, "one\ntwo", "", 1))).toBeNull();
-    // …but the edge lines still recall.
-    expect(recallStep("ArrowUp", history, at(null, "one\ntwo", "", 1))).toEqual({
+  it("leaves the caret alone away from the edge line", () => {
+    // Off the first/last visual row the arrow moves the caret — never a recall.
+    // (The composer measures the rows; this gate is what they feed.)
+    expect(recallStep("ArrowUp", history, at(null, "one\ntwo", "", false))).toBeNull();
+    expect(recallStep("ArrowDown", history, at(null, "one\ntwo", "", false))).toBeNull();
+    // …and the edge rows still recall.
+    expect(recallStep("ArrowUp", history, at(null, "one\ntwo"))).toEqual({
       index: 0,
       text: "newest",
       draft: "one\ntwo",
+    });
+    expect(recallStep("ArrowDown", history, at(0, "newest", "draft"))).toEqual({
+      index: null,
+      text: "draft",
+      draft: "draft",
     });
   });
 

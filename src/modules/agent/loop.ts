@@ -536,9 +536,12 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       pruneResultText(messages);
     }
 
+    // A finished run leaves its queue unconsumed — the panel recalls it on a
+    // natural end, or sends it as the next task on a user stop. Draining here
+    // would bubble messages the model never saw (done already fired above).
+    if (taskDone) return messages;
+
     // Queued mid-run messages join here, after the tool results they comment on.
-    // A run that ends on `done` leaves its queue unconsumed — the panel recalls
-    // it on a natural end, or sends it as the next task on a user stop.
     for (const item of drainInjected?.() ?? []) {
       log.info("injected mid-run message:", truncate(item.text, 120));
       messages.push({ role: "user", content: item.text });
@@ -547,8 +550,6 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // their yes with it (see the plan gate above).
       steeredSincePlan = true;
     }
-
-    if (taskDone) return messages;
   }
 
   // Unreachable in practice — the near-end nudges fire before the final step — but

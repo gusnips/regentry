@@ -414,6 +414,7 @@
     ],
     "tokens": "{{count}} tokens",
     "finished": "Listo",
+    "failed": "Falló",
     "awaitingApproval": "Esperando tu aprobación",
     "awaitingAnswer": "Esperando tu respuesta",
     "drivingTabTip": "Mostrar la pestaña que TabRunner está controlando",

@@ -29,11 +29,12 @@ export interface Browse {
  * One step through the sent history. Returns null when the arrow is not a
  * recall — the caret should move instead.
  *
+ * - `atEdge` is the caller's line check: ↑ recalls only from the caret's first
+ *   line and ↓ only from its last, so arrows still navigate a multi-line draft.
+ *   The composer measures VISUAL lines (caret-line.ts) — a soft wrap is a row
+ *   the user sees, even if no break was typed.
  * - A filled composer browses too: your draft is stashed on the way out and
  *   handed back when ↓ walks past the newest entry, so nothing is ever lost.
- * - The line the caret sits on decides: ↑ recalls only from the first line and
- *   ↓ only from the last, so arrows still navigate a multi-line draft. Logical
- *   lines, not wrapped ones — a soft wrap is not a break you typed.
  * - Browsing holds only while the composer still shows the recalled entry; an
  *   edit, a send, or a conversation switch makes it your draft again, and the
  *   next ↑ starts over from the newest.
@@ -43,13 +44,10 @@ export interface Browse {
 export function recallStep(
   key: "ArrowUp" | "ArrowDown",
   history: string[],
-  state: { index: number | null; text: string; caret: number; draft: string },
+  state: { index: number | null; text: string; atEdge: boolean; draft: string },
 ): Browse | null {
-  const { text, caret } = state;
-  const onEdgeLine =
-    key === "ArrowUp" ? text.lastIndexOf("\n", caret - 1) === -1 : text.indexOf("\n", caret) === -1;
-  if (!onEdgeLine) return null;
-
+  if (!state.atEdge) return null;
+  const { text } = state;
   const at = state.index !== null && history[state.index] === text ? state.index : null;
   const draft = at === null ? text : state.draft;
   const next = (at ?? -1) + (key === "ArrowUp" ? 1 : -1);
