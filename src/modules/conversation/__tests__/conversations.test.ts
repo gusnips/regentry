@@ -4,6 +4,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   appendMessage,
+  appendMessageTo,
   conversationTitle,
   deleteConversation,
   getActiveId,
@@ -127,6 +128,22 @@ describe("conversations", () => {
     const second = await appendMessage(msg("user", "unrelated task"));
     expect(await getConversationTabsFor(second)).toEqual([]);
     expect(await getConversationTabsFor(first)).toHaveLength(2);
+  });
+
+  it("keeps the record when the run's closing writes land in the same tick", async () => {
+    // How a run actually ends: the transcript writer fires its closing append
+    // fire-and-forget and start-run records the driven tab right behind it.
+    // Both rewrite the index row, so an unserialized record loses the whole
+    // list to theirs — and a thread that forgets its strip mints a new one on
+    // every follow-up.
+    const id = await appendMessage(msg("user", "book a flight"));
+    void appendMessageTo(id, msg("assistant", "booked"));
+    await recordDrivenTabFor(id, { url: "https://air.test/", title: "Air", tabId: 4, groupId: 7 });
+    await appendMessageTo(id, msg("assistant", "done"));
+
+    expect(await getConversationTabsFor(id)).toEqual([
+      { url: "https://air.test/", title: "Air", tabId: 4, groupId: 7 },
+    ]);
   });
 
   it("caps the tab list so a long multi-tab session stays bounded", async () => {

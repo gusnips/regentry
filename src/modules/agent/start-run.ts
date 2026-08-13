@@ -315,6 +315,11 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       chrome.tabs.onRemoved.removeListener(onTabGone);
       if (endedOnQuestion) void waitAgentIndicator(drivenTabId);
       else void hideAgentIndicator(drivenTabId);
+      // The thread's strip: the one this run minted, or the seed it was told to
+      // join. A run that only read a page mints nothing, yet its tab is sitting
+      // in the thread's strip all the same — recording no group there is what
+      // makes the next run mint a second one.
+      const threadGroupId = runGroup.groupId ?? target.threadGroupId;
       // Runs whatever unwinds the loop — done, error, stop, question. A "no" to
       // the plan is the exception: the tab this run opened for the job is litter
       // to take back rather than a result to keep, and a page the agent only
@@ -326,9 +331,9 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         // means a first-plan rejection happens before any grouping, and after a
         // mid-run replan the strip holds real work. Just put it away.
         await collapseRunGroup(runGroup.groupId);
-        await persistDrivenTabFor(conversationId, drivenTabId, runGroup.groupId);
+        await persistDrivenTabFor(conversationId, drivenTabId, threadGroupId);
       } else {
-        await persistDrivenTabFor(conversationId, drivenTabId, runGroup.groupId);
+        await persistDrivenTabFor(conversationId, drivenTabId, threadGroupId);
         await settleRunTab(
           runGroup.groupId,
           task,
@@ -757,7 +762,7 @@ export async function settleRunTab(
 async function persistDrivenTabFor(
   conversationId: string,
   tabId: number,
-  runGroupId: number | undefined,
+  threadGroupId: number | undefined,
 ): Promise<void> {
   try {
     const tab = await chrome.tabs.get(tabId);
@@ -766,10 +771,12 @@ async function persistDrivenTabFor(
       url: tab.url,
       title: tab.title ?? "",
       tabId,
-      // Only the group this run labeled counts as the thread's: a tab the run
-      // switched into mid-flight may sit in a group of the user's own, and that
-      // label is theirs — never ours to reuse or retitle.
-      ...(runGroupId !== undefined && tab.groupId === runGroupId ? { groupId: tab.groupId } : {}),
+      // Only the thread's own strip counts: a tab the run switched into
+      // mid-flight may sit in a group of the user's own, and that label is
+      // theirs — never ours to reuse or retitle.
+      ...(threadGroupId !== undefined && tab.groupId === threadGroupId
+        ? { groupId: tab.groupId }
+        : {}),
     });
   } catch {
     // The tab died during the run — nothing left to remember.

@@ -99,23 +99,31 @@ export async function getConversationTabsFor(id: string): Promise<LastTab[]> {
   return row?.tabs ?? [];
 }
 
-/** Records where a run drove — re-driving a tab moves it back to the front. */
-export async function recordDrivenTabFor(id: string, tab: LastTab): Promise<void> {
-  const list = await indexItem.get();
-  if (!list.some((c) => c.id === id)) return;
-  await indexItem.set(
-    list.map((c) =>
-      c.id === id
-        ? {
-            ...c,
-            tabs: [tab, ...(c.tabs ?? []).filter((t) => t.url !== tab.url)].slice(
-              0,
-              MAX_CONVERSATION_TABS,
-            ),
-          }
-        : c,
-    ),
-  );
+/**
+ * Records where a run drove — re-driving a tab moves it back to the front.
+ * Serialized like every other index write: this lands in the same tick as the
+ * run's closing append and summary, and an unserialized read-modify-write here
+ * loses the whole tabs list to theirs — which is what made every follow-up run
+ * forget the thread's strip and mint a second one.
+ */
+export function recordDrivenTabFor(id: string, tab: LastTab): Promise<void> {
+  return serialized(async () => {
+    const list = await indexItem.get();
+    if (!list.some((c) => c.id === id)) return;
+    await indexItem.set(
+      list.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              tabs: [tab, ...(c.tabs ?? []).filter((t) => t.url !== tab.url)].slice(
+                0,
+                MAX_CONVERSATION_TABS,
+              ),
+            }
+          : c,
+      ),
+    );
+  });
 }
 
 /**
