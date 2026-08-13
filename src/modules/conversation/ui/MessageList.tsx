@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useConversationStore } from "./store";
+import { useConversationStore, retryTargetFrom } from "./store";
 import { Markdown } from "./Markdown";
 import { PlanMark } from "./PlanMark";
 import { groupBursts, type Burst } from "./bursts";
@@ -15,7 +15,7 @@ import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { Button } from "@/components/Button";
-import { CheckIcon, ChevronRightIcon, DotIcon, XIcon } from "@/components/Icon";
+import { CheckIcon, ChevronRightIcon, DotIcon, Icon, XIcon } from "@/components/Icon";
 import { Bubble, BubbleContent } from "@/components/Bubble";
 import {
   MessageScroller,
@@ -77,16 +77,28 @@ function errorHint(message: string, signedIn: boolean): { key: HintKey; cta?: Ct
 /**
  * Classified provider failure → the fix action it offers. No hint text: the
  * classified message already leads with its own actionable line, so a second
- * generic line below it would only paraphrase it.
+ * generic line below it would only paraphrase it. `model` gets none on purpose:
+ * its fix is the header's model picker, already on screen — a dialog would
+ * only stand between the user and the control that resolves it.
  */
 function kindCta(kind: ErrorKind, signedIn: boolean): CtaKey | undefined {
-  if (kind === "quota") return "addProvider";
+  if (kind === "quota" || kind === "entitlement") return "addProvider";
   if (kind === "auth") return signedIn ? "signIn" : "updateKey";
   return undefined;
 }
 
-function StepIcon({ live, ok }: { live?: boolean; ok?: boolean }) {
-  if (live)
+/** The error notice's landmark — quiet surface, drawn accent (single-use: stays local). */
+function AlertIcon({ size, className }: { size?: number; className?: string }) {
+  return (
+    <Icon size={size} className={className}>
+      <path d="M12 4 2.8 20h18.4L12 4Z" />
+      <path d="M12 10v4.5" />
+      <path d="M12 17.75h.01" />
+    </Icon>
+  );
+}
+
+function StepIcon({ live, ok }: { live?: boolean; ok?: boolean }) {  if (live)
     return (
       <span
         role="status"
@@ -681,7 +693,10 @@ function MessageBubble({
       const { summary, lead, detail } = splitErrorDetail(msg.content);
       return (
         <Bubble variant="destructive">
-          <div className="whitespace-pre-wrap">{msg.kind ? lead : summary}</div>
+          <div className="flex items-start gap-1.5">
+            <AlertIcon size={14} className="mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
+            <div className="min-w-0 whitespace-pre-wrap">{msg.kind ? lead : summary}</div>
+          </div>
           {detail && (
             <details className="group mt-1">
               <summary className="flex cursor-pointer list-none items-center gap-1 text-xs text-red-500 select-none hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
@@ -707,6 +722,9 @@ function MessageBubble({
             {cta && (
               <AddProviderDialog
                 initialProvider={activeProvider}
+                // A credential save IS the fix this error asked for — resume
+                // the failed run instead of leaving the user to find Retry.
+                onSaved={cta === "updateKey" || cta === "signIn" ? onRetry : undefined}
                 trigger={
                   <Button variant="ghost" size="sm" className={ERROR_ACTION_CLASSES}>
                     {t(CTA_KEYS[cta])}
@@ -764,7 +782,6 @@ function Transcript() {
   const reasoningText = useConversationStore((s) => s.reasoningText);
   const reasoningStartedAt = useConversationStore((s) => s.reasoningStartedAt);
   const status = useConversationStore((s) => s.status);
-  const lastRun = useConversationStore((s) => s.lastRun);
   const retry = useConversationStore((s) => s.retry);
   const sendTask = useConversationStore((s) => s.sendTask);
   const planApproval = useConversationStore((s) => s.planApproval);
@@ -839,11 +856,12 @@ function Transcript() {
                   planSettled={status !== "running"}
                   plansOpen={plansOpen}
                   onRetry={
-                    // Only the newest error offers Retry, and only once the run has settled.
+                    // Only the newest error offers Retry, once the run has settled
+                    // and there's a task above it to resend.
                     item.msg.role === "error" &&
                     item.msg.id === messages[messages.length - 1]?.id &&
                     status !== "running" &&
-                    lastRun
+                    retryTargetFrom(messages)
                       ? retry
                       : undefined
                   }

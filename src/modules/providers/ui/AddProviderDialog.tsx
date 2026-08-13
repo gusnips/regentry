@@ -17,11 +17,14 @@ export function AddProviderDialog({
   initialProvider,
   open: openProp,
   onOpenChange,
+  onSaved,
 }: {
   trigger?: ReactElement;
   initialProvider?: ProviderConfig;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** After a successful save or sign-in, once the dialog has closed — e.g. retry the run a fresh credential unblocks. */
+  onSaved?: () => void;
 }) {
   const [openState, setOpenState] = useState(false);
   const open = openProp ?? openState;
@@ -52,7 +55,13 @@ export function AddProviderDialog({
             </Dialog.Close>
           </div>
           <div className="mt-3">
-            <ProviderForm onSaved={() => setOpen(false)} initialProvider={initialProvider} />
+            <ProviderForm
+              onSaved={() => {
+                setOpen(false);
+                onSaved?.();
+              }}
+              initialProvider={initialProvider}
+            />
           </div>
         </Dialog.Popup>
       </Dialog.Portal>

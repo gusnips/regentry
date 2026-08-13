@@ -43,7 +43,8 @@ interface ConversationState {
   runStartedAt: number | null;
   /** Epoch ms when it finished — keeps the summary line up after the run ends */
   runEndedAt: number | null;
-  /** Last run's input — powers the Retry action on transient errors */
+  /** This panel's own last dispatch — labels the queued chip, and tells a
+   *  dispatch-and-forget approval (panel auto-closes) from a hand-opened one. */
   lastRun: { task: string; images?: string[]; thisPage?: boolean } | null;
   /** Where the next submitted task drives — background tab or this page. */
   runTarget: RunTarget;
@@ -141,6 +142,26 @@ function cancelPanelClose(): void {
 
 function makeMsg(role: Message["role"], content: string, extra?: Partial<Message>): Message {
   return { id: crypto.randomUUID(), role, content, timestamp: Date.now(), ...extra };
+}
+
+/**
+ * What Retry resends: the transcript's newest user message — the failed task
+ * sits right above the error it ended in. Read from the transcript rather than
+ * panel state, so a reopened panel still offers it (lastRun dies with the
+ * close, and the "rate limit resets in 4 hours" retry happens after one). A
+ * tab stamp marks a this-page send — sendTask stamps nothing else — so the
+ * retry keeps the mode the message went out in.
+ */
+export function retryTargetFrom(
+  messages: Message[],
+): { task: string; images?: string[]; thisPage?: boolean } | null {
+  const last = messages.findLast((m) => m.role === "user");
+  if (!last) return null;
+  return {
+    task: last.content,
+    ...(last.images?.length ? { images: last.images } : {}),
+    ...(last.tab ? { thisPage: true } : {}),
+  };
 }
 
 // The dedup helper lives in the background-safe transcript writer — both the
@@ -682,8 +703,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     setRunTarget: (target) => set({ runTarget: target }),
 
     retry: () => {
-      const last = get().lastRun;
-      if (!last || get().status === "running") return;
+      const target = retryTargetFrom(get().messages);
+      if (!target || get().status === "running") return;
       // No duplicate user row — the failed attempt sits right above.
       let p: chrome.runtime.Port;
       try {
@@ -694,7 +715,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       }
       // Same as sendTask: the retry goes back through the plan gate, and the
       // panel leaves with the approval.
-      startRun(p, last.task, last.images, last.thisPage);
+      startRun(p, target.task, target.images, target.thisPage);
     },
 
     stop: () => {

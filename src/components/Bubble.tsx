@@ -6,8 +6,10 @@ const VARIANTS: Record<Variant, string> = {
   default: "bg-brand-500 text-brand-950",
   secondary: "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100",
   muted: "bg-neutral-100 dark:bg-neutral-800",
+  /** An error is a notice, not an alarm: a whisper of red for shape, neutral
+   *  text for the message, and the red accents left to the icon and actions. */
   destructive:
-    "border border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200",
+    "border border-red-200/70 bg-red-50/50 text-neutral-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-neutral-200",
 };
 
 /** Framed conversational content, adapted from shadcn/ui's Bubble
