@@ -2,7 +2,8 @@ import { createLogger } from "@/lib/logger";
 import { isRestrictedUrl } from "./restricted-url";
 
 const log = createLogger("widget");
-const HOST_ID = "tabrunner-status-widget";
+/** Shared with indicator.ts, which makes every mark inert around agent clicks. */
+export const WIDGET_HOST_ID = "tabrunner-status-widget";
 
 /**
  * The floating run-status widget — a small pill injected into each window's
@@ -21,11 +22,11 @@ const HOST_ID = "tabrunner-status-widget";
  * (restricted pages reject it and must never matter), and repaint-on-load
  * because every navigation wipes the document.
  *
- * Unlike the indicator this one is clickable — it is the way back to the run —
- * so pointer-events stay on, confined to the pill. The "open" button messages
- * the worker (the isolated world that executeScript runs in has extension API
- * access); "hide" never leaves the page — it collapses the pill to a small
- * blinking status dot, and clicking the dot brings the pill back. Collapse
+ * Clickable, like the driven tab's badge — it is the way back to the run — so
+ * pointer-events stay on, confined to the pill. The click messages the worker
+ * (the isolated world that executeScript runs in has extension API access);
+ * "hide" never leaves the page — it collapses the pill to a small blinking
+ * status dot, and clicking the dot brings the pill back. Collapse
  * survives repaints (host dataset) but not navigation, which wipes the document
  * anyway. Hiding the widget for good stays in Settings (`widgetHidden` pref).
  */
@@ -38,8 +39,8 @@ export interface WidgetState {
   queuedText: string;
   /** Parked on the user's answer — the pulse becomes a still "?". */
   awaiting: boolean;
-  openLabel: string;
   hideLabel: string;
+  /** The pill's own tooltip — clicking anywhere on it opens the panel. */
   openHint: string;
   /** Collapse-to-dot tooltip; the dot's own tooltip is `expandHint`. */
   hideHint: string;
@@ -54,7 +55,7 @@ let lastExclude: number | undefined;
 
 /**
  * Runs in the page. Must be fully self-contained — it is serialized, not closed
- * over. "Open" posts its intent to the worker and never sees the answer — the
+ * over. A click posts its intent to the worker and never sees the answer — the
  * side panel simply opens. "Hide" is purely local: it collapses the pill to the
  * status dot, and the dot expands back. The collapsed flag lives on the host's
  * dataset so a repaint (fresh board content re-injects this function) keeps it.
@@ -63,7 +64,6 @@ export function paintWidget(
   hostId: string,
   task: string,
   queuedText: string,
-  openLabel: string,
   hideLabel: string,
   openHint: string,
   hideHint: string,
@@ -83,13 +83,27 @@ export function paintWidget(
   const style = document.createElement("style");
   style.textContent = `
     .pill {
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center;
       max-width: calc(100vw - 24px);
       padding: 6px 8px 6px 10px; border-radius: 9999px;
       background: #0b1224ee; color: #e8eefb;
       font: 500 12px/1.2 ui-sans-serif, system-ui, sans-serif;
       box-shadow: 0 2px 12px #0000004d;
     }
+    .pill:has(.open:hover), .pill:has(.open:focus-visible) { background: #0b1224; }
+    /* The pill's content IS the open control — a transparent button filling it,
+       so the whole thing reads as one target and still answers to the keyboard.
+       A sibling of Hide, never its parent: nested buttons are not a thing. */
+    .open {
+      display: flex; align-items: center; gap: 8px; min-width: 0;
+      border: 0; background: transparent; color: inherit; font: inherit;
+      padding: 0; cursor: pointer;
+    }
+    .open:focus-visible { outline: 2px solid #6ee7b7; outline-offset: 2px; border-radius: 9999px; }
+    /* Set around an agent click — see withMarksClickThrough in indicator.ts.
+       The pill skips the driven tab, so this only ever covers the moment a
+       switch_tab leaves one behind on a tab the run is now driving. */
+    :host([data-inert]) .pill, :host([data-inert]) .mini { pointer-events: none }
     .dot {
       width: 6px; height: 6px; border-radius: 9999px; flex: none;
       background: #fbbf24; animation: pulse 1.4s ease-in-out infinite;
@@ -134,6 +148,17 @@ export function paintWidget(
 
   const pill = document.createElement("div");
   pill.className = "pill";
+  // Everything but Hide is the way back, like the driven tab's badge — a
+  // labeled "Open" button inside a clickable pill was two controls for one
+  // action, and the pill is the bigger target.
+  const open = document.createElement("button");
+  open.className = "open";
+  open.type = "button";
+  open.title = openHint;
+  open.setAttribute("aria-label", openHint);
+  open.addEventListener("click", () => {
+    void chrome.runtime.sendMessage({ type: "tabrunner-mark", action: "open" });
+  });
   // Self-identifying on unrelated pages — the badge's own emerald language.
   const brand = document.createElement("span");
   brand.className = "brand";
@@ -142,22 +167,14 @@ export function paintWidget(
   text.className = "task";
   text.textContent = task;
   text.title = task;
-  pill.append(makeStatus(), brand, text);
+  open.append(makeStatus(), brand, text);
   if (queuedText) {
     const queued = document.createElement("span");
     queued.className = "queued";
     queued.textContent = queuedText;
-    pill.appendChild(queued);
+    open.appendChild(queued);
   }
-  const open = document.createElement("button");
-  open.className = "btn";
-  open.type = "button";
-  open.textContent = openLabel;
-  open.title = openHint;
-  open.addEventListener("click", () => {
-    void chrome.runtime.sendMessage({ type: "tabrunner-widget", action: "open" });
-  });
-
+  pill.appendChild(open);
   // Collapsed form: just the status mark in a small round button — still
   // blinking while working, and the way back to the pill.
   const mini = document.createElement("button");
@@ -179,7 +196,7 @@ export function paintWidget(
   hide.addEventListener("click", () => setCollapsed(true));
   mini.addEventListener("click", () => setCollapsed(false));
 
-  pill.append(open, hide);
+  pill.append(hide);
   root.append(style, pill, mini);
   setCollapsed(wasCollapsed);
   (document.body ?? document.documentElement).appendChild(host);
@@ -192,10 +209,9 @@ export function removeWidget(hostId: string): void {
 
 function argsOf(state: WidgetState): Parameters<typeof paintWidget> {
   return [
-    HOST_ID,
+    WIDGET_HOST_ID,
     state.task,
     state.queuedText,
-    state.openLabel,
     state.hideLabel,
     state.openHint,
     state.hideHint,
@@ -237,7 +253,7 @@ async function removeFrom(ineligible: number[]): Promise<void> {
   await Promise.all(
     ineligible.map((tabId) => {
       widgetTabs.delete(tabId);
-      return inject(tabId, removeWidget, [HOST_ID]);
+      return inject(tabId, removeWidget, [WIDGET_HOST_ID]);
     }),
   );
 }
@@ -245,7 +261,7 @@ async function removeFrom(ineligible: number[]): Promise<void> {
 async function removeEverywhere(): Promise<void> {
   const tabs = [...widgetTabs];
   widgetTabs.clear();
-  await Promise.all(tabs.map((tabId) => inject(tabId, removeWidget, [HOST_ID])));
+  await Promise.all(tabs.map((tabId) => inject(tabId, removeWidget, [WIDGET_HOST_ID])));
 }
 
 /**
@@ -316,7 +332,7 @@ export async function sweepStatusWidget(): Promise<void> {
   const removals: Promise<void>[] = [];
   for (const tab of tabs) {
     if (tab.id === undefined || isRestrictedUrl(tab.url)) continue;
-    removals.push(inject(tab.id, removeWidget, [HOST_ID]));
+    removals.push(inject(tab.id, removeWidget, [WIDGET_HOST_ID]));
   }
   await Promise.all(removals);
 }

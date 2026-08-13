@@ -17,7 +17,9 @@ would both lose it and open a second live session the site may read as a bot. So
 background run adopts the current tab and drives it in silence — background
 never activates anything. The composer toggle's `thisPage`, the default, is the
 same drive with the panel left open: the watched run, whose switches the driver
-may follow (`activateOnSwitch`).
+may follow (`activateOnSwitch`). The choice is a stored preference
+(`runTargetPref`), not panel state: a background dispatch closes the panel
+itself, so holding it in memory meant re-picking the mode after every run.
 
 The strip is the run's working set, and it appears when the work does: sending a
 message groups nothing — the user may just be passing through the tab they sent from.
@@ -76,7 +78,17 @@ RunBoard, and the MCP `get_status` queue all read. **Runs survive the panel clos
 port disconnect never aborts; persistence therefore lives in the worker (one
 `TranscriptWriter` per run, same as the bridge always did), and a keepalive alarm holds
 the worker through long provider silences while no panel pings. Done/error/question fire
-OS notifications when no panel is connected.
+OS notifications when nobody is watching — no panel connected, or a panel behind another
+app (`userIsWatching` checks window focus too: a side panel behind your editor is as
+unseen as a closed one). A failure that lands while you are away also turns the toolbar
+badge red "!" until a panel opens, because the board empties on run end and the count
+badge that carried it goes with it.
+
+The RunBoard is scoped to what the rest of the panel cannot show: a run driving another
+conversation, and queue entries other than this panel's own. The open conversation's run
+already has the status band (which is why `query_run` re-sends its `driving` event to a
+panel that reopened mid-run — the band's tab chip has to be there for the strip to stay
+quiet), the composer's Stop and Esc; our own queued submission has the composer's card.
 
 The system prompt carries a consequential-action policy (paying, sending on the user's
 behalf, deleting, submitting need explicit permission), enforced through the `ask_user`
@@ -151,12 +163,17 @@ Accessibility-tree snapshot (injected script), CDP driver (trusted input), unifi
 seam, on-page "TabRunner is controlling this tab" badge plus an amber dot over the driven
 tab's favicon so the strip shows where a run is working — the dot pulses via frames pushed
 from the worker, because Chrome throttles hidden-tab timers and hidden is exactly when the
-strip signal matters; a run blocked on the user (ask_user, plan approval) settles the
-pulse into a still "?" and drops the badge — waiting-on-you, not working
-(`waitAgentIndicator`). Also `restricted-url.ts` (`isRestrictedUrl`, the proactive form of
-the injection rejection) and `status-widget.ts`: the floating pill ("TabRunner ·" + task +
-queue count, an open-panel button messaging the worker, and a hide button that collapses
-the pill in-page to a small blinking status dot — the dot keeps the working/waiting mark
+strip signal matters; a run blocked on the user (ask_user, plan approval) settles both
+marks into a still "?" and swaps the badge's label for "waiting for you" — waiting-on-you,
+not working (`waitAgentIndicator`). The badge is never pulled mid-run: it used to be, so a
+mid-flight replan stripped the page of every sign TabRunner was on it. Both marks are
+click-to-open (one `tabrunner-mark` message to the worker), which is why every coordinate
+click runs inside `withMarksClickThrough` — the agent clicks by viewport point, and a
+badge that swallowed one would both lose the step and open a panel nobody asked for. Also
+`restricted-url.ts` (`isRestrictedUrl`, the proactive form of the injection rejection) and
+`status-widget.ts`: the floating pill ("TabRunner ·" + task + queue count, the whole pill
+clicking through to the panel, and a hide button that collapses it in-page to a small
+blinking status dot — the dot keeps the working/waiting mark
 and a click on it brings the pill back), injected only into each
 window's active tab while the run board is non-empty — never the driven tab, which has the
 badge — moved on activation/focus churn, removed everywhere when idle or hidden via the
@@ -194,9 +211,9 @@ must never fail because its marks could not be drawn. The pill has two more hole
 `widgetHidden` turns it off for good, and it skips the driven tab, which under tab adoption
 IS the tab the user is looking at. So the injected layer can be entirely absent, and closing
 the panel would leave nothing on screen. `action-badge.ts` is the floor beneath it: a
-toolbar count (or "?" when parked on the user) painted by the browser itself, on every page
-type, whatever the pref says — cleared at worker boot, since badges outlive the worker that
-set them. The run's green tab group is injection-free for the same reason. A refused paint
+toolbar count (or "?" when parked on the user, or a red "!" for a failure nobody was there
+to see) painted by the browser itself, on every page type, whatever the pref says —
+cleared at worker boot, since badges outlive the worker that set them. The run's green tab group is injection-free for the same reason. A refused paint
 is therefore a degradation, never a dead end; `showAgentIndicator` treats it as one and
 skips the favicon heartbeat rather than firing a doomed `executeScript` every 700ms forever.
 

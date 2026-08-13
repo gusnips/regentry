@@ -38,6 +38,15 @@ const KEEPALIVE_ALARM = "tabrunner-run-keepalive";
 const notificationTargets = new Map<string, { conversationId: string; tabId?: number }>();
 /** Runs the user stopped themselves — their done is not notification-worthy. */
 const stoppedByUser = new Set<string>();
+/**
+ * A run failed while nobody was watching. The board empties the moment a run
+ * ends, so the count badge that carried it is gone one tick later and the
+ * toolbar goes back to looking idle — the exact opposite of what happened. This
+ * keeps a red "!" up until a panel opens, so a failure you were away for is
+ * still on screen when you come back. The OS notification is the other half;
+ * it can be dismissed, missed, or switched off at the system level.
+ */
+let unseenFailure = false;
 /** The widget's current content — repaints after navigation read it. */
 let widgetState: WidgetState | null = null;
 
@@ -96,10 +105,7 @@ export default defineBackground(() => {
   });
 
   onBoardChanged((board) => {
-    void syncActionBadge(
-      (board.running ? 1 : 0) + board.queue.length,
-      board.running?.awaiting === true,
-    );
+    paintActionBadge(board);
     widgetState = boardToWidget(board);
     const exclude = board.running?.tabId;
     void widgetHidden
@@ -122,6 +128,12 @@ export default defineBackground(() => {
     if (port.name !== PORT_NAME) return;
     log.debug("side panel connected");
     panelPorts.add(port);
+    // The panel is open: whatever failed while you were away is about to be on
+    // screen (the transcript kept it), so the toolbar stops shouting about it.
+    if (unseenFailure) {
+      unseenFailure = false;
+      paintActionBadge();
+    }
 
     port.onMessage.addListener(async (msg: Command) => {
       switch (msg.type) {
@@ -146,7 +158,7 @@ export default defineBackground(() => {
                 writer.apply(event);
                 send(port, event);
                 if (event.type === "done" || event.type === "error") {
-                  notifyRunEnded(conversationId, msg.task, event);
+                  void notifyRunEnded(conversationId, msg.task, event);
                 }
               },
               onAskUser: (question) =>
@@ -230,6 +242,11 @@ export default defineBackground(() => {
           // Answer fresh on connect — the broadcast may have happened while the
           // panel was closed, and stale state must never read as "browser idle".
           send(port, { type: "run_active", active: getBridge()?.activity ?? null });
+          // A panel that reopened mid-run missed the driving event the run fired
+          // at start, so its live band had no tab chip and no way back to the
+          // page. Re-send it from the board: the band is then whole either way,
+          // which is what lets the run strip stop repeating it.
+          await sendDrivingTo(port);
           // Re-arm a plan the panel was closed on. The approval card lives only
           // in panel memory, so a run parked while the panel was away — which
           // is every run whose notification the user just clicked — would come
@@ -258,14 +275,29 @@ export default defineBackground(() => {
     port.onDisconnect.addListener(() => {
       panelPorts.delete(port);
       log.debug("side panel disconnected");
+      // A parked run's notification is suppressed while a panel is open — the
+      // card is right there. Close that panel and the ask has nowhere left to
+      // live: the approval card is panel memory, so the run sits blocked with
+      // nothing on screen but a "?" on the tab strip. Fire it now, on the way
+      // out, so leaving never strands a run that is waiting on you.
+      const parked = getActiveRun();
+      if (panelPorts.size === 0 && parked?.owner === "panel" && parked.planApproval) {
+        const { steps, reapproval } = parked.planApproval;
+        void notifyIfAway(
+          "tabrunner-plan",
+          `${reapproval ? i18n.t("plan.reapprovalTitle") : i18n.t("plan.approvalTitle")} ${steps.join(" · ")}`,
+          parked.conversationId,
+        );
+      }
     });
   });
 
-  // The status widget's "open" button, posted from the page's isolated world
-  // ("hide" collapses the pill in-page — it never reaches the worker).
+  // A click on either on-page mark — the floating pill or the driven tab's
+  // badge — posted from the page's isolated world ("hide" collapses the pill
+  // in-page and never reaches the worker).
   chrome.runtime.onMessage.addListener((msg: unknown, sender) => {
     const m = typeof msg === "object" && msg !== null ? (msg as Record<string, unknown>) : null;
-    if (m?.type !== "tabrunner-widget" || m.action !== "open") return;
+    if (m?.type !== "tabrunner-mark" || m.action !== "open") return;
     // Land on the work, not on whatever conversation happens to be active.
     const board = currentBoard();
     const target = board.running?.conversationId ?? board.queue[0]?.conversationId;
@@ -305,6 +337,30 @@ function send(port: chrome.runtime.Port, event: Event) {
   }
 }
 
+/**
+ * Tell a freshly connected panel which tab the run it reopened into is driving
+ * — the `driving` event it was not around to receive. Only for a run on the
+ * panel's own open conversation: the chip belongs to the band, and the band
+ * only speaks for the thread on screen.
+ */
+async function sendDrivingTo(port: chrome.runtime.Port): Promise<void> {
+  const running = currentBoard().running;
+  if (!running || running.tabId === undefined) return;
+  if (running.conversationId !== (await getActiveId())) return;
+  try {
+    const tab = await chrome.tabs.get(running.tabId);
+    send(port, {
+      type: "driving",
+      tabId: running.tabId,
+      windowId: tab.windowId,
+      title: tab.title ?? "",
+      ...(tab.favIconUrl ? { favIconUrl: tab.favIconUrl } : {}),
+    });
+  } catch {
+    // The driven tab is gone — the run's own error is on its way.
+  }
+}
+
 /** The widget's content for a board — null when there is nothing to report.
  *  With only a queue (e.g. waiting behind a direct session) the first waiter
  *  leads the pill. */
@@ -316,12 +372,36 @@ function boardToWidget(board: RunBoard): WidgetState | null {
     task: truncate(lead.task, 120),
     queuedText: extra > 0 ? i18n.t("widget.queued", { count: extra }) : "",
     awaiting: board.running?.awaiting === true,
-    openLabel: i18n.t("widget.open"),
     hideLabel: i18n.t("widget.hide"),
     openHint: i18n.t("widget.openHint"),
     hideHint: i18n.t("widget.hideHint"),
     expandHint: i18n.t("widget.expandHint"),
   };
+}
+
+/** The toolbar's one line: what is running, or what failed while you were away. */
+function paintActionBadge(board: RunBoard = currentBoard()): void {
+  void syncActionBadge((board.running ? 1 : 0) + board.queue.length, {
+    awaiting: board.running?.awaiting === true,
+    failed: unseenFailure,
+  });
+}
+
+/**
+ * Is the user actually looking at TabRunner? An open panel is not enough: a
+ * side panel behind the editor you are working in is as unseen as a closed one,
+ * and "it errored an hour ago" is the thing dispatch-and-forget must never say.
+ * So the browser has to be the frontmost app too.
+ */
+async function userIsWatching(): Promise<boolean> {
+  if (panelPorts.size === 0) return false;
+  try {
+    const win = await chrome.windows.getLastFocused({ windowTypes: ["normal"] });
+    return win.focused === true;
+  } catch {
+    // Can't tell — an open panel is the better guess than a duplicate ping.
+    return true;
+  }
 }
 
 /**
@@ -332,19 +412,22 @@ function boardToWidget(board: RunBoard): WidgetState | null {
  * question endings, which already fired their own notification. Per-run ids,
  * so a second finishing run never replaces the first's notification.
  */
-function notifyRunEnded(conversationId: string, task: string, event: Event): void {
-  if (panelPorts.size > 0) return;
+async function notifyRunEnded(conversationId: string, task: string, event: Event): Promise<void> {
   if (event.type === "done" && event.question) return;
   if (event.type === "error" && event.silent) return;
   if (stoppedByUser.delete(conversationId)) return;
+  // Read before the first await: the run releases its slot moments after this
+  // event, and the board's tab id goes with it.
+  const tabId = currentBoard().running?.tabId;
+  if (await userIsWatching()) return;
   const done = event.type === "done";
+  // A failure nobody saw outlives its notification — the toolbar holds it.
+  if (!done) {
+    unseenFailure = true;
+    paintActionBadge();
+  }
   const id = `tabrunner-run-${conversationId}`;
-  notificationTargets.set(id, {
-    conversationId,
-    ...(currentBoard().running?.tabId !== undefined
-      ? { tabId: currentBoard().running?.tabId }
-      : {}),
-  });
+  notificationTargets.set(id, { conversationId, ...(tabId !== undefined ? { tabId } : {}) });
   try {
     void chrome.notifications.create(id, {
       type: "basic",
@@ -370,7 +453,7 @@ function notifyRunEnded(conversationId: string, task: string, event: Event): voi
  * otherwise, and the strip mark is invisible from another app.
  */
 async function notifyIfAway(id: string, message: string, conversationId?: string): Promise<void> {
-  if (panelPorts.size > 0) return;
+  if (await userIsWatching()) return;
   if (conversationId) notificationTargets.set(id, { conversationId });
   try {
     void chrome.notifications.create(id, {

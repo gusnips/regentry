@@ -111,7 +111,7 @@ export class DirectSession {
     });
 
     log.info("direct session opened", { agent, task: truncate(goal, 120) });
-    void showAgentIndicator(tab.id, i18n.t("indicator.driving"));
+    void showAgentIndicator(tab.id);
     this.touch();
     // The opening snapshot: a session's first move is always to look, so
     // handing it back here saves a round trip and gives the client its refs.
@@ -179,7 +179,7 @@ export class DirectSession {
       onSwitch: (tab) => {
         this.tabId = tab.id;
         void hideAgentIndicator(tabId);
-        void showAgentIndicator(tab.id, i18n.t("indicator.driving"));
+        void showAgentIndicator(tab.id);
       },
     });
   }

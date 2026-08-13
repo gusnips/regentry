@@ -191,7 +191,8 @@
     "empty": "O provedor não informou o uso desta vez — tente Atualizar."
   },
   "sidepanel": {
-    "busyRunning": "Pare a execução antes de trocar de conversa"
+    "busyRunning": "Pare a execução antes de trocar de conversa",
+    "close": "Fechar o painel — uma tarefa em andamento continua"
   },
   "history": {
     "title": "Histórico",
@@ -326,7 +327,9 @@
     }
   },
   "indicator": {
-    "driving": "O TabRunner está controlando esta aba"
+    "driving": "O TabRunner está controlando esta aba",
+    "waiting": "O TabRunner está esperando por você",
+    "open": "Abrir o painel do TabRunner"
   },
   "plan": {
     "title": "Plano",
@@ -433,7 +436,6 @@
   },
   "widget": {
     "queued": "+{{count}} na fila",
-    "open": "Abrir",
     "hide": "Ocultar",
     "openHint": "Abrir o painel do TabRunner",
     "hideHint": "Recolher para um ponto — clique no ponto para trazê-lo de volta",
@@ -455,8 +457,8 @@
     "pasteCollapse": "Um texto longo colado vira um token compacto — o texto completo ainda chega ao agente.",
     "planApproval": "A tarefa mostra o plano antes de mexer na página — aprove, ou responda com ajustes e ela replaneja.",
     "planExpand": "Aperte E para expandir/fechar o plano.",
-    "widget": "A pílula flutuante nas abas mostra o que o TabRunner está fazendo — clique em Abrir para ir ao painel.",
-    "board": "Tarefas em segundo plano aparecem na faixa Tarefas no topo — pule para a aba controlada ou pare uma por ali.",
+    "widget": "Toda marca do TabRunner na página é clicável — clique em uma para trazer o painel de volta.",
+    "board": "Uma tarefa rodando em outra conversa aparece na faixa Tarefas no topo — vá até a aba ou pare por lá.",
     "memory": "O TabRunner lembra fatos úteis das suas tarefas — revise ou apague em Configurações → O que o TabRunner lembra.",
     "usage": "Num provedor por assinatura, o ícone de medidor ao lado do seletor de modelo mostra seu uso de 5 horas e semanal — clique para ver quando reinicia.",
     "slashCommands": "Digite / no campo de texto para ver comandos — troque provedor, modelo ou esforço no chat."

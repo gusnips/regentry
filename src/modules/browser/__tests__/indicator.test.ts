@@ -2,13 +2,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   paintIndicator,
   removeIndicator,
+  setMarksInert,
   stepFaviconFrame,
-  waitIndicator,
   showAgentIndicator,
   refreshAgentIndicator,
   hideAgentIndicator,
   waitAgentIndicator,
   clearAgentWait,
+  withMarksClickThrough,
 } from "../indicator";
 
 // The page-side halves of the indicator, run directly in jsdom the way
@@ -25,8 +26,16 @@ function iconLinks(): HTMLLinkElement[] {
   return [...document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')];
 }
 
-function paint() {
-  paintIndicator(ARGS.hostId, "TabRunner is driving", ARGS.linkId, ARGS.dot, ARGS.restoreId);
+function paint(waiting = false, favicon = ARGS.dot) {
+  paintIndicator(
+    ARGS.hostId,
+    waiting ? "TabRunner is waiting for you" : "TabRunner is driving",
+    "Open the TabRunner panel",
+    ARGS.linkId,
+    favicon,
+    ARGS.restoreId,
+    waiting,
+  );
 }
 
 function remove() {
@@ -111,31 +120,56 @@ describe("indicator page marks", () => {
   });
 });
 
-describe("waiting state", () => {
+describe("the badge as a control", () => {
   const WAITING_URL = "data:image/svg+xml,question";
+  const original = Element.prototype.attachShadow;
+  const chromeBackup = globalThis.chrome;
 
   beforeEach(() => {
     document.head.innerHTML = "";
     document.body.innerHTML = "";
+    // Closed in production so the page can't reach in; forced open to assert.
+    Element.prototype.attachShadow = function () {
+      return original.call(this, { mode: "open" });
+    };
   });
 
-  it("removes the badge and sets the waiting favicon", () => {
+  afterEach(() => {
+    Element.prototype.attachShadow = original;
+    (globalThis as Record<string, unknown>).chrome = chromeBackup;
+  });
+
+  const badge = () =>
+    document.getElementById(ARGS.hostId)!.shadowRoot!.querySelector<HTMLElement>(".badge")!;
+
+  it("keeps the badge through a wait, swapping the pulse for the still ?", () => {
+    paint(true, WAITING_URL);
+
+    // The mark never leaves the page mid-run: a parked run is when the user is
+    // needed most, so the badge says so instead of vanishing.
+    expect(badge().textContent).toContain("waiting");
+    expect(badge().querySelector(".wait")?.textContent).toBe("?");
+    expect(badge().querySelector(".dot")).toBeNull();
+    const links = iconLinks();
+    expect(links).toHaveLength(1);
+    expect(links[0]?.href).toBe(WAITING_URL);
+  });
+
+  it("clicking it asks the worker for the panel", () => {
+    const sendMessage = vi.fn();
+    (globalThis as Record<string, unknown>).chrome = { ...chromeBackup, runtime: { sendMessage } };
     paint();
-    waitIndicator(ARGS.hostId, ARGS.linkId, WAITING_URL);
-
-    expect(document.getElementById(ARGS.hostId)).toBeNull();
-    const links = iconLinks();
-    expect(links).toHaveLength(1);
-    expect(links[0]?.href).toBe(WAITING_URL);
+    badge().click();
+    expect(sendMessage).toHaveBeenCalledWith({ type: "tabrunner-mark", action: "open" });
   });
 
-  it("creates the link when none existed yet", () => {
-    waitIndicator(ARGS.hostId, ARGS.linkId, WAITING_URL);
-
-    const links = iconLinks();
-    expect(links).toHaveLength(1);
-    expect(links[0]?.id).toBe(ARGS.linkId);
-    expect(links[0]?.href).toBe(WAITING_URL);
+  it("goes click-through while the agent clicks, so it can't eat its own click", () => {
+    paint();
+    const host = document.getElementById(ARGS.hostId)!;
+    setMarksInert([ARGS.hostId], true);
+    expect(host.dataset.inert).toBe("1");
+    setMarksInert([ARGS.hostId], false);
+    expect(host.dataset.inert).toBeUndefined();
   });
 });
 
@@ -163,7 +197,7 @@ describe("worker-driven favicon heartbeat", () => {
     executeScript.mock.calls.filter((c) => (c[0] as { func: unknown }).func === stepFaviconFrame);
 
   it("alternates two frames every beat while shown, and stops on hide", async () => {
-    await showAgentIndicator(1, "TabRunner is driving");
+    await showAgentIndicator(1);
     expect(frameBeats()).toHaveLength(0);
 
     await vi.advanceTimersByTimeAsync(700);
@@ -182,7 +216,7 @@ describe("worker-driven favicon heartbeat", () => {
     // heartbeat would fire an executeScript every 700ms forever, drawing
     // nothing — the tab group and the toolbar badge carry the signal there.
     executeScript.mockRejectedValue(new Error("Cannot access contents of the page"));
-    await showAgentIndicator(9, "TabRunner is driving");
+    await showAgentIndicator(9);
     await vi.advanceTimersByTimeAsync(2800);
     expect(frameBeats()).toHaveLength(0);
 
@@ -194,16 +228,21 @@ describe("worker-driven favicon heartbeat", () => {
     await hideAgentIndicator(9);
   });
 
+  const paintCalls = () =>
+    executeScript.mock.calls.filter((c) => (c[0] as { func: unknown }).func === paintIndicator);
+
   it("wait marks the strip without a pulse, and clear removes the mark", async () => {
     await waitAgentIndicator(2);
     // No pulse beats, ever — the wait is a still state.
     await vi.advanceTimersByTimeAsync(2800);
     expect(frameBeats()).toHaveLength(0);
-    // One injection, carrying waitIndicator + waiting URL.
-    const waits = executeScript.mock.calls.filter(
-      (c) => (c[0] as { func: unknown }).func === waitIndicator,
-    );
-    expect(waits).toHaveLength(1);
+    // One paint, in the waiting state — the badge stays, saying it needs you.
+    expect(paintCalls()).toHaveLength(1);
+    expect((paintCalls()[0]?.[0] as { args: unknown[] }).args.at(-1)).toBe(true);
+
+    // A repaint after a navigation lands the same waiting state, not "driving".
+    await refreshAgentIndicator(2);
+    expect((paintCalls()[1]?.[0] as { args: unknown[] }).args.at(-1)).toBe(true);
 
     // clear in a new run calls hideAgentIndicator → removeIndicator.
     await clearAgentWait();
@@ -213,15 +252,35 @@ describe("worker-driven favicon heartbeat", () => {
     expect(removes).toHaveLength(1);
   });
 
+  it("hands the corner back around an agent click, then takes it again", async () => {
+    const clicked = await withMarksClickThrough(4, () => Promise.resolve("done"));
+    expect(clicked).toBe("done");
+    const toggles = executeScript.mock.calls
+      .filter((c) => (c[0] as { func: unknown }).func === setMarksInert)
+      .map((c) => (c[0] as { args: unknown[] }).args[1]);
+    expect(toggles).toEqual([true, false]);
+  });
+
+  it("restores the marks even when the click throws", async () => {
+    await expect(
+      withMarksClickThrough(5, () => Promise.reject(new Error("target gone"))),
+    ).rejects.toThrow("target gone");
+    const toggles = executeScript.mock.calls
+      .filter((c) => (c[0] as { func: unknown }).func === setMarksInert)
+      .map((c) => (c[0] as { args: unknown[] }).args[1]);
+    expect(toggles).toEqual([true, false]);
+  });
+
   it("show drives again on a waiting tab — wait is cleared, paint and restore follow", async () => {
     await waitAgentIndicator(3);
 
-    await showAgentIndicator(3, "TabRunner is driving");
-    // showAgentIndicator calls paintIndicator, never waitIndicator or removeIndicator.
-    const paints = executeScript.mock.calls.filter(
-      (c) => (c[0] as { func: unknown }).func === paintIndicator,
-    );
-    expect(paints).toHaveLength(1);
+    await showAgentIndicator(3);
+    // Both states paint the same badge; only the last argument differs, and an
+    // approved plan puts the run back to work — waiting first, driving second.
+    expect(paintCalls().map((c) => (c[0] as { args: unknown[] }).args.at(-1))).toEqual([
+      true,
+      false,
+    ]);
     // hide runs normally once — no wait-specific cleanup, since show already cleared it.
     await hideAgentIndicator(3);
     const removes = executeScript.mock.calls.filter(

@@ -191,7 +191,8 @@
     "empty": "The provider didn't report usage this time — try Refresh."
   },
   "sidepanel": {
-    "busyRunning": "Stop the run before switching conversations"
+    "busyRunning": "Stop the run before switching conversations",
+    "close": "Close the panel — a running task keeps going"
   },
   "history": {
     "title": "History",
@@ -326,7 +327,9 @@
     }
   },
   "indicator": {
-    "driving": "TabRunner is controlling this tab"
+    "driving": "TabRunner is controlling this tab",
+    "waiting": "TabRunner is waiting for you",
+    "open": "Open the TabRunner panel"
   },
   "plan": {
     "title": "Plan",
@@ -433,7 +436,6 @@
   },
   "widget": {
     "queued": "+{{count}} queued",
-    "open": "Open",
     "hide": "Hide",
     "openHint": "Open the TabRunner panel",
     "hideHint": "Collapse to a small dot — click the dot to bring the widget back",
@@ -455,8 +457,8 @@
     "pasteCollapse": "A long pasted text folds into a neat token — the full text still reaches the agent.",
     "planApproval": "A task shows its plan before it touches the page — approve it, or reply with adjustments and it replans.",
     "planExpand": "Press E to expand/collapse the plan.",
-    "widget": "The floating pill on your tabs shows what TabRunner is doing — click Open to jump to the panel.",
-    "board": "Background tasks are tracked in the Tasks band at the top — jump to the driven tab or stop one from there.",
+    "widget": "Every TabRunner mark on a page is clickable — click one to bring the panel back.",
+    "board": "A task running in another chat shows in the Tasks band at the top — jump to its tab or stop it there.",
     "memory": "TabRunner remembers useful facts from your tasks — review or prune them under Settings → What TabRunner remembers.",
     "usage": "On a subscription provider, the gauge icon next to the model picker shows your 5-hour and weekly usage — click it for the reset times.",
     "slashCommands": "Type / in the composer for commands — switch provider, model, or effort mid-chat."

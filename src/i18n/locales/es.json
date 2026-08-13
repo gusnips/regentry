@@ -191,7 +191,8 @@
     "empty": "El proveedor no informó el uso esta vez — prueba Actualizar."
   },
   "sidepanel": {
-    "busyRunning": "Detén la ejecución antes de cambiar de conversación"
+    "busyRunning": "Detén la ejecución antes de cambiar de conversación",
+    "close": "Cerrar el panel — una tarea en curso sigue corriendo"
   },
   "history": {
     "title": "Historial",
@@ -326,7 +327,9 @@
     }
   },
   "indicator": {
-    "driving": "TabRunner está controlando esta pestaña"
+    "driving": "TabRunner está controlando esta pestaña",
+    "waiting": "TabRunner te está esperando",
+    "open": "Abrir el panel de TabRunner"
   },
   "plan": {
     "title": "Plan",
@@ -433,7 +436,6 @@
   },
   "widget": {
     "queued": "+{{count}} en cola",
-    "open": "Abrir",
     "hide": "Ocultar",
     "openHint": "Abrir el panel de TabRunner",
     "hideHint": "Contraer a un punto — haz clic en el punto para recuperarlo",
@@ -455,8 +457,8 @@
     "pasteCollapse": "Un texto largo pegado se pliega en un token compacto — el texto completo igual llega al agente.",
     "planApproval": "La tarea muestra su plan antes de tocar la página — aprueba, o responde con ajustes y replanifica.",
     "planExpand": "Pulsa E para expandir/cerrar el plan.",
-    "widget": "La píldora flotante en tus pestañas muestra qué hace TabRunner — haz clic en Abrir para ir al panel.",
-    "board": "Las tareas en segundo plano aparecen en la banda Tareas arriba — salta a la pestaña controlada o detén una desde ahí.",
+    "widget": "Toda marca de TabRunner en la página es clicable — haz clic en una para volver al panel.",
+    "board": "Una tarea de otro chat aparece en la banda Tareas de arriba — salta a su pestaña o detenla ahí.",
     "memory": "TabRunner recuerda datos útiles de tus tareas — revísalos o bórralos en Ajustes → Lo que TabRunner recuerda.",
     "usage": "En un proveedor por suscripción, el icono de medidor junto al selector de modelo muestra tu uso de 5 horas y semanal — haz clic para ver cuándo se reinicia.",
     "slashCommands": "Escribe / en el campo de texto para ver comandos — cambia proveedor, modelo o esfuerzo."

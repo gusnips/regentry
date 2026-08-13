@@ -12,7 +12,6 @@ function paint(awaiting = false) {
     HOST_ID,
     "Summarize the thread",
     "",
-    "Open",
     "Hide",
     "Open hint",
     "Hide hint",
@@ -32,6 +31,7 @@ function parts() {
   expect(root).not.toBeNull();
   return {
     pill: root!.querySelector<HTMLElement>(".pill")!,
+    open: root!.querySelector<HTMLButtonElement>(".open")!,
     mini: root!.querySelector<HTMLElement>(".mini")!,
     hide: [...root!.querySelectorAll<HTMLButtonElement>(".btn")].find(
       (b) => b.textContent === "Hide",
@@ -113,7 +113,7 @@ describe("status widget collapse", () => {
     expect(document.getElementById(HOST_ID)).toBeNull();
   });
 
-  it("open still messages the worker", () => {
+  it("the pill's whole body opens the panel, and hide only hides", () => {
     const sendMessage = vi.fn();
     const chromeBackup = globalThis.chrome;
     (globalThis as Record<string, unknown>).chrome = {
@@ -122,12 +122,18 @@ describe("status widget collapse", () => {
     };
     try {
       paint();
-      const root = host().shadowRoot!;
-      const open = [...root.querySelectorAll<HTMLButtonElement>(".btn")].find(
-        (b) => b.textContent === "Open",
-      )!;
-      open.click();
-      expect(sendMessage).toHaveBeenCalledWith({ type: "tabrunner-widget", action: "open" });
+      // Dot, name, task and queue count all sit inside the one open control —
+      // the pill is the target, not a small labeled button within it.
+      expect(parts().open.textContent).toContain("Summarize the thread");
+      parts().open.click();
+      expect(sendMessage).toHaveBeenCalledWith({ type: "tabrunner-mark", action: "open" });
+
+      // Hide is its sibling, not its child: hiding must never also jump you to
+      // the panel (and a nested button would be invalid markup besides).
+      sendMessage.mockClear();
+      parts().hide.click();
+      expect(sendMessage).not.toHaveBeenCalled();
+      expect(visible(parts().pill)).toBe(false);
     } finally {
       (globalThis as Record<string, unknown>).chrome = chromeBackup;
     }

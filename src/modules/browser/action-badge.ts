@@ -18,6 +18,9 @@
  * Count, not a dot, because the number is the part no other surface carries
  * once the panel is closed — one run, or four waiting behind it. Parked on the
  * user it becomes "?", the same wait language the favicon and the pill speak.
+ * And when a run fails with nobody watching, a red "!" takes over once the
+ * count clears: every other trace of that failure is gone by then — the marks
+ * are pulled with the run, and the notification is one dismiss from lost.
  *
  * Pre-digested by the worker, like `WidgetState` — this module never reads the
  * board itself, so nothing under `browser/` depends on `agent/`.
@@ -26,15 +29,30 @@
 /** Amber = alive/working, the favicon dot's own colour; dark text for contrast. */
 const BADGE_BG = "#fbbf24";
 const BADGE_FG = "#451a03";
+/** Red = it failed and you were not there to see it — the panel's error colour. */
+const FAIL_BG = "#dc2626";
+const FAIL_FG = "#ffffff";
 
-/** `count` is running + queued; 0 clears the badge. */
-export async function syncActionBadge(count: number, awaiting = false): Promise<void> {
-  const text = count === 0 ? "" : awaiting ? "?" : String(count);
+export interface BadgeState {
+  /** Parked on the user's answer — the count becomes the wait language's "?". */
+  awaiting?: boolean;
+  /**
+   * A run failed while nobody was watching. Shown only once the work is done
+   * (count 0): a live run outranks a past failure, and the failure is still
+   * there when that run's count clears.
+   */
+  failed?: boolean;
+}
+
+/** `count` is running + queued; with nothing running and nothing unseen, clear. */
+export async function syncActionBadge(count: number, state: BadgeState = {}): Promise<void> {
+  const failed = count === 0 && state.failed === true;
+  const text = count > 0 ? (state.awaiting ? "?" : String(count)) : failed ? "!" : "";
   try {
     await chrome.action.setBadgeText({ text });
     if (text) {
-      await chrome.action.setBadgeBackgroundColor({ color: BADGE_BG });
-      await chrome.action.setBadgeTextColor({ color: BADGE_FG });
+      await chrome.action.setBadgeBackgroundColor({ color: failed ? FAIL_BG : BADGE_BG });
+      await chrome.action.setBadgeTextColor({ color: failed ? FAIL_FG : BADGE_FG });
     }
   } catch {
     // No toolbar to paint — the tab group still names the work.

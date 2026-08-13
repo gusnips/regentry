@@ -16,6 +16,7 @@ import {
   ensureAttached,
 } from "./cdp-driver";
 import { focusTab } from "./focus-tab";
+import { withMarksClickThrough } from "./indicator";
 import { i18n } from "@/i18n";
 import { truncate } from "@/lib/logger";
 import type { TabId } from "@/shared/types";
@@ -125,7 +126,10 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
       const rect = await resolveRefRect(current, ref);
       const cx = Math.round(rect.x + rect.width / 2);
       const cy = Math.round(rect.y + rect.height / 2);
-      await clickAt(cx, cy);
+      // The click is a coordinate, so whatever sits at it wins — including our
+      // own marks. They go click-through for the dispatch: a badge that ate the
+      // agent's click would both lose the step and open a panel nobody asked for.
+      await withMarksClickThrough(current, () => clickAt(cx, cy));
       return { x: cx, y: cy };
     },
 

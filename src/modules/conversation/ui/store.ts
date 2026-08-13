@@ -18,12 +18,8 @@ import {
 import { closingSummary } from "../transcript";
 import { toolVerbKey } from "./tool-labels";
 import type { PastedText } from "./paste-collapse";
-
-/** Where a submitted task drives — the user's current page ("thisPage", the
- *  default, with the panel open) or the same tab with the panel closed after
- *  plan approval ("background"). Both drive the tab you're on; the only
- *  difference is whether you watch or walk away. */
-export type RunTarget = "background" | "thisPage";
+import { runTargetPref } from "@/lib/prefs";
+import type { RunTarget } from "@/lib/prefs";
 
 interface ConversationState {
   messages: Message[];
@@ -121,6 +117,9 @@ let unwatchConversations: (() => void) | null = null;
 let unwatchBoard: (() => void) | null = null;
 /** Did this run stream any prose? Governs done-summary dedup, never its display. */
 let sawAssistantText = false;
+/** The user flipped the run target already — the stored read must not land on
+ *  top of a choice made while it was still in flight. */
+let runTargetTouched = false;
 /** Dispatch-and-forget's close handshake: the panel closes on the first event
  *  back (proof the command landed), with a fallback if none ever comes. */
 let closeOnFirstEvent = false;
@@ -590,7 +589,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     runStartedAt: null,
     runEndedAt: null,
     lastRun: null,
-    runTarget: "thisPage",
+    runTarget: runTargetPref.fallback,
     pendingStepId: null,
     planMsgId: null,
     planApproval: null,
@@ -607,6 +606,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
     connect: () => {
       if (port) return;
+      void runTargetPref.get().then((runTarget) => {
+        if (!runTargetTouched) set({ runTarget });
+      });
       void listConversations().then((conversations) => set({ conversations }));
       unwatchConversations ??= watchConversations((conversations) => set({ conversations }));
       void runBoardItem.get().then((board) => set({ board }));
@@ -700,7 +702,14 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       }),
     addPastedText: (entry) => set((st) => ({ pastedTexts: [...st.pastedTexts, entry] })),
     clearPastedTexts: () => set({ pastedTexts: [], collapseDisabled: false }),
-    setRunTarget: (target) => set({ runTarget: target }),
+    // Stored, not just held: the panel closes itself on every background
+    // dispatch, and a mode that reset on each reopen made "in background" a
+    // choice you had to re-make all afternoon.
+    setRunTarget: (target) => {
+      runTargetTouched = true;
+      set({ runTarget: target });
+      void runTargetPref.set(target);
+    },
 
     retry: () => {
       const target = retryTargetFrom(get().messages);

@@ -22,21 +22,38 @@ function StopIcon() {
 }
 
 /**
- * What TabRunner is doing anywhere — the running task and the line behind it.
- * Dispatch-and-forget means the action usually lives elsewhere (your current
- * tab, the floating widget, the toolbar badge), so the panel names it here:
- * jump to the tab, stop the run, cancel a waiter. Reads the same run board the
- * widget paints from, so the two can never disagree. Hidden when idle — no
- * empty chrome.
+ * What TabRunner is doing that this chat cannot see — a run driving another
+ * conversation (or an MCP client's), and tasks queued behind it. Reads the same
+ * run board the widget paints from, so the two can never disagree.
+ *
+ * Strictly what is missing elsewhere. The open conversation's own run already
+ * has the live band (verb, elapsed, driven-tab chip, plan peek), the composer's
+ * Stop and Esc, and its task sits in the transcript one message up — repeating
+ * all of it in a strip under the header was four controls saying what two
+ * already said. Same for our own queued submission: the composer carries its
+ * card, with position and cancel. So both hide per entry, and the section is
+ * gone entirely in the common case of one chat, one run.
  */
 export function RunBoard() {
   const { t } = useTranslation();
   const board = useConversationStore((s) => s.board);
   const stop = useConversationStore((s) => s.stop);
   const cancelQueuedById = useConversationStore((s) => s.cancelQueuedById);
+  const activeId = useConversationStore((s) => s.activeId);
+  const queuedRunId = useConversationStore((s) => s.queuedRun?.id);
 
-  if (!board.running && board.queue.length === 0) return null;
-  const running = board.running;
+  // The band below covers a run living on the open conversation — and covers it
+  // whether the panel watched it start or reopened into it (the worker re-sends
+  // the driving event on connect, so the tab chip is there either way).
+  const running = board.running?.conversationId === activeId ? undefined : board.running;
+  // Numbered off the whole line, not the visible remainder: hiding our own
+  // entry must not renumber the ones behind it — the composer card and this
+  // strip name the same positions.
+  const queue = board.queue
+    .map((q, i) => ({ ...q, position: i + 1 }))
+    .filter((q) => q.id !== queuedRunId);
+
+  if (!running && queue.length === 0) return null;
 
   return (
     <section
@@ -91,13 +108,13 @@ export function RunBoard() {
           </Button>
         </div>
       )}
-      {board.queue.map((q, i) => (
+      {queue.map((q) => (
         <div key={q.id} className="flex items-center gap-1.5">
           <span
             aria-hidden
             className="shrink-0 rounded border border-neutral-300 px-1 py-px text-[10px] font-medium text-neutral-500 dark:border-neutral-600 dark:text-neutral-400"
           >
-            {i + 1}
+            {q.position}
           </span>
           <span
             className="min-w-0 flex-1 truncate text-xs text-neutral-500 dark:text-neutral-400"

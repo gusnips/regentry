@@ -172,7 +172,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
           title: info.title,
           favIconUrl: info.favIconUrl,
         });
-        void showAgentIndicator(info.id, i18n.t("indicator.driving"));
+        void showAgentIndicator(info.id);
       },
     });
     emit({
@@ -204,7 +204,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     await clearAgentWait();
     chrome.notifications.clear("tabrunner-question");
     chrome.notifications.clear("tabrunner-plan");
-    void showAgentIndicator(drivenTabId, i18n.t("indicator.driving"));
+    void showAgentIndicator(drivenTabId);
 
     // The stored conversation as wire turns — "continue" lands on a model that
     // has read the same exchange, not on a stranger.
@@ -260,7 +260,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
                   // return. A plain reject ends it — its unwind clears them.
                   if (approved || revision) {
                     markRunningAwaiting(conversationId, false);
-                    void showAgentIndicator(drivenTabId, i18n.t("indicator.driving"));
+                    void showAgentIndicator(drivenTabId);
                   } else {
                     planRejected = true;
                   }
