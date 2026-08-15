@@ -1,7 +1,15 @@
 import { Button as BaseButton } from "@base-ui-components/react";
 import type { ComponentProps } from "react";
 
-type Variant = "primary" | "danger" | "ghost" | "ghost-danger" | "outline" | "choice" | "nav";
+type Variant =
+  | "primary"
+  | "danger"
+  | "ghost"
+  | "ghost-danger"
+  | "outline"
+  | "choice"
+  | "nav"
+  | "quiet-brand";
 type Size = "sm" | "md" | "icon";
 
 const VARIANTS: Record<Variant, string> = {
@@ -20,6 +28,12 @@ const VARIANTS: Record<Variant, string> = {
   // A settings-nav destination: quiet until it's the page you're on — the
   // active page carries the brand tint via aria-current.
   nav: "text-neutral-600 hover:bg-neutral-100 active:bg-neutral-200 aria-[current=page]:bg-brand-50 aria-[current=page]:text-brand-800 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:active:bg-neutral-700 dark:aria-[current=page]:bg-brand-950/60 dark:aria-[current=page]:text-brand-200",
+  // An action sitting inside a report — a status line, the live run band. It
+  // must read as pressable where a ghost's neutral text would read as more
+  // label. A variant rather than a className override: both are plain text
+  // utilities, so the winner is CSS order, not the order they were passed.
+  "quiet-brand":
+    "text-brand-700 hover:bg-brand-100 active:bg-brand-200 dark:text-brand-300 dark:hover:bg-brand-900 dark:active:bg-brand-800",
 };
 
 const SIZES: Record<Size, string> = {

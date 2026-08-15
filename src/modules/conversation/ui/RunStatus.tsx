@@ -182,12 +182,7 @@ export function RunStatus() {
         {/* The composer's send/stop morphs away the moment a draft exists, so
             the band carries the one Stop that is always there — same control
             the bridge band already wears. */}
-        <Button
-          size="sm"
-          variant="ghost"
-          className="-my-1 shrink-0 text-brand-800 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-900"
-          onClick={stop}
-        >
+        <Button size="sm" variant="quiet-brand" className="-my-1 shrink-0" onClick={stop}>
           {t("chat.stop")}
         </Button>
       </div>

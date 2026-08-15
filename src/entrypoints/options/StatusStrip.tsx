@@ -73,12 +73,7 @@ export function StatusStrip({ onAddProvider }: { onAddProvider: () => void }) {
              alone would claim a brain that isn't there. Say what broke and
              route to the fix, in the one affordance voice (brand text on a
              hover pill — the caption styling this replaced read as a label). */
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-2 text-brand-700 hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-900"
-            onClick={onAddProvider}
-          >
+          <Button variant="quiet-brand" size="sm" className="-ml-2" onClick={onAddProvider}>
             {providerDisplayName(provider)} —{" "}
             {isOAuthProvider(provider.id)
               ? t("settings.strip.signInAgain")
@@ -88,12 +83,7 @@ export function StatusStrip({ onAddProvider }: { onAddProvider: () => void }) {
       ) : (
         /* A settings page with no provider can't run anything — say so and
            offer the way forward, right where the fact is reported. */
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 text-brand-700 hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-900"
-          onClick={onAddProvider}
-        >
+        <Button variant="quiet-brand" size="sm" className="-ml-2" onClick={onAddProvider}>
           {t("settings.strip.noProvider")}
         </Button>
       )}
