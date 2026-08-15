@@ -40,7 +40,7 @@ const MESSAGES: Message[] = [
   { id: "a1", role: "assistant", content: "Done.", timestamp: 1 },
 ];
 
-const PILL = "Jump to latest ↓";
+const PILL = "Answer ready ↓";
 
 async function renderList(): Promise<{ container: HTMLElement; root: Root }> {
   useConversationStore.setState({
@@ -100,6 +100,36 @@ describe("MessageList jump pill", () => {
     await act(async () => button!.click());
     expect(pill(view.container)).toBeUndefined();
     await unmount(view);
+  });
+
+  it('says "jump to latest" while running, "answer ready" once the run ends', async () => {
+    const findPill = (c: HTMLElement) =>
+      [...c.querySelectorAll("button")].find((b) => b.textContent?.includes("↓"));
+    useConversationStore.setState({
+      messages: MESSAGES,
+      status: "running",
+      streamingText: "",
+      reasoningText: "",
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<MessageList />));
+    const viewport = stubTallTranscript(container);
+    await act(async () => {
+      viewport.dispatchEvent(new WheelEvent("wheel", { deltaY: 100, bubbles: true }));
+      viewport.dispatchEvent(new Event("scroll"));
+    });
+    expect(findPill(container)?.textContent).toBe("Jump to latest ↓");
+
+    // The run ends while the reader is scrolled up — the pill names the
+    // answer that landed, instead of a bare "scroll down".
+    await act(async () => {
+      useConversationStore.setState({ status: "idle" });
+    });
+    expect(findPill(container)?.textContent).toBe("Answer ready ↓");
+    await act(async () => root.unmount());
+    container.remove();
   });
 });
 
@@ -324,6 +354,51 @@ describe("a stopped run", () => {
     // The note is the next run's history, never a bubble talking past the user.
     expect(text).not.toContain("The user stopped this run");
 
+    await act(async () => root.unmount());
+    container.remove();
+  });
+});
+
+describe("transcript scroll when the run finishes", () => {
+  // A run settling mid-read: the working-dots row vanishes and the burst flips
+  // live→settled. If the reader scrolled up to follow along, the settle must
+  // not yank them — least of all to the top.
+  const SEED: Message[] = [
+    { id: "u1", role: "user", content: "rank the domains", timestamp: 0 },
+    { id: "s1", role: "step", tool: "snapshot", content: "Captured 154 elements", timestamp: 1 },
+    { id: "s2", role: "step", tool: "click", content: "Clicked", timestamp: 2 },
+  ];
+
+  it("a done-settle while scrolled up does not scroll to top", async () => {
+    useConversationStore.setState({ messages: SEED, status: "running" });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<MessageList />));
+    // seed(3) + burst grouping may fold steps — give the layout 6 rows.
+    const viewport = stubScrollLayout(container, 6);
+    // The reader scrolled UP — off the live edge, mid-transcript.
+    await act(async () => {
+      viewport.scrollTop = 100;
+      viewport.dispatchEvent(new Event("scroll"));
+    });
+    expect(viewport.scrollTop).toBe(100);
+
+    // The run finishes: done with a summary lands, dots vanish, burst settles.
+    await act(async () => {
+      useConversationStore.setState({
+        messages: [...SEED, { id: "a2", role: "assistant", content: "The answer.", timestamp: 3 }],
+        status: "idle",
+        streamingText: "",
+        reasoningText: "",
+      });
+      await new Promise((r) => setTimeout(r));
+    });
+
+    // The burst must NOT have snapped shut — a controlled open-on-live would
+    // fold the transcript under a scrolled-up reader (that shrink is what the
+    // scroller reads as a cue to re-follow the bottom).
+    expect(container.querySelector("details")?.open).toBe(true);
     await act(async () => root.unmount());
     container.remove();
   });

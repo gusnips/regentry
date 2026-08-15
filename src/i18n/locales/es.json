@@ -231,6 +231,7 @@
     "runStopped": "Detuviste esta ejecución — tu próximo mensaje puede continuar desde aquí.",
     "working": "Trabajando",
     "jumpToLatest": "Ir al final ↓",
+    "answerReady": "Respuesta lista ↓",
     "hint": {
       "badKey": "Probablemente una clave de API incorrecta o ausente — actualízala y vuelve a intentarlo.",
       "signedOut": "El inicio de sesión de este proveedor ya no vale — inicia sesión de nuevo y reintenta.",

@@ -109,8 +109,7 @@ function StepIcon({ live, ok }: { live?: boolean; ok?: boolean }) {
   // The live row's motion is its label's shimmer — the band's own idiom. A
   // spinning ring here was a fourth motion language, and the one the
   // reduced-motion fallback couldn't speak.
-  if (live)
-    return <DotIcon filled className="shrink-0 text-amber-500 dark:text-amber-300" />;
+  if (live) return <DotIcon filled className="shrink-0 text-amber-500 dark:text-amber-300" />;
   if (ok === false) return <XIcon className="shrink-0 text-red-500 dark:text-red-400" />;
   if (ok === true) return <CheckIcon className="shrink-0 text-neutral-500 dark:text-neutral-400" />;
   return <DotIcon filled className="shrink-0 text-neutral-400 dark:text-neutral-500" />;
@@ -145,7 +144,9 @@ const StepRow = memo(function StepRow({ msg }: { msg: Message }) {
   const line = (
     <>
       <StepIcon live={msg.live} ok={msg.ok} />
-      {label && <span className={msg.live ? "shimmer-text font-medium" : "font-medium"}>{label}</span>}
+      {label && (
+        <span className={msg.live ? "shimmer-text font-medium" : "font-medium"}>{label}</span>
+      )}
       {!msg.live && trailing && (
         <span
           className={
@@ -514,9 +515,29 @@ function burstCountKey(tool: string | undefined): BurstCountKey {
  * the expanded rows. Live bursts stay open (same rule as the plan card) and
  * settle closed when the run ends.
  */
-const BurstCard = memo(function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoning: () => void }) {
+const BurstCard = memo(function BurstCard({
+  burst,
+  onToggleReasoning,
+}: {
+  burst: Burst;
+  onToggleReasoning: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const now = useNow(burst.live);
+  /**
+   * `open` is set, not bound: forced true while the burst is live (the run in
+   * flight stays expanded), but never forced back to false on settle. A
+   * controlled `open={live}` would snap the details shut the instant the run
+   * ends — the transcript shrinks by the burst's height and the scroller reads
+   * that shrink as a cue to re-follow the bottom, yanking a scrolled-up reader
+   * to the end. Left uncontrolled after, the DOM keeps whatever the reader had.
+   */
+  const detailsRef = useCallback(
+    (el: HTMLDetailsElement | null) => {
+      if (el && burst.live) el.open = true;
+    },
+    [burst.live],
+  );
   const last = burst.items[burst.items.length - 1];
   const elapsed =
     (burst.endedAt ?? (burst.live ? now : (last?.timestamp ?? burst.startedAt))) - burst.startedAt;
@@ -538,7 +559,7 @@ const BurstCard = memo(function BurstCard({ burst, onToggleReasoning }: { burst:
 
   return (
     <details
-      open={burst.live}
+      ref={detailsRef}
       className="group max-w-full self-start px-1 text-xs text-neutral-500 dark:text-neutral-400"
     >
       <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none hover:text-neutral-700 dark:hover:text-neutral-300">
@@ -944,7 +965,10 @@ function Transcript() {
   const activeProvider = useProvidersStore((s) => s.providers.find((p) => p.id === s.activeId));
   // One global preference, read and watched once here — never per reasoning block.
   const showReasoningOn = useStoredItem(showReasoning);
-  const toggleReasoning = useCallback(() => void showReasoning.set(!showReasoningOn), [showReasoningOn]);
+  const toggleReasoning = useCallback(
+    () => void showReasoning.set(!showReasoningOn),
+    [showReasoningOn],
+  );
 
   // Everything below is derived from the message list, and this component
   // re-renders on every state change the transcript watches. Memoized as one
@@ -1063,9 +1087,7 @@ function Transcript() {
                   plansOpen={plansOpen}
                   onRetry={
                     // Only the retryable error offers it — see retryErrorId.
-                    item.msg.role === "error" && item.msg.id === retryErrorId
-                      ? retry
-                      : undefined
+                    item.msg.role === "error" && item.msg.id === retryErrorId ? retry : undefined
                   }
                   onAnswer={item.msg.id === tappableAskId ? answer : undefined}
                   onCompact={compact}
@@ -1098,9 +1120,16 @@ function Transcript() {
           variant="ghost"
           size="sm"
           onClick={() => void scrollToEnd({ behavior: "smooth" })}
-          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-neutral-200 bg-white shadow-md hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+          className={`absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border shadow-md ${
+            status === "idle"
+              ? // The run ended while the reader was scrolled up: say the answer
+                // is here, don't just say "scroll down". Brand accent, since the
+                // thing they were waiting for landed.
+                "border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100 dark:border-brand-800 dark:bg-brand-950 dark:text-brand-200 dark:hover:bg-brand-900"
+              : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+          }`}
         >
-          {t("chat.jumpToLatest")}
+          {status === "idle" ? t("chat.answerReady") : t("chat.jumpToLatest")}
         </Button>
       )}
     </MessageScroller>

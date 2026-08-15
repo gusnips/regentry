@@ -231,6 +231,7 @@
     "runStopped": "You stopped this run — your next message can pick up from here.",
     "working": "Working",
     "jumpToLatest": "Jump to latest ↓",
+    "answerReady": "Answer ready ↓",
     "hint": {
       "badKey": "Likely a bad or missing API key — update it and try again.",
       "signedOut": "The sign-in for this provider is no longer valid — sign in again and retry.",

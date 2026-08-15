@@ -231,6 +231,7 @@
     "runStopped": "Você interrompeu esta execução — sua próxima mensagem pode continuar daqui.",
     "working": "Trabalhando",
     "jumpToLatest": "Ir para o final ↓",
+    "answerReady": "Resposta pronta ↓",
     "hint": {
       "badKey": "Provavelmente uma chave de API inválida ou ausente — atualize-a e tente novamente.",
       "signedOut": "O login neste provedor não vale mais — entre novamente e tente de novo.",
