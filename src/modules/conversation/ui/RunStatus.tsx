@@ -28,7 +28,9 @@ export function RunStatus() {
   // "waiting", never the working shimmer/pulse.
   const awaitingApproval = useConversationStore((s) => s.planApproval !== null);
   const awaitingAnswer = useConversationStore(
-    (s) => pendingAskId(s.messages, s.status) !== undefined,
+    (s) =>
+      pendingAskId(s.messages, s.status) !== undefined ||
+      (s.activeId !== null && s.board.pendingQuestion?.conversationId === s.activeId),
   );
   // A crowded footer (queued lines, a queued run, a stop-redirect in transit)
   // evicts the band's tip — one shared rule, see useQueueBusy.
@@ -64,7 +66,8 @@ export function RunStatus() {
   const now = useNow(running);
   // Parked speaks "waiting": the armed approval card (panel memory, re-armed
   // on reconnect) or the board's mark (a run parked while this panel was away).
-  const awaiting = awaitingApproval || boardRun?.awaiting === true;
+  // An unanswered ask_user ends the run — it joins here, never the working verb.
+  const awaiting = awaitingApproval || boardRun?.awaiting === true || awaitingAnswer;
 
   useEffect(() => {
     if (!running || awaiting) return;
@@ -173,11 +176,14 @@ export function RunStatus() {
             {t("run.revisingPlan")}
           </span>
         ) : awaiting ? (
-          // Parked on the user's answer: the run is alive (the timer keeps
-          // counting) but nothing is working — the shimmer would be lying.
-          // The label truncates: es/pt-BR at 320px would otherwise eat the timer.
+          // Parked on the user: an approval gate or an open question. The run is
+          // blocked on the answer (the timer keeps counting) — nothing is
+          // working, so the shimmer would be lying. Truncates: es/pt-BR at 320px
+          // would otherwise eat the timer.
           <span className="min-w-0 flex-1 truncate font-semibold text-brand-700 dark:text-brand-300">
-            {t("run.awaitingApproval")}
+            {awaitingApproval || boardRun?.awaiting === true
+              ? t("run.awaitingApproval")
+              : t("run.awaitingAnswer")}
           </span>
         ) : (
           <span className="shimmer-text min-w-0 flex-1 truncate font-semibold">{verb}…</span>

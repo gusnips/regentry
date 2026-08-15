@@ -6,6 +6,7 @@ import {
   currentBoard,
   listQueue,
   onBoardChanged,
+  restorePendingQuestion,
   runBoardItem,
   submitRun,
 } from "@/modules/agent/run-queue";
@@ -64,8 +65,11 @@ export default defineBackground(() => {
   // A restarted worker holds no runs — the ones the stored board names died
   // with the old worker. Reset it, sweep any orphaned widget pills and
   // indicator marks, and say in each waiting thread that its task died with
-  // the worker rather than vanishing silently.
+  // the worker rather than vanishing silently. A parked ask_user is not a run —
+  // the answer is still owed across the restart, so its record is restored, not
+  // reset, or the ambient "answer needed" would drop exactly when it matters.
   void runBoardItem.get().then(async (stale) => {
+    if (stale.pendingQuestion) restorePendingQuestion(stale.pendingQuestion);
     if (!stale.running && stale.queue.length === 0) return;
     for (const q of stale.queue) {
       void appendMessageTo(q.conversationId, {
@@ -77,7 +81,10 @@ export default defineBackground(() => {
       });
     }
     if (stale.running?.tabId !== undefined) void hideAgentIndicator(stale.running.tabId);
-    await runBoardItem.set({ queue: [] });
+    await runBoardItem.set({
+      queue: [],
+      ...(stale.pendingQuestion ? { pendingQuestion: stale.pendingQuestion } : {}),
+    });
     void sweepStatusWidget();
   });
   // The MCP bridge — a WS client to the local daemon so external AI clients can
@@ -161,8 +168,8 @@ export default defineBackground(() => {
                   void notifyRunEnded(conversationId, msg.task, event);
                 }
               },
-              onAskUser: (question) =>
-                void notifyIfAway("tabrunner-question", question, conversationId),
+              onAskUser: (question, choices) =>
+                void notifyIfAway("tabrunner-question", question, conversationId, choices),
               onPlanApprovalRequest: (steps, reapproval) =>
                 void notifyIfAway(
                   "tabrunner-plan",
@@ -364,10 +371,23 @@ async function sendDrivingTo(port: chrome.runtime.Port): Promise<void> {
 
 /** The widget's content for a board — null when there is nothing to report.
  *  With only a queue (e.g. waiting behind a direct session) the first waiter
- *  leads the pill. */
+ *  leads the pill. An unanswered question outlives its run: the slot is free,
+ *  but the answer is still owed, so the pill stays up awaiting — dispatch-and-
+ *  forget must never swallow the one thing the user has to say. */
 function boardToWidget(board: RunBoard): WidgetState | null {
   const lead = board.running ?? board.queue[0];
-  if (!lead) return null;
+  if (!lead) {
+    if (!board.pendingQuestion) return null;
+    return {
+      task: truncate(board.pendingQuestion.question, 120),
+      queuedText: "",
+      awaiting: true,
+      hideLabel: i18n.t("widget.hide"),
+      openHint: i18n.t("widget.openHint"),
+      hideHint: i18n.t("widget.hideHint"),
+      expandHint: i18n.t("widget.expandHint"),
+    };
+  }
   const extra = board.running ? board.queue.length : board.queue.length - 1;
   return {
     task: truncate(lead.task, 120),
@@ -380,12 +400,15 @@ function boardToWidget(board: RunBoard): WidgetState | null {
   };
 }
 
-/** The toolbar's one line: what is running, or what failed while you were away. */
+/** The toolbar's one line: what is running, what failed, or what still needs an answer. */
 function paintActionBadge(board: RunBoard = currentBoard()): void {
-  void syncActionBadge((board.running ? 1 : 0) + board.queue.length, {
-    awaiting: board.running?.awaiting === true,
-    failed: unseenFailure,
-  });
+  void syncActionBadge(
+    (board.running ? 1 : 0) + board.queue.length + (board.pendingQuestion ? 1 : 0),
+    {
+      awaiting: board.running?.awaiting === true || board.pendingQuestion != null,
+      failed: unseenFailure,
+    },
+  );
 }
 
 /**
@@ -451,17 +474,24 @@ async function notifyRunEnded(conversationId: string, task: string, event: Event
 /**
  * Fires an OS notification when a run needs the user and no panel is open to
  * see it — an unanswered ask_user or a parked plan approval stalls silently
- * otherwise, and the strip mark is invisible from another app.
+ * otherwise, and the strip mark is invisible from another app. A question's
+ * choices ride in the message so the ask is actionable even from here.
  */
-async function notifyIfAway(id: string, message: string, conversationId?: string): Promise<void> {
+async function notifyIfAway(
+  id: string,
+  message: string,
+  conversationId?: string,
+  choices?: string[],
+): Promise<void> {
   if (await userIsWatching()) return;
   if (conversationId) notificationTargets.set(id, { conversationId });
+  const body = choices?.length ? `${message} — ${choices.join(" · ")}` : message;
   try {
     void chrome.notifications.create(id, {
       type: "basic",
       iconUrl: "icon/128.png",
       title: "TabRunner",
-      message: truncate(message, 256),
+      message: truncate(body, 256),
     });
   } catch {
     // Notifications can fail silently — the strip mark still carries the signal.

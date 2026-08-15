@@ -638,11 +638,14 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         }
         // The frozen reopened panel: this conversation's run moved (started,
         // retargeted, finished) — pull the transcript the worker has been
-        // writing so completion lands in the open panel.
+        // writing so completion lands in the open panel. A question landing on
+        // this conversation moves it the same way (running → pendingQuestion).
         const activeId = get().activeId;
         if (!activeId) return;
         const wasHere = prev.running?.conversationId === activeId;
-        const isHere = board.running?.conversationId === activeId;
+        const isHere =
+          board.running?.conversationId === activeId ||
+          board.pendingQuestion?.conversationId === activeId;
         if (!isHere && !wasHere) return;
         void getMessages(activeId).then((messages) => {
           if (get().activeId === activeId) set({ messages });

@@ -45,6 +45,17 @@ export interface RunBoard {
     /** Parked on the user's answer (plan approval) — alive, but not working. */
     awaiting?: boolean;
   };
+  /**
+   * An ask_user question the run ended on — the slot is free, but the answer is
+   * still owed. Unlike `running.awaiting` (a live parked run), there is no run
+   * to mark; this keeps the ambient "answer needed" signal up until the next run
+   * (the answer) clears it. At most one at a time — one run drives at a time.
+   */
+  pendingQuestion?: {
+    conversationId: string;
+    question: string;
+    choices?: string[];
+  };
   queue: QueuedRun[];
 }
 
@@ -53,6 +64,8 @@ export const runBoardItem = defineItem<RunBoard>("run-board", { queue: [] });
 const queue: QueueEntry[] = [];
 /** The board's view of the active run — set at submit, tab id filled in later. */
 let running: RunBoard["running"] | null = null;
+/** The board's view of a question awaiting an answer — outlives the run that asked it. */
+let pendingQuestion: RunBoard["pendingQuestion"];
 
 export type SubmitOutcome = { started: true } | { queued: number; id: string };
 
@@ -105,7 +118,11 @@ export function listQueue(): QueuedRun[] {
 
 /** The board as it stands — same shape the storage item carries. */
 export function currentBoard(): RunBoard {
-  return { ...(running ? { running } : {}), queue: listQueue() };
+  return {
+    ...(running ? { running } : {}),
+    ...(pendingQuestion ? { pendingQuestion } : {}),
+    queue: listQueue(),
+  };
 }
 
 /**
@@ -128,6 +145,42 @@ export function markRunningAwaiting(conversationId: string, awaiting: boolean): 
   if (!running || running.conversationId !== conversationId) return;
   running = { ...running, awaiting };
   void writeBoard();
+}
+
+/**
+ * A run ended on ask_user — record the question as an ambient fact, since the
+ * slot frees immediately and the widget/badge/panel would otherwise go silent
+ * while the user is still owed an answer. A queue entry's question never
+ * replaces the running run's: only one run can ask, and it is the one ending.
+ */
+export function markPendingQuestion(
+  conversationId: string,
+  question: string,
+  choices?: string[],
+): void {
+  pendingQuestion = {
+    conversationId,
+    question,
+    ...(choices?.length ? { choices } : {}),
+  };
+  void writeBoard();
+}
+
+/** The answer (the next run) retires the question. No-op for a different thread. */
+export function clearPendingQuestion(conversationId: string): void {
+  if (pendingQuestion?.conversationId !== conversationId) return;
+  pendingQuestion = undefined;
+  void writeBoard();
+}
+
+/**
+ * Worker restart: the slot and the queue died with the old worker, but a parked
+ * question is still owed an answer. The storage item carries it, the in-memory
+ * copy does not — bring it back so `currentBoard()` (the widget, the badge)
+ * keeps agreeing with what the panel already sees. No write: storage is right.
+ */
+export function restorePendingQuestion(stored: RunBoard["pendingQuestion"]): void {
+  pendingQuestion = stored;
 }
 
 /** In-worker board subscription — the bridge mirrors it into its compact stream. */

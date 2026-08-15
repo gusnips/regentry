@@ -31,7 +31,12 @@ import type { Event } from "@/shared/protocol";
 import { acquireRun, releaseRun } from "./active-runs";
 import type { ActiveRun, RunOwner } from "./active-runs";
 import type { PlanApprovalOutcome } from "./loop";
-import { markRunningAwaiting, markRunningTab } from "./run-queue";
+import {
+  markPendingQuestion,
+  clearPendingQuestion,
+  markRunningAwaiting,
+  markRunningTab,
+} from "./run-queue";
 import type { RunGroup } from "./tools";
 
 const log = createLogger("bg");
@@ -209,6 +214,9 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     await clearAgentWait();
     chrome.notifications.clear("tabrunner-question");
     chrome.notifications.clear("tabrunner-plan");
+    // A fresh run is itself the answer to whatever question was parked — or the
+    // user moved on, and the question is stale either way. Both retire it.
+    clearPendingQuestion(conversationId);
     void showAgentIndicator(drivenTabId);
 
     // The stored conversation as wire turns — "continue" lands on a model that
@@ -300,6 +308,10 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
             }),
           onAskUser: (question, choices) => {
             endedOnQuestion = true;
+            // The slot is about to free, but the answer is still owed — record
+            // the question as an ambient board fact, or the widget, badge and a
+            // reopened panel would all go silent as if the run simply ended.
+            markPendingQuestion(conversationId, question, choices);
             onAskUser?.(question, choices);
           },
         },

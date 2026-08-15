@@ -3,10 +3,13 @@ import { acquireRun, getActiveRun, releaseRun } from "../active-runs";
 import type { ActiveRun, RunOwner } from "../active-runs";
 import {
   cancelQueued,
+  clearPendingQuestion,
   currentBoard,
   listQueue,
+  markPendingQuestion,
   markRunningAwaiting,
   markRunningTab,
+  restorePendingQuestion,
   runBoardItem,
   submitRun,
 } from "../run-queue";
@@ -184,5 +187,50 @@ describe("markRunningAwaiting", () => {
     markRunningAwaiting("c-someone-else", true);
     expect(currentBoard().running?.awaiting).toBeUndefined();
     releaseRun(claim("a"));
+  });
+});
+
+describe("pendingQuestion", () => {
+  it("outlives the run that asked it — the board keeps the answer owed", async () => {
+    submit("a", "panel");
+    markPendingQuestion("c-a", "add to cart?", ["yes", "no"]);
+    // The slot frees but the question stays: the ambient signal must not
+    // collapse into "idle" the moment the run lets go.
+    releaseRun(claim("a"));
+    await flush();
+    const board = await runBoardItem.get();
+    expect(board.running).toBeUndefined();
+    expect(board.pendingQuestion).toEqual({
+      conversationId: "c-a",
+      question: "add to cart?",
+      choices: ["yes", "no"],
+    });
+    clearPendingQuestion("c-a");
+  });
+
+  it("clears only its own conversation's question", async () => {
+    markPendingQuestion("c-a", "add to cart?", ["yes"]);
+    clearPendingQuestion("c-someone-else");
+    expect(currentBoard().pendingQuestion).toMatchObject({ conversationId: "c-a" });
+    clearPendingQuestion("c-a");
+    await flush();
+    expect((await runBoardItem.get()).pendingQuestion).toBeUndefined();
+  });
+
+  it("drops an empty choices list rather than persist a lie", () => {
+    markPendingQuestion("c-a", "continue?", []);
+    expect(currentBoard().pendingQuestion).toMatchObject({ conversationId: "c-a" });
+    expect(currentBoard().pendingQuestion?.choices).toBeUndefined();
+    clearPendingQuestion("c-a");
+  });
+
+  it("a worker restart keeps the parked question, not the dead run", async () => {
+    markPendingQuestion("c-a", "add to cart?", ["yes", "no"]);
+    await flush();
+    const stored = (await runBoardItem.get()).pendingQuestion;
+    // In-memory copy is gone with the old worker; storage carries it back.
+    restorePendingQuestion(stored);
+    expect(currentBoard().pendingQuestion).toEqual(stored);
+    clearPendingQuestion("c-a");
   });
 });
