@@ -2,7 +2,7 @@
   "name": "tabrunner",
   "description": "Provider-agnostic browser agent extension",
   "private": true,
-  "version": "0.2.7",
+  "version": "0.2.8",
   "type": "module",
   "workspaces": [
     "daemon"
