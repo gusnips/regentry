@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { AddProviderDialog, ProviderList } from "@/modules/providers/ui";
+import { AddProviderDialog, ProviderList, useProvidersStore } from "@/modules/providers/ui";
 import { InstructionsSection, MemorySection } from "@/modules/memory/ui";
 import { Button } from "@/components/Button";
+import { BrandMark } from "@/components/BrandMark";
 import { Icon } from "@/components/Icon";
 import { Switch } from "@/components/Switch";
 import { TextField } from "@/components/TextField";
@@ -241,13 +242,19 @@ function BehaviorPane() {
 
 function ProvidersPane() {
   const { t } = useTranslation();
+  const loaded = useProvidersStore((s) => s.loaded);
+  const hasProviders = useProvidersStore((s) => s.providers.length > 0);
   return (
     <section>
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
           {t("settings.providers")}
         </h2>
-        <AddProviderDialog trigger={<Button size="sm">{t("settings.addProvider")}</Button>} />
+        {/* The empty list already offers the first-provider CTA in context —
+            two Add buttons for one job is one too many. */}
+        {(!loaded || hasProviders) && (
+          <AddProviderDialog trigger={<Button size="sm">{t("settings.addProvider")}</Button>} />
+        )}
       </div>
       <div className="mt-3">
         <ProviderList />
@@ -259,14 +266,35 @@ function ProvidersPane() {
 export default function App() {
   const { t } = useTranslation();
   const [page, setPage] = useState<PageId>(pageFromHash);
+  /** Set once the user (or a hashchange) picks a page — a deliberate choice
+   *  outranks the first-run redirect below. */
+  const [navigated, setNavigated] = useState(false);
+  const providersLoaded = useProvidersStore((s) => s.loaded);
+  const providerCount = useProvidersStore((s) => s.providers.length);
 
   useEffect(() => {
-    const onHash = () => setPage(pageFromHash());
+    void useProvidersStore.getState().load();
+  }, []);
+
+  useEffect(() => {
+    const onHash = () => {
+      setNavigated(true);
+      setPage(pageFromHash());
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
+  // A bare visit with nothing configured lands on the page that unblocks the
+  // product, not on Appearance. A hash or a click is a deliberate choice and
+  // always wins — this only speaks while the user has chosen nothing.
+  const visiblePage =
+    !navigated && providersLoaded && providerCount === 0 && !window.location.hash
+      ? "providers"
+      : page;
+
   const go = (id: PageId) => {
+    setNavigated(true);
     setPage(id);
     // No per-page history stack, no scroll-to-anchor — the hash is a bookmark.
     window.history.replaceState(null, "", `#${id}`);
@@ -275,7 +303,7 @@ export default function App() {
   return (
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="flex items-center gap-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-        <img src="/icon.svg" className="h-6 w-6" alt="" />
+        <BrandMark size={24} />
         {t("settings.pageTitle")}
       </h1>
 
@@ -284,7 +312,7 @@ export default function App() {
       <div className="mt-6 flex items-start gap-6">
         <nav aria-label={t("settings.pageTitle")} className="flex w-40 shrink-0 flex-col gap-0.5">
           <NavItem
-            active={page === "general"}
+            active={visiblePage === "general"}
             label={t("settings.nav.general")}
             onClick={() => go("general")}
           >
@@ -298,14 +326,14 @@ export default function App() {
             <circle cx="18" cy="18" r="2" />
           </NavItem>
           <NavItem
-            active={page === "behavior"}
+            active={visiblePage === "behavior"}
             label={t("settings.nav.behavior")}
             onClick={() => go("behavior")}
           >
             <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" />
           </NavItem>
           <NavItem
-            active={page === "knowledge"}
+            active={visiblePage === "knowledge"}
             label={t("settings.nav.knowledge")}
             onClick={() => go("knowledge")}
           >
@@ -313,7 +341,7 @@ export default function App() {
             <path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z" />
           </NavItem>
           <NavItem
-            active={page === "providers"}
+            active={visiblePage === "providers"}
             label={t("settings.nav.providers")}
             onClick={() => go("providers")}
           >
@@ -321,7 +349,7 @@ export default function App() {
             <path d="m11 12 10-10" />
             <path d="m16 5 3 3" />
           </NavItem>
-          <NavItem active={page === "mcp"} label={t("settings.nav.mcp")} onClick={() => go("mcp")}>
+          <NavItem active={visiblePage === "mcp"} label={t("settings.nav.mcp")} onClick={() => go("mcp")}>
             <path d="M9 2v6" />
             <path d="M15 2v6" />
             <path d="M6 8h12v4a6 6 0 0 1-12 0V8z" />
@@ -330,17 +358,17 @@ export default function App() {
         </nav>
 
         <main className="min-w-0 flex-1">
-          {page === "general" && <GeneralPane />}
-          {page === "behavior" && <BehaviorPane />}
-          {page === "knowledge" && (
+          {visiblePage === "general" && <GeneralPane />}
+          {visiblePage === "behavior" && <BehaviorPane />}
+          {visiblePage === "knowledge" && (
             /* The module sections carry their own mt-8 — flush the first. */
             <div className="[&>section:first-child]:mt-0">
               <InstructionsSection />
               <MemorySection />
             </div>
           )}
-          {page === "providers" && <ProvidersPane />}
-          {page === "mcp" && <McpPane />}
+          {visiblePage === "providers" && <ProvidersPane />}
+          {visiblePage === "mcp" && <McpPane />}
         </main>
       </div>
     </div>

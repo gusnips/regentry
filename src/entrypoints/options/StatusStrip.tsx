@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getActiveProvider, watchActiveProvider, watchProviders } from "@/modules/providers";
 import { providerDisplayName } from "@/modules/providers/presets";
+import { credentialStatus, isOAuthProvider } from "@/modules/providers/status";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { bridgeConnected, bridgeItem } from "@/modules/bridge/config";
 import { useStoredItem } from "@/components/useStoredItem";
@@ -31,8 +32,8 @@ function useActiveProvider(): ProviderConfig | undefined {
 /**
  * The link-state dot, shared with the MCP pane. Only "connected" earns a color:
  * waiting-for-the-daemon is the normal state for the majority who never run one
- * — amber is this product's attention color, and an unused feature must not
- * read as a warning.
+ * — `attention` gold is for states that ask something of the user, and an
+ * unused feature asks nothing.
  */
 export function StatusDot({ tone }: { tone: "ok" | "waiting" | "off" }) {
   const color = tone === "ok" ? "bg-brand-500" : "bg-neutral-300 dark:bg-neutral-600";
@@ -60,16 +61,39 @@ export function StatusStrip({ onAddProvider }: { onAddProvider: () => void }) {
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 rounded-lg bg-neutral-50 px-3 py-2 text-xs dark:bg-neutral-900/50">
       {provider ? (
-        <span className="text-neutral-700 dark:text-neutral-300">
-          {providerDisplayName(provider)}
-          {provider.model && (
-            <span className="text-neutral-500 dark:text-neutral-400"> · {provider.model}</span>
-          )}
-        </span>
+        credentialStatus(provider) === "connected" ? (
+          <span className="text-neutral-700 dark:text-neutral-300">
+            {providerDisplayName(provider)}
+            {provider.model && (
+              <span className="text-neutral-500 dark:text-neutral-400"> · {provider.model}</span>
+            )}
+          </span>
+        ) : (
+          /* A refresh that fails for good clears the credential — the name
+             alone would claim a brain that isn't there. Say what broke and
+             route to the fix, in the one affordance voice (brand text on a
+             hover pill — the caption styling this replaced read as a label). */
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-2 text-brand-700 hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-900"
+            onClick={onAddProvider}
+          >
+            {providerDisplayName(provider)} —{" "}
+            {isOAuthProvider(provider.id)
+              ? t("settings.strip.signInAgain")
+              : t("settings.strip.addKeyAgain")}
+          </Button>
+        )
       ) : (
         /* A settings page with no provider can't run anything — say so and
            offer the way forward, right where the fact is reported. */
-        <Button variant="ghost" size="sm" className="-ml-2" onClick={onAddProvider}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2 text-brand-700 hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-900"
+          onClick={onAddProvider}
+        >
           {t("settings.strip.noProvider")}
         </Button>
       )}

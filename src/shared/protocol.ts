@@ -63,6 +63,8 @@ export interface DrivingPayload {
   tabId: TabId;
   windowId: number;
   title: string;
+  /** Hostname fallback for tabs that never set a title (PDFs, some file://). */
+  url?: string;
   favIconUrl?: string;
 }
 
@@ -111,8 +113,9 @@ export type Event =
       /** user-initiated ending (driven tab closed) — no notification */ silent?: boolean;
     }
   /** summary is the done tool's final answer — present when the model ends on a tool-only turn;
-   *  question marks a run that ended on ask_user — its own notification already fired */
-  | { type: "done"; summary?: string; question?: boolean }
+   *  question marks a run that ended on ask_user — its own notification already fired;
+   *  stopped marks a user halt, so the settled band says "Stopped" and never claims "Done" */
+  | { type: "done"; summary?: string; question?: boolean; stopped?: boolean }
   /** Who an external agent is in the browser — null when the browser is yours again */
   | { type: "run_active"; active: BridgeActive | null };
 

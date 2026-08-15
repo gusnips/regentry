@@ -28,14 +28,13 @@ function WindowRow({ label, window, now }: { label: string; window?: UsageWindow
   const { t } = useTranslation();
   if (!window) return null;
   const pct = window.usedPercent;
-  const tone = pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-brand-500";
+  // A gauge is measurement, so it wears gold — red only when it overruns.
+  const tone = pct >= 100 ? "bg-red-500" : "bg-amber-500";
   return (
     <div>
       <div className="flex items-baseline justify-between text-xs">
         <span className="font-medium text-neutral-700 dark:text-neutral-200">{label}</span>
-        <span className="text-neutral-500 dark:text-neutral-400">
-          {t("usage.usedPercent", { percent: pct })}
-        </span>
+        <span className="telemetry">{t("usage.usedPercent", { percent: pct })}</span>
       </div>
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
         <div className={`h-full rounded-full ${tone}`} style={{ width: `${pct}%` }} />

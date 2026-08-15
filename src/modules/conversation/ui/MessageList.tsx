@@ -10,12 +10,13 @@ import { pendingAskId } from "./ask-gate";
 import type { Message } from "../types";
 import { splitErrorDetail } from "../error-detail";
 import type { ErrorKind } from "@/modules/providers/error-classify";
-import { formatDuration } from "@/lib/format";
+import { formatDuration, hostnameOf } from "@/lib/format";
 import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { Button } from "@/components/Button";
 import { CheckIcon, ChevronRightIcon, DotIcon, Icon, XIcon } from "@/components/Icon";
+import { TextArea } from "@/components/TextArea";
 import { Bubble, BubbleContent } from "@/components/Bubble";
 import {
   MessageScroller,
@@ -98,15 +99,12 @@ function AlertIcon({ size, className }: { size?: number; className?: string }) {
   );
 }
 
-function StepIcon({ live, ok }: { live?: boolean; ok?: boolean }) {  if (live)
-    return (
-      <span
-        role="status"
-        /* 14px, like the marks it alternates with — at 10px the row's text
-           jumped sideways the instant a step finished. */
-        className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-neutral-300 border-t-brand-500 dark:border-neutral-600 dark:border-t-brand-400"
-      />
-    );
+function StepIcon({ live, ok }: { live?: boolean; ok?: boolean }) {
+  // The live row's motion is its label's shimmer — the band's own idiom. A
+  // spinning ring here was a fourth motion language, and the one the
+  // reduced-motion fallback couldn't speak.
+  if (live)
+    return <DotIcon filled className="shrink-0 text-amber-500 dark:text-amber-300" />;
   if (ok === false) return <XIcon className="shrink-0 text-red-500 dark:text-red-400" />;
   if (ok === true) return <CheckIcon className="shrink-0 text-neutral-500 dark:text-neutral-400" />;
   return <DotIcon filled className="shrink-0 text-neutral-400 dark:text-neutral-500" />;
@@ -141,7 +139,7 @@ function StepRow({ msg }: { msg: Message }) {
   const line = (
     <>
       <StepIcon live={msg.live} ok={msg.ok} />
-      {label && <span className="font-medium">{label}</span>}
+      {label && <span className={msg.live ? "shimmer-text font-medium" : "font-medium"}>{label}</span>}
       {!msg.live && trailing && (
         <span
           className={
@@ -279,16 +277,16 @@ function PlanApprovalCard({
       <ol className="flex flex-col gap-0.5 text-xs text-neutral-600 dark:text-neutral-300">
         {steps.map((step, i) => (
           <li key={i} className="flex gap-1.5">
-            <span aria-hidden className="shrink-0 opacity-70">
-              ○
-            </span>
+            {/* Pre-approval every step is "ahead" — PlanMark's dot, never a
+                typeface ○, so the card speaks the live plan's language. */}
+            <PlanMark index={i} current={-1} />
             <span>{step}</span>
           </li>
         ))}
       </ol>
       {adjusting ? (
         <div className="flex flex-col gap-2">
-          <textarea
+          <TextArea
             autoFocus
             rows={2}
             value={note}
@@ -302,7 +300,7 @@ function PlanApprovalCard({
                 setAdjusting(false);
               }
             }}
-            className="w-full resize-none rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-xs text-neutral-800 placeholder:text-neutral-400 focus:border-brand-400 focus:outline-none dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-100"
+            className="w-full bg-white px-2 py-1.5 text-xs text-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
           />
           <div className="flex gap-2">
             <Button size="sm" disabled={!sendable} onClick={() => onRevise(note)}>
@@ -541,9 +539,7 @@ function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoni
         <ChevronRightIcon className="shrink-0 text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500" />
         <StepIcon live={burst.live} ok={failed ? false : true} />
         <span className="truncate">{list}</span>
-        <span className="shrink-0 text-neutral-500 dark:text-neutral-400">
-          · {formatDuration(elapsed)}
-        </span>
+        <span className="telemetry shrink-0">· {formatDuration(elapsed)}</span>
       </summary>
       <div className="mt-1 ml-4 flex flex-col gap-1.5">
         {burst.items.map((m) =>
@@ -576,7 +572,7 @@ function AssistantBubble({ content, cursor }: { content: string; cursor?: boolea
 }
 
 const CARET =
-  "[&>*:last-child]:after:ml-0.5 [&>*:last-child]:after:animate-pulse [&>*:last-child]:after:content-['▊']";
+  "[&>*:last-child]:after:ml-0.5 [&>*:last-child]:after:animate-pulse [&>*:last-child]:after:motion-reduce:animate-none [&>*:last-child]:after:content-['▊']";
 
 /** Ghost-button override for actions inside the red error bubble. */
 const ERROR_ACTION_CLASSES =
@@ -587,15 +583,6 @@ const ERROR_ACTION_CLASSES =
  * spans more than one tab — with a single tab every message is obviously
  * there, so the label would be noise.
  */
-/** Host for tabs that never set a title — an empty stamp reads as a bug. */
-function hostnameOf(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
-  }
-}
-
 function TabStamp({ tab }: { tab: NonNullable<Message["tab"]> }) {
   const [iconOk, setIconOk] = useState(true);
   const label = tab.title || hostnameOf(tab.url);

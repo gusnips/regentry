@@ -75,7 +75,7 @@ export function RunBoard() {
             /* The same pulsing amber the widget and the favicon dot speak. */
             <span
               aria-hidden
-              className="size-1.5 shrink-0 animate-pulse rounded-full bg-amber-400"
+              className="size-1.5 shrink-0 animate-pulse rounded-full bg-amber-400 motion-reduce:animate-none"
             />
           )}
           <span

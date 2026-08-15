@@ -8,6 +8,7 @@ import { providerDisplayName } from "../presets";
 import type { ProviderPreset } from "../presets";
 import { SignInError } from "../types";
 import type { OAuthCredential, SignInFailure } from "../types";
+import { splitErrorDetail } from "@/modules/conversation/error-detail";
 
 /**
  * How long the "connected" card stays up before the dialog closes over it.
@@ -154,12 +155,13 @@ export function OAuthSignIn({
             aria-hidden
             className="connected-badge absolute -right-1.5 -bottom-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 ring-2 ring-brand-50 dark:bg-brand-400 dark:ring-brand-950"
           >
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
+            {/* Fills take dark ink — white on brand-400 is 1.9:1, brand-950 is ~8:1. */}
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-brand-950" aria-hidden>
               <path
                 className="connected-check"
                 d="M4 8.4 6.7 11.1 12 5.6"
                 fill="none"
-                stroke="#fff"
+                stroke="currentColor"
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -183,23 +185,38 @@ export function OAuthSignIn({
 
   if (phase.step === "failed" || phase.step === "error") {
     const expired = phase.step === "failed" && phase.reason === "expired";
+    // A transport-thrown message ("Failed to fetch") is not a title — word the
+    // failure, show what came back, raw JSON behind the disclosure if there is any.
+    const split = phase.step === "error" ? splitErrorDetail(phase.message) : null;
     return (
-      <div
-        role="alert"
-        className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950"
-      >
-        <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+      <div role="alert" className="attention flex flex-col gap-2 rounded-lg p-3">
+        <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
           {phase.step === "error"
-            ? phase.message
+            ? t("providerForm.signInErrorTitle")
             : expired
               ? t("providerForm.signInExpiredTitle")
               : t("providerForm.signInDeniedTitle")}
         </span>
         {phase.step === "failed" && (
-          <span className="text-xs text-amber-800 dark:text-amber-200">
+          <span className="text-xs text-neutral-600 dark:text-neutral-300">
             {expired
               ? t("providerForm.signInExpiredBody")
               : t("providerForm.signInDeniedBody", { provider })}
+          </span>
+        )}
+        {split && (
+          <span className="text-xs text-neutral-600 dark:text-neutral-300">
+            {split.summary}
+            {split.detail && (
+              <details className="mt-1">
+                <summary className="cursor-pointer underline underline-offset-2">
+                  {t("chat.details")}
+                </summary>
+                <pre className="mt-1 max-h-40 overflow-auto rounded bg-amber-100/70 p-1.5 font-mono break-all whitespace-pre-wrap dark:bg-amber-950/60">
+                  {split.detail}
+                </pre>
+              </details>
+            )}
           </span>
         )}
         <Button type="button" size="sm" className="self-start" onClick={() => void start()}>

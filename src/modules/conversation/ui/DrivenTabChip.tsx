@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { focusTab } from "@/modules/browser";
+import { hostnameOf } from "@/lib/format";
 
 /**
  * Chip naming the tab the live run is driving — the panel is window-scoped
@@ -23,7 +24,12 @@ export function DrivenTabChip() {
   // without an effect to reset state.
   const [failedIconUrl, setFailedIconUrl] = useState<string | null>(null);
 
-  if (!drivingTab?.title) return null;
+  // A title-less tab (a PDF, some file:// pages) still gets its row — the
+  // hostname stands in, the same fallback TabStamp uses. Only no tab at all
+  // drops the row.
+  if (!drivingTab) return null;
+  const label = drivingTab.title || (drivingTab.url ? hostnameOf(drivingTab.url) : "");
+  if (!label) return null;
 
   return (
     <button
@@ -41,7 +47,7 @@ export function DrivenTabChip() {
           onError={() => setFailedIconUrl(drivingTab.favIconUrl ?? null)}
         />
       )}
-      <span className="truncate">{drivingTab.title}</span>
+      <span className="truncate">{label}</span>
     </button>
   );
 }

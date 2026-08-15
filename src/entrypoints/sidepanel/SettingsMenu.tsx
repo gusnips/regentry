@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { AddProviderDialog } from "@/modules/providers/ui";
 import { Button } from "@/components/Button";
 import { Switch } from "@/components/Switch";
+import { overlayCard } from "@/components/chrome";
 import { useStoredItem } from "@/components/useStoredItem";
 import { ThemeToggle } from "@/components/ThemeControl";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -61,7 +62,7 @@ export function SettingsMenu() {
         />
         <Popover.Portal>
           <Popover.Positioner sideOffset={6} align="end" className="z-50">
-            <Popover.Popup className="w-64 rounded-xl border border-neutral-200 bg-white p-2 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+            <Popover.Popup className={`w-64 p-2 ${overlayCard}`}>
               <Section label={t("settings.appearance")}>
                 <ThemeToggle className="w-full" />
               </Section>

@@ -23,6 +23,8 @@ export interface RunSummary {
   output: number;
   /** False when the run ended on an error — the band names it, never "done". */
   ok?: boolean;
+  /** True when the user halted it — the band says "Stopped", not "Done". */
+  stopped?: boolean;
 }
 
 /** List-view metadata — the list reads only this, never the message arrays. */

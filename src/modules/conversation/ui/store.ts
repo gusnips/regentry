@@ -39,6 +39,8 @@ interface ConversationState {
   runStartedAt: number | null;
   /** Epoch ms when it finished — keeps the summary line up after the run ends */
   runEndedAt: number | null;
+  /** The last run ended on a user halt — the settled band says "Stopped", never "Done". */
+  runStopped: boolean;
   /** This panel's own last dispatch — labels the queued chip, and tells a
    *  dispatch-and-forget approval (panel auto-closes) from a hand-opened one. */
   lastRun: { task: string; images?: string[]; thisPage?: boolean } | null;
@@ -191,6 +193,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     usage: { input: 0, output: 0 },
     runStartedAt: null,
     runEndedAt: null,
+    runStopped: false,
     lastRun: null,
     pendingStepId: null,
     planMsgId: null,
@@ -302,6 +305,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       usage: { input: 0, output: 0 },
       runStartedAt: Date.now(),
       runEndedAt: null,
+      runStopped: false,
       lastRun: { task, ...(images?.length ? { images } : {}), ...(thisPage ? { thisPage } : {}) },
       pendingStepId: null,
       // A new run draws its own card — never revives the last run's checklist.
@@ -519,6 +523,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         const closing = closingSummary(sawAssistantText, lastProse, event.summary);
         if (closing) pushDisplay(makeMsg("assistant", closing));
         recallQueue();
+        set({ runStopped: event.stopped === true });
         settleRun("idle");
         // The stop was a redirect, not just a halt: the queued text runs as the
         // next task now that the old run has fully unwound.
@@ -588,6 +593,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     usage: { input: 0, output: 0 },
     runStartedAt: null,
     runEndedAt: null,
+    runStopped: false,
     lastRun: null,
     runTarget: runTargetPref.fallback,
     pendingStepId: null,

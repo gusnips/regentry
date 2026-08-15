@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { useWalkAwayReady } from "./hooks";
+import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 
 /** Two states of the same tab: panel open (you watch) or closed (you walk away). */
@@ -46,17 +47,19 @@ export function RunTargetToggle() {
   };
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="sm"
       onClick={flip}
       aria-label={t("run.targetAria", {
         target: thisPage ? t("run.thisPage") : t("run.background"),
       })}
       title={t("run.targetTitle")}
-      className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+      className="flex shrink-0 items-center gap-1.5 hover:text-neutral-900 dark:hover:text-neutral-100"
     >
       {thisPage ? <ThisPageIcon /> : <BackgroundIcon />}
       <span className="truncate">{thisPage ? t("run.thisPage") : t("run.background")}</span>
-    </button>
+    </Button>
   );
 }

@@ -71,16 +71,40 @@ export function paintWidget(
   awaiting: boolean,
 ): void {
   const old = document.getElementById(hostId);
+  // A repaint that changes nothing must not wipe the pill: rebuilding the host
+  // drops in-pill focus and hover mid-gesture. The painted inputs sign the
+  // host; an identical repaint leaves the DOM (and its collapsed flag) alone.
+  const signature = JSON.stringify([
+    task,
+    queuedText,
+    hideLabel,
+    openHint,
+    hideHint,
+    expandHint,
+    awaiting,
+  ]);
+  if (old?.dataset.signature === signature) return;
   const wasCollapsed = old?.dataset.collapsed === "1";
   old?.remove();
 
   const host = document.createElement("div");
   host.id = hostId;
-  host.style.cssText =
-    "position:fixed;bottom:12px;right:12px;z-index:2147483647;font-family:ui-sans-serif,system-ui,sans-serif";
+  host.dataset.signature = signature;
+  // The host lives in page CSS space — an author `!important` rule (or a
+  // cosmetic filter) could demote or hide it. The critical box properties go
+  // in with priority; the closed shadow root already protects everything inside.
+  host.style.setProperty("position", "fixed", "important");
+  host.style.setProperty("bottom", "12px", "important");
+  host.style.setProperty("right", "12px", "important");
+  host.style.setProperty("z-index", "2147483647", "important");
+  host.style.fontFamily = "ui-sans-serif,system-ui,sans-serif";
 
   const root = host.attachShadow({ mode: "closed" });
   const style = document.createElement("style");
+  /* Hexes are runtime copies of theme.css tokens (a page function can't import
+     them): #0b1224 = neutral-900, #e8eefb = neutral-100, #6ee7b7 = brand-300,
+     #34d399 = brand-400, #fbbf24 = amber-400, #fcd34d = amber-300,
+     #451a03 = amber-950. A brand pass recolors here too. */
   style.textContent = `
     .pill {
       display: flex; align-items: center;
@@ -88,7 +112,9 @@ export function paintWidget(
       padding: 6px 8px 6px 10px; border-radius: 9999px;
       background: #0b1224ee; color: #e8eefb;
       font: 500 12px/1.2 ui-sans-serif, system-ui, sans-serif;
-      box-shadow: 0 2px 12px #0000004d;
+      /* The dark shadow alone dissolved into dark pages — the mini's resting
+         emerald ring is what keeps the silhouette an object. */
+      box-shadow: 0 2px 12px #0000004d, 0 0 0 1px #34d39966;
     }
     .pill:has(.open:hover), .pill:has(.open:focus-visible) { background: #0b1224; }
     /* The pill's content IS the open control — a transparent button filling it,
@@ -119,7 +145,8 @@ export function paintWidget(
     .task { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .queued {
       flex: none; padding: 1px 6px; border-radius: 9999px;
-      background: #34d39933; font-size: 11px;
+      /* A count is measurement — gold, not the emerald that means motion. */
+      background: #fbbf2426; color: #fcd34d; font-size: 11px;
     }
     .btn {
       flex: none; border: 0; border-radius: 9999px; padding: 5px 10px;
@@ -135,8 +162,11 @@ export function paintWidget(
 
   // Parked on an answer speaks the favicon's wait language: a still "?", never
   // the pulse — motion is the "working" signal and the run is blocked on you.
+  // The glyph is decorative — the buttons around it carry their own names, and
+  // a bare "?" must never be what a screen reader announces.
   const makeStatus = (): HTMLSpanElement => {
     const dot = document.createElement("span");
+    dot.setAttribute("aria-hidden", "true");
     if (awaiting) {
       dot.className = "wait";
       dot.textContent = "?";
@@ -181,6 +211,9 @@ export function paintWidget(
   mini.className = "mini";
   mini.type = "button";
   mini.title = expandHint;
+  // The name, not just the tooltip — content would win over title, and the
+  // waiting glyph would announce this button as "question mark".
+  mini.setAttribute("aria-label", expandHint);
   mini.appendChild(makeStatus());
 
   const setCollapsed = (collapsed: boolean): void => {

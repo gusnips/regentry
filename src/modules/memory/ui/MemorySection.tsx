@@ -70,16 +70,19 @@ export function MemorySection() {
       </div>
 
       {!enabled && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        <p className="attention mt-3 rounded-lg px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300">
           {t("memory.off")}
         </p>
       )}
 
-      {facts.length === 0 ? (
+      {/* Off + empty: the notice above is the whole state — an empty card
+          promising future memories contradicts the toggle that just stopped
+          them. */}
+      {enabled && facts.length === 0 ? (
         <p className="mt-3 rounded-lg bg-neutral-50 px-3 py-3 text-xs text-neutral-500 dark:bg-neutral-900/50 dark:text-neutral-400">
           {t("memory.empty")}
         </p>
-      ) : (
+      ) : enabled ? (
         <ul className="mt-3 space-y-1.5">
           {facts.map((fact) => (
             <li
@@ -101,7 +104,7 @@ export function MemorySection() {
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </section>
   );
 }

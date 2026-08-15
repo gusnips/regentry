@@ -88,7 +88,7 @@ export class TranscriptWriter {
    * "Done · 2m · 40k" band a reopened panel shows reads it, the panel's own
    * run state having died with the close. The next user message retires it.
    */
-  private recordSummary(ok = true): void {
+  private recordSummary(ok = true, stopped = false): void {
     if (this.summaryRecorded) return;
     this.summaryRecorded = true;
     void recordRunSummary(this.conversationId, {
@@ -97,6 +97,7 @@ export class TranscriptWriter {
       input: this.usage.input,
       output: this.usage.output,
       ok,
+      ...(stopped ? { stopped } : {}),
     }).catch((e) => {
       log.debug("run summary write failed:", e instanceof Error ? e.message : String(e));
     });
@@ -242,7 +243,7 @@ export class TranscriptWriter {
           // that reuses the work — doesn't start from nothing.
           this.writeProgressNote();
         }
-        this.recordSummary();
+        this.recordSummary(true, event.stopped === true);
         break;
       }
     }

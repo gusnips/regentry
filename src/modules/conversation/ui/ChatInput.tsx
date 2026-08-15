@@ -534,7 +534,7 @@ export function ChatInput() {
       {/* One card, two tenants: the bare input on top, a footer row below with
           the run target on the left and the morph button on the right — so the
           textarea never shares its width with a button column. */}
-      <div className="relative rounded-xl border border-neutral-300 transition-colors focus-within:border-brand-500 dark:border-neutral-600">
+      <div className="relative rounded-xl border border-neutral-300 transition-colors focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500 dark:border-neutral-600">
         {slashOpen && slash && (
           <SlashMenu
             items={slash.items}

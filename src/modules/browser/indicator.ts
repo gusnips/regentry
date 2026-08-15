@@ -107,23 +107,34 @@ export function paintIndicator(
   host.id = hostId;
   // The host stays click-through; only the badge itself takes pointer events,
   // so the corner around it is the page's. `data-inert` gives that back for the
-  // length of an agent click — see withMarksClickThrough.
-  host.style.cssText = "position:fixed;top:12px;right:12px;z-index:2147483647;pointer-events:none";
+  // length of an agent click — see withMarksClickThrough. All of it goes in
+  // with priority: the host lives in page CSS space, where an author
+  // `!important` rule could otherwise pin, move, or click-block the mark.
+  host.style.setProperty("position", "fixed", "important");
+  host.style.setProperty("top", "12px", "important");
+  host.style.setProperty("right", "12px", "important");
+  host.style.setProperty("z-index", "2147483647", "important");
+  host.style.setProperty("pointer-events", "none", "important");
 
   // Closed shadow root — page CSS cannot restyle the badge and page scripts
   // cannot reach in to hide it.
   const root = host.attachShadow({ mode: "closed" });
   const style = document.createElement("style");
+  /* Hexes mirror theme.css tokens (a page function can't import them):
+     #0b1224 = neutral-900, #e8eefb = neutral-100, #34d399 = brand-400,
+     #fbbf24 = amber-400, #451a03 = amber-950. Recolor both sides together. */
   style.textContent = `
     .badge {
       display: flex; align-items: center; gap: 6px;
       padding: 6px 10px; border-radius: 9999px;
       border: 0; background: #0b1224ee; color: #e8eefb;
       font: 500 12px/1.2 ui-sans-serif, system-ui, sans-serif;
-      box-shadow: 0 2px 12px #0000004d;
+      /* The resting ring keeps the near-black pill an object on dark pages —
+         the shadow alone vanishes there. */
+      box-shadow: 0 2px 12px #0000004d, 0 0 0 1px #34d39966;
       pointer-events: auto; cursor: pointer;
     }
-    .badge:hover { background: #0b1224; box-shadow: 0 2px 12px #0000004d, 0 0 0 1px #34d39966; }
+    .badge:hover { background: #0b1224; }
     :host([data-inert]) .badge { pointer-events: none }
     .dot {
       width: 6px; height: 6px; border-radius: 9999px; flex: none;
@@ -147,7 +158,10 @@ export function paintIndicator(
   badge.addEventListener("click", () => {
     void chrome.runtime.sendMessage({ type: "tabrunner-mark", action: "open" });
   });
+  // The status glyph is decorative — the badge's name is its label text, and a
+  // leading "?" must never be what a screen reader announces.
   const dot = document.createElement("span");
+  dot.setAttribute("aria-hidden", "true");
   if (waiting) {
     dot.className = "wait";
     dot.textContent = "?";

@@ -15,6 +15,7 @@ export function RunStatus() {
   const status = useConversationStore((s) => s.status);
   const runStartedAt = useConversationStore((s) => s.runStartedAt);
   const runEndedAt = useConversationStore((s) => s.runEndedAt);
+  const runStopped = useConversationStore((s) => s.runStopped);
   const usage = useConversationStore((s) => s.usage);
   const bridgeActive = useConversationStore((s) => s.bridgeActive);
   const drivingTab = useConversationStore((s) => s.drivingTab);
@@ -41,6 +42,7 @@ export function RunStatus() {
       ? s.board.running
       : undefined,
   );
+  const stop = useConversationStore((s) => s.stop);
   const lastRun = useConversationStore(
     (s) => s.conversations.find((c) => c.id === s.activeId)?.lastRun,
   );
@@ -110,7 +112,13 @@ export function RunStatus() {
     // A live error marks the band failed: "Done" over a 429 reads as a lie.
     const finished =
       runStartedAt !== null && runEndedAt !== null
-        ? { startedAt: runStartedAt, endedAt: runEndedAt, ...usage, ok: status !== "error" }
+        ? {
+            startedAt: runStartedAt,
+            endedAt: runEndedAt,
+            ...usage,
+            ok: status !== "error",
+            stopped: runStopped,
+          }
         : lastRun;
     if (!finished) return null;
     const finishedTokens = finished.input + finished.output;
@@ -125,7 +133,9 @@ export function RunStatus() {
               ? t("run.awaitingAnswer")
               : failed
                 ? t("run.failed")
-                : t("run.finished")}
+                : finished.stopped === true
+                  ? t("run.stopped")
+                  : t("run.finished")}
           </span>
           <span className="telemetry">
             {formatDuration(finished.endedAt - finished.startedAt)}
@@ -158,16 +168,28 @@ export function RunStatus() {
         {awaiting ? (
           // Parked on the user's answer: the run is alive (the timer keeps
           // counting) but nothing is working — the shimmer would be lying.
-          <span className="shrink-0 font-semibold text-brand-700 dark:text-brand-300">
+          // The label truncates: es/pt-BR at 320px would otherwise eat the timer.
+          <span className="min-w-0 flex-1 truncate font-semibold text-brand-700 dark:text-brand-300">
             {t("run.awaitingApproval")}
           </span>
         ) : (
-          <span className="shimmer-text shrink-0 font-semibold">{verb}…</span>
+          <span className="shimmer-text min-w-0 flex-1 truncate font-semibold">{verb}…</span>
         )}
         <span className="telemetry ml-auto shrink-0 text-xs" aria-hidden="true">
           {formatDuration(now - liveStartedAt)}
           {tokenNote}
         </span>
+        {/* The composer's send/stop morphs away the moment a draft exists, so
+            the band carries the one Stop that is always there — same control
+            the bridge band already wears. */}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="-my-1 shrink-0 text-brand-800 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-900"
+          onClick={stop}
+        >
+          {t("chat.stop")}
+        </Button>
       </div>
       {/* The run's target gets its own row: squeezed between the verb and the
           timer it truncated to a letter, and a chip you cannot read cannot be
@@ -249,7 +271,7 @@ function BridgeActiveBand({ active }: { active: BridgeActive }) {
       {/* The one motion — a breathing dot. Nothing is streaming, so the copy is
           still; the dot carries the "alive" signal the live band gives its
           shimmering verb. */}
-      <span className="inline-block h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-amber-400" />
+      <span className="inline-block h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-amber-400 motion-reduce:animate-none" />
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">
         {active.mode === "direct"
           ? t("run.bridgeDriving", { client: active.client })

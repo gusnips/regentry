@@ -1,8 +1,8 @@
 import { Select as BaseSelect } from "@base-ui-components/react";
-import { Fragment } from "react";
+import { Fragment, useId } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDownIcon } from "./Icon";
+import { CheckIcon, ChevronDownIcon } from "./Icon";
 
 export interface SelectOption {
   value: string;
@@ -40,7 +40,7 @@ const SIZES: Record<Size, { trigger: string; item: string }> = {
 
 const TRIGGER_VARIANTS: Record<Variant, string> = {
   boxed:
-    "border border-neutral-300 bg-white text-neutral-900 hover:border-neutral-400 focus:border-brand-500 focus:outline-none data-[popup-open]:border-brand-500 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-500",
+    "border border-neutral-300 bg-white text-neutral-900 hover:border-neutral-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500 focus:outline-none data-[popup-open]:border-brand-500 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-500",
   quiet:
     "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none data-[popup-open]:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:data-[popup-open]:bg-neutral-800",
 };
@@ -59,6 +59,7 @@ export function Select({
   variant = "boxed",
   title,
   ariaLabel,
+  label,
   iconOnlyTrigger = false,
 }: {
   value: string;
@@ -69,22 +70,27 @@ export function Select({
   variant?: Variant;
   title?: string;
   ariaLabel?: string;
+  /** Visible form label, wired to the trigger with aria-labelledby — the same
+   *  voice as Field labels, so a Select sits in a form without faking it with
+   *  an unassociated span. */
+  label?: string;
   /** Compact trigger: the picked option's icon + chevron only, the full label
    *  lives in the popup rows and the tooltip. For dense strips where every
    *  option carries a distinctive icon (provider logos, mode glyphs). */
   iconOnlyTrigger?: boolean;
 }) {
   const { t } = useTranslation();
+  const labelId = useId();
   const byValue = new Map(options.map((o) => [o.value, o]));
   const s = SIZES[size];
 
-  return (
-    <BaseSelect.Root value={value} onValueChange={(v) => v !== null && onChange(v)}>
-      <BaseSelect.Trigger
-        title={title}
-        aria-label={ariaLabel}
-        className={`flex items-center justify-between gap-2 rounded-lg ${TRIGGER_VARIANTS[variant]} ${s.trigger} ${className}`}
-      >
+  const trigger = (
+    <BaseSelect.Trigger
+      title={title}
+      aria-label={label ? undefined : ariaLabel}
+      aria-labelledby={label ? labelId : undefined}
+      className={`flex items-center justify-between gap-2 rounded-lg ${TRIGGER_VARIANTS[variant]} ${s.trigger} ${className}`}
+    >
         {/* min-w-0 lets the label truncate instead of shoving the chevron out. */}
         <BaseSelect.Value className="min-w-0">
           {(v: string) => {
@@ -111,6 +117,20 @@ export function Select({
           <ChevronDownIcon />
         </BaseSelect.Icon>
       </BaseSelect.Trigger>
+  );
+
+  return (
+    <BaseSelect.Root value={value} onValueChange={(v) => v !== null && onChange(v)}>
+      {label ? (
+        <div className="flex flex-col gap-1 text-sm">
+          <span id={labelId} className="font-medium text-neutral-700 dark:text-neutral-300">
+            {label}
+          </span>
+          {trigger}
+        </div>
+      ) : (
+        trigger
+      )}
       <BaseSelect.Portal>
         {/* alignItemWithTrigger would center the SELECTED item on the trigger, pushing
             earlier options above the viewport in a short side panel — they got clipped
@@ -136,8 +156,8 @@ export function Select({
                       {o.label}
                     </BaseSelect.ItemText>
                     {!o.hintLeading && hint}
-                    <BaseSelect.ItemIndicator className="shrink-0 text-brand-600 dark:text-brand-400">
-                      ✓
+                    <BaseSelect.ItemIndicator className="flex shrink-0 text-brand-600 dark:text-brand-400">
+                      <CheckIcon />
                     </BaseSelect.ItemIndicator>
                   </BaseSelect.Item>
                 </Fragment>

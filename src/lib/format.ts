@@ -6,6 +6,15 @@ export function formatDuration(ms: number): string {
   return `${m}m ${s % 60}s`;
 }
 
+/** Host for tabs that never set a title — an empty stamp reads as a bug. */
+export function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 export function formatTokens(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }

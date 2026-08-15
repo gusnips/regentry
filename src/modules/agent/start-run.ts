@@ -169,6 +169,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
           tabId: info.id,
           windowId: info.windowId,
           title: info.title,
+          url: info.url,
           favIconUrl: info.favIconUrl,
         });
         void showAgentIndicator(info.id);
@@ -179,6 +180,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       tabId: drivenTabId,
       windowId: tab.windowId,
       title: drivenTitle,
+      ...(tab.url ? { url: tab.url } : {}),
       favIconUrl: tab.favIconUrl || undefined,
     });
 
@@ -284,7 +286,14 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
             emit({ type: "error", message, kind });
           },
           onDone: (summary) =>
-            emit({ type: "done", summary, ...(endedOnQuestion ? { question: true } : {}) }),
+            emit({
+              type: "done",
+              summary,
+              ...(endedOnQuestion ? { question: true } : {}),
+              // A user halt unwinds as a done — the aborted controller is the
+              // only thing that tells it from a finish the model chose.
+              ...(run.controller.signal.aborted ? { stopped: true } : {}),
+            }),
           onAskUser: (question, choices) => {
             endedOnQuestion = true;
             onAskUser?.(question, choices);

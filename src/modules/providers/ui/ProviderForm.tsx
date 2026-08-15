@@ -6,6 +6,7 @@ import { ProviderIcon } from "./ProviderIcon";
 import { OAuthSignIn, SIGN_IN_DONE_MS } from "./OAuthSignIn";
 import { PRESETS, providerDisplayName } from "../presets";
 import { isKeyRejected } from "../models";
+import { splitErrorDetail } from "@/modules/conversation/error-detail";
 import type { OAuthCredential, ProviderConfig, ProviderShape } from "../types";
 import { Select } from "@/components/Select";
 import { TextField } from "@/components/TextField";
@@ -176,13 +177,16 @@ export function ProviderForm({
     </a>
   ) : undefined;
 
+  // A raw engine message ("Anthropic API error 400: {…}") is not an error a
+  // user can act on — lift the provider's own reason into the line, the JSON
+  // behind the disclosure, same as the chat error bubble.
+  const split = error ? splitErrorDetail(error) : null;
+
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <div className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-neutral-700 dark:text-neutral-300">
-          {t("providerForm.provider")}
-        </span>
         <Select
+          label={t("providerForm.provider")}
           value={presetId}
           onChange={setPresetId}
           options={[
@@ -212,19 +216,15 @@ export function ProviderForm({
             onChange={(e) => setName(e.target.value)}
             placeholder={t("providerForm.namePlaceholder")}
           />
-          <div className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-700 dark:text-neutral-300">
-              {t("providerForm.apiShape")}
-            </span>
-            <Select
-              value={shape}
-              onChange={(v) => setShape(v as ProviderShape)}
-              options={[
-                { value: "openai", label: t("providerForm.shapeOpenai") },
-                { value: "anthropic", label: t("providerForm.shapeAnthropic") },
-              ]}
-            />
-          </div>
+          <Select
+            label={t("providerForm.apiShape")}
+            value={shape}
+            onChange={(v) => setShape(v as ProviderShape)}
+            options={[
+              { value: "openai", label: t("providerForm.shapeOpenai") },
+              { value: "anthropic", label: t("providerForm.shapeAnthropic") },
+            ]}
+          />
           <TextField
             label={t("providerForm.baseUrl")}
             value={baseUrl}
@@ -263,12 +263,22 @@ export function ProviderForm({
         {t("providerForm.modelNote")}
       </p>
 
-      {error && (
+      {split && (
         <div
           role="alert"
           className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
         >
-          {error}
+          {split.summary}
+          {split.detail && (
+            <details className="mt-1">
+              <summary className="cursor-pointer text-xs underline underline-offset-2">
+                {t("chat.details")}
+              </summary>
+              <pre className="mt-1 max-h-40 overflow-auto rounded bg-red-100/70 p-1.5 font-mono text-xs break-all whitespace-pre-wrap dark:bg-red-900/40">
+                {split.detail}
+              </pre>
+            </details>
+          )}
         </div>
       )}
 

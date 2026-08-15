@@ -1,9 +1,11 @@
 import { Field } from "@base-ui-components/react";
 import type { ReactNode } from "react";
 
-/** Input chrome shared by every field control — size classes append to this. */
+/** Input chrome shared by every field control — size classes append to this.
+ *  Focus speaks the one brand idiom: the flare ring (same as buttons), not a
+ *  bare border recolor. */
 export const inputChrome =
-  "rounded-lg border border-neutral-300 placeholder:text-neutral-400 focus:border-brand-500 focus:outline-none dark:border-neutral-600 dark:placeholder:text-neutral-500";
+  "rounded-lg border border-neutral-300 placeholder:text-neutral-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500 focus:outline-none dark:border-neutral-600 dark:placeholder:text-neutral-500";
 
 /**
  * The label/control/description scaffolding Base UI Field wires up (htmlFor/id,

@@ -130,7 +130,7 @@ function ConversationRow({
       <button
         type="button"
         onClick={onOpen}
-        className="min-w-0 flex-1 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 rounded"
+        className="min-w-0 flex-1 cursor-pointer rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950"
       >
         <div
           className={`truncate text-sm ${
@@ -144,12 +144,13 @@ function ConversationRow({
         <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-neutral-500 dark:text-neutral-400">
           {conversation.agent && (
             <>
-              {/* Amber is this product's "an agent is working" language — the
-                  same colour as the on-page badge's dot and the favicon pulse. */}
               <span className="sr-only">
                 {t("history.drivenBy", { agent: conversation.agent })}
               </span>
-              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-amber-400" />
+              <span
+                aria-hidden
+                className="size-1.5 shrink-0 rounded-full bg-neutral-300 dark:bg-neutral-600"
+              />
               <span aria-hidden className="shrink-0 font-medium text-brand-600 dark:text-brand-400">
                 {conversation.agent}
               </span>

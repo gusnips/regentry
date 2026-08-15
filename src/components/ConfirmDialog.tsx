@@ -2,6 +2,7 @@ import { AlertDialog } from "@base-ui-components/react";
 import type { ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { buttonClasses } from "./Button";
+import { overlayCard, scrim } from "./chrome";
 
 /**
  * Destructive-action confirmation. The trigger element must forward props
@@ -25,8 +26,10 @@ export function ConfirmDialog({
     <AlertDialog.Root>
       <AlertDialog.Trigger render={trigger as ReactElement<Record<string, unknown>>} />
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/30 dark:bg-black/60" />
-        <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-80 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
+        <AlertDialog.Backdrop className={scrim} />
+        <AlertDialog.Popup
+          className={`fixed top-1/2 left-1/2 z-50 w-80 -translate-x-1/2 -translate-y-1/2 p-4 ${overlayCard}`}
+        >
           <AlertDialog.Title className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
             {title}
           </AlertDialog.Title>

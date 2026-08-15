@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { CheckIcon } from "@/components/Icon";
 import type { SlashItem } from "./slash-commands";
 
 /**
@@ -53,7 +54,7 @@ export function SlashMenu({
           onMouseEnter={() => onHover(i)}
           className={`flex w-full items-baseline gap-2 px-2.5 py-1.5 text-left text-xs ${
             i === index
-              ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
+              ? "bg-brand-50 text-brand-900 dark:bg-brand-950 dark:text-brand-100"
               : "text-neutral-700 dark:text-neutral-300"
           }`}
         >
@@ -67,10 +68,11 @@ export function SlashMenu({
           )}
           {item.current && (
             <span
-              className="ml-auto shrink-0 text-brand-600 dark:text-brand-400"
+              className="ml-auto flex shrink-0 text-brand-600 dark:text-brand-400"
               title={t("commands.current")}
             >
-              ✓<span className="sr-only">{t("commands.current")}</span>
+              <CheckIcon />
+              <span className="sr-only">{t("commands.current")}</span>
             </span>
           )}
         </button>

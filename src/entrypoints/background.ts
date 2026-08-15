@@ -354,6 +354,7 @@ async function sendDrivingTo(port: chrome.runtime.Port): Promise<void> {
       tabId: running.tabId,
       windowId: tab.windowId,
       title: tab.title ?? "",
+      ...(tab.url ? { url: tab.url } : {}),
       ...(tab.favIconUrl ? { favIconUrl: tab.favIconUrl } : {}),
     });
   } catch {

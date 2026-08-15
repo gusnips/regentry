@@ -18,6 +18,6 @@ export function PlanMark({ index, current }: { index: number; current: number })
   if (index < current)
     return <CheckIcon className={`${base} text-brand-700 dark:text-brand-400`} />;
   if (index === current)
-    return <ChevronRightIcon className={`${base} text-amber-700 dark:text-amber-400`} />;
+    return <ChevronRightIcon className={`${base} text-amber-700 dark:text-amber-300`} />;
   return <DotIcon filled className={`${base} text-neutral-400 dark:text-neutral-500`} />;
 }
