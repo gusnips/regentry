@@ -513,7 +513,7 @@
     "outputLimit": "Model hit its output limit mid-response — answer may be incomplete",
     "textOnlyImages": "This model can't receive images — the images you attached weren't sent to it. It works from text snapshots of the page.",
     "taskComplete": "Task complete",
-    "doneLostSummary": "Your closing summary was cut off by the output limit and arrived empty. Don't start over or call more tools: the full report is already in this conversation as your earlier message. Reply with that same answer now, as plain text, kept short.",
+    "doneLostSummary": "Your closing summary was cut off by the output limit and arrived empty. Don't start over and don't call more tools: the full analysis is already in this conversation as your earlier message. Call `done` now with that same answer restated in full as the summary.",
     "stepBudgetExhausted": "Step budget exhausted",
     "retrying": "Connection hiccup — retrying ({{attempt}}/{{max}})",
     "capturedElements_one": "Captured {{count}} element",

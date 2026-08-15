@@ -139,13 +139,66 @@ export function anthropicOAuthHeaders(accessToken: string): Record<string, strin
   };
 }
 
-/** Tool-call args arrive in fragments and may end mid-JSON — parse defensively. */
+/**
+ * Tool-call args arrive in fragments and may end mid-JSON — parse defensively.
+ *
+ * A provider that hits its output limit cuts the stream mid-arguments, so the
+ * raw text is `{ "summary": "the whole answer…` with no closing brace. JSON.parse
+ * throws on that, and the caller used to get {} — which is how a run that wrote
+ * its entire final report into `done.summary` surfaced as a hollow "task
+ * complete": the answer was there, in the fragments, and got thrown away. On a
+ * parse failure, salvage any string fields — the ones that closed before the
+ * cut, and the one left open by it, whose content up to the cut is the answer.
+ */
 export function parseToolArgs(raw: string): Record<string, unknown> {
+  if (!raw) return {};
   try {
-    return raw ? JSON.parse(raw) : {};
+    return JSON.parse(raw);
   } catch {
-    return {};
+    return salvageStringArgs(raw);
   }
+}
+
+/**
+ * Best-effort recovery of `"key": "value"` string fields from truncated JSON.
+ * Only strings: they are what a `done` summary (the field worth rescuing) is
+ * made of, and a closing quote is the one reliable boundary in a partial
+ * stream. Numbers/booleans/objects are dropped — a salvaged half-value would be
+ * worse than none. Fields that closed before the cut are kept; the single field
+ * the cut left open (the summary) keeps its content up to the cut — a half-said
+ * answer beats a thrown-away one.
+ */
+function salvageStringArgs(raw: string): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  // A completed `"key": "value",` or `"key": "value"}` pair. Escaped quotes
+  // inside the value are handled by the string pattern.
+  const STRING_FIELD = /"((?:[^"\\]|\\.)*)"\s*:\s*"((?:[^"\\]|\\.)*)"\s*[,}]/gs;
+  let m: RegExpExecArray | null;
+  let lastCompleteEnd = 0;
+  while ((m = STRING_FIELD.exec(raw)) !== null) {
+    out[unescapeJson(m[1]!)] = unescapeJson(m[2]!);
+    lastCompleteEnd = STRING_FIELD.lastIndex;
+  }
+
+  // The tail after the last complete field: if it opens one more string field
+  // that never closed (the `done` summary cut mid-value), keep its content up
+  // to the cut. A half-said answer beats a thrown-away one.
+  const LONE_FIELD = /"((?:[^"\\]|\\.)*)"\s*:\s*"((?:[^"\\]|\\.)*)$/s;
+  const lone = LONE_FIELD.exec(raw.slice(lastCompleteEnd));
+  if (lone && lone[2]) {
+    out[unescapeJson(lone[1]!)] = unescapeJson(lone[2]!);
+  }
+  return out;
+}
+
+/** Reverse the JSON string escapes a streamed value carries (\", \\, \n…). */
+function unescapeJson(s: string): string {
+  return s
+    .replace(/\\(["\\/])/g, "$1")
+    .replace(/\\n/g, "\n")
+    .replace(/\\t/g, "\t")
+    .replace(/\\r/g, "\r")
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
 
 /**

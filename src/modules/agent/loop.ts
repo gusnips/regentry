@@ -480,11 +480,14 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // A truncated turn is the special case: the cap cut the tool call the
       // text was wrapping, and the text already IS the answer. Re-reasoning
       // would burn the budget a second time for nothing — so name the cut and
-      // point it at the cheap close, not a fresh pass.
+      // point it at closing over what's already written, not a fresh pass. The
+      // ask is "restate it", never "summarize it short": after a length error
+      // the model's own caution already leans small, and a hard task's answer
+      // wants its full size.
       messages.push({
         role: "user",
         content: turn.truncated
-          ? "You hit the output limit and the tool call at the end was cut off — but your text above is already the full answer. Don't reason or call any other tool: just call `done` now with a one-or-two-sentence summary of that text."
+          ? "You hit the output limit and the tool call at the end was cut off — but your text above is already the full answer. Don't reason or call any other tool: call `done` now, and put that same answer in the summary, restated in full."
           : "Respond with a tool call, not plain text. If you just asked the user a question, call `ask_user` with that same question now — written-out questions do not pause the run, so the user never got to answer. Otherwise make progress on the task: call snapshot if you need to see the page, or `done` if the task is complete.",
       });
       continue;
@@ -616,7 +619,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
           // Cut so deep even the text is empty: closing on "task complete"
           // would throw away a run's whole answer. One cheap retry — the
           // recovery note tells the model the report already exists in its
-          // history, so it re-says it short instead of reasoning a second pass.
+          // history, so it restates it instead of reasoning a second pass.
           retriedTruncatedDone = true;
           log.warn("done arrived empty on a truncated turn — asking for the answer plainly");
           results.push({

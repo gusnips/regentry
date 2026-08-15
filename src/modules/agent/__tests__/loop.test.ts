@@ -336,5 +336,10 @@ describe("runAgentLoop truncated text-only turn", () => {
 
     expect(nudge).toContain("output limit");
     expect(nudge).toContain("call `done`");
+    // The ask is "restate it in full", never "summarize it short" — no length
+    // pressure in either direction after a length error.
+    expect(nudge).toContain("restated in full");
+    expect(nudge).not.toContain("sentence");
+    expect(nudge).not.toContain("short");
   });
 });

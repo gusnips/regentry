@@ -467,7 +467,7 @@ const TOOL_DEFS: ToolDef[] = [
         summary: {
           type: "string",
           description:
-            "What was accomplished — lead with the outcome the task asked for (the answer, the result), in a few sentences. No play-by-play of your steps.",
+            "The closing answer to the task — the result, the finding, the deliverable, stated in full. Lead with the outcome it asked for; skip the play-by-play of your steps.",
         },
       },
       required: ["summary"],
