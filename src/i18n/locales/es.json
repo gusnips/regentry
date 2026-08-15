@@ -246,7 +246,7 @@
       "signIn": "Iniciar sesión de nuevo →",
       "checkUrl": "Revisar URL base →",
       "addProvider": "Añadir un proveedor →",
-      "compact": "Compactar la conversación →"
+      "compact": "Compactar y reintentar →"
     },
     "details": "Detalles",
     "screenshotAlt": "Captura de la página que tomó el agente",

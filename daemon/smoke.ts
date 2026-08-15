@@ -170,6 +170,7 @@ check(
     "stop",
     "screenshot",
     "new_conversation",
+    "compact",
     "browser_start",
     "browser_snapshot",
     "browser_navigate",
@@ -389,6 +390,24 @@ check(
 );
 send({ type: "event", event: { type: "queue", queue: [] } });
 await Bun.sleep(50);
+
+// Compaction crosses the wire as one method and answers with the receipt.
+const compacted = rpc("tools/call", { name: "compact", arguments: {} });
+const compactRequest = await awaitRequest("compact");
+reply(compactRequest.requestId, { messages: 18, before: 48231, after: 1230 });
+check(
+  "compact folds the thread and hands back the receipt",
+  bodyOf(await compacted).includes("Compacted 18 messages") &&
+    bodyOf(await compacted).includes("48231"),
+);
+// …and a short thread answers instead of failing.
+const shortThread = rpc("tools/call", { name: "compact", arguments: {} });
+const shortRequest = await awaitRequest("compact");
+reply(shortRequest.requestId, { nothing: true });
+check(
+  "compact on a short thread says so, without an error",
+  bodyOf(await shortThread).includes("Nothing to compact"),
+);
 
 // A screenshot comes back as a real MCP image block.
 const shot = rpc("tools/call", { name: "screenshot", arguments: {} });

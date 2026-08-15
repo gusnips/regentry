@@ -92,8 +92,10 @@ interface ConversationState {
   /** A local, display-only note (slash-command results) — rendered in the
    *  transcript, never persisted, never part of the model's history. */
   note: (content: string) => void;
-  /** Summarize the conversation so far — /compact, and the context-error CTA. */
-  compact: () => void;
+  /** Summarize the conversation so far — /compact, and the context-error CTA.
+   *  `resume` re-runs the failed task once the summary lands: the CTA's promise
+   *  is "compact and carry on", one click. */
+  compact: (opts?: { resume?: boolean }) => void;
   queueMessage: (text: string) => void;
   unqueueMessage: (id: string) => void;
   /** Cancel this panel's still-waiting queued run. */
@@ -241,6 +243,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
   /** The in-flight compaction's progress note — its result replaces it. */
   let compactNoteId: string | null = null;
+  /** A compaction armed to re-run the failed task on success — the id of the
+   *  user message it would resend, so a newer message disarms it. */
+  let resumeAfterCompact: string | null = null;
   const dropDisplay = (id: string | null): void => {
     if (id) set({ messages: get().messages.filter((m) => m.id !== id) });
   };
@@ -572,18 +577,33 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         });
         break;
 
-      case "compacted":
+      case "compacted": {
         set({ compacting: false });
         // The summary card lands through the transcript watch carrying the same
         // receipt — a note here would only say it twice. Progress note out.
         dropDisplay(compactNoteId);
         compactNoteId = null;
+        // The context-error CTA armed this: compact, then carry on. Fires only
+        // when the failed task is still the newest thing said and nothing has
+        // started since — otherwise the user moved on mid-summarize.
+        const resumeId = resumeAfterCompact;
+        resumeAfterCompact = null;
+        if (
+          resumeId !== null &&
+          get().status !== "running" &&
+          get().messages.findLast((m) => m.role === "user")?.id === resumeId
+        ) {
+          get().retry();
+        }
         break;
+      }
 
       case "compact_failed":
         set({ compacting: false });
         dropDisplay(compactNoteId);
         compactNoteId = null;
+        // No summary, no resume — retrying into the same wall helps no one.
+        resumeAfterCompact = null;
         // "Nothing to compact" is an answer, not a failure — it arrives as the
         // same quiet note every other command result does.
         pushDisplay(
@@ -789,7 +809,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     // A tool-less step row is the note: quiet, neutral, and gone on reopen.
     note: (content) => pushDisplay(makeMsg("step", content)),
 
-    compact: () => {
+    compact: (opts) => {
       if (get().compacting) return;
       // Mid-run the wire conversation is the run's, not the transcript's — the
       // loop folds its own turns when it needs to (see compactRunMessages), and
@@ -803,6 +823,13 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       const note = makeMsg("step", i18n.t("commands.compact.running"));
       compactNoteId = note.id;
       pushDisplay(note);
+      // Arm the resume against the task as it stands now: on success it fires
+      // only if this is still the newest thing said — anything fresher (typed
+      // while the summarizer ran, or a conversation switch, whose ids differ)
+      // means the user has moved on.
+      resumeAfterCompact = opts?.resume
+        ? (get().messages.findLast((m) => m.role === "user")?.id ?? null)
+        : null;
       post({ type: "compact" });
     },
 

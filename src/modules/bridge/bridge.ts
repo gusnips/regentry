@@ -1,12 +1,18 @@
 import { i18n } from "@/i18n";
 import { getActiveRun, releaseRun } from "@/modules/agent/active-runs";
+import { compactConversation } from "@/modules/agent/compact";
 import { cancelQueued, listQueue, onBoardChanged, submitRun } from "@/modules/agent/run-queue";
 import { startAgentRun } from "@/modules/agent/start-run";
 import { captureVisibleTab } from "@/modules/browser";
 import { appendMessageTo, openAgentConversation } from "@/modules/conversation";
 import { DirectSession } from "./direct";
 import { TranscriptWriter } from "@/modules/conversation/transcript";
-import { getActiveProvider } from "@/modules/providers";
+import {
+  createProvider,
+  ensureProviderCredential,
+  getActiveProvider,
+  resolveProviderModel,
+} from "@/modules/providers";
 import { providerDisplayName } from "@/modules/providers/presets";
 import { credentialStatus, isOAuthProvider } from "@/modules/providers/status";
 import { createLogger, truncate } from "@/lib/logger";
@@ -136,6 +142,9 @@ export class Bridge {
         break;
       case "newConversation":
         await this.newConversation(requestId);
+        break;
+      case "compact":
+        await this.compactThread(requestId);
         break;
       default:
         this.fail(requestId, "unknown-method", `Unknown bridge method: ${method}`);
@@ -342,6 +351,45 @@ export class Bridge {
     this.conversationId = null;
     this.status = emptyStatus();
     this.respond(requestId, { ok: true });
+  }
+
+  /** The daemon's compact tool — folds this thread's history into a summary. */
+  private async compactThread(requestId: string): Promise<void> {
+    // The same constraint as the panel's /compact: a live run's wire
+    // conversation is the run's, and a transcript summary landing mid-run
+    // would summarize a story still being written.
+    if (getActiveRun()?.owner === "bridge") {
+      this.fail(
+        requestId,
+        "run-in-progress",
+        "This thread has a run in progress — compact once it finishes.",
+      );
+      return;
+    }
+    const conversationId = this.conversationId;
+    if (!conversationId) {
+      this.fail(
+        requestId,
+        "nothing-to-compact",
+        "This thread has no history yet — it starts on the first run.",
+      );
+      return;
+    }
+    try {
+      const config = await getActiveProvider();
+      if (!config) throw new Error(i18n.t("chat.hint.noProvider"));
+      const resolved = await resolveProviderModel(await ensureProviderCredential(config));
+      const result = await compactConversation(
+        createProvider(resolved),
+        conversationId,
+        // One short call the client is holding a request open for.
+        new AbortController().signal,
+      );
+      // The daemon relays this to its client — a null must still answer.
+      this.respond(requestId, result ?? { nothing: true });
+    } catch (e) {
+      this.fail(requestId, "compact-failed", e instanceof Error ? e.message : String(e));
+    }
   }
 
   /**

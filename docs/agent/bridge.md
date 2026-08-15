@@ -25,6 +25,8 @@ and can never drift from the panel's.
   `stop` cancels the client's queued runs before stopping the active one.
 - **The bridge owns its own conversation**, created lazily and reset by `newConversation`.
   It never touches the panel's active thread, but it shows up in history like any other.
+  `compact` folds it through the same summarizer as the panel's /compact — refused while a
+  bridge run is in flight, for the same mid-story reason.
 - **`health` answers the whole pre-flight**, link AND model: it asks the extension for
   `providerInfo` (active provider, whether its credential works, key vs subscription) so a
   missing or signed-out provider is reported before a task is sent instead of killing the

@@ -246,7 +246,7 @@
       "signIn": "Sign in again →",
       "checkUrl": "Check base URL →",
       "addProvider": "Add a provider →",
-      "compact": "Compact the conversation →"
+      "compact": "Compact and retry →"
     },
     "details": "Details",
     "screenshotAlt": "Screenshot of the page the agent captured",

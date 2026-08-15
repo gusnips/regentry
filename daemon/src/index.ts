@@ -423,6 +423,29 @@ server.registerTool(
     }),
 );
 
+server.registerTool(
+  "compact",
+  {
+    title: "Compact the thread",
+    description:
+      "Summarize this thread's history so far, so every run replays a summary instead of the whole transcript — the raw messages stay in the user's panel; only what the model re-reads changes, and nothing is deleted. Reach for it when a long thread's runs get slow or one dies on a context-length error. Cannot run while a task is in flight.",
+  },
+  async () =>
+    withLink(async () => {
+      const result = await link.request<{
+        messages?: number;
+        before?: number;
+        after?: number;
+        nothing?: boolean;
+      }>("compact");
+      if (result.nothing)
+        return text("Nothing to compact — this thread is still short enough to replay in full.");
+      return text(
+        `Compacted ${result.messages} messages — the thread now replays ~${result.after} tokens instead of ~${result.before}.`,
+      );
+    }),
+);
+
 // ── Direct control ──────────────────────────────────────────────────
 //
 // The other half of the bridge: for a client that would rather drive than

@@ -88,8 +88,8 @@ function kindCta(kind: ErrorKind, signedIn: boolean): CtaKey | undefined {
   if (kind === "auth") return signedIn ? "signIn" : "updateKey";
   // The run already tried folding its own turns and still didn't fit, so the
   // conversation replayed into it is what's left to shrink. One button, because
-  // "compact and try again" is the entire remedy — the alternative is a user
-  // staring at a token limit with no idea what to do about it.
+  // the entire remedy is "compact and carry on" — the click compacts, and the
+  // failed task re-runs itself when the summary lands.
   if (kind === "context") return "compact";
   return undefined;
 }
@@ -1048,7 +1048,10 @@ function Transcript() {
       ? messages[lastErrorIdx]?.id
       : undefined;
   const answer = useCallback((text: string) => void sendTask(text), [sendTask]);
+  // The context-error CTA is the only compact button — its click carries the
+  // resume intent: compact, then carry on with the task that hit the wall.
   const compact = useConversationStore((s) => s.compact);
+  const compactResume = useCallback(() => compact({ resume: true }), [compact]);
 
   return (
     <MessageScroller>
@@ -1090,7 +1093,7 @@ function Transcript() {
                     item.msg.role === "error" && item.msg.id === retryErrorId ? retry : undefined
                   }
                   onAnswer={item.msg.id === tappableAskId ? answer : undefined}
-                  onCompact={compact}
+                  onCompact={compactResume}
                 />
               </MessageScrollerItem>
             ),
