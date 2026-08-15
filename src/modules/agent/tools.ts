@@ -29,7 +29,8 @@ export interface RunGroup {
   readonly groupId: number | undefined;
   /** File the currently-driven tab after a successful action. */
   touch(): Promise<void>;
-  /** group_tab's target: the run's group, minted around this tab when the run has none. */
+  /** group_tab's target: the run's group, minted around this tab when the run has
+   *  none — never around a tab already grouped elsewhere (not ours to rip). */
   file(tabId: number): Promise<number | undefined>;
 }
 

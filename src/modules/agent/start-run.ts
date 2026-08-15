@@ -150,7 +150,6 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     const runGroup = createRunGroup({
       task,
       keepName: target.resumed === true,
-      mintOnTouch: target.resumed !== true,
       ...(target.threadGroupId !== undefined ? { seedGroupId: target.threadGroupId } : {}),
       drivenTabId: () => drivenTabId,
     });
@@ -454,7 +453,7 @@ async function resolveRunTab(
     return { tab, ...(threadGroupId !== undefined ? { threadGroupId } : {}) };
   }
 
-  const reused = await reuseContinuationTab(continuation);
+  const reused = await reuseContinuationTab(continuation, conversationTabs);
   if (reused) {
     if (reveal && reused.tab.id !== undefined) await focusTab(reused.tab.id, reused.tab.windowId);
     return reused;
@@ -507,9 +506,9 @@ async function resolveRunTab(
   }
   // Re-read after the wait — the created record predates the navigation.
   const loaded = await chrome.tabs.get(tab.id);
-  // A brand-new tab has no strip of its own to keep — only the records can
-  // point at the thread's. Grouping itself waits for the first action.
-  const threadGroupId = await liveThreadGroup(conversationTabs);
+  // A brand-new tab has no strip of its own to keep — the records and the
+  // window's contents point at the thread's. Grouping waits for the first action.
+  const threadGroupId = await liveThreadGroup(conversationTabs, loaded);
   // Never revealed — only background runs open a tab of their own (above).
   return {
     tab: loaded,
@@ -523,14 +522,19 @@ async function resolveRunTab(
  * there. Re-opening its url would also "continue where the question arose", but
  * a fresh load throws away the state the question was ABOUT — the half-filled
  * booking form, the search results, the scrolled thread. The parked strip is
- * the join seed only while the tab still sits in it: a tab the user refiled
- * while the question waited is theirs, and the continuation neither renames it
- * nor rips it out (its touch mints nothing around a grouped tab).
+ * resolved like any run's: the tab still sitting in it seeds the join, across a
+ * restart's id churn too, while a tab the user refiled while the question
+ * waited fails the ownership check — theirs, and the continuation neither
+ * renames it nor rips the tab out.
  */
-async function reuseContinuationTab(last: LastTab | undefined): Promise<RunTab | undefined> {
+async function reuseContinuationTab(
+  last: LastTab | undefined,
+  conversationTabs: LastTab[],
+): Promise<RunTab | undefined> {
   if (last?.tabId === undefined) return undefined;
   try {
     const tab = await chrome.tabs.get(last.tabId);
+    const threadGroupId = await liveThreadGroup(conversationTabs, tab);
     // The run continues where the question arose — the very tab it was driving,
     // which under adoption IS the user's tab. The model must hear that, or it
     // reads the "your own tab is untouched" line while sitting on theirs.
@@ -538,9 +542,7 @@ async function reuseContinuationTab(last: LastTab | undefined): Promise<RunTab |
       tab,
       adopted: true,
       resumed: true,
-      ...(tab.groupId === last.groupId && last.groupId !== undefined
-        ? { threadGroupId: last.groupId }
-        : {}),
+      ...(threadGroupId !== undefined ? { threadGroupId } : {}),
     };
   } catch {
     // The tab died while the question waited — open a fresh one on its url.
@@ -596,37 +598,86 @@ function groupTitle(task: string, mark = ""): string {
   return `${mark}${short}`;
 }
 
+/** The outcome mark a run leaves on its group's title — resume strips it, settle re-marks it. */
+const SETTLE_MARK = /^[✓✗?] /;
+
 /**
- * The group the thread's tabs live under, when it is still the thread's.
+ * A group is this thread's only while it still carries our fingerprints: every
+ * strip we label is green, and a settled one wears its outcome mark. Anything
+ * else is a group the user built — even around a page we happened to drive —
+ * and is never ours to rename or rip.
+ */
+function isThreadStrip(group: chrome.tabGroups.TabGroup): boolean {
+  return SETTLE_MARK.test(group.title ?? "") || group.color === "green";
+}
+
+/**
+ * The group the thread's tabs live under, when it is still the thread's. One
+ * strip per conversation PER WINDOW — Chrome groups can't span windows — found
+ * by content, not by remembered ids: tab and group ids die with a browser
+ * restart, the urls the conversation drove survive them.
  *
- * The tab in hand is the strongest signal: already sitting in a group AND its
- * url is one this conversation drove (urls are the stable key — tab and group
- * ids die with a browser restart, urls survive them). A page the thread worked,
- * still grouped, is sitting in the thread's strip — never rip the tab the user
- * is looking at out of it to mint a second one.
- *
- * Otherwise the records, by group liveness: strips outlive their tabs (the
- * driven tab gets closed once the task is done; the group_tab'd ones stay), so
- * a recorded group that still exists IS the thread's even when the tab that
- * earned the record is gone. A group the user closed away is simply not there.
+ * Strongest first: the tab in hand, already sitting in a strip of ours on a url
+ * this conversation drove — never rip the tab the user is looking at out of its
+ * strip. Then the records, by liveness: strips outlive their tabs (the driven
+ * tab gets closed once the task is done; the group_tab'd ones stay), so a
+ * recorded group still alive in this window IS the thread's — ownership checked,
+ * since a restarted browser can hand an old id to somebody else's group. Last,
+ * the window itself: a strip session-restore recreated under fresh ids is found
+ * by what it holds — a grouped tab on a url this conversation drove.
  */
 export async function liveThreadGroup(
   tabs: LastTab[],
-  forTab?: chrome.tabs.Tab,
+  forTab: chrome.tabs.Tab,
 ): Promise<number | undefined> {
-  if (forTab?.url && forTab.groupId >= 0 && tabs.some((t) => t.url === forTab.url)) {
+  const seen = new Set<number>();
+  const owns = async (groupId: number): Promise<boolean> => {
+    try {
+      return isThreadStrip(await chrome.tabGroups.get(groupId));
+    } catch {
+      return false; // dead group — no strip there
+    }
+  };
+
+  if (
+    forTab.url &&
+    forTab.groupId >= 0 &&
+    tabs.some((t) => t.url === forTab.url) &&
+    (await owns(forTab.groupId))
+  ) {
     return forTab.groupId;
   }
-  const seen = new Set<number>();
+  seen.add(forTab.groupId);
+
   for (const t of tabs) {
     if (t.groupId === undefined || seen.has(t.groupId)) continue;
     seen.add(t.groupId);
     try {
-      await chrome.tabGroups.get(t.groupId);
-      return t.groupId;
+      const group = await chrome.tabGroups.get(t.groupId);
+      if (group.windowId === forTab.windowId && isThreadStrip(group)) return t.groupId;
     } catch {
       // Dead group — try the next record.
     }
+  }
+
+  // The window scan: a strip the records can no longer name (session restore
+  // recreated it under fresh ids) is still sitting there, holding pages the
+  // thread drove.
+  let windowTabs: chrome.tabs.Tab[];
+  try {
+    windowTabs = await chrome.tabs.query({ windowId: forTab.windowId });
+  } catch {
+    return undefined;
+  }
+  const groupedByUrl = new Map<string, number>();
+  for (const t of windowTabs) {
+    if (t.url && t.groupId >= 0 && !groupedByUrl.has(t.url)) groupedByUrl.set(t.url, t.groupId);
+  }
+  for (const t of tabs) {
+    const groupId = groupedByUrl.get(t.url);
+    if (groupId === undefined || seen.has(groupId)) continue;
+    seen.add(groupId);
+    if (await owns(groupId)) return groupId;
   }
   return undefined;
 }
@@ -677,24 +728,21 @@ export async function labelRunTab(
 /**
  * The run's strip, minted on first touch (see RunGroup in tools.ts for the
  * contract). Joins the thread's seed strip when one was resolved at run start;
- * otherwise mints around the first tab the run acts on. A continuation never
- * mints around a grouped tab — a group the user chose while the question
- * waited is theirs, not the run's to rip.
+ * otherwise mints around the first tab the run acts on. Either way the tab must
+ * be loose or already home: a tab sitting in any other group is left alone —
+ * that's a group the user (or another chat) owns, never ours to rip.
  */
 export function createRunGroup(opts: {
   task: string;
   /** A continuation joins its parked strip without renaming it. */
   keepName: boolean;
-  /** False only for continuations: never mint around (rip) a tab the user
-   *  grouped while the question waited. */
-  mintOnTouch: boolean;
   /** The thread's live strip, resolved at run start — the run's labeling joins it. */
   seedGroupId?: number;
   drivenTabId: () => number;
 }): RunGroup {
   let groupId: number | undefined;
 
-  const label = async (tabId: number, mayMint: boolean): Promise<number | undefined> => {
+  const label = async (tabId: number): Promise<number | undefined> => {
     if (groupId !== undefined) {
       // The strip exists — file the tab into it. Best-effort: a tab in another
       // window can't join, and a run never fails over its strip.
@@ -705,13 +753,11 @@ export function createRunGroup(opts: {
       }
       return groupId;
     }
-    if (!mayMint && opts.seedGroupId === undefined) {
-      try {
-        const t = await chrome.tabs.get(tabId);
-        if (t.groupId >= 0) return undefined; // the user's own group — not ours to rip
-      } catch {
-        return undefined; // the tab died between the tool call and here
-      }
+    try {
+      const t = await chrome.tabs.get(tabId);
+      if (t.groupId >= 0 && t.groupId !== opts.seedGroupId) return undefined;
+    } catch {
+      return undefined; // the tab died between the tool call and here
     }
     groupId = await labelRunTab(tabId, opts.task, opts.seedGroupId, opts.keepName);
     return groupId;
@@ -722,14 +768,11 @@ export function createRunGroup(opts: {
       return groupId;
     },
     touch: async () => {
-      await label(opts.drivenTabId(), opts.mintOnTouch);
+      await label(opts.drivenTabId());
     },
-    file: (tabId) => label(tabId, true),
+    file: (tabId) => label(tabId),
   };
 }
-
-/** The outcome mark a run leaves on its group's title — resume strips it, settle re-marks it. */
-const SETTLE_MARK = /^[✓✗?] /;
 
 /**
  * Retitle the run's tab group with the outcome and collapse it — the strip

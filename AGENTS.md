@@ -81,7 +81,10 @@ never reach the service-worker bundle.
 - `agent/` — agent loop, tools, system prompt, run slot + FIFO queue, run start. Panel runs
   **work the user's current tab by default** — adopt it and drive it (the plan gate protects
   a page the user didn't want touched); every tab the run acts on joins one green strip per
-  conversation, minted at the first action, never at send time. It opens its own
+  conversation per window (Chrome groups can't span windows), found by content — a group is
+  the thread's only while it holds a url the conversation drove and still looks like ours —
+  minted at the first action, never at send time; a tab already in somebody's group is never
+  ripped into it. It opens its own
   tab only when there's no page to work: blank/new-tab, a restricted page, an MCP client,
   or an explicit URL. Runs survive panel close.
   Action tools

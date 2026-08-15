@@ -32,19 +32,28 @@ call; a read tab that belongs in the visible set — the Docs tab a "copy from D
 run reads — always is. A read-only run leaves no strip at all.
 
 The group is the conversation's, not the run's: a follow-up joins the strip the thread
-already has and mints a fresh one only when that one is gone. `liveThreadGroup`
-resolves it — first from the tab in hand (already grouped, and its url is one the
-conversation drove: never rip the tab the user is looking at out of its strip; ids die
-with a browser restart, urls survive them), then from the records by group liveness —
-strips outlive their tabs (the driven tab gets closed once the task ends, the
-group_tab'd ones stay), so a recorded group that still exists IS the thread's even
-when its recorded tab is gone. The strip's name is written once, at labeling;
+already has and mints a fresh one only when that one is gone. One strip per
+conversation **per window** — Chrome groups can't span windows, and the only way
+across would be physically moving the user's tabs between windows, which a run
+never does. `liveThreadGroup` resolves it by content, not by remembered ids (tab
+and group ids die with a browser restart; urls survive them): first the tab in
+hand (already grouped in a strip of ours, on a url the conversation drove), then
+the records by group liveness in this window — strips outlive their tabs (the
+driven tab gets closed once the task ends, the group_tab'd ones stay), so a
+recorded group that still exists IS the thread's even when its recorded tab is
+gone — then the window itself: a strip session-restore recreated under fresh ids
+is found by what it holds. Every pass checks ownership — a group is the thread's
+only while it carries our fingerprints (green, or wearing a settle mark) — so a
+group the user built around a page we happened to drive is never renamed or
+joined, and a restarted browser handing an old id to somebody else's group is
+never a mix-up. The strip's name is written once, at labeling;
 afterwards a run only changes its mark. Settle re-marks the name the group already
 carries (✓/?/✗, collapsed) — it never renames, because a continuation's task is the
 user's answer fragment ("the March one"), and a name the user gave the strip
-themselves is theirs. A continuation joins the parked strip without renaming it, and
-only while the reused tab still sits in its recorded group — a tab the user refiled
-while the question waited is theirs, and the run's touch mints nothing around it.
+themselves is theirs. A continuation joins the parked strip without renaming it,
+and a tab the user refiled while the question waited is left exactly where they
+put it: no run, of any kind, groups a tab that already sits in a group that
+isn't the seed — never rip.
 
 Adoption is safe because of the plan gate, not instead of it: the run reads the page and
 proposes a plan before any action tool unlocks, so "don't touch this draft" is a plan
