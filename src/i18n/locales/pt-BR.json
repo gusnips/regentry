@@ -493,6 +493,7 @@
     "outputLimit": "O modelo atingiu seu limite de saída no meio da resposta — a resposta pode estar incompleta",
     "textOnlyImages": "Este modelo não recebe imagens — as imagens que você anexou não foram enviadas. Ele trabalha com snapshots de texto da página.",
     "taskComplete": "Tarefa concluída",
+    "doneLostSummary": "Seu resumo final foi cortado pelo limite de saída e chegou vazio. Não recomece nem chame mais ferramentas: o relatório completo já está nesta conversa como sua mensagem anterior. Responda com essa mesma resposta agora, em texto simples, de forma curta.",
     "stepBudgetExhausted": "Limite de passos esgotado",
     "retrying": "Instabilidade de conexão — tentando de novo ({{attempt}}/{{max}})",
     "capturedElements_one": "{{count}} elemento capturado",

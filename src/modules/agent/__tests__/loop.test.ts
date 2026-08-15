@@ -219,3 +219,122 @@ describe("runAgentLoop context growth", () => {
     expect(newest?.content).toContain("x".repeat(1000));
   });
 });
+
+describe("runAgentLoop output-limit recovery", () => {
+  // Qwen/DeepSeek thinking gateways split one max_tokens between reasoning and
+  // the answer, so a report-writing turn gets cut mid-`done`. The report the
+  // model wrote is the turn's streamed text — the run must close on it, not on
+  // a hollow "task complete".
+  it("closes a truncated done on the turn's streamed text, not the empty summary", async () => {
+    const provider: ChatProvider = {
+      async *stream() {
+        yield { type: "text", text: "Tier 1: olharyapp, olharyco. Tier 2: useolhary." };
+        // Cut mid-`done` — parseToolArgs already reduced the args to {}.
+        yield { type: "tool_use", id: "c1", name: "done", args: {} };
+        yield { type: "finish", reason: "length" };
+        yield { type: "done" };
+      },
+    };
+    let doneSummary: string | undefined;
+    await runAgentLoop({
+      provider,
+      driver,
+      task: "Rank the domains",
+      signal: new AbortController().signal,
+      callbacks: { onDone: (s) => (doneSummary = s) },
+    });
+
+    expect(doneSummary).toBe("Tier 1: olharyapp, olharyco. Tier 2: useolhary.");
+  });
+
+  it("recovers an emptied done with one plain-text retry instead of closing hollow", async () => {
+    let calls = 0;
+    const provider: ChatProvider = {
+      async *stream() {
+        calls++;
+        if (calls === 1) {
+          // Everything cut: no text, a done whose summary never made it.
+          yield { type: "tool_use", id: "c1", name: "done", args: {} };
+          yield { type: "finish", reason: "length" };
+          yield { type: "done" };
+        } else {
+          // The recovery note asked for the answer plainly — text, then a clean done.
+          yield { type: "text", text: "The answer, restated short." };
+          yield { type: "tool_use", id: "c2", name: "done", args: {} };
+          yield { type: "done" };
+        }
+      },
+    };
+    let doneSummary: string | undefined;
+    const steps: { tool: string; summary?: string }[] = [];
+    await runAgentLoop({
+      provider,
+      driver,
+      task: "Rank the domains",
+      signal: new AbortController().signal,
+      callbacks: { onDone: (s) => (doneSummary = s), onStep: (s) => steps.push(s) },
+    });
+
+    expect(calls).toBe(2);
+    expect(doneSummary).toBe("The answer, restated short.");
+    // The retry surfaced the output-limit warning exactly once.
+    expect(steps.filter((s) => s.tool === "warn")).toHaveLength(1);
+  });
+
+  it("never loops: a model that keeps truncating still closes", async () => {
+    const provider: ChatProvider = {
+      async *stream() {
+        yield { type: "tool_use", id: "c1", name: "done", args: {} };
+        yield { type: "finish", reason: "length" };
+        yield { type: "done" };
+      },
+    };
+    let doneSummary: string | undefined;
+    await runAgentLoop({
+      provider,
+      driver,
+      task: "Rank the domains",
+      signal: new AbortController().signal,
+      callbacks: { onDone: (s) => (doneSummary = s) },
+    });
+
+    expect(doneSummary).toBe(i18n.t("errors.taskComplete"));
+  });
+});
+
+describe("runAgentLoop truncated text-only turn", () => {
+  // The cap cut the whole tool call but the report text survived: the nudge
+  // must point at the cheap close (a done over the text already written), not
+  // send the model back to reason a second pass over the same budget.
+  it("nudges a truncated text-only turn toward closing, not re-reasoning", async () => {
+    let calls = 0;
+    let nudge: string | undefined;
+    const provider: ChatProvider = {
+      async *stream(messages) {
+        calls++;
+        if (calls === 1) {
+          yield { type: "text", text: "The full report." };
+          yield { type: "finish", reason: "length" };
+          yield { type: "done" };
+        } else {
+          nudge = messages
+            .filter((m) => m.role === "user")
+            .map((m) => m.content)
+            .at(-1);
+          yield { type: "tool_use", id: "c1", name: "done", args: { summary: "The full report." } };
+          yield { type: "done" };
+        }
+      },
+    };
+    await runAgentLoop({
+      provider,
+      driver,
+      task: "Rank the domains",
+      signal: new AbortController().signal,
+      callbacks: {},
+    });
+
+    expect(nudge).toContain("output limit");
+    expect(nudge).toContain("call `done`");
+  });
+});

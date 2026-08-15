@@ -297,6 +297,9 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
   // replan answers their words, and their words already approved what they
   // asked for — parking there would be requesting permission to obey.
   let steeredSincePlan = false;
+  // One retry for a `done` the output cap emptied of both summary and streamed
+  // text — bounded so a model that keeps truncating still closes, never loops.
+  let retriedTruncatedDone = false;
 
   for (let step = 0; step < MAX_STEPS; step++) {
     if (signal.aborted) {
@@ -374,10 +377,16 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // steer matters most: a question typed as prose does not pause the run,
       // so without it the agent plows ahead on its own assumptions while the
       // user stares at a question they cannot answer.
+      //
+      // A truncated turn is the special case: the cap cut the tool call the
+      // text was wrapping, and the text already IS the answer. Re-reasoning
+      // would burn the budget a second time for nothing — so name the cut and
+      // point it at the cheap close, not a fresh pass.
       messages.push({
         role: "user",
-        content:
-          "Respond with a tool call, not plain text. If you just asked the user a question, call `ask_user` with that same question now — written-out questions do not pause the run, so the user never got to answer. Otherwise make progress on the task: call snapshot if you need to see the page, or `done` if the task is complete.",
+        content: turn.truncated
+          ? "You hit the output limit and the tool call at the end was cut off — but your text above is already the full answer. Don't reason or call any other tool: just call `done` now with a one-or-two-sentence summary of that text."
+          : "Respond with a tool call, not plain text. If you just asked the user a question, call `ask_user` with that same question now — written-out questions do not pause the run, so the user never got to answer. Otherwise make progress on the task: call snapshot if you need to see the page, or `done` if the task is complete.",
       });
       continue;
     }
@@ -492,11 +501,36 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       }
 
       if (call.name === "done") {
-        taskDone = true;
-        const summary =
-          (result.data as { summary?: string })?.summary ?? i18n.t("errors.taskComplete");
-        log.info(`run done after step ${step + 1}:`, truncate(summary, 120));
-        callbacks.onDone?.(summary);
+        // The summary is a re-generation slot — the first thing the output cap
+        // cuts, and on a truncated call parseToolArgs already reduced it to {}.
+        // The answer the model actually produced is the text it streamed this
+        // turn: that IS the report, so fall back to it before ever landing on
+        // the hollow "task complete" line.
+        const fromArgs = (result.data as { summary?: string })?.summary?.trim();
+        const fallback = turn.text.trim();
+        const summary = fromArgs || fallback;
+        if (summary) {
+          taskDone = true;
+          log.info(`run done after step ${step + 1}:`, truncate(summary, 120));
+          callbacks.onDone?.(summary);
+        } else if (turn.truncated && !retriedTruncatedDone) {
+          // Cut so deep even the text is empty: closing on "task complete"
+          // would throw away a run's whole answer. One cheap retry — the
+          // recovery note tells the model the report already exists in its
+          // history, so it re-says it short instead of reasoning a second pass.
+          retriedTruncatedDone = true;
+          log.warn("done arrived empty on a truncated turn — asking for the answer plainly");
+          results.push({
+            id: call.id,
+            content: JSON.stringify({
+              error: i18n.t("errors.doneLostSummary"),
+            }),
+          });
+        } else {
+          // Not truncated, or the retry already failed — close on the line.
+          taskDone = true;
+          callbacks.onDone?.(i18n.t("errors.taskComplete"));
+        }
       } else if (call.name === "ask_user") {
         // The question closes the run: the panel renders it as a card and the
         // answer arrives as the next message, with this run replayed as history.
