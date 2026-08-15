@@ -7,6 +7,7 @@ import { pendingAskId } from "./ask-gate";
 import { useNow, useQueueBusy } from "./hooks";
 import { TipLine } from "@/modules/tips/ui";
 import { Button } from "@/components/Button";
+import { ChevronRightIcon } from "@/components/Icon";
 import type { BridgeActive } from "@/shared/protocol";
 import { formatDuration, formatTokens } from "@/lib/format";
 
@@ -222,41 +223,59 @@ export function RunStatus() {
 /** How many plan rows the footer shows — the full card lives in the transcript. */
 const PEEK_ROWS = 4;
 
+const PEEK_WRAP =
+  "flex flex-col gap-0.5 pl-[1.125rem] text-xs text-brand-800/80 dark:text-brand-200/70";
+
 /**
  * A window onto the checklist: the step just finished (for orientation), the
  * one in flight, and what comes next. When the plan is bigger than the window,
- * counts stand in for the hidden rows instead of pretending the list is short.
+ * the counts line stands in for the hidden rows instead of pretending the list
+ * is short — and doubles as the handle that unfolds them here, where the eye
+ * already is. Only then: with nothing hidden the window IS the plan, so it
+ * stays inert rather than promising an expansion that would change nothing.
+ * Expanded rows wrap (you opened them to read them) and scroll past ten, so a
+ * twenty-step plan can never push the transcript off the panel.
  */
 function PlanPeek({ steps, current }: { steps: string[]; current: number }) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
   const done = Math.min(current, steps.length);
   const from = Math.max(0, current - 1);
   const peek = steps.slice(from, from + PEEK_ROWS);
-  const hiddenBefore = from;
-  const hiddenAfter = steps.length - (from + peek.length);
+  const hidden = steps.length - peek.length;
+  const offset = open ? 0 : from;
+
+  const rows = (open ? steps : peek).map((step, j) => {
+    const i = offset + j;
+    return (
+      <div
+        key={i}
+        className={
+          i === current ? "flex items-start gap-1.5 font-medium" : "flex items-start gap-1.5"
+        }
+      >
+        <PlanMark index={i} current={current} />
+        <span className={open ? "min-w-0" : "truncate"}>{step}</span>
+      </div>
+    );
+  });
+
+  if (hidden === 0) return <div className={PEEK_WRAP}>{rows}</div>;
 
   return (
-    <div className="flex flex-col gap-0.5 pl-[1.125rem] text-xs text-brand-800/80 dark:text-brand-200/70">
-      {peek.map((step, j) => {
-        const i = from + j;
-        return (
-          <div
-            key={i}
-            className={
-              i === current ? "flex items-start gap-1.5 font-medium" : "flex items-start gap-1.5"
-            }
-          >
-            <PlanMark index={i} current={current} />
-            <span className="truncate">{step}</span>
-          </div>
-        );
-      })}
-      {(hiddenBefore > 0 || hiddenAfter > 0) && (
-        <div className="opacity-70">
-          {t("plan.peekMore", { done, pending: steps.length - done })}
-        </div>
-      )}
-    </div>
+    <button
+      type="button"
+      aria-expanded={open}
+      title={t("plan.peekToggle")}
+      onClick={() => setOpen((v) => !v)}
+      className={`${PEEK_WRAP} cursor-pointer text-left hover:text-brand-900 dark:hover:text-brand-100`}
+    >
+      <div className="flex max-h-40 flex-col gap-0.5 overflow-y-auto">{rows}</div>
+      <div className="flex items-center gap-1 opacity-70">
+        <ChevronRightIcon className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
+        {t("plan.peekMore", { done, pending: steps.length - done })}
+      </div>
+    </button>
   );
 }
 

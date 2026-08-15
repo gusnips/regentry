@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
-import { useWalkAwayReady } from "./hooks";
+import { useWalkAway } from "./hooks";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 
@@ -27,24 +27,42 @@ function ThisPageIcon() {
 /**
  * Where the run drives, as the composer card's left anchor. Two states, so a
  * click flips it — no popup for one bit of information. The current mode is the
- * label (self-explanatory); the tooltip says what the other mode does. Mid-run
- * the flip is live: turning "In background" on with the plan gate behind the
- * run closes the panel on the spot — the walk-away the run band used to carry
- * as a separate button, folded into the one control that already meant it.
- * Before the gate (and whenever idle) it is only a preference for the run.
+ * label (self-explanatory); the tooltip says what the other mode does.
+ *
+ * Once a run of this panel's own is live the question is settled — it is
+ * already on its tab, and nothing a toggle says can move it. So the control
+ * becomes the one move still on the table: leave it to work alone. Disabled
+ * while the plan gate is still ahead, because closing then strands the approval
+ * on a notification — the tooltip says so rather than leaving a dead grey
+ * button. It goes back to being a preference the moment the run ends.
  */
 export function RunTargetToggle() {
   const { t } = useTranslation();
   const runTarget = useConversationStore((s) => s.runTarget);
   const setRunTarget = useConversationStore((s) => s.setRunTarget);
-  const walkAwayReady = useWalkAwayReady();
+  const { live, ready } = useWalkAway();
   const thisPage = runTarget === "thisPage";
 
-  const flip = () => {
-    const next = thisPage ? "background" : "thisPage";
-    setRunTarget(next);
-    if (next === "background" && walkAwayReady) window.close();
-  };
+  if (live) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={!ready}
+        // Deliberately no setRunTarget: this is an act on the run in flight,
+        // not a vote on where the next one goes.
+        onClick={() => window.close()}
+        title={t(ready ? "run.backgroundNowTitle" : "run.backgroundNowGated")}
+        className="flex shrink-0 items-center gap-1.5 hover:text-neutral-900 dark:hover:text-neutral-100"
+      >
+        <BackgroundIcon />
+        <span className="truncate">{t("run.backgroundNow")}</span>
+      </Button>
+    );
+  }
+
+  const flip = () => setRunTarget(thisPage ? "background" : "thisPage");
 
   return (
     <Button

@@ -339,6 +339,7 @@
     "title": "Plano",
     "progress": "{{done}}/{{total}}",
     "peekMore": "{{done}} concluídos · {{pending}} restantes",
+    "peekToggle": "Mostrar ou ocultar o plano inteiro",
     "approvalTitle": "Aprovar este plano?",
     "reapprovalTitle": "O plano mudou — aprovar o novo?",
     "approve": "Aprovar",
@@ -428,6 +429,9 @@
     "background": "Em segundo plano",
     "thisPage": "Esta página",
     "targetAria": "Destino: {{target}}",
+    "backgroundNow": "Rodar em segundo plano",
+    "backgroundNowTitle": "Fecha o painel e deixa esta execução terminar sozinha — ela nunca mexe na sua tela. Reabra quando quiser acompanhar.",
+    "backgroundNowGated": "Aprove o plano primeiro — fechar agora deixaria a aprovação presa em uma notificação.",
     "targetTitle": "“Esta página” deixa o chat aberto para você acompanhar; “Em segundo plano” fecha o painel e segue trabalhando sozinho, sem tirar a tela de você — trocar durante a tarefa já vale (com o plano aprovado)"
   },
   "queue": {

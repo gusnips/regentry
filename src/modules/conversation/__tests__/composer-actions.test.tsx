@@ -1,10 +1,11 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-// The composer's two new behaviors: the morph button (one slot — ↑ Send/Queue
+// The composer's two behaviors: the morph button (one slot — ↑ Send/Queue
 // whenever there's text, ■ Stop only while steering with an empty input) and
-// the run-target toggle's live flip (mid-run "In background" closes the panel
-// once the plan gate is past; idle or parked, it's only a preference). Same
-// createRoot+act seam as chat-input-slash.test.tsx.
+// the run-target control, which is a two-state preference while idle and
+// becomes the walk-away action ("Run in background") while a run of this
+// panel's own is live. Plus the run band's plan peek, which unfolds the steps
+// it had to hide. Same createRoot+act seam as chat-input-slash.test.tsx.
 
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -13,6 +14,7 @@ import { setI18n } from "react-i18next";
 import { i18n } from "@/i18n";
 import { ChatInput } from "../ui/ChatInput";
 import { RunTargetToggle } from "../ui/RunTargetToggle";
+import { RunStatus } from "../ui/RunStatus";
 import { useConversationStore } from "../ui/store";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -109,7 +111,7 @@ describe("morph button", () => {
   });
 });
 
-describe("run-target toggle walk-away flip", () => {
+describe("run target: a preference while idle, the walk-away while running", () => {
   const toggleButton = (h: Harness) => {
     const btn = h.container.querySelector("button");
     if (!btn) throw new Error("no toggle");
@@ -122,13 +124,14 @@ describe("run-target toggle walk-away flip", () => {
     });
     const close = vi.spyOn(window, "close").mockImplementation(() => {});
     const h = await render(<RunTargetToggle />);
+    expect(toggleButton(h).textContent).toBe("This page");
     await click(toggleButton(h));
     expect(useConversationStore.getState().runTarget).toBe("background");
     expect(close).not.toHaveBeenCalled();
     await unmount(h);
   });
 
-  it("live run past the plan gate: the flip closes the panel", async () => {
+  it("live run past the plan gate: the control is the walk-away action", async () => {
     useConversationStore.setState({
       status: "running",
       runStartedAt: Date.now(),
@@ -136,13 +139,15 @@ describe("run-target toggle walk-away flip", () => {
     });
     const close = vi.spyOn(window, "close").mockImplementation(() => {});
     const h = await render(<RunTargetToggle />);
+    expect(toggleButton(h).textContent).toBe("Run in background");
     await click(toggleButton(h));
-    expect(useConversationStore.getState().runTarget).toBe("background");
     expect(close).toHaveBeenCalledTimes(1);
+    // An act on the run in flight, not a vote on where the next one goes.
+    expect(useConversationStore.getState().runTarget).toBe("thisPage");
     await unmount(h);
   });
 
-  it("parked on the plan approval: the flip cannot strand the gate", async () => {
+  it("parked on the plan approval: the action is there but cannot strand the gate", async () => {
     useConversationStore.setState({
       status: "running",
       runStartedAt: Date.now(),
@@ -150,9 +155,61 @@ describe("run-target toggle walk-away flip", () => {
     });
     const close = vi.spyOn(window, "close").mockImplementation(() => {});
     const h = await render(<RunTargetToggle />);
+    expect(toggleButton(h).disabled).toBe(true);
     await click(toggleButton(h));
-    expect(useConversationStore.getState().runTarget).toBe("background");
     expect(close).not.toHaveBeenCalled();
+    await unmount(h);
+  });
+});
+
+describe("the run band's plan peek", () => {
+  const PLAN = ["find the listing", "open it", "read the price", "check stock", "report back"];
+  // The finished band: a stored last-run summary plus the run's plan card.
+  const settled = () => {
+    useConversationStore.setState({
+      status: "idle",
+      activeId: "c1",
+      conversations: [
+        {
+          id: "c1",
+          title: "t",
+          createdAt: 0,
+          updatedAt: 0,
+          messageCount: 1,
+          lastRun: { startedAt: 0, endedAt: 1000, input: 1, output: 1, ok: true },
+        },
+      ],
+      messages: [{ id: "p1", role: "plan", content: "", steps: PLAN, current: 5, timestamp: 1 }],
+    });
+  };
+  const peek = (h: Harness) =>
+    [...h.container.querySelectorAll("button")].find((b) => b.hasAttribute("aria-expanded"));
+
+  it("unfolds the steps it hid, and folds them back", async () => {
+    settled();
+    const h = await render(<RunStatus />);
+    const button = peek(h);
+    expect(button).toBeDefined();
+    // Collapsed: the window ends at the last step, the earlier ones are counts.
+    expect(button!.textContent).not.toContain("find the listing");
+    expect(button!.textContent).toContain("5 done · 0 to go");
+
+    await click(button!);
+    expect(peek(h)!.textContent).toContain("find the listing");
+    await click(peek(h)!);
+    expect(peek(h)!.textContent).not.toContain("find the listing");
+    await unmount(h);
+  });
+
+  it("promises no expansion when the whole plan already fits", async () => {
+    settled();
+    useConversationStore.setState({
+      messages: [
+        { id: "p1", role: "plan", content: "", steps: ["one", "two"], current: 1, timestamp: 1 },
+      ],
+    });
+    const h = await render(<RunStatus />);
+    expect(peek(h)).toBeUndefined();
     await unmount(h);
   });
 });

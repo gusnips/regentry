@@ -29,17 +29,21 @@ export function useNow(active: boolean): number {
 }
 
 /**
- * May the panel walk away from the run right now? The plan gate must be behind
- * the run — before that the panel is the only place the approval can be
- * answered, and closing strands it on an OS notification the user has to click
- * their way back from. A panel reopened mid-run missed the handshake, so the
- * transcript stands in: a plan card from THIS run (its timestamp keeps a
- * previous run's card from passing) means the gate is past. Parked states (an
- * armed approval here, the board's "awaiting" mark) answer no outright. The
- * run-target toggle's mid-run flip consumes this; idle — no live run at all —
- * is never ready, however many old plan cards the transcript holds.
+ * May the panel walk away from the run right now? Two bits, because the
+ * composer's control needs both: `live` says this panel has a run of its own to
+ * walk away FROM (so the target control becomes the walk-away action), `ready`
+ * says it may go now.
+ *
+ * The plan gate must be behind the run — before that the panel is the only
+ * place the approval can be answered, and closing strands it on an OS
+ * notification the user has to click their way back from. A panel reopened
+ * mid-run missed the handshake, so the transcript stands in: a plan card from
+ * THIS run (its timestamp keeps a previous run's card from passing) means the
+ * gate is past. Parked states (an armed approval here, the board's "awaiting"
+ * mark) answer no outright. Idle — no live run at all — is never ready, however
+ * many old plan cards the transcript holds.
  */
-export function useWalkAwayReady(): boolean {
+export function useWalkAway(): { live: boolean; ready: boolean } {
   const status = useConversationStore((s) => s.status);
   const runStartedAt = useConversationStore((s) => s.runStartedAt);
   const bridgeActive = useConversationStore((s) => s.bridgeActive);
@@ -63,7 +67,8 @@ export function useWalkAwayReady(): boolean {
     : !bridgeActive && boardRun
       ? boardRun.startedAt
       : null;
-  if (liveStartedAt === null) return false;
-  if (awaitingApproval || boardRun?.awaiting === true) return false;
-  return localLive ? planApproved : plan !== undefined && plan.timestamp >= liveStartedAt;
+  if (liveStartedAt === null) return { live: false, ready: false };
+  if (awaitingApproval || boardRun?.awaiting === true) return { live: true, ready: false };
+  const ready = localLive ? planApproved : plan !== undefined && plan.timestamp >= liveStartedAt;
+  return { live: true, ready };
 }
