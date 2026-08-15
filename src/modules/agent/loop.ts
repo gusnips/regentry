@@ -487,7 +487,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       messages.push({
         role: "user",
         content: turn.truncated
-          ? "You hit the output limit and the tool call at the end was cut off — but your text above is already the full answer. Don't reason or call any other tool: call `done` now, and put that same answer in the summary, restated in full."
+          ? "You hit the output limit and the tool call at the end was cut off — but your text above is already the full answer. Don't reason or call any other tool: call `done` now, and put that same answer in the summary, restated in full — if it's long, break it into smaller pieces so it isn't cut again."
           : "Respond with a tool call, not plain text. If you just asked the user a question, call `ask_user` with that same question now — written-out questions do not pause the run, so the user never got to answer. Otherwise make progress on the task: call snapshot if you need to see the page, or `done` if the task is complete.",
       });
       continue;
