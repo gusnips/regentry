@@ -1,7 +1,7 @@
 # TabRunner Terms of Use
 
 _Last updated: 2026-08-09 · Applies to TabRunner for Chromium browsers (Chrome, Brave, Edge, Arc,
-Opera, Vivaldi), version 0.1.0._
+Opera, Vivaldi)._
 
 **The short version:** TabRunner is open-source software you run in your own browser, with your
 own AI provider. There is no TabRunner service to sign up for or depend on. You are responsible

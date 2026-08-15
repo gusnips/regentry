@@ -87,6 +87,9 @@ const pulseTimers = new Map<TabId, ReturnType<typeof setInterval>>();
  * manages its favicon dynamically (unread counters) can still out-vote it mid-run —
  * we don't fight the page, the badge keeps carrying the signal.
  *
+ * scripts/shoot-store.ts hand-mirrors this markup for store screenshots —
+ * change one, change both.
+ *
  * `waiting` swaps the pulsing dot for the still "?" the favicon and the pill
  * speak: the run is alive but blocked on the user, and motion would be a lie.
  */

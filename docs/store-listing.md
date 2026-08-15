@@ -133,7 +133,7 @@ English · Português (Brasil) · Español. Light and dark theme, or follow your
 <summary><strong>Português (Brasil)</strong></summary>
 
 ```markdown
-## Você dá o objetivo. Ele cuida das abas.
+## Você dá o objetivo. Ele pilota as abas.
 
 O TabRunner é um agente que vive no seu navegador e trabalha dentro dele — não em um sandbox. Ele
 usa a aba que você já está vendo, aproveita suas sessões logadas e lê, clica e digita nos sites que
@@ -191,7 +191,7 @@ English · Português (Brasil) · Español. Tema claro e escuro, ou seguindo o s
 <summary><strong>Español</strong></summary>
 
 ```markdown
-## Tú das el objetivo. Él maneja las pestañas.
+## Tú pones la meta. Él pilota tus pestañas.
 
 TabRunner es un agente que vive en tu navegador y trabaja dentro de él — no en un sandbox. Usa la
 pestaña que ya tienes delante, aprovecha tus sesiones iniciadas y lee, hace clic y escribe en los
@@ -257,7 +257,7 @@ Four **1280×800 PNGs**, uploaded in this order — the first is the card image.
 | 1   | [![Side panel beside a Wikipedia article, task typed but not sent](screenshots/01-side-panel.png)](screenshots/01-side-panel.png) | **Card image.** Wikipedia's "Web browser" article with the side panel beside it, pre-task: the task typed but not yet sent. The panel is the product, not a browser takeover. |
 | 2   | [![A finished run in the panel: plan card, tool trace and summary](screenshots/02-chat.png)](screenshots/02-chat.png)             | A finished run: user bubble, plan card, tool trace, the agent's summary — with the "controlling this tab" badge on the page.                                                  |
 | 3   | [![Options page Providers tab with subscription and API-key rows](screenshots/03-providers.png)](screenshots/03-providers.png)    | The options page's Providers tab: subscription rows (Anthropic, OpenAI) and an API-key row (DeepSeek), active provider highlighted.                                           |
-| 4   | [![Hacker News with a second conversation and the floating status widget](screenshots/04-chat-2.png)](screenshots/04-chat-2.png)  | Hacker News with a second conversation and the floating status widget bottom-right (task · +1 queued · Open · Hide).                                                          |
+| 4   | [![Hacker News with a second conversation and the floating status widget](screenshots/04-chat-2.png)](screenshots/04-chat-2.png)  | Hacker News with a second conversation and the floating status pill bottom-right (task · +1 queued · Hide — the pill itself is the way back to the run).                                                          |
 
 Regenerate with `bun run build && bun run shots` — it rewrites all four in place and refreshes the
 site's webp derivatives when `../site` is checked out. Rerun after any UI rebrand and eyeball them

@@ -254,10 +254,13 @@ async function seed(active: string | null) {
 }
 
 // ── on-page marks (markup mirrors indicator.ts / status-widget.ts) ───────────
+// ponytail: a hand mirror, not the real paint functions — page.evaluate would
+// need the built bundle's internals. When the marks' markup changes, change it
+// here too (the "Open" button drifted invisible for a whole release cycle).
 const BADGE_CSS = `
   display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9999px;
   background:#0b1224ee;color:#e8eefb;font:500 12px/1.2 ui-sans-serif,system-ui,sans-serif;
-  box-shadow:0 2px 12px #0000004d;`;
+  box-shadow:0 2px 12px #0000004d,0 0 0 1px #34d39966;`;
 const AMBER_DOT = `width:6px;height:6px;border-radius:9999px;background:#fbbf24;flex:none;`;
 
 async function injectBadge(page: Page) {
@@ -278,14 +281,14 @@ async function injectWidget(page: Page, task: string, queued: string) {
     (css, dot, t, q) => {
       const el = document.createElement("div");
       el.style.cssText = `position:fixed;bottom:12px;right:12px;z-index:2147483647;${css}`;
+      // The pill's content IS the open control — there is no Open button.
       el.innerHTML =
         `<span style="${dot}"></span>` +
         `<span style="color:#6ee7b7">TabRunner ·</span>` +
         `<span style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t}</span>` +
         (q
-          ? `<span style="padding:1px 6px;border-radius:9999px;background:#34d39933;font-size:11px">${q}</span>`
+          ? `<span style="padding:1px 6px;border-radius:9999px;background:#fbbf2426;color:#fcd34d;font-size:11px">${q}</span>`
           : "") +
-        `<span style="color:#6ee7b7;padding:3px 8px">Open</span>` +
         `<span style="color:#6ee7b7;padding:3px 8px">Hide</span>`;
       document.body.appendChild(el);
     },

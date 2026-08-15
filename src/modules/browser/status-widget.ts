@@ -59,6 +59,9 @@ let lastExclude: number | undefined;
  * side panel simply opens. "Hide" is purely local: it collapses the pill to the
  * status dot, and the dot expands back. The collapsed flag lives on the host's
  * dataset so a repaint (fresh board content re-injects this function) keeps it.
+ *
+ * scripts/shoot-store.ts hand-mirrors this markup for store screenshots —
+ * change one, change both.
  */
 export function paintWidget(
   hostId: string,
