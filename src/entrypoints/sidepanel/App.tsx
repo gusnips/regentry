@@ -18,28 +18,18 @@ import {
 import { SettingsMenu } from "./SettingsMenu";
 import { notePanelOpen, refreshTip } from "@/modules/tips/ui";
 import { Button } from "@/components/Button";
-import { Icon } from "@/components/Icon";
+import { XIcon } from "@/components/Icon";
 import { useTranslation } from "react-i18next";
-
-/** A panel folding shut to the right — "hide this", not "close a window". */
-function ClosePanelIcon() {
-  return (
-    <Icon>
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <path d="M15 4v16M6 9l3 3-3 3" />
-    </Icon>
-  );
-}
 
 /**
  * Close the panel — the run keeps going, which is the whole promise.
  *
  * Always rendered, though Chrome draws its own X right above ours: the browsers
- * that host this panel do not agree on that header (Brave omits it entirely),
- * and we cannot see out of our own document to tell. A control the user never
- * needs costs a corner; a browser where the panel cannot be closed from inside
- * it is a dead end. The glyph is a folding panel rather than an X so the two
- * read as different gestures where both are on screen.
+ * that host this panel do not agree on that header (Brave draws nothing at
+ * all), and `chrome.sidePanel` offers no programmatic close we could sniff to
+ * know — a browser we failed to spot would leave the panel with no way out,
+ * so a second X on Chrome is the price of the one X Brave needs. It takes the
+ * row's end so it sits where the platform's own X does.
  */
 function ClosePanelButton() {
   const { t } = useTranslation();
@@ -52,7 +42,7 @@ function ClosePanelButton() {
       aria-label={t("sidepanel.close")}
       onClick={() => window.close()}
     >
-      <ClosePanelIcon />
+      <XIcon />
     </Button>
   );
 }
@@ -131,13 +121,13 @@ export default function App() {
     <div className="flex h-screen flex-col bg-white dark:bg-neutral-950">
       <header className="border-b border-neutral-200 px-3 pt-2 dark:border-neutral-800">
         {/* Row 1: the open chat's title, then the rare utilities quiet, then the
-            hot action labeled at the row's end. No brand mark: the browser's own
-            side-panel header already sits directly above with our icon and name,
-            and a second wordmark is duplicate chrome. Close leads the utilities
-            rather than taking the row's end — it must not displace New chat, and
-            at the end it would sit directly under the X that Chrome (but not
-            every Chromium) draws. Row 2: who answers and with what, as quiet
-            chips — the header is read a hundred times per change. */}
+            hot action labeled, with Close at the row's end — where the
+            platform's own X sits. A duplicate on Chrome, the only way out on
+            Brave (which draws no header at all): that trade is spelled out on
+            the button. No brand mark: the browser's own side-panel header
+            already sits directly above with our icon and name, and a second
+            wordmark is duplicate chrome. Row 2: who answers and with what, as
+            quiet chips — the header is read a hundred times per change. */}
         <div className="flex items-center gap-1 pb-1">
           <span
             className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-neutral-700 dark:text-neutral-200"
@@ -145,7 +135,6 @@ export default function App() {
           >
             {historyOpen ? "" : chatTitle || t("history.newChat")}
           </span>
-          <ClosePanelButton />
           {!needsProvider && (
             <HistoryToggle open={historyOpen} onToggle={() => setHistoryOpen((v) => !v)} />
           )}
@@ -153,6 +142,7 @@ export default function App() {
           {!needsProvider && (
             <NewChatButton open={historyOpen} onToggle={() => setHistoryOpen((v) => !v)} />
           )}
+          <ClosePanelButton />
         </div>
         {/* The task controls belong to the chat — history browsing hides them.
             The driven tab lives on the live run band, not here: it is run

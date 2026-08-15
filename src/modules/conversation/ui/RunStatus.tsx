@@ -10,6 +10,7 @@ import { Button } from "@/components/Button";
 import { ChevronRightIcon } from "@/components/Icon";
 import type { BridgeActive } from "@/shared/protocol";
 import { formatDuration, formatTokens } from "@/lib/format";
+import { focusTab } from "@/modules/browser";
 
 export function RunStatus() {
   const { t } = useTranslation();
@@ -49,6 +50,11 @@ export function RunStatus() {
   const stop = useConversationStore((s) => s.stop);
   const lastRun = useConversationStore(
     (s) => s.conversations.find((c) => c.id === s.activeId)?.lastRun,
+  );
+  // The last tab a run worked — most recently driven first. The finished band
+  // offers the one move left once the work is done: go look at it.
+  const lastTab = useConversationStore(
+    (s) => s.conversations.find((c) => c.id === s.activeId)?.tabs?.[0],
   );
 
   const idleVerbs = t("run.idle", { returnObjects: true });
@@ -146,6 +152,18 @@ export function RunStatus() {
             {formatDuration(finished.endedAt - finished.startedAt)}
             {finishedNote}
           </span>
+          {lastTab?.tabId !== undefined && (
+            <Button
+              size="sm"
+              variant="quiet-brand"
+              className="-my-0.5 ml-auto shrink-0"
+              onClick={() => void focusTab(lastTab.tabId!)}
+              title={t("run.goToTabTip", { title: lastTab.title })}
+              aria-label={t("run.goToTabTip", { title: lastTab.title })}
+            >
+              {t("run.goToTab")}
+            </Button>
+          )}
         </div>
         {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
       </div>

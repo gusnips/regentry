@@ -416,6 +416,8 @@
       "Vibing"
     ],
     "tokens": "{{count}} tokens",
+    "goToTab": "Go to tab",
+    "goToTabTip": "Bring the tab the run worked to the front — {{title}}",
     "finished": "Done",
     "failed": "Failed",
     "stopped": "Stopped",

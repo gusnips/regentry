@@ -213,3 +213,65 @@ describe("the run band's plan peek", () => {
     await unmount(h);
   });
 });
+
+describe("the finished band's go-to-tab action", () => {
+  const goToTab = (h: Harness) =>
+    [...h.container.querySelectorAll("button")].find((b) => b.textContent === "Go to tab");
+
+  it("offers the run's last tab, and the click brings it forward", async () => {
+    useConversationStore.setState({
+      status: "idle",
+      activeId: "c1",
+      conversations: [
+        {
+          id: "c1",
+          title: "t",
+          createdAt: 0,
+          updatedAt: 0,
+          messageCount: 1,
+          lastRun: { startedAt: 0, endedAt: 1000, input: 1, output: 1, ok: true },
+          tabs: [{ url: "https://example.com/cart", title: "Cart", tabId: 42 }],
+        },
+      ],
+    });
+    const tabs = {
+      update: vi.fn(async () => ({})),
+      get: vi.fn(async () => ({ windowId: 7 })),
+    };
+    const windows = { update: vi.fn(async () => ({})) };
+    (globalThis as Record<string, unknown>).chrome = {
+      ...((globalThis as Record<string, unknown>).chrome ?? {}),
+      tabs,
+      windows,
+    };
+    const h = await render(<RunStatus />);
+    const button = goToTab(h);
+    expect(button).toBeDefined();
+
+    await click(button!);
+    // The user's own click pulls the window too — they asked to see the tab.
+    expect(windows.update).toHaveBeenCalledWith(7, { focused: true });
+    expect(tabs.update).toHaveBeenCalledWith(42, { active: true });
+    await unmount(h);
+  });
+
+  it("no tab to go to, no offer", async () => {
+    useConversationStore.setState({
+      status: "idle",
+      activeId: "c1",
+      conversations: [
+        {
+          id: "c1",
+          title: "t",
+          createdAt: 0,
+          updatedAt: 0,
+          messageCount: 1,
+          lastRun: { startedAt: 0, endedAt: 1000, input: 1, output: 1, ok: true },
+        },
+      ],
+    });
+    const h = await render(<RunStatus />);
+    expect(goToTab(h)).toBeUndefined();
+    await unmount(h);
+  });
+});

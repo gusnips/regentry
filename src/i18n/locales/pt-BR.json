@@ -416,6 +416,8 @@
       "Gingando"
     ],
     "tokens": "{{count}} tokens",
+    "goToTab": "Ir para a aba",
+    "goToTabTip": "Traz para a frente a aba em que a execução trabalhou — {{title}}",
     "finished": "Concluído",
     "failed": "Falhou",
     "stopped": "Interrompido",

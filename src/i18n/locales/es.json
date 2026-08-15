@@ -416,6 +416,8 @@
       "Zumbando"
     ],
     "tokens": "{{count}} tokens",
+    "goToTab": "Ir a la pestaña",
+    "goToTabTip": "Trae al frente la pestaña en la que trabajó la ejecución — {{title}}",
     "finished": "Listo",
     "failed": "Falló",
     "stopped": "Detenido",
