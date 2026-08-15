@@ -24,9 +24,18 @@ built locally by `bun run zip:store`. It is the same build with the manifest `ke
 the store rejects an upload that declares one. Never offer it as a download: without the key an
 unpacked install lands on a per-machine id.
 
-## Install instructions to present (until the store listing is approved)
+## Install instructions to present
 
-**The zip, loaded unpacked, is the only install the site offers:**
+The store listing is live (2026-08-15), so **Add to Chrome** (`LINKS.store`) is the primary
+install and the unpacked zip is the fallback for anyone who needs it (a specific version, testing,
+or a Chromium without store access).
+
+**Primary — the store listing:**
+
+- One button, *Add to Chrome*, to `LINKS.store`. One-click install, auto-updates, no
+  developer-mode nag.
+
+**Fallback — the zip, loaded unpacked:**
 
 1. Download and unzip.
 2. `chrome://extensions` → Developer mode → **Load unpacked** → select the unzipped folder.
@@ -35,21 +44,18 @@ unpacked install lands on a per-machine id.
 the store's own flow, and the store signs with a key only Google holds — so a self-signed CRX is
 refused (`CRX_REQUIRED_PROOF_MISSING`) and the store's own CRX has no public URL a site may
 hotlink. The per-revision link the dashboard shows (`.../revision/000NN/package/main/crx/3`) is a
-dashboard preview: it changes every revision and Chrome blocks installing it from a page. So the
-flip when the listing lands is **zip → the listing URL** (`LINKS.store`, an *Add to Chrome*
-button), never zip → any CRX. Until then the store link is plain text, not a dead button.
+dashboard preview: it changes every revision and Chrome blocks installing it from a page. Never
+link a CRX — only `LINKS.store`.
 
-Releases up to v0.2.2 still carry a `.crx` asset, so the site's "the .crx won't drag-and-drop
-install — use the ZIP" caveat stays accurate and stays up until the store flip rewrites that
-section.
+Caveats the site must state plainly where they apply:
 
-Caveats the site must state plainly:
-
-- Unpacked installs show Chrome's "disable developer mode extensions" nag on each restart.
-- The store version will install as a **separate** extension (different ID); users should remove
-  the unpacked one after migrating. Browser-stored settings don't carry over.
-- No auto-update: new versions are manual re-installs from the site (this is why the download
-  links are `latest` aliases — the instructions never change).
+- The store and the unpacked build share one extension ID (`manifest.key`) — Chrome will not run
+  both, so a user with the zip must remove it *before* installing from the store. Settings do not
+  carry over.
+- Unpacked installs show Chrome's "disable developer mode extensions" nag on each restart (this
+  is the unpacked fallback's burden, absent from the store build).
+- No auto-update for the unpacked build: new versions are manual re-installs from the site (the
+  download links are `latest` aliases, so the instructions never change).
 
 ## Content sources in this repo
 

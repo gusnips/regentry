@@ -5,20 +5,17 @@ Source of truth for the store submission. Every block below is pasted verbatim i
 groups them: **Store listing** (§1–§3) and **Privacy practices** (§4). When a feature lands, update
 the matching block here first.
 
-> ### Status — rejected 2026-08-12 (keyword spam), fix staged
+> ### Status — approved 2026-08-15 🎉
 >
-> **v0.2.3 rejected** — "Keyword Spam" (ref Yellow Argon): the provider bullet in §2 enumerated
-> every preset by name, and review read it as an excessive keyword list. The names are out of all
-> three locales — providers and browser compatibility are now described generically.
+> **The listing is live** at the store URL in §1. Two follow-ups came out of it:
 >
-> This is a metadata-only fix: **paste the corrected §2 blocks into the dashboard and resubmit the
-> same v0.2.3 upload** — no new package, per [§5](#5-when-review-returns). The review is no longer
-> in flight, so editing the listing now is safe; the clock restarts on resubmission either way.
->
-> Also staged for the same resubmission: §2's example task is now the site's flagship
-> (invoice → expense report, same wording in all three locales), and step 2 dropped the
-> accessibility-tree jargon — the agent reads pages and manipulates the DOM, and the listing
-> doesn't need either term.
+> - **The description renders raw markup.** The prior draft assumed CWS renders a Markdown subset
+>   and pasted `##`, `**bold**` and `-` lists — the live page shows those characters literally.
+>   §2 is now plain text, and the store description must stay that way. Paste the corrected §2
+>   blocks and resubmit (a description edit needs no new package).
+> - **`LINKS.store` flips from plain text to an *Add to Chrome* button** on the site, and the
+>   install instructions that said "until the store listing is approved" stop being true —
+>   [`docs/website-brief.md`](website-brief.md) is the contract to update in the same sitting.
 
 ---
 
@@ -70,32 +67,38 @@ Un agente de IA que maneja tu navegador real — pestañas, sesiones y accesos �
 
 ## 2. Full description
 
-One per listing locale. CWS renders a Markdown subset — `##`/`###`, `**bold**`, `-` lists, links —
-so these paste as-is.
+One per listing locale. **Plain text — no Markdown at all.** The store's description field renders
+nothing: `##`, `**bold**`, `-` lists, and backticks all display as literal characters (this bit
+the approved listing). Section lines are ALL CAPS, items are whole sentences on their own line —
+the structure reads without any markup.
 
 <details open>
 <summary><strong>English</strong> (default listing language)</summary>
 
-```markdown
-## You give the goal. It runs the tabs.
+```text
+You give the goal. It runs the tabs.
 
 TabRunner is a browser agent that lives in your browser and works in it — not in a sandbox. It
 works the tab you're already on, uses your logged-in sessions, and reads, clicks and types on the
 sites you already use, until the task you described is done.
 
-- **Works in your real browser** — your existing logins are its sessions. No setup on every site,
-  no fake profile, no separate account.
-- **Bring your own provider** — sign in with an AI subscription you already pay for, or paste an
-  API key: 15 presets cover the major cloud and local providers, and a custom endpoint accepts
-  anything speaking a standard API format. No vendor lock-in, no relay, no TabRunner server.
-- **Your credentials stay yours** — a key or a sign-in goes straight from the extension to your
-  provider. Nothing is stored outside Chrome. No account, no telemetry.
-- **Trusted input** — clicks and keystrokes go through the Chrome DevTools Protocol, so they are
-  genuine trusted events, not synthetic dispatches sites can ignore.
-- **See the work** — a live plan, current action, token spend and elapsed time while the agent
-  runs. Every step is logged in the conversation.
+Works in your real browser — your existing logins are its sessions. No setup on every site, no
+fake profile, no separate account.
 
-## How it works
+Bring your own provider — sign in with an AI subscription you already pay for, or paste an API
+key: 15 presets cover the major cloud and local providers, and a custom endpoint accepts anything
+speaking a standard API format. No vendor lock-in, no relay, no TabRunner server.
+
+Your credentials stay yours — a key or a sign-in goes straight from the extension to your
+provider. Nothing is stored outside Chrome. No account, no telemetry.
+
+Trusted input — clicks and keystrokes go through the Chrome DevTools Protocol, so they are
+genuine trusted events, not synthetic dispatches sites can ignore.
+
+See the work — a live plan, current action, token spend and elapsed time while the agent runs.
+Every step is logged in the conversation.
+
+HOW IT WORKS
 
 1. Describe a task in the side panel — e.g. "pull the invoice from my inbox into the expense
    report".
@@ -103,26 +106,32 @@ sites you already use, until the task you described is done.
    page, clicking, typing, scrolling — with real user input.
 3. Watch it work step by step, or send it to the background and get a notification when it's done.
 
-## Private by design
+PRIVATE BY DESIGN
 
-- No TabRunner server exists. The extension speaks to your provider directly.
-- Provider configs and conversation history live in `chrome.storage` on this device.
-- The model never receives raw HTML — it works from a compact semantic tree of the page, and
-  sensitive fields (passwords, one-time codes, card numbers) never leave the page.
-- Works on Chrome and other Chromium-based browsers.
+No TabRunner server exists. The extension speaks to your provider directly.
 
-## Guardrails
+Provider configs and conversation history live in chrome.storage on this device.
 
-- **You approve the plan** — TabRunner cannot click, type or navigate until you've okayed what it
-  intends to do.
-- **Ask before acting** — consequential actions (paying, sending, deleting) come back for your
-  confirmation in the panel before they happen.
-- **Stop is real** — Esc or the Stop button ends the run on the spot; anything you've already
-  typed becomes the next task.
-- **Reasoning effort** — pin `none` → `max` per task, or leave Auto and TabRunner runs the newest
-  model your endpoint lists.
+The model never receives raw HTML — it works from a compact semantic tree of the page, and
+sensitive fields (passwords, one-time codes, card numbers) never leave the page.
 
-## Languages
+Works on Chrome and other Chromium-based browsers.
+
+GUARDRAILS
+
+You approve the plan — TabRunner cannot click, type or navigate until you've okayed what it
+intends to do.
+
+Ask before acting — consequential actions (paying, sending, deleting) come back for your
+confirmation in the panel before they happen.
+
+Stop is real — Esc or the Stop button ends the run on the spot; anything you've already typed
+becomes the next task.
+
+Reasoning effort — pin none to max per task, or leave Auto and TabRunner runs the newest model
+your endpoint lists.
+
+LANGUAGES
 
 English · Português (Brasil) · Español. Light and dark theme, or follow your OS.
 ```
@@ -132,27 +141,30 @@ English · Português (Brasil) · Español. Light and dark theme, or follow your
 <details>
 <summary><strong>Português (Brasil)</strong></summary>
 
-```markdown
-## Você dá o objetivo. Ele pilota as abas.
+```text
+Você dá o objetivo. Ele pilota as abas.
 
 O TabRunner é um agente que vive no seu navegador e trabalha dentro dele — não em um sandbox. Ele
 usa a aba que você já está vendo, aproveita suas sessões logadas e lê, clica e digita nos sites que
 você já usa, até concluir a tarefa que você descreveu.
 
-- **Funciona no seu navegador de verdade** — seus logins atuais são as sessões dele. Sem configurar
-  cada site, sem perfil falso, sem conta separada.
-- **Traga o seu provedor** — entre com uma assinatura de IA que você já paga, ou cole uma chave de
-  API: 15 presets cobrem os principais provedores em nuvem e locais, e um endpoint personalizado
-  aceita qualquer serviço em um formato de API padrão. Sem lock-in, sem relay, sem servidor do
-  TabRunner.
-- **Suas credenciais continuam suas** — a chave ou o login vai direto da extensão para o seu
-  provedor. Nada é guardado fora do Chrome. Sem conta, sem telemetria.
-- **Entrada confiável** — cliques e teclas passam pelo Chrome DevTools Protocol, então são eventos
-  confiáveis de verdade, não disparos sintéticos que os sites podem ignorar.
-- **Veja o trabalho acontecer** — plano ao vivo, ação atual, tokens gastos e tempo decorrido
-  enquanto o agente trabalha. Cada passo fica registrado na conversa.
+Funciona no seu navegador de verdade — seus logins atuais são as sessões dele. Sem configurar
+cada site, sem perfil falso, sem conta separada.
 
-## Como funciona
+Traga o seu provedor — entre com uma assinatura de IA que você já paga, ou cole uma chave de API:
+15 presets cobrem os principais provedores em nuvem e locais, e um endpoint personalizado aceita
+qualquer serviço em um formato de API padrão. Sem lock-in, sem relay, sem servidor do TabRunner.
+
+Suas credenciais continuam suas — a chave ou o login vai direto da extensão para o seu provedor.
+Nada é guardado fora do Chrome. Sem conta, sem telemetria.
+
+Entrada confiável — cliques e teclas passam pelo Chrome DevTools Protocol, então são eventos
+confiáveis de verdade, não disparos sintéticos que os sites podem ignorar.
+
+Veja o trabalho acontecer — plano ao vivo, ação atual, tokens gastos e tempo decorrido enquanto o
+agente trabalha. Cada passo fica registrado na conversa.
+
+COMO FUNCIONA
 
 1. Descreva uma tarefa no painel lateral — por exemplo: "pegue a nota fiscal no meu e-mail e lance
    no relatório de despesas".
@@ -161,26 +173,32 @@ você já usa, até concluir a tarefa que você descreveu.
 3. Acompanhe passo a passo, ou mande a tarefa para segundo plano e receba uma notificação quando
    terminar.
 
-## Privacidade por padrão
+PRIVACIDADE POR PADRÃO
 
-- Não existe servidor do TabRunner. A extensão fala direto com o seu provedor.
-- Configurações de provedor e histórico de conversas ficam no `chrome.storage`, neste dispositivo.
-- O modelo nunca recebe o HTML bruto — ele trabalha com uma árvore semântica compacta da página, e
-  campos sensíveis (senhas, códigos de uso único, números de cartão) não saem da página.
-- Funciona no Chrome e em outros navegadores baseados em Chromium.
+Não existe servidor do TabRunner. A extensão fala direto com o seu provedor.
 
-## Limites e controle
+Configurações de provedor e histórico de conversas ficam no chrome.storage, neste dispositivo.
 
-- **Você aprova o plano** — o TabRunner não clica, não digita e não navega antes de você aprovar o
-  que ele pretende fazer.
-- **Pergunta antes de agir** — ações com consequência (pagar, enviar, excluir) voltam para você
-  confirmar no painel antes de acontecerem.
-- **Parar é parar mesmo** — Esc ou o botão Parar encerra a execução na hora; o que você já tiver
-  digitado vira a próxima tarefa.
-- **Esforço de raciocínio** — fixe de `none` a `max` por tarefa, ou deixe em Auto e o TabRunner usa
-  o modelo mais recente que o seu endpoint listar.
+O modelo nunca recebe o HTML bruto — ele trabalha com uma árvore semântica compacta da página, e
+campos sensíveis (senhas, códigos de uso único, números de cartão) não saem da página.
 
-## Idiomas
+Funciona no Chrome e em outros navegadores baseados em Chromium.
+
+LIMITES E CONTROLE
+
+Você aprova o plano — o TabRunner não clica, não digita e não navega antes de você aprovar o que
+ele pretende fazer.
+
+Pergunta antes de agir — ações com consequência (pagar, enviar, excluir) voltam para você
+confirmar no painel antes de acontecerem.
+
+Parar é parar mesmo — Esc ou o botão Parar encerra a execução na hora; o que você já tiver
+digitado vira a próxima tarefa.
+
+Esforço de raciocínio — fixe de none a max por tarefa, ou deixe em Auto e o TabRunner usa o
+modelo mais recente que o seu endpoint listar.
+
+IDIOMAS
 
 English · Português (Brasil) · Español. Tema claro e escuro, ou seguindo o sistema.
 ```
@@ -190,27 +208,31 @@ English · Português (Brasil) · Español. Tema claro e escuro, ou seguindo o s
 <details>
 <summary><strong>Español</strong></summary>
 
-```markdown
-## Tú pones la meta. Él pilota tus pestañas.
+```text
+Tú pones la meta. Él pilota tus pestañas.
 
 TabRunner es un agente que vive en tu navegador y trabaja dentro de él — no en un sandbox. Usa la
 pestaña que ya tienes delante, aprovecha tus sesiones iniciadas y lee, hace clic y escribe en los
 sitios que ya usas, hasta terminar la tarea que describiste.
 
-- **Funciona en tu navegador real** — tus accesos actuales son sus sesiones. Sin configurar cada
-  sitio, sin perfil falso, sin cuenta aparte.
-- **Trae tu propio proveedor** — inicia sesión con una suscripción de IA que ya pagas, o pega una
-  clave de API: 15 preajustes cubren los principales proveedores en la nube y locales, y un
-  endpoint personalizado acepta cualquier servicio con un formato de API estándar. Sin dependencia
-  de un proveedor, sin relay, sin servidor de TabRunner.
-- **Tus credenciales siguen siendo tuyas** — la clave o el inicio de sesión va directo de la
-  extensión a tu proveedor. Nada se guarda fuera de Chrome. Sin cuenta, sin telemetría.
-- **Entrada confiable** — los clics y las teclas pasan por el Chrome DevTools Protocol, así que son
-  eventos confiables de verdad, no disparos sintéticos que los sitios pueden ignorar.
-- **Mira el trabajo** — plan en vivo, acción actual, tokens gastados y tiempo transcurrido mientras
-  el agente trabaja. Cada paso queda registrado en la conversación.
+Funciona en tu navegador real — tus accesos actuales son sus sesiones. Sin configurar cada sitio,
+sin perfil falso, sin cuenta aparte.
 
-## Cómo funciona
+Trae tu propio proveedor — inicia sesión con una suscripción de IA que ya pagas, o pega una clave
+de API: 15 preajustes cubren los principales proveedores en la nube y locales, y un endpoint
+personalizado acepta cualquier servicio con un formato de API estándar. Sin dependencia de un
+proveedor, sin relay, sin servidor de TabRunner.
+
+Tus credenciales siguen siendo tuyas — la clave o el inicio de sesión va directo de la extensión a
+tu proveedor. Nada se guarda fuera de Chrome. Sin cuenta, sin telemetría.
+
+Entrada confiable — los clics y las teclas pasan por el Chrome DevTools Protocol, así que son
+eventos confiables de verdad, no disparos sintéticos que los sitios pueden ignorar.
+
+Mira el trabajo — plan en vivo, acción actual, tokens gastados y tiempo transcurrido mientras el
+agente trabaja. Cada paso queda registrado en la conversación.
+
+CÓMO FUNCIONA
 
 1. Describe una tarea en el panel lateral — por ejemplo: "pasa la factura de mi correo al informe
    de gastos".
@@ -218,28 +240,33 @@ sitios que ya usas, hasta terminar la tarea que describiste.
    página, haciendo clic, escribiendo, desplazando — con entrada real del usuario.
 3. Míralo paso a paso, o envía la tarea al segundo plano y recibe una notificación cuando termine.
 
-## Privado por diseño
+PRIVADO POR DISEÑO
 
-- No existe ningún servidor de TabRunner. La extensión habla directamente con tu proveedor.
-- La configuración del proveedor y el historial de conversaciones viven en `chrome.storage`, en
-  este dispositivo.
-- El modelo nunca recibe el HTML crudo — trabaja con un árbol semántico compacto de la página, y
-  los campos sensibles (contraseñas, códigos de un solo uso, números de tarjeta) no salen de la
-  página.
-- Funciona en Chrome y otros navegadores basados en Chromium.
+No existe ningún servidor de TabRunner. La extensión habla directamente con tu proveedor.
 
-## Límites y control
+La configuración del proveedor y el historial de conversaciones viven en chrome.storage, en este
+dispositivo.
 
-- **Tú apruebas el plan** — TabRunner no hace clic, no escribe ni navega antes de que apruebes lo
-  que pretende hacer.
-- **Pregunta antes de actuar** — las acciones con consecuencias (pagar, enviar, eliminar) vuelven a
-  ti para confirmarlas en el panel antes de ocurrir.
-- **Detener es detener** — Esc o el botón Detener termina la ejecución al instante; lo que ya hayas
-  escrito se convierte en la siguiente tarea.
-- **Esfuerzo de razonamiento** — fíjalo de `none` a `max` por tarea, o déjalo en Auto y TabRunner
-  usa el modelo más reciente que liste tu endpoint.
+El modelo nunca recibe el HTML crudo — trabaja con un árbol semántico compacto de la página, y los
+campos sensibles (contraseñas, códigos de un solo uso, números de tarjeta) no salen de la página.
 
-## Idiomas
+Funciona en Chrome y otros navegadores basados en Chromium.
+
+LÍMITES Y CONTROL
+
+Tú apruebas el plan — TabRunner no hace clic, no escribe ni navega antes de que apruebes lo que
+pretende hacer.
+
+Pregunta antes de actuar — las acciones con consecuencias (pagar, enviar, eliminar) vuelven a ti
+para confirmarlas en el panel antes de ocurrir.
+
+Detener es detener — Esc o el botón Detener termina la ejecución al instante; lo que ya hayas
+escrito se convierte en la siguiente tarea.
+
+Esfuerzo de razonamiento — fíjalo de none a max por tarea, o déjalo en Auto y TabRunner usa el
+modelo más reciente que liste tu endpoint.
+
+IDIOMAS
 
 English · Português (Brasil) · Español. Tema claro y oscuro, o el del sistema.
 ```
@@ -395,22 +422,22 @@ network destination is the AI provider the user configured.
 
 ---
 
-## 5. When review returns
+## 5. Maintaining the live listing
 
-**Approved** — the listing goes live at the store URL in §1.
+The listing is approved and live. Two separate workflows now exist — they are not interchangeable.
 
-- Flip the site's download CTA from the unpacked zip to **Add to Chrome**: `LINKS.store` already
-  exists in `site/src/lib/links.ts`, rendered as plain text until now.
-- Update the install section of [`docs/website-brief.md`](website-brief.md) — its "until the store
-  listing is approved" instructions stop being true the moment it lands.
-- Store installs and the unpacked build share one extension ID (`manifest.key`), so a user with the
-  website's zip must uninstall it before installing from the store; Chrome will not run both.
+**Description / screenshots / privacy answers** are listing edits, not packages: fix the block here,
+paste it into the dashboard, and save. No version bump, no zip. The description must stay **plain
+text** — the store renders no Markdown in it (see §2).
 
-**Rejected** — the email names the policy clause. A rejection does not clear the listing text,
-screenshots or privacy answers — they survive for the next submission.
+**The package** is a separate submission. Every new upload goes through review again, so a
+feature that must reach store users means: fix the code, then `bun run release patch | minor` and
+upload the new `dist/tabrunner-<version>-store.zip` (never `-chrome.zip`; see
+[AGENTS.md → Releasing](../AGENTS.md#releasing)). The live listing's text, screenshots and privacy
+answers are inherited, not reset, by a package update — correct them above first.
 
-- **Listing/metadata violation** (the wording lives in this file, not the package): fix the block
-  here, paste it into the dashboard, and resubmit the same upload — no new version, no new zip.
-- **Package violation**: fix the code, then `bun run release patch` and upload the new
-  `dist/tabrunner-<version>-store.zip` (never `-chrome.zip`; see
-  [AGENTS.md → Releasing](../AGENTS.md#releasing)).
+**A rejection on a package update** names the policy clause. Same split as above:
+
+- **Listing/metadata violation** (the wording lives in this file): fix the block, paste it, and
+  resubmit the same upload — no new version.
+- **Package violation**: fix the code, then `bun run release patch` and upload the new zip.

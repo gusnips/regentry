@@ -42,10 +42,11 @@ Two claims a neighboring product cannot copy:
 - Guardrails are the product, not a settings page: the plan gate blocks action tools until the
   user approves; `ask_user` enforces the consequential-action policy (paying, sending, deleting);
   a user stop ends a run cleanly (`done`, never an error).
-- Distribution: GitHub Releases keyed zip (loaded unpacked) until the Chrome Web Store listing is
-  approved. Both install under one ID (`ilnohobdcigbmlikjbkdpbkhciephdle`, pinned via manifest
-  `key`). Store status (2026-08-12): v0.2.3 rejected for keyword spam in the listing text; a
-  metadata-only fix is staged in `docs/store-listing.md` for resubmission of the same upload.
+- Distribution: the Chrome Web Store listing is the primary install (**approved 2026-08-15**);
+  the GitHub Releases keyed zip (loaded unpacked) is now the fallback. Both install under one ID
+  (`ilnohobdcigbmlikjbkdpbkhciephdle`, pinned via manifest `key`) — Chrome refuses to run both, so
+  the unpacked build must go *before* the store install. The store description is authored in
+  plain text (`docs/store-listing.md`) — CWS renders no Markdown in it.
 - Also drivable over MCP: the daemon bridge (`daemon/`) hands tasks to the same browser and
   logins; runs land in history labelled by client.
 - Chromium-only by design (Chrome, Brave, Edge, Arc, Opera, Vivaldi): Firefox/Safari have no
@@ -106,7 +107,7 @@ Two claims a neighboring product cannot copy:
    first, not last.
 3. No server in the middle — keys go straight to the provider, data stays on the device, features
    must not assume a backend exists.
-4. Honest constraints — Chromium-only, sideload caveats, and rejected-store status are stated in
+4. Honest constraints — Chromium-only and the unpacked fallback's sideload caveats are stated in
    plain view, never smoothed over.
 
 ## Accessibility & Inclusion
