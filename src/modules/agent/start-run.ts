@@ -18,8 +18,12 @@ import {
   resolveProviderModel,
 } from "@/modules/providers";
 import type { ResolvedProviderConfig } from "@/modules/providers/types";
-import { getConversationTabsFor, getMessages, recordDrivenTabFor } from "@/modules/conversation";
-import { flushConversationWrites, type LastTab } from "@/modules/conversation/conversations";
+import { getMessages, getThreadTabsFor, recordDrivenTabFor } from "@/modules/conversation";
+import {
+  flushConversationWrites,
+  type LastTab,
+  type ThreadTabs,
+} from "@/modules/conversation/conversations";
 import type { Message } from "@/modules/conversation/types";
 import { defaultStartUrl } from "@/lib/prefs";
 import { createLogger, truncate } from "@/lib/logger";
@@ -103,9 +107,9 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     // never loses the state the task is about. An answer continues where the
     // question arose: a transcript parked on an unanswered ask_user goes back to
     // the very tab the conversation last drove, page state and all.
-    const conversationTabs = await getConversationTabsFor(conversationId);
-    const continuation = hasPendingQuestion(transcript) ? conversationTabs[0] : undefined;
-    const target = await resolveRunTab(opts, continuation, conversationTabs);
+    const thread = await getThreadTabsFor(conversationId);
+    const continuation = hasPendingQuestion(transcript) ? thread.tabs[0] : undefined;
+    const target = await resolveRunTab(opts, continuation, thread);
     if ("error" in target) {
       emit({ type: "error", message: target.error });
       return { ok: true };
@@ -125,7 +129,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     // (one run per message, and users move between messages). Name those tabs
     // so references like "that email" or "the doc" can find their way back
     // (rule 6 does the rest).
-    const previousTabs = conversationTabs.filter((t) => t.url !== tab.url);
+    const previousTabs = thread.tabs.filter((t) => t.url !== tab.url);
 
     log.info("run queued", {
       provider: providerConfig.name,
@@ -444,7 +448,7 @@ function isBlankPage(url: string | undefined): boolean {
 async function resolveRunTab(
   opts: StartRunOptions,
   continuation: LastTab | undefined,
-  conversationTabs: LastTab[],
+  thread: ThreadTabs,
 ): Promise<RunTab | { error: string }> {
   const reveal = opts.owner === "panel";
   if (opts.thisPage) {
@@ -458,11 +462,11 @@ async function resolveRunTab(
     }
     // No grouping at send time — the user may just be passing through this tab.
     // The thread's strip is only resolved so the run's first action joins it.
-    const threadGroupId = await liveThreadGroup(conversationTabs, tab);
+    const threadGroupId = await liveThreadGroup(thread, tab);
     return { tab, ...(threadGroupId !== undefined ? { threadGroupId } : {}) };
   }
 
-  const reused = await reuseContinuationTab(continuation, conversationTabs);
+  const reused = await reuseContinuationTab(continuation, thread);
   if (reused) {
     if (reveal && reused.tab.id !== undefined) await focusTab(reused.tab.id, reused.tab.windowId);
     return reused;
@@ -484,7 +488,7 @@ async function resolveRunTab(
       } catch (e) {
         return { error: e instanceof Error ? e.message : String(e) };
       }
-      const threadGroupId = await liveThreadGroup(conversationTabs, tab);
+      const threadGroupId = await liveThreadGroup(thread, tab);
       return {
         tab,
         adopted: true,
@@ -517,7 +521,7 @@ async function resolveRunTab(
   const loaded = await chrome.tabs.get(tab.id);
   // A brand-new tab has no strip of its own to keep — the records and the
   // window's contents point at the thread's. Grouping waits for the first action.
-  const threadGroupId = await liveThreadGroup(conversationTabs, loaded);
+  const threadGroupId = await liveThreadGroup(thread, loaded);
   // Never revealed — only background runs open a tab of their own (above).
   return {
     tab: loaded,
@@ -538,12 +542,12 @@ async function resolveRunTab(
  */
 async function reuseContinuationTab(
   last: LastTab | undefined,
-  conversationTabs: LastTab[],
+  thread: ThreadTabs,
 ): Promise<RunTab | undefined> {
   if (last?.tabId === undefined) return undefined;
   try {
     const tab = await chrome.tabs.get(last.tabId);
-    const threadGroupId = await liveThreadGroup(conversationTabs, tab);
+    const threadGroupId = await liveThreadGroup(thread, tab);
     // The run continues where the question arose — the very tab it was driving,
     // which under adoption IS the user's tab. The model must hear that, or it
     // reads the "your own tab is untouched" line while sitting on theirs.
@@ -633,12 +637,16 @@ function isThreadStrip(group: chrome.tabGroups.TabGroup): boolean {
  * recorded group still alive in this window IS the thread's — ownership checked,
  * since a restarted browser can hand an old id to somebody else's group. Last,
  * the window itself: a strip session-restore recreated under fresh ids is found
- * by what it holds — a grouped tab on a url this conversation drove.
+ * by what it holds — any page the thread worked, which is why the strip's whole
+ * membership is recorded and not just the tab the run drove. That is the case
+ * the driven-tab list alone cannot answer: the user closes the finished tab and
+ * the strip stands on the ones `group_tab` filed.
  */
 export async function liveThreadGroup(
-  tabs: LastTab[],
+  thread: ThreadTabs,
   forTab: chrome.tabs.Tab,
 ): Promise<number | undefined> {
+  const { tabs } = thread;
   const seen = new Set<number>();
   const owns = async (groupId: number): Promise<boolean> => {
     try {
@@ -671,7 +679,8 @@ export async function liveThreadGroup(
 
   // The window scan: a strip the records can no longer name (session restore
   // recreated it under fresh ids) is still sitting there, holding pages the
-  // thread drove.
+  // thread worked. Driven urls first — the strongest evidence — then the rest
+  // of what the strip held when it settled.
   let windowTabs: chrome.tabs.Tab[];
   try {
     windowTabs = await chrome.tabs.query({ windowId: forTab.windowId });
@@ -682,8 +691,8 @@ export async function liveThreadGroup(
   for (const t of windowTabs) {
     if (t.url && t.groupId >= 0 && !groupedByUrl.has(t.url)) groupedByUrl.set(t.url, t.groupId);
   }
-  for (const t of tabs) {
-    const groupId = groupedByUrl.get(t.url);
+  for (const url of [...tabs.map((t) => t.url), ...thread.stripUrls]) {
+    const groupId = groupedByUrl.get(url);
     if (groupId === undefined || seen.has(groupId)) continue;
     seen.add(groupId);
     if (await owns(groupId)) return groupId;
@@ -807,30 +816,55 @@ export async function settleRunTab(
 }
 
 /**
+ * What the thread's strip holds now — the key the next run re-finds it by once
+ * ids have died. Read at settle rather than accumulated during the run: the
+ * group itself is the record, so a tab the user pulled out drops out, and one
+ * query covers every way a tab got in (the driven tab, the tabs the run
+ * switched through, the ones `group_tab` filed). Undefined when the run had no
+ * strip — the thread's last known membership stands rather than being erased.
+ */
+async function stripMembership(threadGroupId: number | undefined): Promise<string[] | undefined> {
+  if (threadGroupId === undefined) return undefined;
+  try {
+    const tabs = await chrome.tabs.query({ groupId: threadGroupId });
+    return tabs.map((t) => t.url).filter((url): url is string => !!url);
+  } catch {
+    return undefined; // the group died with the run — keep what we knew
+  }
+}
+
+/**
  * Remember the tab this run drove so the next run can spot a tab change — and
- * go back to the tab itself when it answers a question. The final state is read
- * fresh: navigations mid-run leave the start-time title, url and group stale.
+ * go back to the tab itself when it answers a question — plus what the strip
+ * holds, in one write. The final state is read fresh: navigations mid-run leave
+ * the start-time title, url and group stale.
  */
 async function persistDrivenTabFor(
   conversationId: string,
   tabId: number,
   threadGroupId: number | undefined,
 ): Promise<void> {
+  const stripUrls = await stripMembership(threadGroupId);
   try {
     const tab = await chrome.tabs.get(tabId);
     if (!tab.url) return;
-    await recordDrivenTabFor(conversationId, {
-      url: tab.url,
-      title: tab.title ?? "",
-      tabId,
-      // Only the thread's own strip counts: a tab the run switched into
-      // mid-flight may sit in a group of the user's own, and that label is
-      // theirs — never ours to reuse or retitle.
-      ...(threadGroupId !== undefined && tab.groupId === threadGroupId
-        ? { groupId: tab.groupId }
-        : {}),
-    });
+    await recordDrivenTabFor(
+      conversationId,
+      {
+        url: tab.url,
+        title: tab.title ?? "",
+        tabId,
+        // Only the thread's own strip counts: a tab the run switched into
+        // mid-flight may sit in a group of the user's own, and that label is
+        // theirs — never ours to reuse or retitle.
+        ...(threadGroupId !== undefined && tab.groupId === threadGroupId
+          ? { groupId: tab.groupId }
+          : {}),
+      },
+      stripUrls,
+    );
   } catch {
-    // The tab died during the run — nothing left to remember.
+    // The tab died during the run — nothing left to remember. The strip
+    // snapshot rides with it; the previous run's stands until one lands.
   }
 }

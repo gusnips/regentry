@@ -42,7 +42,15 @@ the records by group liveness in this window — strips outlive their tabs (the
 driven tab gets closed once the task ends, the group_tab'd ones stay), so a
 recorded group that still exists IS the thread's even when its recorded tab is
 gone — then the window itself: a strip session-restore recreated under fresh ids
-is found by what it holds. Every pass checks ownership — a group is the thread's
+is found by what it holds, which is why the settle write records the strip's whole
+membership (`stripUrls`, one `tabs.query({groupId})`) and not just the driven tab.
+That is the case the driven-tab list alone cannot answer: the user closes the
+finished tab and the strip stands on pages `group_tab` filed, which `tabs` never
+records. The two lists stay separate on purpose — `tabs` is the model's "earlier
+work" line and is capped tight for it, while the membership snapshot is never
+shown to the model and is a wider net; folding them together would spend that cap
+on reference tabs. A run with no strip writes no snapshot, so a read-only run
+leaves the thread's last known one standing. Every pass checks ownership — a group is the thread's
 only while it carries our fingerprints (green, or wearing a settle mark) — so a
 group the user built around a page we happened to drive is never renamed or
 joined, and a restarted browser handing an old id to somebody else's group is

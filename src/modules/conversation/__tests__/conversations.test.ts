@@ -8,7 +8,7 @@ import {
   conversationTitle,
   deleteConversation,
   getActiveId,
-  getConversationTabsFor,
+  getThreadTabsFor,
   getMessages,
   listConversations,
   recordDrivenTabFor,
@@ -20,6 +20,9 @@ let seq = 0;
 function msg(role: Message["role"], content: string): Message {
   return { id: `m${++seq}`, role, content, timestamp: 1_000 + seq };
 }
+
+/** The driven-tab half of the thread record — what most of these assert on. */
+const threadTabs = async (id: string) => (await getThreadTabsFor(id)).tabs;
 
 describe("conversationTitle", () => {
   it("takes the first line and truncates long tasks", () => {
@@ -99,7 +102,7 @@ describe("conversations", () => {
   it("remembers the tabs a conversation's runs drove, newest first", async () => {
     await setActiveConversation(null);
     const first = await appendMessage(msg("user", "check gmail"));
-    expect(await getConversationTabsFor(first)).toEqual([]); // no run yet
+    expect(await threadTabs(first)).toEqual([]); // no run yet
 
     await recordDrivenTabFor(first, { url: "https://mail.google.com/", title: "Inbox", tabId: 7 });
     await recordDrivenTabFor(first, {
@@ -107,27 +110,27 @@ describe("conversations", () => {
       title: "Q3 Invoice",
       tabId: 9,
     });
-    expect((await getConversationTabsFor(first)).map((t) => t.url)).toEqual([
+    expect((await threadTabs(first)).map((t) => t.url)).toEqual([
       "https://docs.google.com/d/1",
       "https://mail.google.com/",
     ]);
 
     // Re-driving a tab moves it back to the front instead of duplicating it.
     await recordDrivenTabFor(first, { url: "https://mail.google.com/", title: "Inbox", tabId: 7 });
-    expect((await getConversationTabsFor(first)).map((t) => t.url)).toEqual([
+    expect((await threadTabs(first)).map((t) => t.url)).toEqual([
       "https://mail.google.com/",
       "https://docs.google.com/d/1",
     ]);
 
     // Later appends rewrite the index row without dropping the list.
     await appendMessage(msg("assistant", "done"));
-    expect(await getConversationTabsFor(first)).toHaveLength(2);
+    expect(await threadTabs(first)).toHaveLength(2);
 
     // Tabs belong to their own conversation — a second thread starts clean.
     await setActiveConversation(null);
     const second = await appendMessage(msg("user", "unrelated task"));
-    expect(await getConversationTabsFor(second)).toEqual([]);
-    expect(await getConversationTabsFor(first)).toHaveLength(2);
+    expect(await threadTabs(second)).toEqual([]);
+    expect(await threadTabs(first)).toHaveLength(2);
   });
 
   it("keeps the record when the run's closing writes land in the same tick", async () => {
@@ -141,9 +144,51 @@ describe("conversations", () => {
     await recordDrivenTabFor(id, { url: "https://air.test/", title: "Air", tabId: 4, groupId: 7 });
     await appendMessageTo(id, msg("assistant", "done"));
 
-    expect(await getConversationTabsFor(id)).toEqual([
+    expect(await threadTabs(id)).toEqual([
       { url: "https://air.test/", title: "Air", tabId: 4, groupId: 7 },
     ]);
+  });
+
+  it("remembers what the strip held, apart from the tab the run drove", async () => {
+    // The strip's membership answers a different question than the driven-tab
+    // list — "which group is this thread's" — and holds pages the run only
+    // filed. Keeping it out of `tabs` keeps filed reference pages out of the
+    // model's "earlier work" line and out of that list's tighter cap.
+    const id = await appendMessage(msg("user", "copy from the doc"));
+    await recordDrivenTabFor(id, { url: "https://air.test/", title: "Air", tabId: 4, groupId: 7 }, [
+      "https://air.test/",
+      "https://docs.test/spec",
+    ]);
+
+    expect((await getThreadTabsFor(id)).stripUrls).toEqual([
+      "https://air.test/",
+      "https://docs.test/spec",
+    ]);
+    expect(await threadTabs(id)).toHaveLength(1);
+  });
+
+  it("a run with no strip leaves the thread's last known one standing", async () => {
+    // A read-only run groups nothing, so it has no membership to report —
+    // erasing the record would cost the thread the only key that survives a
+    // restart, and the next run would mint a second strip beside the first.
+    const id = await appendMessage(msg("user", "check the page"));
+    await recordDrivenTabFor(id, { url: "https://air.test/", title: "Air", groupId: 7 }, [
+      "https://air.test/",
+      "https://docs.test/spec",
+    ]);
+    await recordDrivenTabFor(id, { url: "https://news.test/", title: "News" });
+
+    expect((await getThreadTabsFor(id)).stripUrls).toEqual([
+      "https://air.test/",
+      "https://docs.test/spec",
+    ]);
+  });
+
+  it("caps the strip snapshot too — a big working set stays bounded", async () => {
+    const id = await appendMessage(msg("user", "many tabs"));
+    const urls = Array.from({ length: 14 }, (_, i) => `https://filed${i}.test/`);
+    await recordDrivenTabFor(id, { url: urls[0] ?? "", title: "First" }, urls);
+    expect((await getThreadTabsFor(id)).stripUrls).toHaveLength(10);
   });
 
   it("caps the tab list so a long multi-tab session stays bounded", async () => {
@@ -151,7 +196,7 @@ describe("conversations", () => {
     for (let i = 0; i < 8; i++) {
       await recordDrivenTabFor(id, { url: `https://site${i}.com/`, title: `Site ${i}` });
     }
-    const tabs = await getConversationTabsFor(id);
+    const tabs = await threadTabs(id);
     expect(tabs).toHaveLength(5);
     expect(tabs[0]?.url).toBe("https://site7.com/"); // newest work first
     expect(tabs.map((t) => t.url)).not.toContain("https://site2.com/"); // oldest evicted

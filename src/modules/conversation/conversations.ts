@@ -38,6 +38,15 @@ export interface ConversationMeta {
   /** Tabs this conversation's runs drove, most recently worked first. */
   tabs?: LastTab[];
   /**
+   * What the thread's strip held when the last run settled — every tab in the
+   * group, not just the driven one. It is how a run re-finds the strip after a
+   * restart recycles every id: the driven tab is often the one the user closes
+   * when the task ends, leaving the strip standing on tabs `group_tab` filed —
+   * pages `tabs` above never records. Snapshot, not history: a run that had no
+   * strip leaves it alone rather than erasing it.
+   */
+  stripUrls?: string[];
+  /**
    * The last run's closing numbers, stamped when it ended. The status band a
    * reopened panel shows above the composer reads this — the run's own panel
    * state died with the close. Retired by the next user message.
@@ -94,21 +103,40 @@ export function setActiveConversation(id: string | null): Promise<void> {
  * stays short: deduped by url, newest work first, capped.
  */
 const MAX_CONVERSATION_TABS = 5;
+/**
+ * The strip's membership is a wider net than the driven-tab list and is never
+ * shown to the model, so it gets its own ceiling — big enough for a real
+ * working set, small enough that fifty conversations of them stay cheap.
+ */
+const MAX_STRIP_URLS = 10;
 
-/** The tabs a conversation's runs drove, most recently worked first. */
-export async function getConversationTabsFor(id: string): Promise<LastTab[]> {
+/** Everything a run needs to place itself in the thread's pages. */
+export interface ThreadTabs {
+  /** The tabs the conversation's runs drove, most recently worked first. */
+  tabs: LastTab[];
+  /** What the thread's strip held at the last settle — the content-scan's key. */
+  stripUrls: string[];
+}
+
+export async function getThreadTabsFor(id: string): Promise<ThreadTabs> {
   const row = (await indexItem.get()).find((c) => c.id === id);
-  return row?.tabs ?? [];
+  return { tabs: row?.tabs ?? [], stripUrls: row?.stripUrls ?? [] };
 }
 
 /**
- * Records where a run drove — re-driving a tab moves it back to the front.
+ * Records where a run drove — re-driving a tab moves it back to the front —
+ * and, when the run had a strip, what that strip holds now.
+ *
  * Serialized like every other index write: this lands in the same tick as the
  * run's closing append and summary, and an unserialized read-modify-write here
  * loses the whole tabs list to theirs — which is what made every follow-up run
- * forget the thread's strip and mint a second one.
+ * forget the thread's strip and mint a second one. Both fields ride one write
+ * for the same reason.
+ *
+ * `stripUrls` undefined means "this run had no strip" — the thread's last known
+ * one stands. A run that only read a page must not erase the memory of it.
  */
-export function recordDrivenTabFor(id: string, tab: LastTab): Promise<void> {
+export function recordDrivenTabFor(id: string, tab: LastTab, stripUrls?: string[]): Promise<void> {
   return serialized(async () => {
     const list = await indexItem.get();
     if (!list.some((c) => c.id === id)) return;
@@ -121,6 +149,7 @@ export function recordDrivenTabFor(id: string, tab: LastTab): Promise<void> {
                 0,
                 MAX_CONVERSATION_TABS,
               ),
+              ...(stripUrls ? { stripUrls: stripUrls.slice(0, MAX_STRIP_URLS) } : {}),
             }
           : c,
       ),

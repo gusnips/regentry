@@ -22,6 +22,9 @@ const runTab = () => tabOn("https://unrelated.example", -1);
 
 const ourStrip = (windowId = 1) => ({ title: "book the flight", color: "green", windowId });
 
+/** The stored thread record: driven tabs, plus what the strip held at settle. */
+const thread = (tabs: LastTab[], stripUrls: string[] = []) => ({ tabs, stripUrls });
+
 describe("thread tab group", () => {
   const chromeBackup = globalThis.chrome;
   let tabsGet: ReturnType<typeof vi.fn>;
@@ -49,16 +52,16 @@ describe("thread tab group", () => {
 
   describe("liveThreadGroup", () => {
     it("is undefined without a recorded group", async () => {
-      expect(await liveThreadGroup([], runTab())).toBeUndefined();
+      expect(await liveThreadGroup(thread([]), runTab())).toBeUndefined();
       // Bare urls with no group recorded.
-      expect(await liveThreadGroup([recorded(1), recorded(2)], runTab())).toBeUndefined();
+      expect(await liveThreadGroup(thread([recorded(1), recorded(2)]), runTab())).toBeUndefined();
       expect(groupGet).not.toHaveBeenCalled();
     });
 
     it("is the newest recorded group that is still alive, ours, and in this window", async () => {
       groupGet.mockResolvedValue(ourStrip());
       const tabs = [recorded(1, 7), recorded(2, 9)];
-      expect(await liveThreadGroup(tabs, runTab())).toBe(7);
+      expect(await liveThreadGroup(thread(tabs), runTab())).toBe(7);
       // Newest first: the older record is never even checked.
       expect(groupGet).toHaveBeenCalledTimes(1);
       expect(groupGet).toHaveBeenCalledWith(7);
@@ -69,7 +72,7 @@ describe("thread tab group", () => {
       // tabs lives on. A live recorded group IS the thread's — minting a second
       // one alongside it is the bug this fixes. No window scan is even made.
       groupGet.mockResolvedValue(ourStrip());
-      expect(await liveThreadGroup([recorded(1, 7)], runTab())).toBe(7);
+      expect(await liveThreadGroup(thread([recorded(1, 7)]), runTab())).toBe(7);
       expect(tabsQuery).not.toHaveBeenCalled();
     });
 
@@ -78,13 +81,15 @@ describe("thread tab group", () => {
         .mockRejectedValueOnce(new Error("No group with id: 7"))
         .mockResolvedValueOnce(ourStrip());
       const tabs = [recorded(1, 7), recorded(2, 7), recorded(3, 9)];
-      expect(await liveThreadGroup(tabs, runTab())).toBe(9);
+      expect(await liveThreadGroup(thread(tabs), runTab())).toBe(9);
       expect(groupGet).toHaveBeenCalledTimes(2); // 7 checked once, then 9
     });
 
     it("is undefined when every recorded group is gone and the window holds none", async () => {
       groupGet.mockRejectedValue(new Error("No group"));
-      expect(await liveThreadGroup([recorded(1, 7), recorded(2, 9)], runTab())).toBeUndefined();
+      expect(
+        await liveThreadGroup(thread([recorded(1, 7), recorded(2, 9)]), runTab()),
+      ).toBeUndefined();
     });
 
     it("keeps the group the tab in hand already sits in when the thread drove its url", async () => {
@@ -96,7 +101,7 @@ describe("thread tab group", () => {
       );
       const tabs = [recorded(1, 7)];
       const onIt = tabOn("https://example.com/1", 4);
-      expect(await liveThreadGroup(tabs, onIt)).toBe(4);
+      expect(await liveThreadGroup(thread(tabs), onIt)).toBe(4);
     });
 
     it("ignores the tab in hand's group when the thread never drove its url", async () => {
@@ -104,13 +109,13 @@ describe("thread tab group", () => {
       // own — that group is theirs, not the thread's. Fall to the records.
       groupGet.mockResolvedValue(ourStrip());
       const onIt = tabOn("https://unrelated.example", 4);
-      expect(await liveThreadGroup([recorded(1, 7)], onIt)).toBe(7);
+      expect(await liveThreadGroup(thread([recorded(1, 7)]), onIt)).toBe(7);
     });
 
     it("ignores an ungrouped tab in hand", async () => {
       groupGet.mockResolvedValue(ourStrip());
       const onIt = tabOn("https://example.com/1", -1);
-      expect(await liveThreadGroup([recorded(1, 7)], onIt)).toBe(7);
+      expect(await liveThreadGroup(thread([recorded(1, 7)]), onIt)).toBe(7);
     });
 
     it("finds the strip by content after a restart killed the recorded ids", async () => {
@@ -120,14 +125,35 @@ describe("thread tab group", () => {
         id === 21 ? Promise.resolve(ourStrip()) : Promise.reject(new Error("No group with id")),
       );
       tabsQuery.mockResolvedValue([{ url: "https://example.com/1", groupId: 21 }]);
-      expect(await liveThreadGroup([recorded(1, 7)], runTab())).toBe(21);
+      expect(await liveThreadGroup(thread([recorded(1, 7)]), runTab())).toBe(21);
+    });
+
+    it("finds the strip by a filed tab when the driven one is gone", async () => {
+      // The case the driven-tab list alone cannot answer: the user closed the
+      // finished tab, a restart killed every id, and the strip is standing on
+      // a page `group_tab` filed — a url `tabs` never records.
+      groupGet.mockImplementation((id: number) =>
+        id === 21 ? Promise.resolve(ourStrip()) : Promise.reject(new Error("No group with id")),
+      );
+      tabsQuery.mockResolvedValue([{ url: "https://docs.test/spec", groupId: 21 }]);
+      const stored = thread([recorded(1, 7)], ["https://example.com/1", "https://docs.test/spec"]);
+      expect(await liveThreadGroup(stored, runTab())).toBe(21);
+    });
+
+    it("still refuses a filed url sitting in a group that isn't ours", async () => {
+      // The wider net must not widen what counts as ours: the user filed the
+      // doc into their own group after the run ended.
+      groupGet.mockResolvedValue({ title: "reading list", color: "grey", windowId: 1 });
+      tabsQuery.mockResolvedValue([{ url: "https://docs.test/spec", groupId: 21 }]);
+      const stored = thread([recorded(1, 7)], ["https://docs.test/spec"]);
+      expect(await liveThreadGroup(stored, runTab())).toBeUndefined();
     });
 
     it("does not follow a live recorded group into another window", async () => {
       // One strip per conversation PER WINDOW — Chrome groups can't span
       // windows, so the window 2 strip is no seed for a window 1 run.
       groupGet.mockResolvedValue(ourStrip(2));
-      expect(await liveThreadGroup([recorded(1, 7)], runTab())).toBeUndefined();
+      expect(await liveThreadGroup(thread([recorded(1, 7)]), runTab())).toBeUndefined();
     });
 
     it("never adopts a group that isn't ours, however it was found", async () => {
@@ -140,19 +166,19 @@ describe("thread tab group", () => {
       );
       const onIt = tabOn("https://example.com/1", 4);
       tabsQuery.mockResolvedValue([{ url: "https://example.com/1", groupId: 4 }]);
-      expect(await liveThreadGroup([recorded(1, 7)], onIt)).toBeUndefined();
+      expect(await liveThreadGroup(thread([recorded(1, 7)]), onIt)).toBeUndefined();
     });
 
     it("a restarted browser's recycled id pointing at a foreign group is skipped", async () => {
       // The record's 7 died with last session; this session's group 7 is the
       // user's. Liveness alone would rename a stranger's group.
       groupGet.mockResolvedValue({ title: "vacation pics", color: "blue", windowId: 1 });
-      expect(await liveThreadGroup([recorded(1, 7)], runTab())).toBeUndefined();
+      expect(await liveThreadGroup(thread([recorded(1, 7)]), runTab())).toBeUndefined();
     });
 
     it("a settled strip is recognized by its mark even without the green", async () => {
       groupGet.mockResolvedValue({ title: "✓ book the flight", color: "grey", windowId: 1 });
-      expect(await liveThreadGroup([recorded(1, 7)], runTab())).toBe(7);
+      expect(await liveThreadGroup(thread([recorded(1, 7)]), runTab())).toBe(7);
     });
   });
 
