@@ -31,6 +31,13 @@ export type Command =
   | { type: "plan_approval"; approved: boolean; feedback?: string }
   /** Ask what an external agent is doing in the browser — answered with run_active. */
   | { type: "query_run" }
+  /**
+   * Summarize the conversation so far and append the summary to its transcript,
+   * so later runs replay the summary instead of a budget-trimmed slice of the
+   * raw messages. The worker does the work: it owns transcript persistence, and
+   * the panel may close before a summarization call comes back.
+   */
+  | { type: "compact" }
   /** Heartbeat — receiving it resets the worker's idle timer during long silences */
   | { type: "ping" };
 
@@ -117,7 +124,15 @@ export type Event =
    *  stopped marks a user halt, so the settled band says "Stopped" and never claims "Done" */
   | { type: "done"; summary?: string; question?: boolean; stopped?: boolean }
   /** Who an external agent is in the browser — null when the browser is yours again */
-  | { type: "run_active"; active: BridgeActive | null };
+  | { type: "run_active"; active: BridgeActive | null }
+  /**
+   * A compaction finished. The summary message is already in storage (the panel
+   * sees it through the transcript watch); these are the receipt's numbers, in
+   * estimated tokens — `nothing` marks a conversation that was already short
+   * enough, which is an answer, not a failure.
+   */
+  | { type: "compacted"; messages: number; before: number; after: number }
+  | { type: "compact_failed"; message: string; nothing?: boolean };
 
 // ── Port name ────────────────────────────────────────────────────────
 

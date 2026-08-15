@@ -38,6 +38,7 @@ type CommandDescriptionKey =
   | "commands.model.description"
   | "commands.provider.description"
   | "commands.usage.description"
+  | "commands.compact.description"
   | "commands.new.description"
   | "commands.help.description";
 
@@ -295,6 +296,16 @@ export const COMMANDS: readonly SlashCommand[] = [
         // arrive worded as the sign-in fix.
         (e: unknown) => note(e instanceof Error ? e.message : String(e)),
       );
+    },
+  },
+  {
+    name: "compact",
+    descriptionKey: "commands.compact.description",
+    // The one command that is not local: summarizing takes a model call, and
+    // the transcript it writes to is the worker's. The store's action posts it
+    // and reports back through the compacted/compact_failed events.
+    run: () => {
+      useConversationStore.getState().compact();
     },
   },
   {

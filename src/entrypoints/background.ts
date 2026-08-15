@@ -24,6 +24,13 @@ import {
 import type { WidgetState } from "@/modules/browser/status-widget";
 import { widgetHidden, widgetResetV1 } from "@/lib/prefs";
 import { initProviderOriginStrip } from "@/modules/providers/origin";
+import {
+  createProvider,
+  ensureProviderCredential,
+  getActiveProvider,
+  resolveProviderModel,
+} from "@/modules/providers";
+import { compactConversation } from "@/modules/agent/compact";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
@@ -264,6 +271,43 @@ export default defineBackground(() => {
             if ((await getActiveId()) === parked.conversationId) {
               send(port, { type: "plan_approval", steps, reapproval });
             }
+          }
+          break;
+        }
+
+        case "compact": {
+          // The worker owns transcript writes, so it owns this: the panel can
+          // close mid-summarization and the summary still lands.
+          const conversationId = await getActiveId();
+          if (!conversationId) {
+            send(port, { type: "compact_failed", message: i18n.t("commands.compact.nothing"), nothing: true });
+            break;
+          }
+          try {
+            const config = await getActiveProvider();
+            if (!config) throw new Error(i18n.t("chat.hint.noProvider"));
+            const resolved = await resolveProviderModel(await ensureProviderCredential(config));
+            const result = await compactConversation(
+              createProvider(resolved),
+              conversationId,
+              // Nothing cancels a compaction: it is one short call, and the
+              // panel that asked for it may already be gone.
+              new AbortController().signal,
+            );
+            send(
+              port,
+              result
+                ? { type: "compacted", ...result }
+                : {
+                    type: "compact_failed",
+                    message: i18n.t("commands.compact.nothing"),
+                    nothing: true,
+                  },
+            );
+          } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            log.warn("compact failed:", message);
+            send(port, { type: "compact_failed", message });
           }
           break;
         }

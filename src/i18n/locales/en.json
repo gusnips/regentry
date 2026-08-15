@@ -244,7 +244,8 @@
       "updateKey": "Update API key →",
       "signIn": "Sign in again →",
       "checkUrl": "Check base URL →",
-      "addProvider": "Add a provider →"
+      "addProvider": "Add a provider →",
+      "compact": "Compact the conversation →"
     },
     "details": "Details",
     "screenshotAlt": "Screenshot of the page the agent captured",
@@ -326,9 +327,27 @@
       "description": "Show the active subscription's usage windows",
       "unsupported": "{{provider}} runs on an API key — usage windows only exist for subscription sign-ins (Anthropic, ChatGPT, Kimi)."
     },
+    "compact": {
+      "description": "Summarize this conversation so far, to free up context",
+      "running": "Compacting the conversation…",
+      "nothing": "Nothing to compact yet — this conversation is still short enough to replay in full.",
+      "busy": "A run is working — compact once it finishes.",
+      "failed": "Couldn't compact: {{message}}"
+    },
     "help": {
       "description": "List the commands"
     }
+  },
+  "compact": {
+    "folded": "Folded {{count}} earlier turns into a summary to free up context",
+    "summaryTitle": "Compacted",
+    "receipt": "{{count}} messages · {{before}} → {{after}}",
+    "earlier_one": "Earlier · {{count}} message",
+    "earlier_other": "Earlier · {{count}} messages",
+    "explain": "The messages above stay here for you — the agent replays this summary instead."
+  },
+  "context": {
+    "tooltip": "Context: {{used}} of {{window}} used ({{percent}}%) — /compact summarizes the conversation to free some up"
   },
   "indicator": {
     "driving": "TabRunner is controlling this tab",
@@ -468,7 +487,8 @@
     "board": "A task running in another chat shows in the Tasks band at the top — jump to its tab or stop it there.",
     "memory": "TabRunner remembers useful facts from your tasks — review or prune them under Settings → What TabRunner remembers.",
     "usage": "On a subscription provider, the gauge icon next to the model picker shows your 5-hour and weekly usage — click it for the reset times.",
-    "slashCommands": "Type / in the composer for commands — switch provider, model, or effort mid-chat."
+    "slashCommands": "Type / in the composer for commands — switch provider, model, or effort mid-chat.",
+    "compact": "Long chat filling up? /compact swaps the older messages for a summary — you keep the scrollback."
   },
   "notify": {
     "doneFallback": "Task finished."
@@ -538,6 +558,8 @@
     "windowWeekly": "weekly",
     "windowMonthly": "monthly",
     "kindOverload": "{{provider}} is overloaded right now — try again in a few minutes",
+    "kindContext": "This conversation outgrew what {{provider}} can read in one request — compact it to carry on",
+    "compactEmpty": "The model returned an empty summary, so nothing was compacted. Try again, or start a new chat to reset the context.",
     "oauthRefreshExpired": "Your {{name}} sign-in expired and couldn't be renewed — sign in again in Settings.",
     "signInFailed": "Sign-in failed: {{detail}}",
     "signInRateLimited": "The provider's sign-in service is turning requests down right now — too many in a short window. This isn't about your plan's usage. Wait a minute, then start over.",

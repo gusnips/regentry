@@ -12,6 +12,7 @@ import {
   getActiveId,
   getMessages,
   listConversations,
+  MAX_MESSAGES,
   setActiveConversation,
   watchConversations,
 } from "../conversations";
@@ -20,6 +21,7 @@ import { toolVerbKey } from "./tool-labels";
 import type { PastedText } from "./paste-collapse";
 import { runTargetPref } from "@/lib/prefs";
 import type { RunTarget } from "@/lib/prefs";
+import { formatTokens } from "@/lib/format";
 
 interface ConversationState {
   messages: Message[];
@@ -77,6 +79,13 @@ interface ConversationState {
   board: RunBoard;
   /** This panel's own submission waiting in the serial queue. */
   queuedRun: { id: string; position: number; task: string } | null;
+  /** A compaction is in flight — the composer's footer says so, since the
+   *  summary lands as a transcript message with no other warning. */
+  compacting: boolean;
+  /** Input tokens the last turn actually sent — the real context size, straight
+   *  from the provider's own usage. Cumulative `usage.input` is the sum of every
+   *  turn and says nothing about how full the window is. */
+  contextTokens: number;
 
   connect: () => void;
   disconnect: () => void;
@@ -84,6 +93,8 @@ interface ConversationState {
   /** A local, display-only note (slash-command results) — rendered in the
    *  transcript, never persisted, never part of the model's history. */
   note: (content: string) => void;
+  /** Summarize the conversation so far — /compact, and the context-error CTA. */
+  compact: () => void;
   queueMessage: (text: string) => void;
   unqueueMessage: (id: string) => void;
   /** Cancel this panel's still-waiting queued run. */
@@ -173,10 +184,51 @@ export function retryTargetFrom(
 // panel and the bridge close runs the same way.
 export { closingSummary };
 
+/**
+ * Screenshots the panel is still holding. Storage strips them outright
+ * (stripTransientImages) — the panel keeps a few so a just-finished step's
+ * drill-down can show what the agent saw, but a base64 screenshot decodes to
+ * megabytes of bitmap and a long run takes dozens. Past this the thumbnail
+ * goes and the row keeps its summary, which is exactly what a reopened
+ * conversation shows anyway.
+ */
+const MAX_PANEL_IMAGES = 6;
+
+/**
+ * The panel's own copy of the transcript, bounded the way storage already
+ * bounds its own.
+ *
+ * Without this the live list grew without limit while a run worked — every
+ * step, every thought, every screenshot — so a long run made the panel heavier
+ * than the very same conversation reopened, which loads the capped 100 and no
+ * images at all. The cap is shared with storage so the two agree; the
+ * screenshot sweep is the panel's alone, since storage keeps none.
+ */
+export function capMessages(list: Message[]): Message[] {
+  const capped = list.length > MAX_MESSAGES ? list.slice(-MAX_MESSAGES) : list;
+  let budget = MAX_PANEL_IMAGES;
+  let stripped: Message[] | null = null;
+  for (let i = capped.length - 1; i >= 0; i--) {
+    const msg = capped[i];
+    // A user's own attachment is the subject of their task and always stays —
+    // the same rule the wire's image pruning follows.
+    if (!msg?.images?.length || msg.role === "user") continue;
+    if (budget > 0) {
+      budget -= msg.images.length;
+      continue;
+    }
+    stripped ??= [...capped];
+    const withoutImages = { ...msg };
+    delete withoutImages.images;
+    stripped[i] = withoutImages;
+  }
+  return stripped ?? capped;
+}
+
 export const useConversationStore = create<ConversationState>((set, get) => {
   /** Resolves once the message is stored — awaited only where ordering matters. */
   const pushMsg = (msg: Message): Promise<void> => {
-    set({ messages: [...get().messages, msg] });
+    set({ messages: capMessages([...get().messages, msg]) });
     // A fresh conversation is created by the first append — adopt its id.
     return appendMessage(msg).then((id) => {
       if (get().activeId !== id) set({ activeId: id });
@@ -185,7 +237,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
   /** Display-only append — run events persist through the shared writer. */
   const pushDisplay = (msg: Message): void => {
-    set({ messages: [...get().messages, msg] });
+    set({ messages: capMessages([...get().messages, msg]) });
   };
 
   /** Transcript-independent state — reset whenever the panel switches transcripts. */
@@ -438,7 +490,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
           live: true,
         });
         // Live rows are in-memory only — persisted once the tool finishes.
-        set({ messages: [...get().messages, msg], pendingStepId: msg.id });
+        set({ messages: capMessages([...get().messages, msg]), pendingStepId: msg.id });
         break;
       }
 
@@ -506,7 +558,40 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       case "usage":
         set({
           usage: { input: s.usage.input + event.input, output: s.usage.output + event.output },
+          // Not cumulative: this turn's input IS how full the window is right
+          // now, and it drops back down when the run folds its own history.
+          ...(event.input > 0 ? { contextTokens: event.input } : {}),
         });
+        break;
+
+      case "compacted":
+        // The summary itself arrives through the transcript watch — this is the
+        // receipt, so the note says what it bought rather than just "done".
+        set({ compacting: false });
+        pushDisplay(
+          makeMsg(
+            "step",
+            i18n.t("compact.receipt", {
+              count: event.messages,
+              before: formatTokens(event.before),
+              after: formatTokens(event.after),
+            }),
+          ),
+        );
+        break;
+
+      case "compact_failed":
+        set({ compacting: false });
+        // "Nothing to compact" is an answer, not a failure — it arrives as the
+        // same quiet note every other command result does.
+        pushDisplay(
+          makeMsg(
+            "step",
+            event.nothing === true
+              ? event.message
+              : i18n.t("commands.compact.failed", { message: event.message }),
+          ),
+        );
         break;
 
       case "error": {
@@ -626,6 +711,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     bridgeActive: null,
     board: { queue: [] },
     queuedRun: null,
+    compacting: false,
+    contextTokens: 0,
 
     connect: () => {
       if (port) return;
@@ -699,6 +786,21 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
     // A tool-less step row is the note: quiet, neutral, and gone on reopen.
     note: (content) => pushDisplay(makeMsg("step", content)),
+
+    compact: () => {
+      if (get().compacting) return;
+      // Mid-run the wire conversation is the run's, not the transcript's — the
+      // loop folds its own turns when it needs to (see compactRunMessages), and
+      // a transcript summary landing under a live run would summarize a story
+      // still being written.
+      if (get().status === "running") {
+        pushDisplay(makeMsg("step", i18n.t("commands.compact.busy")));
+        return;
+      }
+      set({ compacting: true });
+      pushDisplay(makeMsg("step", i18n.t("commands.compact.running")));
+      post({ type: "compact" });
+    },
 
     cancelQueuedRun: () => {
       const queued = get().queuedRun;

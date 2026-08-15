@@ -108,3 +108,28 @@ describe("isRetryable with classified kinds", () => {
     expect(isRetryable(new ProviderError("rate", 429, "rate", 20_000))).toBe(true);
   });
 });
+
+describe("context overflow", () => {
+  it("names the wordings providers actually use for an oversized prompt", () => {
+    for (const body of [
+      '{"error":{"code":"context_length_exceeded","message":"This model\'s maximum context length is 128000 tokens"}}',
+      '{"type":"invalid_request_error","message":"prompt is too long: 250000 tokens > 200000 maximum"}',
+      "Input is too long for requested model",
+      "Please reduce the length of the messages",
+    ]) {
+      expect(classifyProviderError(400, body)).toBe("context");
+    }
+  });
+
+  it("does not swallow a per-minute token rate limit — waiting fixes that, compacting doesn't", () => {
+    expect(
+      classifyProviderError(429, "Rate limit reached: Limit 30000 tokens per min (TPM)"),
+    ).toBe("rate");
+  });
+
+  it("leaves an image-count rejection alone — compaction can't fix it", () => {
+    expect(
+      classifyProviderError(400, "exceeds the maximum number of images allowed"),
+    ).not.toBe("context");
+  });
+});

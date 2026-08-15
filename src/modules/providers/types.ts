@@ -104,6 +104,10 @@ export interface ModelInfo {
    *  ("Claude Sonnet 4.5"), OpenRouter's `name`. Absent on plain OpenAI. */
   name?: string;
   created?: number;
+  /** Context window in tokens, when the endpoint volunteers it (OpenRouter,
+   *  LM Studio, Ollama do; Anthropic and OpenAI don't). Feeds the compaction
+   *  threshold — see providers/context-window.ts for the rest of the ladder. */
+  contextLength?: number;
 }
 
 /** Chat message in provider-agnostic format. */

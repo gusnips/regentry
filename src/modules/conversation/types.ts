@@ -1,6 +1,13 @@
 import type { ErrorKind } from "@/modules/providers/error-classify";
 
-export type MessageRole = "user" | "assistant" | "reasoning" | "step" | "error" | "plan";
+export type MessageRole =
+  | "user"
+  | "assistant"
+  | "reasoning"
+  | "step"
+  | "error"
+  | "plan"
+  | "summary";
 
 export interface Message {
   id: string;
@@ -47,6 +54,13 @@ export interface Message {
   current?: number;
   /** For reasoning messages: how long the model thought, in ms */
   elapsed?: number;
+  /**
+   * For summary messages: what this compaction stands in for. The messages
+   * above it stay in storage and stay scrollable — only the model's replay
+   * starts here. The counts are the receipt the fold shows ("42 messages ·
+   * 18k → 2k"), so a compaction is never something that just silently happened.
+   */
+  compacted?: { messages: number; before: number; after: number };
   timestamp: number;
 }
 

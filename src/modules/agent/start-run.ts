@@ -18,6 +18,7 @@ import {
   resolveProviderModel,
 } from "@/modules/providers";
 import type { ResolvedProviderConfig } from "@/modules/providers/types";
+import { contextWindowFor, learnContextLimit, readLearnedLimits } from "@/modules/providers/context-window";
 import { getMessages, getThreadTabsFor, recordDrivenTabFor } from "@/modules/conversation";
 import {
   flushConversationWrites,
@@ -219,9 +220,14 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     clearPendingQuestion(conversationId);
     void showAgentIndicator(drivenTabId);
 
+    // What this model can hold — a ceiling an earlier run learned from a
+    // refusal, the endpoint's own listing, or the 200k default. It sets both
+    // how much conversation gets replayed and when the run folds its own turns.
+    const contextWindow = contextWindowFor(resolvedProvider, await readLearnedLimits());
+
     // The stored conversation as wire turns — "continue" lands on a model that
     // has read the same exchange, not on a stranger.
-    const history = buildConversationHistory(transcript);
+    const history = buildConversationHistory(transcript, contextWindow);
 
     try {
       const wire = await runAgentLoop({
@@ -233,6 +239,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         images,
         supportsImages: resolvedProvider?.supportsImages,
         history: history.length > 0 ? history : undefined,
+        contextWindow,
         previousTabs: previousTabs.length > 0 ? previousTabs : undefined,
         mode: {
           background: opts.thisPage !== true,
@@ -242,6 +249,11 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         signal: run.controller.signal,
         callbacks: {
           onInjected: (id, text) => emit({ type: "injected", id, text }),
+          // A refusal is the only hard number any endpoint gives us about its
+          // window — persisted so the NEXT run on this model starts knowing it.
+          onContextLimit: (observed) => {
+            void learnContextLimit(resolvedProvider, observed);
+          },
           onToken: (text) => emit({ type: "token", text }),
           onReasoning: (text) => emit({ type: "reasoning", text }),
           onStepStart: (tool, args) => emit({ type: "step_start", tool, args }),

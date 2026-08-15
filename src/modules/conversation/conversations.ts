@@ -65,7 +65,7 @@ export interface ConversationMeta {
 // transcripts eventually fail writes silently. Ceilings: a very long run loses
 // its oldest messages, and the 51st conversation evicts the least recently
 // touched one. Upgrade path is IndexedDB if transcripts must be permanent.
-const MAX_MESSAGES = 100;
+export const MAX_MESSAGES = 100;
 const MAX_CONVERSATIONS = 50;
 const TITLE_LENGTH = 60;
 

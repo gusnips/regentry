@@ -148,7 +148,12 @@ function parseModelEntries(body: unknown): ModelInfo[] {
     const record = (entry ?? {}) as Record<string, unknown>;
     const id = record.id;
     if (typeof id !== "string" || !id) continue;
-    out.push({ id, name: parseName(record, id), created: parseCreated(record) });
+    out.push({
+      id,
+      name: parseName(record, id),
+      created: parseCreated(record),
+      contextLength: parseContextLength(record),
+    });
   }
   return out;
 }
@@ -158,6 +163,21 @@ function parseName(entry: Record<string, unknown>, id: string): string | undefin
   for (const key of ["display_name", "name"]) {
     const value = entry[key];
     if (typeof value === "string" && value.trim() && value !== id) return value.trim();
+  }
+  return undefined;
+}
+
+/**
+ * The context window, when the endpoint volunteers it. OpenRouter ships
+ * `context_length`, LM Studio `max_context_length`, Ollama `context_window` —
+ * Anthropic and OpenAI ship none, which is why this is only one rung of the
+ * ladder in context-window.ts and never the whole answer.
+ */
+function parseContextLength(entry: Record<string, unknown>): number | undefined {
+  for (const key of ["context_length", "max_context_length", "context_window"]) {
+    const value = entry[key];
+    // Below 1k is a unit we don't recognize (or a broken listing), not a window.
+    if (typeof value === "number" && Number.isFinite(value) && value >= 1_000) return value;
   }
   return undefined;
 }

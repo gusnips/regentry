@@ -11,7 +11,31 @@
  * falls through to the generic error envelope — never worse than before.
  * Upgrade path is adding patterns as new wordings are seen in the wild.
  */
-export type ErrorKind = "entitlement" | "quota" | "auth" | "model" | "rate" | "overload";
+export type ErrorKind =
+  | "entitlement"
+  | "quota"
+  | "auth"
+  | "model"
+  | "rate"
+  | "overload"
+  | "context";
+
+// The request outgrew the model's context window. Distinct from quota in the
+// one way that matters: nothing about the account is wrong and waiting fixes
+// nothing — the fix is to send less, which is what compaction does. Every
+// provider files it under 400 with its own wording, so the body is all we have.
+const CONTEXT_PATTERNS = [
+  /context[_\s]length[_\s]exceeded/i,
+  /maximum context length/i,
+  /context window/i,
+  /prompt is too long/i,
+  /input is too long/i,
+  /too many (?:input )?tokens/i,
+  /reduce the length of the (?:messages|prompt|input)/i,
+  // Scoped to the thing that overflowed: a bare "exceeds the maximum" also
+  // covers image counts and per-minute token rates, which compaction can't fix.
+  /exceeds? the (?:model'?s? )?maximum (?:input |prompt |context )?(?:tokens?|length|context)/i,
+];
 
 // A plan that never included this API — neither a new key nor a top-up fixes
 // it, and its wording overlaps both ("plan" appears in all three categories),
@@ -68,6 +92,11 @@ const matches = (patterns: RegExp[], text: string): boolean => patterns.some((p)
  * auth — each earlier category's fix is useless for the later ones.
  */
 export function classifyProviderError(status: number, bodyText: string): ErrorKind | undefined {
+  // Context first: a 429 whose body says "too many tokens" can be either a
+  // per-minute rate limit or an oversized prompt, and only the wordings above
+  // — which name the window, not the rate — land here. Compaction is the fix,
+  // and unlike "retry" it is one the user can act on immediately.
+  if (status < 500 && matches(CONTEXT_PATTERNS, bodyText)) return "context";
   if (status < 500 && matches(ENTITLEMENT_PATTERNS, bodyText)) return "entitlement";
   if (status < 500 && matches(QUOTA_PATTERNS, bodyText)) return "quota";
   if (matches(MODEL_PATTERNS, bodyText)) return "model";

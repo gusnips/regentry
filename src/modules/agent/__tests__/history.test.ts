@@ -83,7 +83,9 @@ describe("buildConversationHistory", () => {
     }
     // A run-start transcript always ends on the fresh task.
     transcript.push(msg("user", "current task"));
-    const history = buildConversationHistory(transcript);
+    // The budget now scales with the model's window, so the window is named
+    // here rather than assumed — 32k lands on the 24k floor.
+    const history = buildConversationHistory(transcript, 32_000);
 
     const chars = history.reduce((n, m) => n + m.content.length, 0);
     expect(chars).toBeLessThanOrEqual(24_000);
@@ -123,5 +125,66 @@ describe("buildConversationHistory", () => {
   it("returns nothing for a fresh conversation", () => {
     expect(buildConversationHistory([])).toEqual([]);
     expect(buildConversationHistory([msg("user", "only the current task")])).toEqual([]);
+  });
+});
+
+describe("buildConversationHistory after a compaction", () => {
+  it("replays from the newest summary instead of sending the same history twice", () => {
+    const history = buildConversationHistory([
+      msg("user", "find me a flight"),
+      msg("assistant", "checked Kayak"),
+      msg("summary", "1. Task: find a flight. 2. Findings: BA117 at 09:00."),
+      msg("user", "book it"),
+      msg("assistant", "booked, seat 4A"),
+      msg("user", "now add a hotel"),
+    ]);
+
+    // The summary leads, in the agent's own voice, and the pre-compaction
+    // exchange it stands for is gone from the replay.
+    expect(history[0]).toEqual({
+      role: "assistant",
+      content: "1. Task: find a flight. 2. Findings: BA117 at 09:00.",
+    });
+    expect(JSON.stringify(history)).not.toContain("checked Kayak");
+    expect(JSON.stringify(history)).toContain("book it");
+  });
+
+  it("ignores a summary that lands after the last user message", () => {
+    // A run ends, writes its summary, and the user has not replied yet. Replay
+    // must still carry the exchange above it — starting at that summary would
+    // drop the very message the pending run is about.
+    const history = buildConversationHistory([
+      msg("user", "find me a flight"),
+      msg("assistant", "found BA117"),
+      msg("user", "book it"),
+      msg("summary", "a summary of everything"),
+    ]);
+    expect(history).toEqual([
+      { role: "user", content: "find me a flight" },
+      { role: "assistant", content: "found BA117" },
+    ]);
+  });
+
+  it("scales the replay budget to the model's window", () => {
+    const transcript: Message[] = [];
+    // Entries are capped at 4k each, so depth is what the budget buys — 40
+    // exchanges is ~120k chars, past the small window and inside the large one.
+    for (let i = 1; i <= 40; i++) {
+      transcript.push(
+        msg("user", `ask ${i} `.padEnd(1500, ".")),
+        msg("assistant", `answer ${i} `.padEnd(1500, ".")),
+      );
+    }
+    transcript.push(msg("user", "continue"));
+
+    const small = buildConversationHistory(transcript, 32_000);
+    const large = buildConversationHistory(transcript, 400_000);
+    const chars = (h: typeof small) => h.reduce((n, m) => n + m.content.length, 0);
+
+    expect(chars(small)).toBeLessThanOrEqual(24_000);
+    expect(chars(large)).toBeGreaterThan(chars(small));
+    // Both keep the original task, whatever else they drop.
+    expect(small[0]?.content).toContain("ask 1");
+    expect(large[0]?.content).toContain("ask 1");
   });
 });

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import { DrivenTabChip } from "./DrivenTabChip";
 import { PlanMark } from "./PlanMark";
+import { ContextGauge } from "./ContextGauge";
 import { pendingAskId } from "./ask-gate";
 import { useNow, useQueueBusy } from "./hooks";
 import { TipLine } from "@/modules/tips/ui";
@@ -152,6 +153,9 @@ export function RunStatus() {
             {formatDuration(finished.endedAt - finished.startedAt)}
             {finishedNote}
           </span>
+          {/* The band outlives the run, so this is the gauge you read before
+              typing the next message — the one moment compacting is a choice. */}
+          <ContextGauge />
           {lastTab?.tabId !== undefined && (
             <Button
               size="sm"
@@ -211,6 +215,7 @@ export function RunStatus() {
           {formatDuration(now - liveStartedAt)}
           {tokenNote}
         </span>
+        <ContextGauge />
         {/* The composer's send/stop morphs away the moment a draft exists, so
             the band carries the one Stop that is always there — same control
             the bridge band already wears. */}

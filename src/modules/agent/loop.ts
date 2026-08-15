@@ -17,6 +17,8 @@ import { executeTool, formatDetail, formatSuccessSummary } from "./tools";
 import type { RunGroup } from "./tools";
 import { buildSystemPrompt, buildTaskMessage, buildToolDefs } from "./prompt";
 import type { PreviousTab, RunMode } from "./prompt";
+import { compactRunMessages } from "./compact";
+import { DEFAULT_CONTEXT_WINDOW, needsCompaction } from "@/modules/providers/context-window";
 
 const log = createLogger("agent");
 
@@ -114,6 +116,12 @@ export interface LoopCallbacks {
   /** A queued mid-run message was consumed — the panel turns its pending line into a real one. */
   onInjected?: (id: string, text: string) => void;
   onUsage?: (input: number, output: number) => void;
+  /**
+   * The provider refused a turn for length at `observedInput` tokens — so the
+   * real context window is below it. The caller records it, and every later run
+   * on this model compacts before reaching that number instead of after.
+   */
+  onContextLimit?: (observedInput: number) => void;
   /** `kind` is the provider's classified failure — the UI renders its own lead line then. */
   onError?: (message: string, kind?: ErrorKind) => void;
   onDone?: (summary?: string) => void;
@@ -159,6 +167,13 @@ export interface LoopOptions {
    * same code path as this run's own turns.
    */
   history?: ChatMessage[];
+  /**
+   * The model's context window in tokens, as best anyone can know it — see
+   * providers/context-window.ts for how it is learned. The run folds its older
+   * turns into a progress note before reaching it, so a long task shrinks its
+   * own context instead of dying on a provider rejection halfway through.
+   */
+  contextWindow?: number;
   /**
    * Messages the user typed mid-run, drained at each tool boundary. Inserting
    * them between tool batches (not mid-stream) keeps every provider wire valid
@@ -257,10 +272,22 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     previousTabs,
     mode,
     history,
+    contextWindow = DEFAULT_CONTEXT_WINDOW,
     drainInjected,
     signal,
-    callbacks,
+    callbacks: rawCallbacks,
   } = opts;
+  // The last turn's input token count IS this run's context size — the provider
+  // measures it for us every turn, so nothing here has to estimate. Intercepted
+  // rather than asked for separately: onUsage already carries the number.
+  let lastInput = 0;
+  const callbacks: LoopCallbacks = {
+    ...rawCallbacks,
+    onUsage: (input, output) => {
+      if (input > 0) lastInput = input;
+      rawCallbacks.onUsage?.(input, output);
+    },
+  };
   const supportsImages = supportsImagesOpt ?? true;
   log.info("run started:", truncate(task, 120));
 
@@ -284,6 +311,41 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     },
   ];
 
+  // Where the task message sits, and what it said before any progress note was
+  // attached to it — compaction rebuilds the note from this, so a second pass
+  // replaces the first instead of summarizing a summary.
+  const taskIndex = messages.length - 1;
+  const originalTask = messages[taskIndex]?.content ?? task;
+
+  /**
+   * Fold the run's older turns into the task's progress note. Reports the fold
+   * as a step so the user can see why the transcript's middle went quiet, and
+   * swallows its own failure: a compaction that errors must not end a run that
+   * was otherwise fine — the turn still has whatever headroom it had.
+   */
+  const compactNow = async (): Promise<boolean> => {
+    try {
+      const removed = await compactRunMessages(
+        provider,
+        messages,
+        taskIndex,
+        originalTask,
+        signal,
+      );
+      if (removed === 0) return false;
+      callbacks.onStep?.({
+        tool: "compact",
+        summary: i18n.t("compact.folded", { count: removed }),
+        ok: true,
+      });
+      return true;
+    } catch (e) {
+      if (signal.aborted) throw e;
+      log.warn("compaction failed:", e instanceof Error ? e.message : String(e));
+      return false;
+    }
+  };
+
   // The user's attachment silently vanished — make it a visible step, not a mystery.
   if (images?.length && !supportsImages) {
     callbacks.onStep?.({ tool: "warn", summary: i18n.t("errors.textOnlyImages") });
@@ -300,6 +362,9 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
   // One retry for a `done` the output cap emptied of both summary and streamed
   // text — bounded so a model that keeps truncating still closes, never loops.
   let retriedTruncatedDone = false;
+  // One context-overflow recovery per run — a fold that still doesn't fit will
+  // not fit on the next attempt either, and retrying would only burn calls.
+  let recoveredFromOverflow = false;
 
   for (let step = 0; step < MAX_STEPS; step++) {
     if (signal.aborted) {
@@ -329,6 +394,14 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       });
     }
 
+    // Proactive: the last turn came back close enough to the ceiling that the
+    // next one may not fit. Folding here — between turns — is the only place it
+    // is free: no tool call is in flight and no result is waiting for its id.
+    if (needsCompaction(lastInput, contextWindow)) {
+      log.info(`context at ${lastInput}/${contextWindow} — compacting before the next turn`);
+      if (await compactNow()) lastInput = 0;
+    }
+
     let turn: TurnResult;
     try {
       turn = await streamTurn(provider, messages, tools, signal, callbacks);
@@ -339,6 +412,32 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       }
       const msg = e instanceof Error ? e.message : String(e);
       const kind = e instanceof ProviderError ? e.kind : undefined;
+
+      // Reactive: the provider just told us the window is smaller than we
+      // thought. That refusal is the only hard number anyone ever gives us —
+      // record it so every later run on this model compacts before this point,
+      // then fold and retry the same step. Retried once: if a run that just
+      // shed its history is still too big, the next attempt sheds nothing new
+      // and only costs the user another failed call.
+      if (kind === "context" && !recoveredFromOverflow) {
+        recoveredFromOverflow = true;
+        // The estimate stands in when the refusal carried no usage — guessing
+        // low only compacts earlier than needed, never later.
+        callbacks.onContextLimit?.(lastInput > 0 ? lastInput : contextWindow);
+        log.warn(`context window exceeded at ~${lastInput} tokens — compacting and retrying`);
+        if (await compactNow()) {
+          lastInput = 0;
+          // The turn never happened, so it must not cost a step — but the
+          // budget nudge this step may have pushed is still the last message,
+          // and re-pushing it on the retry would put two user turns
+          // back-to-back, which Anthropic rejects outright.
+          if ((nearEnd || finalizing) && messages[messages.length - 1]?.role === "user") {
+            messages.pop();
+          }
+          step--;
+          continue;
+        }
+      }
       // A classified state (rate limit, quota, auth…) isn't a run fault — warn keeps
       // it off chrome://extensions' Errors page. Unclassified shapes stay errors:
       // they're the signal that a provider changed something we don't know yet.

@@ -244,7 +244,8 @@
       "updateKey": "Actualizar clave de API →",
       "signIn": "Iniciar sesión de nuevo →",
       "checkUrl": "Revisar URL base →",
-      "addProvider": "Añadir un proveedor →"
+      "addProvider": "Añadir un proveedor →",
+      "compact": "Compactar la conversación →"
     },
     "details": "Detalles",
     "screenshotAlt": "Captura de la página que tomó el agente",
@@ -326,9 +327,27 @@
       "description": "Muestra las ventanas de uso de la suscripción activa",
       "unsupported": "{{provider}} usa una clave de API — las ventanas de uso solo existen en los proveedores por suscripción (Anthropic, ChatGPT, Kimi)."
     },
+    "compact": {
+      "description": "Resume esta conversación hasta aquí, para liberar contexto",
+      "running": "Compactando la conversación…",
+      "nothing": "Nada que compactar todavía — esta conversación aún cabe entera en el replay.",
+      "busy": "Hay una ejecución en curso — compacta cuando termine.",
+      "failed": "No se pudo compactar: {{message}}"
+    },
     "help": {
       "description": "Lista los comandos"
     }
+  },
+  "compact": {
+    "folded": "Se plegaron {{count}} turnos anteriores en un resumen para liberar contexto",
+    "summaryTitle": "Compactado",
+    "receipt": "{{count}} mensajes · {{before}} → {{after}}",
+    "earlier_one": "Anteriores · {{count}} mensaje",
+    "earlier_other": "Anteriores · {{count}} mensajes",
+    "explain": "Los mensajes de arriba siguen aquí para ti — el agente reproduce este resumen en su lugar."
+  },
+  "context": {
+    "tooltip": "Contexto: {{used}} de {{window}} usados ({{percent}}%) — /compact resume la conversación para liberar espacio"
   },
   "indicator": {
     "driving": "TabRunner está controlando esta pestaña",
@@ -468,7 +487,8 @@
     "board": "Una tarea de otro chat aparece en la banda Tareas de arriba — salta a su pestaña o detenla ahí.",
     "memory": "TabRunner recuerda datos útiles de tus tareas — revísalos o bórralos en Ajustes → Lo que TabRunner recuerda.",
     "usage": "En un proveedor por suscripción, el icono de medidor junto al selector de modelo muestra tu uso de 5 horas y semanal — haz clic para ver cuándo se reinicia.",
-    "slashCommands": "Escribe / en el campo de texto para ver comandos — cambia proveedor, modelo o esfuerzo."
+    "slashCommands": "Escribe / en el campo de texto para ver comandos — cambia proveedor, modelo o esfuerzo.",
+    "compact": "¿Chat largo llenándose? /compact cambia los mensajes viejos por un resumen — conservas el historial."
   },
   "notify": {
     "doneFallback": "Tarea terminada."
@@ -538,6 +558,8 @@
     "windowWeekly": "semanal",
     "windowMonthly": "mensual",
     "kindOverload": "{{provider}} está sobrecargado ahora mismo — inténtalo de nuevo en unos minutos",
+    "kindContext": "Esta conversación superó lo que {{provider}} puede leer en una petición — compáctala para seguir",
+    "compactEmpty": "El modelo devolvió un resumen vacío, así que no se compactó nada. Inténtalo otra vez, o empieza un chat nuevo para reiniciar el contexto.",
     "oauthRefreshExpired": "Tu sesión de {{name}} caducó y no se pudo renovar — inicia sesión de nuevo en Configuración.",
     "signInFailed": "Error al iniciar sesión: {{detail}}",
     "signInRateLimited": "El servicio de inicio de sesión del proveedor está rechazando peticiones ahora mismo — demasiadas en poco tiempo. No tiene que ver con el uso de tu plan. Espera un minuto y empieza de nuevo.",

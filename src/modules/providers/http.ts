@@ -24,6 +24,7 @@ const ERROR_KIND_KEYS = {
   model: "errors.kindModel",
   rate: "errors.kindRate",
   overload: "errors.kindOverload",
+  context: "errors.kindContext",
 } as const satisfies Record<ErrorKind, string>;
 
 const WINDOW_KEYS = {

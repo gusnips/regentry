@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore, retryTargetFrom } from "./store";
 import { Markdown } from "./Markdown";
@@ -10,7 +10,7 @@ import { pendingAskId } from "./ask-gate";
 import type { Message } from "../types";
 import { splitErrorDetail } from "../error-detail";
 import type { ErrorKind } from "@/modules/providers/error-classify";
-import { formatDuration, hostnameOf } from "@/lib/format";
+import { formatDuration, formatTokens, hostnameOf } from "@/lib/format";
 import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
@@ -32,7 +32,7 @@ import { useStoredItem } from "@/components/useStoredItem";
 
 type HintKey =
   "badKey" | "signedOut" | "quota" | "rateLimited" | "rejected" | "network" | "noProvider";
-type CtaKey = "updateKey" | "signIn" | "checkUrl" | "addProvider";
+type CtaKey = "updateKey" | "signIn" | "checkUrl" | "addProvider" | "compact";
 
 const HINT_KEYS = {
   badKey: "chat.hint.badKey",
@@ -49,6 +49,7 @@ const CTA_KEYS = {
   signIn: "chat.cta.signIn",
   checkUrl: "chat.cta.checkUrl",
   addProvider: "chat.cta.addProvider",
+  compact: "chat.cta.compact",
 } as const;
 
 /**
@@ -85,6 +86,11 @@ function errorHint(message: string, signedIn: boolean): { key: HintKey; cta?: Ct
 function kindCta(kind: ErrorKind, signedIn: boolean): CtaKey | undefined {
   if (kind === "quota" || kind === "entitlement") return "addProvider";
   if (kind === "auth") return signedIn ? "signIn" : "updateKey";
+  // The run already tried folding its own turns and still didn't fit, so the
+  // conversation replayed into it is what's left to shrink. One button, because
+  // "compact and try again" is the entire remedy — the alternative is a user
+  // staring at a token limit with no idea what to do about it.
+  if (kind === "context") return "compact";
   return undefined;
 }
 
@@ -115,7 +121,7 @@ function StepIcon({ live, ok }: { live?: boolean; ok?: boolean }) {
  * actually saw. The transcript stays scannable, but nothing the agent did to
  * your browser is hidden from you.
  */
-function StepRow({ msg }: { msg: Message }) {
+const StepRow = memo(function StepRow({ msg }: { msg: Message }) {
   const { t } = useTranslation();
   const key = toolVerbKey(msg.tool);
   const label = key ? t(key) : msg.tool;
@@ -188,7 +194,7 @@ function StepRow({ msg }: { msg: Message }) {
       </div>
     </details>
   );
-}
+});
 
 /**
  * The agent paused for a decision — ask_user rendered as a card, not a step
@@ -508,7 +514,7 @@ function burstCountKey(tool: string | undefined): BurstCountKey {
  * the expanded rows. Live bursts stay open (same rule as the plan card) and
  * settle closed when the run ends.
  */
-function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoning: () => void }) {
+const BurstCard = memo(function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoning: () => void }) {
   const { t, i18n } = useTranslation();
   const now = useNow(burst.live);
   const last = burst.items[burst.items.length - 1];
@@ -552,7 +558,48 @@ function BurstCard({ burst, onToggleReasoning }: { burst: Burst; onToggleReasoni
       </div>
     </details>
   );
-}
+});
+
+/**
+ * A compaction: the conversation up to here, traded for a summary of it.
+ *
+ * Drawn as a seam rather than a message, because that is what it is — nothing
+ * was said here, something was folded. The receipt is the point: how many
+ * messages and what it bought, so a compaction is never a thing that silently
+ * happened to your conversation. The summary text itself opens on click for
+ * anyone who wants to check what the agent will actually carry forward.
+ *
+ * Gold, not emerald: this measures the conversation, it does not act on it.
+ */
+const SummaryCard = memo(function SummaryCard({ msg }: { msg: Message }) {
+  const { t } = useTranslation();
+  const receipt = msg.compacted;
+  return (
+    <details className="group max-w-full self-stretch rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-1.5 text-xs dark:border-amber-900/60 dark:bg-amber-950/30">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none">
+        <ChevronRightIcon className="shrink-0 text-amber-700 transition-transform group-open:rotate-90 dark:text-amber-300" />
+        <span className="font-medium text-neutral-700 dark:text-neutral-200">
+          {t("compact.summaryTitle")}
+        </span>
+        {receipt && (
+          <span className="telemetry truncate">
+            {t("compact.receipt", {
+              count: receipt.messages,
+              before: formatTokens(receipt.before),
+              after: formatTokens(receipt.after),
+            })}
+          </span>
+        )}
+      </summary>
+      <div className="mt-1 border-t border-amber-200/70 pt-1 dark:border-amber-900/40">
+        <p className="mb-1 text-neutral-500 dark:text-neutral-400">{t("compact.explain")}</p>
+        <div className="break-words whitespace-pre-wrap text-neutral-600 dark:text-neutral-300">
+          {msg.content}
+        </div>
+      </div>
+    </details>
+  );
+});
 
 /**
  * The assistant bubble — rendered for stored messages and the live stream alike.
@@ -604,11 +651,48 @@ function TabStamp({ tab }: { tab: NonNullable<Message["tab"]> }) {
   );
 }
 
-function MessageBubble({
+/**
+ * How many messages stay rendered. Everything older folds behind one row and
+ * leaves the DOM entirely — not `display:none`, not `<details>` (both keep the
+ * nodes and their decoded screenshots in memory), but unmounted until asked
+ * for. A transcript is capped at 100 messages, so this is the difference
+ * between ~100 subtrees and ~50 on the reasoning-shown path where nothing
+ * folds into bursts.
+ */
+const RENDER_WINDOW = 50;
+
+/** The fold's own row: what is hidden, and the one click that brings it back. */
+function EarlierFold({
+  count,
+  open,
+  onToggle,
+}: {
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="flex items-center gap-1.5 self-start rounded px-1 text-xs text-neutral-500 select-none hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-neutral-400 dark:hover:text-neutral-300"
+    >
+      <ChevronRightIcon
+        className={`shrink-0 text-neutral-400 transition-transform dark:text-neutral-500 ${open ? "rotate-90" : ""}`}
+      />
+      <span>{t("compact.earlier", { count })}</span>
+    </button>
+  );
+}
+
+const MessageBubble = memo(function MessageBubble({
   msg,
   activeProvider,
   onRetry,
   onAnswer,
+  onCompact,
   showReasoningOn,
   onToggleReasoning,
   showTab,
@@ -621,6 +705,8 @@ function MessageBubble({
   onRetry?: () => void;
   /** Present only on the newest unanswered ask_user while idle — the answer starts the next run. */
   onAnswer?: (text: string) => void;
+  /** The context-overflow fix — summarize the conversation and free up room. */
+  onCompact: () => void;
   showReasoningOn: boolean;
   onToggleReasoning: () => void;
   /** The conversation spans more than one tab, so user messages name theirs. */
@@ -651,6 +737,8 @@ function MessageBubble({
       );
     case "assistant":
       return <AssistantBubble content={msg.content} />;
+    case "summary":
+      return <SummaryCard msg={msg} />;
     case "reasoning":
       return (
         <ReasoningBlock
@@ -711,7 +799,19 @@ function MessageBubble({
                 {t("chat.retry")}
               </Button>
             )}
-            {cta && (
+            {/* Compaction is not a credential problem — it needs no dialog,
+                just the one action, so it never reaches AddProviderDialog. */}
+            {cta === "compact" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onCompact}
+                className={ERROR_ACTION_CLASSES}
+              >
+                {t(CTA_KEYS.compact)}
+              </Button>
+            )}
+            {cta && cta !== "compact" && (
               <AddProviderDialog
                 initialProvider={activeProvider}
                 // A credential save IS the fix this error asked for — resume
@@ -729,7 +829,7 @@ function MessageBubble({
       );
     }
   }
-}
+});
 
 export function MessageList() {
   const { t } = useTranslation();
@@ -766,6 +866,65 @@ export function MessageList() {
   );
 }
 
+/**
+ * The live edge — the three rows that change on every streamed token.
+ *
+ * Split out of Transcript deliberately. Both streams live in the same store as
+ * the message list, so a component that reads them re-renders on every delta;
+ * with the list rendered in that same component, ~60 tokens a second meant
+ * rebuilding every bubble, burst and step row in the transcript sixty times a
+ * second. Markdown is memoized, so the parse was spared — the reconciliation of
+ * a hundred subtrees was not. Subscribing here instead means a token repaints
+ * exactly the one row it changed.
+ */
+function LiveReasoning({ show, onToggle }: { show: boolean; onToggle: () => void }) {
+  const reasoningText = useConversationStore((s) => s.reasoningText);
+  const reasoningStartedAt = useConversationStore((s) => s.reasoningStartedAt);
+  if (!reasoningText) return null;
+  return (
+    <MessageScrollerItem>
+      <ReasoningBlock
+        text={reasoningText}
+        startedAt={reasoningStartedAt}
+        show={show}
+        onToggle={onToggle}
+      />
+    </MessageScrollerItem>
+  );
+}
+
+function LiveText({ running }: { running: boolean }) {
+  const streamingText = useConversationStore((s) => s.streamingText);
+  if (!streamingText) return null;
+  return (
+    <MessageScrollerItem>
+      <AssistantBubble content={streamingText} cursor={running} />
+    </MessageScrollerItem>
+  );
+}
+
+/** Shown only in the gaps — so it, too, must watch the streams that close them. */
+function WorkingDots() {
+  const { t } = useTranslation();
+  const busy = useConversationStore((s) => s.streamingText !== "" || s.reasoningText !== "");
+  if (busy) return null;
+  return (
+    <MessageScrollerItem>
+      <Bubble variant="muted" role="status" aria-label={t("chat.working")} className="py-2.5">
+        <span className="flex items-center gap-1">
+          {[0, 150, 300].map((d) => (
+            <span
+              key={d}
+              className="thinking-dot h-1.5 w-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500"
+              style={{ animationDelay: `${d}ms` }}
+            />
+          ))}
+        </span>
+      </Bubble>
+    </MessageScrollerItem>
+  );
+}
+
 /** Rows + jump pill. The scroller hooks must run under the Provider. */
 function Transcript() {
   const { t } = useTranslation();
@@ -774,10 +933,7 @@ function Transcript() {
   // model's language ("call read_history…") and would read as the agent
   // talking past the user. Filtered here, before grouping, so nothing
   // downstream — bursts, the ask gate, the newest-error retry — ever counts one.
-  const messages = useConversationStore((s) => s.messages).filter((m) => !m.internal);
-  const streamingText = useConversationStore((s) => s.streamingText);
-  const reasoningText = useConversationStore((s) => s.reasoningText);
-  const reasoningStartedAt = useConversationStore((s) => s.reasoningStartedAt);
+  const stored = useConversationStore((s) => s.messages);
   const status = useConversationStore((s) => s.status);
   const retry = useConversationStore((s) => s.retry);
   const sendTask = useConversationStore((s) => s.sendTask);
@@ -788,15 +944,34 @@ function Transcript() {
   const activeProvider = useProvidersStore((s) => s.providers.find((p) => p.id === s.activeId));
   // One global preference, read and watched once here — never per reasoning block.
   const showReasoningOn = useStoredItem(showReasoning);
-  const toggleReasoning = () => void showReasoning.set(!showReasoningOn);
-  const hasLiveStep = messages.some((m) => m.live);
-  // The newest unanswered question keeps its answer affordance — the gate is
-  // shared with the composer's answer placeholder (ask-gate.ts).
-  const tappableAskId = pendingAskId(messages, status);
-  // User messages name their tab only once a conversation spans more than one —
-  // with a single tab every message is obviously there, so the label is noise.
-  const multiTab =
-    new Set(messages.flatMap((m) => (m.role === "user" && m.tab ? [m.tab.url] : []))).size > 1;
+  const toggleReasoning = useCallback(() => void showReasoning.set(!showReasoningOn), [showReasoningOn]);
+
+  // Everything below is derived from the message list, and this component
+  // re-renders on every state change the transcript watches. Memoized as one
+  // block so a status flip — or anything else — does not redo five O(n) scans
+  // over a hundred messages.
+  const { messages, hasLiveStep, tappableAskId, multiTab, hasPlan } = useMemo(() => {
+    // Internal entries are the model's, not the chat's — the progress note an
+    // interrupted run leaves for the next run's history is written in the
+    // model's language ("call read_history…") and would read as the agent
+    // talking past the user. Filtered here, before grouping, so nothing
+    // downstream — bursts, the ask gate, the newest-error retry — ever counts one.
+    const visible = stored.filter((m) => !m.internal);
+    return {
+      messages: visible,
+      hasLiveStep: visible.some((m) => m.live),
+      // The newest unanswered question keeps its answer affordance — the gate is
+      // shared with the composer's answer placeholder (ask-gate.ts).
+      tappableAskId: pendingAskId(visible, status),
+      // User messages name their tab only once a conversation spans more than
+      // one — with a single tab every message is obviously there, so the label
+      // is noise.
+      multiTab:
+        new Set(visible.flatMap((m) => (m.role === "user" && m.tab ? [m.tab.url] : []))).size > 1,
+      hasPlan: visible.some((m) => m.role === "plan" && m.steps?.length),
+    };
+  }, [stored, status]);
+
   // `end` is "unseen content below the viewport" — the old !stuck: true once
   // the reader scrolls off the live edge, so the pill shows exactly then.
   const { end: offEnd } = useMessageScrollerScrollable();
@@ -805,7 +980,6 @@ function Transcript() {
   // E unfolds every plan card (all steps) and folds them back. null means each
   // card follows its own default: current step only mid-run, open once settled.
   const [plansOpen, setPlansOpen] = useState<boolean | null>(null);
-  const hasPlan = messages.some((m) => m.role === "plan" && m.steps?.length);
   useEffect(() => {
     if (!hasPlan) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -826,13 +1000,39 @@ function Transcript() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [hasPlan, status]);
 
+  // Where the rendered transcript starts. A compaction is the natural seam —
+  // the summary already stands for everything above it — and a very long
+  // uncompacted conversation gets the same treatment by count. Folded messages
+  // are not hidden, they are unmounted: `display:none` and a closed <details>
+  // both keep every node and every decoded screenshot alive in memory, which is
+  // the thing that made a long transcript heavy in the first place.
+  const [earlierOpen, setEarlierOpen] = useState(false);
+  const foldAt = useMemo(() => {
+    const compactedAt = messages.map((m) => m.role).lastIndexOf("summary");
+    return Math.max(compactedAt, messages.length - RENDER_WINDOW, 0);
+  }, [messages]);
+  const shown = earlierOpen ? messages : messages.slice(foldAt);
+  const lastId = messages[messages.length - 1]?.id;
+  const canRetry = status !== "running" && retryTargetFrom(messages) !== null;
+  const answer = useCallback((text: string) => void sendTask(text), [sendTask]);
+  const compact = useConversationStore((s) => s.compact);
+
   return (
     <MessageScroller>
       <MessageScrollerViewport>
         <MessageScrollerContent>
+          {foldAt > 0 && (
+            <MessageScrollerItem>
+              <EarlierFold
+                count={foldAt}
+                open={earlierOpen}
+                onToggle={() => setEarlierOpen((v) => !v)}
+              />
+            </MessageScrollerItem>
+          )}
           {(showReasoningOn
-            ? messages.map((m) => ({ kind: "message" as const, msg: m }))
-            : groupBursts(messages, status === "running")
+            ? shown.map((m) => ({ kind: "message" as const, msg: m }))
+            : groupBursts(shown, status === "running")
           ).map((item) =>
             item.kind === "burst" ? (
               <MessageScrollerItem key={item.id} messageId={item.id}>
@@ -855,30 +1055,17 @@ function Transcript() {
                   onRetry={
                     // Only the newest error offers Retry, once the run has settled
                     // and there's a task above it to resend.
-                    item.msg.role === "error" &&
-                    item.msg.id === messages[messages.length - 1]?.id &&
-                    status !== "running" &&
-                    retryTargetFrom(messages)
+                    item.msg.role === "error" && item.msg.id === lastId && canRetry
                       ? retry
                       : undefined
                   }
-                  onAnswer={
-                    item.msg.id === tappableAskId ? (text) => void sendTask(text) : undefined
-                  }
+                  onAnswer={item.msg.id === tappableAskId ? answer : undefined}
+                  onCompact={compact}
                 />
               </MessageScrollerItem>
             ),
           )}
-          {reasoningText && (
-            <MessageScrollerItem>
-              <ReasoningBlock
-                text={reasoningText}
-                startedAt={reasoningStartedAt}
-                show={showReasoningOn}
-                onToggle={toggleReasoning}
-              />
-            </MessageScrollerItem>
-          )}
+          <LiveReasoning show={showReasoningOn} onToggle={toggleReasoning} />
           {planApproval && (
             <MessageScrollerItem>
               <PlanApprovalCard
@@ -890,39 +1077,12 @@ function Transcript() {
               />
             </MessageScrollerItem>
           )}
-          {streamingText && (
-            <MessageScrollerItem>
-              <AssistantBubble content={streamingText} cursor={status === "running"} />
-            </MessageScrollerItem>
-          )}
+          <LiveText running={status === "running"} />
           {/* Dots cover the gaps only — a live tool row carries its own spinner,
               and a parked approval is not a gap: the run is waiting on the user,
               not working, so "working…" under the card would rush a decision
               that has all the time it needs. */}
-          {status === "running" &&
-            !planApproval &&
-            !streamingText &&
-            !reasoningText &&
-            !hasLiveStep && (
-              <MessageScrollerItem>
-                <Bubble
-                  variant="muted"
-                  role="status"
-                  aria-label={t("chat.working")}
-                  className="py-2.5"
-                >
-                  <span className="flex items-center gap-1">
-                    {[0, 150, 300].map((d) => (
-                      <span
-                        key={d}
-                        className="thinking-dot h-1.5 w-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500"
-                        style={{ animationDelay: `${d}ms` }}
-                      />
-                    ))}
-                  </span>
-                </Bubble>
-              </MessageScrollerItem>
-            )}
+          {status === "running" && !planApproval && !hasLiveStep && <WorkingDots />}
         </MessageScrollerContent>
       </MessageScrollerViewport>
       {offEnd && (
