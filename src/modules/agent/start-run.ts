@@ -4,7 +4,6 @@ import { extractAndRemember } from "@/modules/memory";
 import {
   clearAgentWait,
   createDriver,
-  focusTab,
   hideAgentIndicator,
   isRestrictedUrl,
   showAgentIndicator,
@@ -165,9 +164,10 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     });
     const driver = createDriver(tab.id, {
       // Only a watched run may follow its own switches — "this page" leaves the
-      // panel open precisely so the user can follow the work. A background run
-      // (adopted or in a tab of its own) re-targets in silence: "trabalhando
-      // sozinho" must never move the user's screen.
+      // panel open so the user can follow the work, and the driver keeps the
+      // follow on screen only while they're still on the tab being left. A
+      // background run (adopted or in a tab of its own) re-targets in silence:
+      // "trabalhando sozinho" must never move the user's screen.
       activateOnSwitch: opts.thisPage === true,
       onSwitch: (info) => {
         void hideAgentIndicator(drivenTabId);
@@ -462,19 +462,22 @@ function isBlankPage(url: string | undefined): boolean {
  * does the run open a tab of its own, on the start-page preference. It opens
  * inactive and is never brought forward: this path serves background runs, and
  * "background" means the user's screen never moves — the badge and the widget
- * say the work exists, and the panel's chip is the way to look at it. A
- * this-page run is the watched one: the driver may follow its own switches,
- * and an answer to a parked question reveals the tab the question arose on —
- * the user just pressed send. An MCP client's run is never revealed either:
- * nobody is at the browser, and reaching over to raise Chrome over the editor
- * they ARE looking at is the hijack this all avoids.
+ * say the work exists, and the panel's chip is the way to look at it.
+ *
+ * No run moves the user's screen at send time, in any mode: a continuation
+ * reuses its tab in place, a this-page run is already on it, and the watched
+ * follow (the driver bringing a switched-to tab forward) holds only while the
+ * user is still sitting on the tab being left. The sidebar is the watch
+ * surface; the chip and the notification click are how the user looks at the
+ * tab — the run never decides that for them. An MCP client's run is never
+ * revealed either: nobody is at the browser, and reaching over to raise Chrome
+ * over the editor they ARE looking at is the hijack this all avoids.
  */
 async function resolveRunTab(
   opts: StartRunOptions,
   continuation: LastTab | undefined,
   thread: ThreadTabs,
 ): Promise<RunTab | { error: string }> {
-  const reveal = opts.owner === "panel";
   if (opts.thisPage) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return { error: i18n.t("errors.noActiveTab") };
@@ -491,19 +494,16 @@ async function resolveRunTab(
   }
 
   const reused = await reuseContinuationTab(continuation, thread);
-  if (reused) {
-    if (reveal && reused.tab.id !== undefined) await focusTab(reused.tab.id, reused.tab.windowId);
-    return reused;
-  }
+  if (reused) return reused;
 
-  // The default panel run works the tab the user is looking at — the state the
-  // task is about (the half-filled form, the search results, the scrolled
-  // thread) lives there and only there. Re-visiting its url in a fresh tab
-  // would answer about a cold copy, and open a second live session the site
+  // The background-mode panel run works the tab the user is looking at — the
+  // state the task is about (the half-filled form, the search results, the
+  // scrolled thread) lives there and only there. Re-visiting its url in a fresh
+  // tab would answer about a cold copy, and open a second live session the site
   // may read as a bot. Adoption takes the tab as-is; the run reads it and
   // proposes a plan before any action tool is unlocked, so "don't touch this
   // draft" is a plan rejection, not a fork.
-  const adopt = reveal && !opts.url;
+  const adopt = opts.owner === "panel" && !opts.url;
   if (adopt) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.id && tab.url && !isBlankPage(tab.url) && !isRestrictedUrl(tab.url)) {

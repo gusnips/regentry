@@ -26,16 +26,26 @@ interface TabRecord {
   windowId: number;
   title?: string;
   url?: string;
+  active?: boolean;
 }
 const tabs: Record<number, TabRecord> = {
   1: { id: 1, windowId: 10, title: "First", url: "https://a.example" },
   2: { id: 2, windowId: 10, title: "Second", url: "https://b.example" },
   3: { id: 3, windowId: 20, title: "Elsewhere", url: "https://c.example" },
+  4: { id: 4, windowId: 10, title: "Mine", url: "https://mine.example" },
 };
 /** The one live tab group, sitting in window 10 with tabs 1-2. */
 const groups: Record<number, { windowId: number }> = { 7: { windowId: 10 } };
 const updates: { id?: number; window?: number; props: Record<string, unknown> }[] = [];
 const groupCalls: { tabIds: number | number[]; groupId?: number }[] = [];
+
+/** What Chrome does on { active: true }: the tab's window gets one active tab. */
+function setActive(id: number) {
+  const t = tabs[id];
+  if (!t) return;
+  for (const s of Object.values(tabs)) if (s.windowId === t.windowId) s.active = false;
+  t.active = true;
+}
 
 // The chrome stub must exist before driver/cdp-driver import — cdp-driver
 // registers its listeners at module scope.
@@ -50,9 +60,15 @@ const groupCalls: { tabIds: number | number[]; groupId?: number }[] = [];
     },
     update: async (id: number, props: Record<string, unknown>) => {
       updates.push({ id, props });
+      if (props.active === true) setActive(id);
       return tabs[id];
     },
-    query: async () => Object.values(tabs),
+    query: async (q: { active?: boolean; windowId?: number } = {}) =>
+      Object.values(tabs).filter(
+        (t) =>
+          (q.windowId === undefined || t.windowId === q.windowId) &&
+          (q.active !== true || t.active === true),
+      ),
     group: async (opts: { tabIds: number | number[]; groupId?: number }) => {
       groupCalls.push(opts);
       return opts.groupId ?? 42;
@@ -83,6 +99,7 @@ describe("driver tab switching", () => {
   beforeEach(() => {
     updates.length = 0;
     groupCalls.length = 0;
+    for (const t of Object.values(tabs)) t.active = false;
   });
 
   it("focusTab pulls the window by default — the pull belongs to the user's own clicks", async () => {
@@ -93,14 +110,15 @@ describe("driver tab switching", () => {
     ]);
   });
 
-  it("switchTab re-targets later actions and brings the tab forward — without raising the window", async () => {
+  it("switchTab follows on screen while the user watches the tab being left", async () => {
+    tabs[1]!.active = true; // the user is on the run's tab
     const switches: number[] = [];
     const driver = createDriver(1, { onSwitch: (info) => switches.push(info.id) });
 
     await expect(driver.snapshot()).resolves.toMatchObject({ pageContent: "snap:1" });
 
     const info = await driver.switchTab(2);
-    expect(info).toMatchObject({ id: 2, title: "Second" });
+    expect(info).toMatchObject({ id: 2, title: "Second", active: true });
     expect(switches).toEqual([2]);
     // The tab activates, but the window is never pulled — the agent's moves
     // must not yank Chrome out of another app (that pull is the user's chips).
@@ -109,7 +127,25 @@ describe("driver tab switching", () => {
     await expect(driver.snapshot()).resolves.toMatchObject({ pageContent: "snap:2" });
   });
 
+  it("stops following once the user moves to a tab of their own", async () => {
+    tabs[1]!.active = true;
+    const driver = createDriver(1);
+
+    await driver.switchTab(2); // followed: the user was watching tab 1
+    expect(updates).toEqual([{ id: 2, props: { active: true } }]);
+
+    // The user wanders off to their own tab — the next switch is silent.
+    setActive(4);
+    const info = await driver.switchTab(1);
+    expect(info).toMatchObject({ id: 1, active: false });
+    expect(updates).toHaveLength(1);
+
+    // …but the re-target still happened.
+    await expect(driver.snapshot()).resolves.toMatchObject({ pageContent: "snap:1" });
+  });
+
   it("a background run re-targets without taking the browser away from the user", async () => {
+    tabs[1]!.active = true; // even a user on the run's tab is left alone
     const driver = createDriver(1, { activateOnSwitch: false });
 
     const info = await driver.switchTab(2);
@@ -128,7 +164,7 @@ describe("driver tab switching", () => {
   it("listTabs reports every open tab", async () => {
     const driver = createDriver(1);
     const listed = await driver.listTabs();
-    expect(listed.map((t) => t.id)).toEqual([1, 2, 3]);
+    expect(listed.map((t) => t.id)).toEqual([1, 2, 3, 4]);
     expect(listed[0]).toMatchObject({ title: "First", url: "https://a.example", active: false });
   });
 

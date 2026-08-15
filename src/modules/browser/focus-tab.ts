@@ -1,14 +1,14 @@
 /**
  * Bring a tab forward — its window first, then the tab inside it, so the window
  * never flashes whatever tab it was last on. The one way to put a tab on screen:
- * the panel's chips, the driver's `switch_tab`, and a run revealing its own tab
- * all land here. Best-effort: a tab that died surfaces through the run itself,
- * and a gone board entry drops out on the next transition.
+ * the panel's chips and the driver's watched `switch_tab` follow land here.
+ * Best-effort: a tab that died surfaces through the run itself, and a gone
+ * board entry drops out on the next transition.
  *
  * `pullWindow: false` activates the tab inside its window but never raises the
- * window itself — the agent's moves (switch_tab, reveals) must not yank Chrome
- * out of another app. A user's own click (chips, the board) keeps the pull:
- * they are right there, asking to see the tab.
+ * window itself — the agent's one move (the watched switch_tab follow) must not
+ * yank Chrome out of another app. A user's own click (chips, the board) keeps
+ * the pull: they are right there, asking to see the tab.
  */
 export async function focusTab(
   tabId: number,

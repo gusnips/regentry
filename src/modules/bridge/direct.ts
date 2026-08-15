@@ -173,8 +173,9 @@ export class DirectSession {
   private driver(): BrowserDriver {
     const tabId = this.tabId;
     if (tabId === null) throw new Error(i18n.t("errors.noActiveTab"));
-    // Direct control is the client steering tab by tab — it asked for this tab,
-    // so bringing it forward is the answer, not an interruption.
+    // Direct control is the client steering tab by tab — it asked for this tab.
+    // Whether the switch reaches the screen stays the driver's call: it follows
+    // only while the user is watching the session's current tab.
     return createDriver(tabId, {
       onSwitch: (tab) => {
         this.tabId = tab.id;
