@@ -4,6 +4,7 @@ import { appendMessageTo, recordRunSummary, replaceMessageTo } from "./conversat
 import { buildProgressNote } from "./progress-note";
 import type { ProgressStep } from "./progress-note";
 import { createLogger } from "@/lib/logger";
+import { i18n } from "@/i18n";
 
 const log = createLogger("transcript");
 
@@ -104,16 +105,21 @@ export class TranscriptWriter {
   }
 
   /**
-   * The closing word a run that never wrote one still owes the next run. The
-   * steps are consumed on the way out: a closed tab emits its error and then
-   * aborts the loop, so a summary-less `done` follows immediately — and must
-   * not repeat the note the error already left.
+   * The closing word a run that never wrote one still owes the NEXT run — not
+   * the user, who watched the steps happen and reads the stop marker instead.
+   * It is written for replayed history (and phrased for the model, down to the
+   * read_history instruction), so it is stored `internal`: the transcript keeps
+   * it, the chat never draws it.
+   *
+   * The steps are consumed on the way out: a closed tab emits its error and
+   * then aborts the loop, so a summary-less `done` follows immediately — and
+   * must not repeat the note the error already left.
    */
   private writeProgressNote(errorMessage?: string): void {
     const note = buildProgressNote(this.progressSteps, errorMessage);
     if (!note) return;
     this.progressSteps = [];
-    this.append(makeMsg("assistant", note));
+    this.append(makeMsg("assistant", note, { internal: true }));
   }
 
   /** Reasoning and text close at the same points the display closes them. */
@@ -228,6 +234,16 @@ export class TranscriptWriter {
       case "done": {
         this.flushReasoning();
         this.flushStreaming();
+        // The stop, marked where it happened. The band above the composer says
+        // "Stopped" only until the next message retires it; scrolled back a
+        // week later, this quiet line is the only thing that tells a halted run
+        // from one that simply ended without a word. `stopped` means "the
+        // controller was aborted", and a dead tab aborts it too — the recorded
+        // summary is what tells the two apart, so a failure keeps its error
+        // bubble and never gets blamed on the user.
+        if (event.stopped === true && !this.summaryRecorded) {
+          this.append(makeMsg("step", i18n.t("chat.runStopped")));
+        }
         const closing = closingSummary(
           this.sawAssistantText,
           this.lastAssistant ?? undefined,

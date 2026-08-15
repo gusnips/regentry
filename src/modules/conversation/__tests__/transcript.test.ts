@@ -114,13 +114,42 @@ describe("TranscriptWriter", () => {
     const rows = await replay("run-stop", [
       { type: "step", tool: "snapshot", summary: "Captured 154 elements", ok: true },
       // A stop unwinds the loop as a summary-less done.
-      { type: "done" },
+      { type: "done", stopped: true },
     ]);
 
+    // What the user sees: their halt, marked. What the model gets: the note.
     expect(rows[0]).toEqual(["step", "Captured 154 elements"]);
-    expect(rows[1]?.[0]).toBe("assistant");
-    expect(rows[1]?.[1]).toContain("The user stopped this run");
-    expect(rows[1]?.[1]).toContain("Captured 154 elements");
+    expect(rows[1]).toEqual([
+      "step",
+      "You stopped this run — your next message can pick up from here.",
+    ]);
+    expect(rows[2]?.[0]).toBe("assistant");
+    expect(rows[2]?.[1]).toContain("The user stopped this run");
+    expect(rows[2]?.[1]).toContain("Captured 154 elements");
+  });
+
+  it("keeps the progress note out of the chat and in the history", async () => {
+    const writer = new TranscriptWriter("run-internal");
+    writer.apply({ type: "step", tool: "snapshot", summary: "Captured 154 elements", ok: true });
+    writer.apply({ type: "done", stopped: true });
+    await settled();
+
+    const stored = await getMessages("run-internal");
+    const note = stored.find((m) => m.role === "assistant");
+    // Written for the model, so it replays as an assistant turn — and is never drawn.
+    expect(note?.internal).toBe(true);
+    expect(stored.filter((m) => m.internal).length).toBe(1);
+  });
+
+  it("never blames the user for a run a dead tab aborted", async () => {
+    const rows = await replay("run-tab-abort", [
+      { type: "step", tool: "snapshot", summary: "Captured 154 elements", ok: true },
+      { type: "error", message: "The tab “Cart” was closed" },
+      // The abort that error triggered unwinds as a done — aborted, not stopped.
+      { type: "done", stopped: true },
+    ]);
+
+    expect(rows.map(([, content]) => content).join("\n")).not.toContain("You stopped this run");
   });
 
   it("writes no note for a run that ended on a question — the card is its closing word", async () => {

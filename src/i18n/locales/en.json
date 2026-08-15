@@ -228,6 +228,7 @@
     "emptyExample": "Example: \"pull the latest invoice from my inbox into the expense report\"",
     "portLost": "Connection to the agent was lost — the run stopped. Send the task again to retry.",
     "reloaded": "TabRunner was reloaded — close and reopen this panel to keep going.",
+    "runStopped": "You stopped this run — your next message can pick up from here.",
     "working": "Working",
     "jumpToLatest": "Jump to latest ↓",
     "hint": {

@@ -524,6 +524,13 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       case "done": {
         flushReasoning();
         flushStreaming();
+        // Same marker the writer persists — the halt is part of the transcript,
+        // so it must appear now and still be there on reopen. A failure aborts
+        // the controller too, and that one already settled as an error: its
+        // bubble is the closing word, not a stop the user never made.
+        if (event.stopped === true && get().status !== "error") {
+          pushDisplay(makeMsg("step", i18n.t("chat.runStopped")));
+        }
         // After the flush above, the newest assistant message — if any — is the
         // prose this very run streamed, so it is the only dedup target.
         const lastProse = [...get().messages]

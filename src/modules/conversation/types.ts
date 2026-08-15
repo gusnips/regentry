@@ -22,6 +22,13 @@ export interface Message {
   /** For step messages: the tool is executing right now (live rows are never persisted) */
   live?: boolean;
   /**
+   * Kept in the transcript for the model, never drawn in the chat — the
+   * deterministic progress note an interrupted run leaves behind is written
+   * for the next run's replayed history, not for the user (who watched the
+   * steps happen and gets the "Stopped" line instead).
+   */
+  internal?: boolean;
+  /**
    * Data-URL images. On a user message these are the attachments they sent and
    * they persist; on a screenshot step they are stripped before storage —
    * see `stripTransient` in conversations.ts for why.

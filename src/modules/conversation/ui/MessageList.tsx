@@ -769,7 +769,12 @@ export function MessageList() {
 /** Rows + jump pill. The scroller hooks must run under the Provider. */
 function Transcript() {
   const { t } = useTranslation();
-  const messages = useConversationStore((s) => s.messages);
+  // Internal entries are the model's, not the chat's — the progress note an
+  // interrupted run leaves for the next run's history is written in the
+  // model's language ("call read_history…") and would read as the agent
+  // talking past the user. Filtered here, before grouping, so nothing
+  // downstream — bursts, the ask gate, the newest-error retry — ever counts one.
+  const messages = useConversationStore((s) => s.messages).filter((m) => !m.internal);
   const streamingText = useConversationStore((s) => s.streamingText);
   const reasoningText = useConversationStore((s) => s.reasoningText);
   const reasoningStartedAt = useConversationStore((s) => s.reasoningStartedAt);

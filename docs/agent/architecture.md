@@ -331,7 +331,14 @@ next move to the user and merely offers the history — stopping often means "do
 something else", and the work should be available, not mandatory. (A run that ends on
 `ask_user` writes no note; its question is its closing word. The note also consumes the
 steps it reports, so a closed tab — error, then abort — leaves one note, not two.) The
-note is an ordinary assistant message, so it replays like any other. When the model
+note is an assistant message, so it replays like any other — but an `internal` one: it
+is written in the model's language, down to the read_history instruction, so the chat
+never draws it (`Transcript` filters `internal` out before grouping). What the user gets
+in its place is one quiet line at the seam — "You stopped this run — your next message
+can pick up from here." — appended by the writer and mirrored live by the panel store, so
+the halt is on screen the moment it happens and still there on reopen. It marks a user
+stop only: an abort the tab's death caused already settled as an error, and its bubble is
+that run's closing word. When the model
 needs more than its outline, the `read_history` tool pages the stored transcript
 (user/assistant/error turns, plans, step rows with optional result extracts) by absolute
 index — append-stable while the current run keeps writing — newest window by default,

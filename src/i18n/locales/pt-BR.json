@@ -228,6 +228,7 @@
     "emptyExample": "Exemplo: \"pegue a nota fiscal mais recente do e-mail e lance no relatório de despesas\"",
     "portLost": "A conexão com o agente foi perdida — a execução parou. Envie a tarefa novamente para tentar de novo.",
     "reloaded": "O TabRunner foi recarregado — feche e reabra este painel para continuar.",
+    "runStopped": "Você interrompeu esta execução — sua próxima mensagem pode continuar daqui.",
     "working": "Trabalhando",
     "jumpToLatest": "Ir para o final ↓",
     "hint": {

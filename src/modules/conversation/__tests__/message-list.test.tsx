@@ -283,3 +283,48 @@ describe("ask_user chips", () => {
     ).toBeUndefined();
   });
 });
+
+describe("a stopped run", () => {
+  it("marks the halt and keeps the model's progress note out of the chat", async () => {
+    useConversationStore.setState({
+      messages: [
+        { id: "u1", role: "user", content: "book the flight", timestamp: 0 },
+        {
+          id: "s1",
+          role: "step",
+          tool: "snapshot",
+          content: "Captured 154 elements",
+          timestamp: 1,
+        },
+        {
+          id: "m1",
+          role: "step",
+          content: "You stopped this run — your next message can pick up from here.",
+          timestamp: 2,
+        },
+        {
+          id: "n1",
+          role: "assistant",
+          content: "The user stopped this run before it finished. What it had already done:",
+          internal: true,
+          timestamp: 3,
+        },
+      ],
+      status: "idle",
+      streamingText: "",
+      reasoningText: "",
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<MessageList />));
+
+    const text = container.textContent ?? "";
+    expect(text).toContain("You stopped this run");
+    // The note is the next run's history, never a bubble talking past the user.
+    expect(text).not.toContain("The user stopped this run");
+
+    await act(async () => root.unmount());
+    container.remove();
+  });
+});

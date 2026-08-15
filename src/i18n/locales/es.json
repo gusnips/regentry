@@ -228,6 +228,7 @@
     "emptyExample": "Ejemplo: \"pasa la factura más reciente del correo al informe de gastos\"",
     "portLost": "Se perdió la conexión con el agente — la ejecución se detuvo. Envía la tarea de nuevo para reintentar.",
     "reloaded": "TabRunner se recargó — cierra y vuelve a abrir este panel para continuar.",
+    "runStopped": "Detuviste esta ejecución — tu próximo mensaje puede continuar desde aquí.",
     "working": "Trabajando",
     "jumpToLatest": "Ir al final ↓",
     "hint": {
