@@ -21,7 +21,6 @@ import { toolVerbKey } from "./tool-labels";
 import type { PastedText } from "./paste-collapse";
 import { runTargetPref } from "@/lib/prefs";
 import type { RunTarget } from "@/lib/prefs";
-import { formatTokens } from "@/lib/format";
 
 interface ConversationState {
   messages: Message[];
@@ -79,8 +78,8 @@ interface ConversationState {
   board: RunBoard;
   /** This panel's own submission waiting in the serial queue. */
   queuedRun: { id: string; position: number; task: string } | null;
-  /** A compaction is in flight — the composer's footer says so, since the
-   *  summary lands as a transcript message with no other warning. */
+  /** A compaction is in flight — a second /compact while one runs is a no-op.
+   *  Progress shows as a transcript note that the result replaces. */
   compacting: boolean;
   /** Input tokens the last turn actually sent — the real context size, straight
    *  from the provider's own usage. Cumulative `usage.input` is the sum of every
@@ -240,6 +239,12 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     set({ messages: capMessages([...get().messages, msg]) });
   };
 
+  /** The in-flight compaction's progress note — its result replaces it. */
+  let compactNoteId: string | null = null;
+  const dropDisplay = (id: string | null): void => {
+    if (id) set({ messages: get().messages.filter((m) => m.id !== id) });
+  };
+
   /** Transcript-independent state — reset whenever the panel switches transcripts. */
   const resetRun = () => ({
     streamingText: "",
@@ -262,6 +267,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     pastedTexts: [],
     collapseDisabled: false,
     drivingTab: null,
+    // Per-conversation measurements: another chat's fill is not this chat's.
+    compacting: false,
+    contextTokens: 0,
   });
 
   /**
@@ -565,23 +573,17 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         break;
 
       case "compacted":
-        // The summary itself arrives through the transcript watch — this is the
-        // receipt, so the note says what it bought rather than just "done".
         set({ compacting: false });
-        pushDisplay(
-          makeMsg(
-            "step",
-            i18n.t("compact.receipt", {
-              count: event.messages,
-              before: formatTokens(event.before),
-              after: formatTokens(event.after),
-            }),
-          ),
-        );
+        // The summary card lands through the transcript watch carrying the same
+        // receipt — a note here would only say it twice. Progress note out.
+        dropDisplay(compactNoteId);
+        compactNoteId = null;
         break;
 
       case "compact_failed":
         set({ compacting: false });
+        dropDisplay(compactNoteId);
+        compactNoteId = null;
         // "Nothing to compact" is an answer, not a failure — it arrives as the
         // same quiet note every other command result does.
         pushDisplay(
@@ -798,7 +800,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         return;
       }
       set({ compacting: true });
-      pushDisplay(makeMsg("step", i18n.t("commands.compact.running")));
+      const note = makeMsg("step", i18n.t("commands.compact.running"));
+      compactNoteId = note.id;
+      pushDisplay(note);
       post({ type: "compact" });
     },
 

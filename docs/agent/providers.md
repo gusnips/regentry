@@ -78,4 +78,7 @@ The load-bearing details of talking to each provider shape. Read this when a tas
   the tooltip. Model and effort are per-task choices in the side-panel header selects,
   persisted per provider — never asked for at provider-setup time (the key doesn't exist
   yet, so the list can't be fetched there). The "Auto" option renders the model it
-  currently resolves to, tagged with an `Auto` chip.
+  currently resolves to, tagged with an `Auto` chip. A listing that reports its window
+  (`context_length`, `max_context_length`, `context_window`) lands in
+  `ModelInfo.contextLength` and feeds `context-window.ts` — one rung below ceilings
+  learned from real rejections, one above the 200k default.

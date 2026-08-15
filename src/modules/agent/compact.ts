@@ -191,12 +191,6 @@ export async function summarizeTranscript(
   return summarize(provider, body, signal);
 }
 
-/**
- * The newest messages stay out of the fold. Replay is the point: the last
- * exchange is what a follow-up ("do that again for the other one") refers to,
- * and a summary of it answers the wrong question.
- */
-const KEEP_TRANSCRIPT_TAIL = 6;
 /** Below this there is nothing a summary would buy — say so instead of calling the model. */
 const MIN_COMPACT_MESSAGES = 4;
 
@@ -209,9 +203,15 @@ export interface CompactionResult {
 }
 
 /**
- * Compact a stored conversation: summarize everything but the newest few
- * messages and append the summary. Nothing is deleted — `buildConversationHistory`
+ * Compact a stored conversation: summarize everything since the last compaction
+ * and append the summary. Nothing is deleted — `buildConversationHistory`
  * replays from the summary, while the panel keeps every message it always had.
+ *
+ * The fold runs to the very tail, recent exchange included. Keeping it raw
+ * would put the summary after it, and replay starts at the summary — so a
+ * "kept" tail would reach neither the summarizer nor the model. The summary
+ * covers it instead, and the `read_history` tool can still page the raw
+ * transcript when a follow-up needs an exact wording.
  *
  * Returns null when the conversation is too short to be worth a model call.
  */
@@ -225,7 +225,7 @@ export async function compactConversation(
   // this one supersedes it rather than forgetting what it held.
   const lastSummary = all.map((m) => m.role).lastIndexOf("summary");
   const from = lastSummary === -1 ? 0 : lastSummary;
-  const foldable = all.slice(from, Math.max(from, all.length - KEEP_TRANSCRIPT_TAIL));
+  const foldable = all.slice(from);
   if (foldable.length < MIN_COMPACT_MESSAGES) return null;
 
   const before = transcriptTokens(foldable);

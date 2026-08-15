@@ -104,7 +104,8 @@ never reach the service-worker bundle.
   a summary of its own — an error, or a user stop — the writer appends a deterministic progress
   note (`progress-note.ts`), so the work still reaches the next run's history. That note is
   `internal`: written for the model, never drawn in the chat — a user stop shows one quiet
-  seam line instead.
+  seam line instead. `/compact` (see `agent/compact.ts`) appends a `summary` message instead
+  of deleting anything: replay starts at it, scrollback keeps every message.
 - `memory/` — the two storage-backed markdown docs every run loads, mirroring the AGENTS.md /
   MEMORY.md convention: `AGENTS.md` is the user's standing instructions, `MEMORY.md` is the
   agent's, written by the `remember` tool. On by default (`memoryEnabled`); off stops both halves

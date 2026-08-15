@@ -17,9 +17,14 @@ would both lose it and open a second live session the site may read as a bot. So
 background run adopts the current tab and drives it in silence — background
 never activates anything. The composer toggle's `thisPage`, the default, is the
 same drive with the panel left open: the watched run, whose switches the driver
-may follow (`activateOnSwitch`). The choice is a stored preference
-(`runTargetPref`), not panel state: a background dispatch closes the panel
-itself, so holding it in memory meant re-picking the mode after every run.
+follows (`activateOnSwitch`) — but only while the user is still on the tab being
+left. Wander off to a tab of your own and the run re-targets in silence: the
+sidebar is the watch surface, and no run moves the user's screen on its own —
+not at send time (a continuation reuses its tab in place), not mid-switch. The
+chip and the notification click are how the user looks at the tab. The choice
+is a stored preference (`runTargetPref`), not panel state: a background dispatch
+closes the panel itself, so holding it in memory meant re-picking the mode after
+every run.
 
 The strip is the run's working set, and it appears when the work does: sending a
 message groups nothing — the user may just be passing through the tab they sent from.
@@ -312,12 +317,25 @@ is created lazily by its first message, so "New chat" never leaves an empty row 
 
 The transcript doubles as the model's memory, strictly per conversation: at run start the
 background rebuilds _that_ conversation's transcript as alternating user/assistant wire
-turns (`buildConversationHistory` in `agent/history.ts`) — entries capped, a total char
-budget spent newest-first, the original task always kept — and replays it ahead of the new
-task message, so "continue" lands on a model that has read the same exchange. A new chat
-starts clean; the only context that crosses chats is AGENTS.md / MEMORY.md. Steps and
-reasoning stay out of it; outcomes live in the assistant's own words, ask_user questions
-included. Conversations remain scrollback you can revisit and delete.
+turns (`buildConversationHistory` in `agent/history.ts`) — entries capped, a char budget
+scaled to the model's window and spent newest-first, the original task always kept — and
+replays it ahead of the new task message, so "continue" lands on a model that has read the
+same exchange. A new chat starts clean; the only context that crosses chats is AGENTS.md /
+MEMORY.md. Steps and reasoning stay out of it; outcomes live in the assistant's own words,
+ask_user questions included. Conversations remain scrollback you can revisit and delete.
+
+Compaction (`agent/compact.ts`) is how that memory shrinks without the scrollback losing a
+line. `/compact` — or the context-overflow error's own fix button — summarizes everything
+since the last compaction into one `summary` message **appended** to the transcript: replay
+then starts at the newest summary instead of the top, and every raw message stays in storage
+and on screen (the fold in the chat renders as a seam with its receipt, openable to the
+summary itself). The summary is a fact about what the model reads, never about what the user
+keeps. A live run folds its own wire turns instead (`compactRunMessages`): proactively when
+the last turn's real input tokens come within a fixed reserve of the window, reactively once
+when the provider rejects the prompt as too long. The window itself is never a hardcoded
+model table — `providers/context-window.ts` prefers ceilings learned from actual rejections,
+then the model listing's own `context_length`, then a 200k default — and the run band's
+gauge reads the same number.
 
 A run that ends before writing any closing summary used to fall through that design —
 no assistant words, so the work vanished from the replay and "continue" started blind.

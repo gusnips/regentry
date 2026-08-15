@@ -1012,8 +1012,17 @@ function Transcript() {
     return Math.max(compactedAt, messages.length - RENDER_WINDOW, 0);
   }, [messages]);
   const shown = earlierOpen ? messages : messages.slice(foldAt);
-  const lastId = messages[messages.length - 1]?.id;
-  const canRetry = status !== "running" && retryTargetFrom(messages) !== null;
+  // Retry lives on the newest error no newer user message has superseded — NOT
+  // only the tail message. A compaction's summary card lands under the error it
+  // fixed, and "compact, then retry" is the remedy the error offered; the button
+  // must still be there. A user message sent since closes the error's business
+  // (and is what Retry would resend), so those errors stay history.
+  const lastUserIdx = messages.map((m) => m.role).lastIndexOf("user");
+  const lastErrorIdx = messages.map((m) => m.role).lastIndexOf("error");
+  const retryErrorId =
+    status !== "running" && lastErrorIdx > lastUserIdx && retryTargetFrom(messages) !== null
+      ? messages[lastErrorIdx]?.id
+      : undefined;
   const answer = useCallback((text: string) => void sendTask(text), [sendTask]);
   const compact = useConversationStore((s) => s.compact);
 
@@ -1053,9 +1062,8 @@ function Transcript() {
                   planSettled={status !== "running"}
                   plansOpen={plansOpen}
                   onRetry={
-                    // Only the newest error offers Retry, once the run has settled
-                    // and there's a task above it to resend.
-                    item.msg.role === "error" && item.msg.id === lastId && canRetry
+                    // Only the retryable error offers it — see retryErrorId.
+                    item.msg.role === "error" && item.msg.id === retryErrorId
                       ? retry
                       : undefined
                   }

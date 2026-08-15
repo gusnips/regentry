@@ -1,6 +1,25 @@
-import { describe, it, expect } from "vitest";
-import { compactRunMessages } from "../compact";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { compactConversation, compactRunMessages } from "../compact";
 import type { ChatMessage, ChatProvider, Delta } from "@/modules/providers/types";
+import type { Message } from "@/modules/conversation/types";
+
+/**
+ * The transcript store is mocked: compactConversation's contract is WHAT gets
+ * folded and appended, not how storage persists it.
+ */
+let stored: Message[];
+let appended: Message | null;
+vi.mock("@/modules/conversation", () => ({
+  getMessages: vi.fn(async () => stored),
+  appendMessageTo: vi.fn(async (_id: string, msg: Message) => {
+    appended = msg;
+    return msg.id;
+  }),
+}));
+
+beforeEach(() => {
+  appended = null;
+});
 
 /** A provider that answers every call with one fixed summary. */
 function fakeProvider(summary = "1. Task: book a flight\n2. Findings: seat 4A held"): ChatProvider {
@@ -130,5 +149,83 @@ describe("summarizer input bounds", () => {
 
     expect(seen.length).toBeLessThan(100_000);
     expect(seen).toContain("earlier turns omitted");
+  });
+});
+
+let seq = 0;
+function transcriptMsg(role: Message["role"], content: string): Message {
+  seq += 1;
+  return { id: `t${seq}`, role, content, timestamp: seq };
+}
+
+describe("compactConversation", () => {
+  it("folds everything since the last summary — the recent exchange included", async () => {
+    // A tail kept raw would sit ABOVE the appended summary, and replay starts
+    // at the summary — so a "kept" tail would reach neither the summarizer nor
+    // the model. The fold must run to the end of the transcript.
+    stored = [
+      transcriptMsg("user", "find me a flight"),
+      transcriptMsg("assistant", "checked Kayak"),
+      transcriptMsg("user", "book it"),
+      transcriptMsg("assistant", "booked, seat 4A"),
+    ];
+    let seen = "";
+    const provider: ChatProvider = {
+      async *stream(messages): AsyncIterable<Delta> {
+        seen = messages.map((m) => m.content).join("");
+        yield { type: "text", text: "1. Task: flight. 2. Findings: seat 4A." };
+        yield { type: "done" };
+      },
+    };
+
+    const result = await compactConversation(provider, "c1", new AbortController().signal);
+
+    expect(seen).toContain("seat 4A"); // the last exchange reached the summarizer
+    expect(result?.messages).toBe(4);
+    expect(appended?.role).toBe("summary");
+    expect(appended?.compacted?.messages).toBe(4);
+    expect(appended?.compacted?.before).toBeGreaterThan(0);
+  });
+
+  it("feeds the previous summary into the new one, superseding it", async () => {
+    stored = [
+      transcriptMsg("user", "old task"),
+      transcriptMsg("assistant", "old outcome"),
+      transcriptMsg("summary", "1. Task: old. 2. Findings: price was $42."),
+      transcriptMsg("user", "new task"),
+      transcriptMsg("assistant", "did the new thing"),
+      transcriptMsg("user", "and another"),
+      transcriptMsg("assistant", "done too"),
+    ];
+    let seen = "";
+    const provider: ChatProvider = {
+      async *stream(messages): AsyncIterable<Delta> {
+        seen = messages.map((m) => m.content).join("");
+        yield { type: "text", text: "fresh summary" };
+        yield { type: "done" };
+      },
+    };
+
+    const result = await compactConversation(provider, "c1", new AbortController().signal);
+
+    // The old summary plus everything after it — nothing before it is refolded.
+    expect(result?.messages).toBe(5);
+    expect(seen).toContain("$42");
+    expect(seen).not.toContain("old task");
+  });
+
+  it("declines a conversation too short to be worth a model call", async () => {
+    stored = [transcriptMsg("user", "hi"), transcriptMsg("assistant", "hello")];
+    let called = false;
+    const provider: ChatProvider = {
+      async *stream(): AsyncIterable<Delta> {
+        called = true;
+        yield { type: "done" };
+      },
+    };
+
+    expect(await compactConversation(provider, "c1", new AbortController().signal)).toBeNull();
+    expect(called).toBe(false);
+    expect(appended).toBeNull();
   });
 });
