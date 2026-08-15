@@ -634,7 +634,16 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       });
       void listConversations().then((conversations) => set({ conversations }));
       unwatchConversations ??= watchConversations((conversations) => set({ conversations }));
-      void runBoardItem.get().then((board) => set({ board }));
+      void runBoardItem.get().then((board) => {
+        set({ board });
+        // Mounting into a run already in flight: the live band's clock would
+        // otherwise start at panel-open and call the run younger than it is.
+        const running =
+          get().activeId !== null && board.running?.conversationId === get().activeId
+            ? board.running
+            : undefined;
+        if (running) set({ runStartedAt: running.startedAt });
+      });
       unwatchBoard ??= runBoardItem.watch((board) => {
         const prev = get().board;
         set({ board });
@@ -654,6 +663,13 @@ export const useConversationStore = create<ConversationState>((set, get) => {
           board.running?.conversationId === activeId ||
           board.pendingQuestion?.conversationId === activeId;
         if (!isHere && !wasHere) return;
+        // The live band's clock reads runStartedAt; a panel that reconnects
+        // into a run already in flight would otherwise start it at panel-open
+        // and call the run younger than it is. Anchor it to the run's real
+        // start. Status stays the stream's — the board fallback in RunStatus
+        // covers the close/has-none cases already.
+        const running = board.running?.conversationId === activeId ? board.running : undefined;
+        if (running) set({ runStartedAt: running.startedAt });
         void getMessages(activeId).then((messages) => {
           if (get().activeId === activeId) set({ messages });
         });
