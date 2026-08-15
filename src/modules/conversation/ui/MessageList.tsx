@@ -5,7 +5,7 @@ import { Markdown } from "./Markdown";
 import { PlanMark } from "./PlanMark";
 import { groupBursts, type Burst } from "./bursts";
 import { useNow } from "./hooks";
-import { toolVerbKey, toolHint } from "./tool-labels";
+import { toolVerbKey, toolHint, displacedHint } from "./tool-labels";
 import { pendingAskId } from "./ask-gate";
 import type { Message } from "../types";
 import { splitErrorDetail } from "../error-detail";
@@ -122,12 +122,17 @@ function StepRow({ msg }: { msg: Message }) {
   const key = toolVerbKey(msg.tool);
   const label = key ? t(key) : msg.tool;
   const hint = toolHint(msg.tool, msg.args);
+  // The row trades the attempt for the outcome on a success, so the id the
+  // call reached for moves to the drawer — "Switched to Gmail · #42" reads as
+  // "Switching tab · Gmail", with "#42" one click away.
+  const attempt = displacedHint(msg.tool, msg.args);
   // A failure's summary IS the error — it must stay on the visible line.
   const trailing = msg.ok === false ? msg.content : (hint ?? msg.content);
   // The row fits one line, so the drawer carries whichever fact it displaced:
   // for a failure that is the attempt itself ("switch to tab 42"), which is
   // exactly what you open a red row to find out.
-  const displaced = msg.ok === false ? hint : hint ? msg.content : undefined;
+  const displaced =
+    msg.ok === false ? (hint ?? attempt) : (attempt ?? (hint ? msg.content : undefined));
   const expandable = !msg.live && Boolean(msg.detail || msg.images?.length);
   // A tool-less step is a local note (slash-command results): no label, and the
   // text wraps instead of truncating — a note's whole content is the point.

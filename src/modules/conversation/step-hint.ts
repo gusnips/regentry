@@ -6,6 +6,10 @@ import { truncateTo } from "@/lib/format";
  * sibling of the panel's `toolHint` (conversation/ui/tool-labels.ts): the runtime
  * boundary keeps ui/ code out of the writer and the agent tools, so the two hint
  * functions live on their own sides of it.
+ *
+ * switch_tab/group_tab are the one intentional divergence: the panel drops the
+ * id once the result names the tab, while the transcript note keeps it —
+ * `#42 — Switched to Gmail` pins the attempt even after the tab is gone.
  */
 export function stepHint(
   tool: string | undefined,

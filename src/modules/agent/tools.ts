@@ -217,9 +217,11 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
     const lines = snap.pageContent?.split("\n").length ?? 0;
     return i18n.t("errors.capturedElements", { count: lines });
   }
-  if (tool === "click" && data && typeof data === "object") {
-    const pos = data as { x: number; y: number };
-    return i18n.t("errors.clickedAt", { x: pos.x, y: pos.y });
+  // Click/fill/evaluate carry an intent the row already shows, so their summary
+  // is a bare confirmation — the coordinates a click returns are for the driver,
+  // not the transcript.
+  if (tool === "click") {
+    return i18n.t("errors.clicked");
   }
   if (tool === "press_key") {
     return i18n.t("errors.keyPressed");
@@ -241,7 +243,14 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
     });
   }
   if (tool === "navigate") {
-    return i18n.t("errors.navigated");
+    const { url } = (data ?? {}) as { url?: string };
+    let where = url ?? "";
+    try {
+      if (url) where = new URL(url).host.replace(/^www\./, "");
+    } catch {
+      // Not a parseable URL — the raw value is the best trace there is.
+    }
+    return where ? i18n.t("errors.navigatedTo", { host: where }) : i18n.t("errors.navigatedBare");
   }
   if (tool === "switch_tab" && data && typeof data === "object") {
     return i18n.t("errors.switchedTo", { title: (data as { title?: string }).title ?? "" });

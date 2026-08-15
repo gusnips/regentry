@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toolHint } from "../ui/tool-labels";
+import { toolHint, displacedHint } from "../ui/tool-labels";
 import { stepHint } from "../step-hint";
 import { fitScale } from "../ui/image";
 
@@ -63,6 +63,13 @@ describe("toolHint", () => {
     expect(toolHint("press_key", { key: "Enter", intent: "submit the form" })).toBe("Enter");
   });
 
+  it("names a tab switch by its result, never its id — the id is the drawer's trace", () => {
+    expect(toolHint("switch_tab", { tab_id: 42 })).toBeUndefined();
+    expect(toolHint("group_tab", { tab_id: 42 })).toBeUndefined();
+    expect(displacedHint("switch_tab", { tab_id: 42 })).toBe("#42");
+    expect(displacedHint("group_tab", { tab_id: 42 })).toBe("#42");
+  });
+
   it("has no hint for tools that take no distinguishing argument", () => {
     expect(toolHint("snapshot", {})).toBeUndefined();
     expect(toolHint("screenshot", {})).toBeUndefined();
@@ -84,13 +91,15 @@ describe("toolHint", () => {
  * toolHint (panel rows) and stepHint (transcript notes / read_history) are the
  * same switch on opposite sides of the runtime boundary — they drifted apart
  * twice already. This is the mechanical guard the file comment only asks for.
+ *
+ * switch_tab/group_tab are the deliberate exception: the panel lets the result
+ * name the tab (the id moves to the drawer), while the transcript keeps the id —
+ * a transcript that only said "Gmail" loses the handle once the tab is gone.
  */
 describe("toolHint / stepHint parity", () => {
   const CASES: [string, Record<string, unknown>][] = [
     ["navigate", { url: "https://www.example.com/a" }],
     ["navigate", { url: "https://www.example.com/a", intent: "the search results" }],
-    ["switch_tab", { tab_id: 42 }],
-    ["group_tab", { tab_id: 42 }],
     ["click", { ref: "e3" }],
     ["click", { ref: "e3", intent: "the account menu" }],
     ["fill", { ref: "e3", text: "hello" }],
@@ -114,6 +123,14 @@ describe("toolHint / stepHint parity", () => {
       expect(Boolean(stepHint(tool, args)), `stepHint(${tool})`).toBe(
         Boolean(toolHint(tool, args)),
       );
+    }
+  });
+
+  it("only the tab tools diverge — the transcript keeps the id the panel drops", () => {
+    for (const tool of ["switch_tab", "group_tab"] as const) {
+      const args = { tab_id: 42 };
+      expect(toolHint(tool, args)).toBeUndefined();
+      expect(stepHint(tool, args)).toBe("#42");
     }
   });
 });

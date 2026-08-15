@@ -79,12 +79,6 @@ export function toolHint(
       const where = host(args.url);
       return where && intent ? `${where}: ${intent}` : (intent ?? where);
     }
-    case "switch_tab":
-    case "group_tab":
-      // The id is all the call carries; the tab's title arrives in the result,
-      // which the summary already shows on a success. On a failure this is the
-      // only trace of what it reached for.
-      return typeof args.tab_id === "number" ? `#${args.tab_id}` : undefined;
     case "click":
       return intent ?? text(args.ref);
     case "type":
@@ -107,6 +101,26 @@ export function toolHint(
     case "scroll_down":
     case "scroll_up":
       return typeof args.amount === "number" ? `${args.amount}px` : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * A hint that belongs only in the drawer: the argument that names the attempt
+ * ("switch to tab 42") once the result already said it better ("Switched to
+ * Gmail"). The visible row trades attempt for outcome; the drawer keeps both.
+ */
+export function displacedHint(
+  tool: string | undefined,
+  args: Record<string, unknown> | undefined,
+): string | undefined {
+  if (!tool || !args) return undefined;
+  switch (tool) {
+    case "switch_tab":
+    case "group_tab":
+      // The call's only handle; the tab's title is the result's job.
+      return typeof args.tab_id === "number" ? `#${args.tab_id}` : undefined;
     default:
       return undefined;
   }
