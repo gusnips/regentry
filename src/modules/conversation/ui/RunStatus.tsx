@@ -16,6 +16,7 @@ export function RunStatus() {
   const runStartedAt = useConversationStore((s) => s.runStartedAt);
   const runEndedAt = useConversationStore((s) => s.runEndedAt);
   const runStopped = useConversationStore((s) => s.runStopped);
+  const replanning = useConversationStore((s) => s.replanning);
   const usage = useConversationStore((s) => s.usage);
   const bridgeActive = useConversationStore((s) => s.bridgeActive);
   const drivingTab = useConversationStore((s) => s.drivingTab);
@@ -165,7 +166,13 @@ export function RunStatus() {
       <div className="flex items-center gap-2 text-sm">
         {/* One motion only — the shimmering verb is the live signal, so the dot stays still. */}
         <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400" />
-        {awaiting ? (
+        {replanning ? (
+          // A revision was just sent and the revised plan is still being drawn.
+          // The generic verb would read as "it ignored your note" — name the gap.
+          <span className="shimmer-text min-w-0 flex-1 truncate font-semibold">
+            {t("run.revisingPlan")}
+          </span>
+        ) : awaiting ? (
           // Parked on the user's answer: the run is alive (the timer keeps
           // counting) but nothing is working — the shimmer would be lying.
           // The label truncates: es/pt-BR at 320px would otherwise eat the timer.

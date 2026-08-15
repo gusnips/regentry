@@ -59,6 +59,8 @@ beforeEach(() => {
     usage: { input: 0, output: 0 },
     runStartedAt: null,
     runEndedAt: null,
+    runStopped: false,
+    replanning: false,
     lastRun: null,
     pendingStepId: null,
     planMsgId: null,
@@ -140,6 +142,33 @@ describe("plan approval prompt", () => {
     const state = useConversationStore.getState();
     expect(state.planApproval).toBeNull();
     expect(state.messages.at(-1)).toMatchObject({ role: "user", content: "skip step b" });
+  });
+
+  it("flags the revision window and clears it when the revised plan arrives", async () => {
+    const s = useConversationStore.getState();
+    s.connect();
+    await s.sendTask("do the thing");
+
+    port.fireMessage({ type: "plan_approval", steps: ["a", "b"], reapproval: false });
+    useConversationStore.getState().revisePlan("skip b");
+    // The band names the gap between the note and the revised plan.
+    expect(useConversationStore.getState().replanning).toBe(true);
+
+    port.fireMessage({ type: "plan_approval", steps: ["a"], reapproval: true });
+    expect(useConversationStore.getState().replanning).toBe(false);
+  });
+
+  it("clears the revision window when the run ends while redrafting", async () => {
+    const s = useConversationStore.getState();
+    s.connect();
+    await s.sendTask("do the thing");
+
+    port.fireMessage({ type: "plan_approval", steps: ["a", "b"], reapproval: false });
+    useConversationStore.getState().revisePlan("skip b");
+    expect(useConversationStore.getState().replanning).toBe(true);
+
+    port.fireMessage({ type: "error", message: "boom" });
+    expect(useConversationStore.getState().replanning).toBe(false);
   });
 
   it("ignores a blank revision note — the prompt stays parked", async () => {

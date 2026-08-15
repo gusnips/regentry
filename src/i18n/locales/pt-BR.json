@@ -418,6 +418,7 @@
     "failed": "Falhou",
     "stopped": "Interrompido",
     "awaitingApproval": "Aguardando sua aprovação",
+    "revisingPlan": "Revisando o plano…",
     "awaitingAnswer": "Aguardando sua resposta",
     "drivingTabTip": "Mostrar a aba que o TabRunner está controlando",
     "bridgeTask": "{{client}} está executando uma tarefa no seu navegador",

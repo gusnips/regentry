@@ -41,6 +41,10 @@ interface ConversationState {
   runEndedAt: number | null;
   /** The last run ended on a user halt — the settled band says "Stopped", never "Done". */
   runStopped: boolean;
+  /** A plan revision was just sent and the revised plan has not arrived — the
+   *  band names the gap ("Revising the plan…") instead of a generic verb, so a
+   *  note that takes a minute to redraft never reads as unsent. */
+  replanning: boolean;
   /** This panel's own last dispatch — labels the queued chip, and tells a
    *  dispatch-and-forget approval (panel auto-closes) from a hand-opened one. */
   lastRun: { task: string; images?: string[]; thisPage?: boolean } | null;
@@ -194,6 +198,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     runStartedAt: null,
     runEndedAt: null,
     runStopped: false,
+    replanning: false,
     lastRun: null,
     pendingStepId: null,
     planMsgId: null,
@@ -261,6 +266,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       drivingTab: null,
       queuedRun: null,
       planApproved: false,
+      replanning: false,
     }));
   };
 
@@ -306,6 +312,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       runStartedAt: Date.now(),
       runEndedAt: null,
       runStopped: false,
+      replanning: false,
       lastRun: { task, ...(images?.length ? { images } : {}), ...(thisPage ? { thisPage } : {}) },
       pendingStepId: null,
       // A new run draws its own card — never revives the last run's checklist.
@@ -488,9 +495,11 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         // The loop is parked until the user answers — the plan card above
         // already shows what is being asked; this arms the approval card. A
         // fresh gate means no approved plan is in force (reapproval included).
+        // The revised plan has arrived, so the "Revising…" band yields to it.
         set({
           planApproval: { steps: event.steps, reapproval: event.reapproval },
           planApproved: false,
+          replanning: false,
         });
         break;
 
@@ -594,6 +603,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     runStartedAt: null,
     runEndedAt: null,
     runStopped: false,
+    replanning: false,
     lastRun: null,
     runTarget: runTargetPref.fallback,
     pendingStepId: null,
@@ -785,8 +795,10 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       const note = feedback.trim();
       if (!note) return;
       post({ type: "plan_approval", approved: false, feedback: note });
-      // The gate re-arms: the REVISED plan must earn the walk-away back.
-      set({ planApproval: null, planApproved: false });
+      // The gate re-arms: the REVISED plan must earn the walk-away back. And
+      // the band switches to "Revising the plan…" until the new card arrives,
+      // so the redraft minutes never read as a swallowed note.
+      set({ planApproval: null, planApproved: false, replanning: true });
       // The note is a user message like any other: the transcript shows what
       // the plan was sent back with, and the next run reads it as history.
       void pushMsg(makeMsg("user", note));

@@ -418,6 +418,7 @@
     "failed": "Failed",
     "stopped": "Stopped",
     "awaitingApproval": "Waiting for your approval",
+    "revisingPlan": "Revising the plan…",
     "awaitingAnswer": "Waiting for your answer",
     "drivingTabTip": "Show the tab TabRunner is controlling",
     "bridgeTask": "{{client}} is running a task in your browser",
