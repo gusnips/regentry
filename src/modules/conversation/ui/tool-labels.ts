@@ -96,6 +96,8 @@ export function toolHint(
       return intent ?? text(args.expression);
     case "read_network_requests":
       return text(args.url_filter);
+    case "read_history":
+      return text(args.query);
     case "press_key":
       return text(args.key);
     case "scroll_down":

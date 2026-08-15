@@ -92,4 +92,53 @@ describe("formatTranscriptWindow", () => {
     expect(window.to).toBeLessThan(200);
     expect(window.log.split("\n")).toHaveLength(window.to - window.from);
   });
+
+  it("filters by query and renumbers over the matches", () => {
+    const messages = [
+      msg("user", "find flights to Lisbon"),
+      msg("step", "Navigated successfully", {
+        tool: "navigate",
+        args: { url: "https://google.com/flights" },
+      }),
+      msg("assistant", "Found 3 options"),
+      msg("user", "book the March one"),
+    ];
+
+    const window = formatTranscriptWindow(messages, { query: "march" });
+    expect(window).toMatchObject({ total: 1, from: 0, to: 1 });
+    expect(window.log).toContain("#0 user — book the March one");
+  });
+
+  it("matches case-insensitively against tool, hint and detail too", () => {
+    const messages = [
+      msg("step", "Captured 154 elements", {
+        tool: "snapshot",
+        detail: 'button "Submit" [ref=e3]',
+      }),
+      msg("step", "Navigated successfully", {
+        tool: "navigate",
+        args: { url: "https://reddit.com/r/travel" },
+      }),
+    ];
+
+    expect(formatTranscriptWindow(messages, { query: "SNAPSHOT" }).total).toBe(1);
+    expect(formatTranscriptWindow(messages, { query: "reddit.com" }).total).toBe(1);
+    // The detail is display-capped but fully searchable.
+    expect(formatTranscriptWindow(messages, { query: "submit" }).total).toBe(1);
+  });
+
+  it("matches text past the line's display cut", () => {
+    const long = `${"padding ".repeat(200)}needle at the end`;
+    const messages = [msg("assistant", long)];
+
+    const window = formatTranscriptWindow(messages, { query: "needle" });
+    expect(window.total).toBe(1);
+    expect(window.log).not.toContain("needle at the end"); // the render stays capped
+  });
+
+  it("says so when nothing matches, instead of claiming an empty transcript", () => {
+    const window = formatTranscriptWindow([msg("user", "hi")], { query: "zebra" });
+    expect(window).toMatchObject({ total: 0, from: 0, to: 0 });
+    expect(window.log).toBe('No transcript entries match "zebra".');
+  });
 });

@@ -17,7 +17,7 @@ const MAX_LOG_CHARS = 24_000;
 const SKIP_TOOLS = new Set(["retry", "warn"]);
 
 export interface HistoryWindow {
-  /** Total readable entries in the transcript. */
+  /** Total readable entries in the transcript — the matching ones when `query` filters. */
   total: number;
   /** Absolute index of the first returned entry. */
   from: number;
@@ -35,6 +35,12 @@ export interface WindowOptions {
   from?: number;
   limit?: number;
   includeDetails?: boolean;
+  /**
+   * Keep only entries containing this text (case-insensitive); paging then runs
+   * over the matches. Matches the full record — role, tool, hint, content and
+   * detail — not the capped render, so a hit past a line's truncation still lands.
+   */
+  query?: string;
 }
 
 /** What the model can usefully read: the conversation's turns and work rows. Reasoning is display-only noise. */
@@ -69,16 +75,29 @@ function entryLine(m: Message, includeDetails: boolean): string {
   }
 }
 
+/** The haystack a query searches: the full stored record, not the capped line. */
+function searchable(m: Message): string {
+  return `${m.role} ${m.tool ?? ""} ${stepHint(m.tool, m.args) ?? ""} ${m.content} ${m.detail ?? ""}`.toLowerCase();
+}
+
 /**
  * The stored transcript as a numbered, paged text log for the read_history tool.
- * Paging is by absolute index over the readable entries; omitting `from`
- * returns the newest window, which is the recovery case the tool exists for.
- * The char backstop can cut a window short — `to` then marks where to continue.
+ * Paging is by absolute index over the readable entries (over the matching ones
+ * when `query` filters); omitting `from` returns the newest window, which is the
+ * recovery case the tool exists for. The char backstop can cut a window short —
+ * `to` then marks where to continue.
  */
 export function formatTranscriptWindow(messages: Message[], opts: WindowOptions): HistoryWindow {
-  const entries = messages.filter(readable);
+  const query = opts.query?.trim().toLowerCase();
+  const readableEntries = messages.filter(readable);
+  const entries = query ? readableEntries.filter((m) => searchable(m).includes(query)) : readableEntries;
   const total = entries.length;
-  if (total === 0) return { total: 0, from: 0, to: 0, log: i18n.t("errors.historyEmpty") };
+  if (total === 0) {
+    const log = query
+      ? i18n.t("errors.historyNoMatches", { query: opts.query?.trim() })
+      : i18n.t("errors.historyEmpty");
+    return { total: 0, from: 0, to: 0, log };
+  }
 
   const rawLimit = Math.trunc(opts.limit ?? DEFAULT_LIMIT);
   const limit = Math.min(Math.max(rawLimit, 1), MAX_LIMIT);
@@ -108,5 +127,6 @@ export async function readStepLog(
   const opts: WindowOptions = { includeDetails: args.include_details === true };
   if (typeof args.from === "number") opts.from = args.from;
   if (typeof args.limit === "number") opts.limit = args.limit;
+  if (typeof args.query === "string") opts.query = args.query;
   return { ok: true, data: formatTranscriptWindow(messages, opts) };
 }

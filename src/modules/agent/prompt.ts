@@ -389,7 +389,7 @@ const TOOL_DEFS: ToolDef[] = [
   {
     name: "read_history",
     description:
-      "Read this conversation's saved transcript — user and assistant turns, errors, and every tool call earlier runs made, with outcomes and (optionally) bounded result extracts. Entries are numbered from 0 and the newest window is returned by default. Use it when you need what an earlier run did — one that was interrupted or stopped mid-task, or whose results this message refers to: recover what was already done and what it returned instead of redoing it.",
+      "Read this conversation's saved transcript — user and assistant turns, errors, and every tool call earlier runs made, with outcomes and (optionally) bounded result extracts. Entries are numbered from 0 and the newest window is returned by default; `query` narrows to matching entries before the window applies — the way to find when something happened in a long transcript instead of paging the whole log. Use it when you need what an earlier run did — one that was interrupted or stopped mid-task, or whose results this message refers to: recover what was already done and what it returned instead of redoing it.",
     params: {
       type: "object",
       properties: {
@@ -406,6 +406,11 @@ const TOOL_DEFS: ToolDef[] = [
           type: "boolean",
           description:
             "Also include each step's saved result extract (much larger — only when you need what a step returned, not just what ran)",
+        },
+        query: {
+          type: "string",
+          description:
+            "Keep only entries containing this text, case-insensitive — matches the role, tool name, target, and the full message and result extract (untruncated), so a hit past a line's display cut still lands. from/limit then page over the matches.",
         },
       },
     },
