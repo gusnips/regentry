@@ -4,7 +4,7 @@ import { defaultStartUrl } from "@/lib/prefs";
 import { getActiveRun } from "@/modules/agent/active-runs";
 import { listQueue, submitRun } from "@/modules/agent/run-queue";
 import { startAgentRun } from "@/modules/agent/start-run";
-import { openAgentConversation } from "@/modules/conversation/conversations";
+import { openScheduledConversation } from "@/modules/conversation/conversations";
 import { TranscriptWriter } from "@/modules/conversation/transcript";
 import type { Event } from "@/shared/protocol";
 import { armSchedule, disarmSchedule, isScheduleAlarm, scheduleIdFromAlarm } from "./alarms";
@@ -96,7 +96,7 @@ async function fireSchedule(id: string, opts: { manual?: boolean } = {}): Promis
 
   // Idempotent, and it re-creates the thread if the user deleted it. The label
   // is what makes a transcript the user never started say where it came from.
-  await openAgentConversation(schedule.conversationId, i18n.t("schedule.agentLabel"));
+  await openScheduledConversation(schedule.conversationId, i18n.t("schedule.agentLabel"));
 
   // A fire the browser was closed for runs late — once — and the run is told so,
   // because "summarize today's inbox" means something different at 2am the next

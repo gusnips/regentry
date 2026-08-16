@@ -134,6 +134,7 @@
       "running": "Executando agora",
       "open": "Abrir a conversa dela",
       "delete": "Excluir este agendamento",
+      "deleteRunning": "Excluir este agendamento e parar a execução em andamento",
       "count": "{{n}} de {{max}}"
     }
   },
@@ -250,6 +251,7 @@
     "newChat": "Nova conversa",
     "untitled": "Tarefa sem título",
     "drivenBy": "Conduzida por {{agent}} via MCP",
+    "ranOnSchedule": "Executado por agendamento, não iniciado por você",
     "unknownAgent": "Um cliente MCP",
     "tasks_one": "{{count}} tarefa",
     "tasks_other": "{{count}} tarefas",

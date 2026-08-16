@@ -22,6 +22,39 @@ function StopIcon() {
 }
 
 /**
+ * Why a task the user never typed is on their board. Without it a schedule
+ * firing mid-chat reads as TabRunner inventing work for itself — the one thing
+ * an agent driving your real browser must never look like it is doing. A glyph
+ * rather than a text chip: the strip is one line of `text-xs`, and it echoes
+ * the clock this feature already wears in the settings nav.
+ */
+function ScheduledMark({ label }: { label: string }) {
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className="shrink-0 text-neutral-400 dark:text-neutral-500"
+    >
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    </span>
+  );
+}
+
+/**
  * What TabRunner is doing that this chat cannot see — a run driving another
  * conversation (or an MCP client's), and tasks queued behind it. Reads the same
  * run board the widget paints from, so the two can never disagree.
@@ -78,6 +111,7 @@ export function RunBoard() {
               className="size-1.5 shrink-0 animate-pulse rounded-full bg-amber-400 motion-reduce:animate-none"
             />
           )}
+          {running.owner === "schedule" && <ScheduledMark label={t("schedule.agentLabel")} />}
           <span
             className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-800 dark:text-neutral-100"
             title={running.task}
@@ -116,13 +150,15 @@ export function RunBoard() {
           >
             {q.position}
           </span>
+          {q.owner === "schedule" && <ScheduledMark label={t("schedule.agentLabel")} />}
           <span
             className="min-w-0 flex-1 truncate text-xs text-neutral-500 dark:text-neutral-400"
             title={q.task}
           >
             {q.task}
           </span>
-          {q.owner === "panel" && (
+          {/* Waving off a queued fire skips this one run; the schedule stands. */}
+          {q.owner !== "bridge" && (
             <Button
               variant="ghost"
               size="sm"

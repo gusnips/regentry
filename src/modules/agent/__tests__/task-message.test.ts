@@ -61,4 +61,25 @@ describe("buildTaskMessage", () => {
     expect(message).not.toContain("tab of your own");
     expect(message).not.toContain("driving the user's current tab");
   });
+
+  // Without its own id a scheduled run can only guess which of the listed
+  // schedules it is, so it can never reliably cancel itself — which is how a
+  // "keep checking until X" loop is supposed to end.
+  it("names the schedule a scheduled run fired from", () => {
+    const message = buildTaskMessage("check the delivery", '- heading "Orders"', {
+      mode: { background: true },
+      scheduleId: "sched-42",
+    });
+
+    expect(message).toContain("sched-42");
+    expect(message).toContain("scheduled task firing on its own");
+  });
+
+  it("says nothing about schedules for an ordinary run", () => {
+    const message = buildTaskMessage("check the delivery", '- heading "Orders"', {
+      mode: { background: true },
+    });
+
+    expect(message).not.toContain("scheduled task firing on its own");
+  });
 });

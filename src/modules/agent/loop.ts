@@ -331,7 +331,11 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     ...(history ?? []),
     {
       role: "user",
-      content: buildTaskMessage(task, initial.pageContent, { previousTabs, mode }),
+      content: buildTaskMessage(task, initial.pageContent, {
+        previousTabs,
+        mode,
+        ...(scheduleId ? { scheduleId } : {}),
+      }),
       // The user's own attachments are the subject of the task — unlike screenshots
       // they are never pruned, or a long run would forget what it was asked about.
       // A text-only model can't receive them; dropping the whole field keeps the wire valid.

@@ -134,6 +134,7 @@
       "running": "Running now",
       "open": "Open its conversation",
       "delete": "Delete this schedule",
+      "deleteRunning": "Delete this schedule and stop the run in progress",
       "count": "{{n}} of {{max}}"
     }
   },
@@ -250,6 +251,7 @@
     "newChat": "New chat",
     "untitled": "Untitled task",
     "drivenBy": "Driven by {{agent}} over MCP",
+    "ranOnSchedule": "Ran on a schedule, not started by you",
     "unknownAgent": "An MCP client",
     "tasks_one": "{{count}} task",
     "tasks_other": "{{count}} tasks",

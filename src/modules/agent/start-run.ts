@@ -398,11 +398,26 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         await persistDrivenTabFor(conversationId, drivenTabId, threadGroupId);
       } else {
         await persistDrivenTabFor(conversationId, drivenTabId, threadGroupId);
-        await settleRunTab(
-          runGroup.groupId,
-          task,
-          runFailed ? "failed" : endedOnQuestion ? "question" : "done",
-        );
+        const outcome = runFailed ? "failed" : endedOnQuestion ? "question" : "done";
+        await settleRunTab(runGroup.groupId, task, outcome);
+        // An unattended run's own tab is scratch space, not a result. Nobody
+        // asked for it and nobody is looking at it, so leaving one behind per
+        // fire means an hourly schedule buries the browser inside a day — the
+        // answer lives in the transcript and the notification, which is where
+        // the user actually goes for it. Only ever the tab this run created
+        // (`opened`), never a tab it switched into, which is the user's.
+        //
+        // Kept on any other ending: a failure is worth looking at, a parked
+        // question needs the page state its answer will come back to, and a
+        // user who hit Stop is taking the tab over.
+        if (
+          owner === "schedule" &&
+          opened &&
+          outcome === "done" &&
+          !run.controller.signal.aborted
+        ) {
+          await discardRunTab(tab.id);
+        }
       }
     }
   } finally {

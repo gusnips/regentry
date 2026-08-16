@@ -70,12 +70,18 @@ export interface ConversationMeta {
    */
   lastRun?: RunSummary;
   /**
-   * The external client that drove this conversation ("Claude Code"), when it
-   * wasn't the user's own panel. History shows it: a transcript the user never
-   * started, with nothing saying where it came from, reads as a stranger in
-   * their own browser.
+   * What drove this conversation, when it wasn't the user's own panel — an
+   * external client's name ("Claude Code"), or the standing label a schedule's
+   * thread carries. History shows it: a transcript the user never started, with
+   * nothing saying where it came from, reads as a stranger in their own browser.
    */
   agent?: string;
+  /**
+   * The thread belongs to a scheduled task rather than an MCP client. Both wear
+   * a label in `agent`, but only one of them arrived over MCP — and the history
+   * row says which in its accessible name, so the two must stay tellable apart.
+   */
+  scheduled?: boolean;
 }
 
 // ponytail: fixed caps keep chrome.storage.local under quota — unbounded
@@ -196,6 +202,15 @@ export async function openAgentConversation(id: string, agent: string): Promise<
   await serialized(() => ensureConversation(id, agent));
 }
 
+/**
+ * Creates (or re-creates) the thread a schedule's fires append to. Called before
+ * every fire, not once: the user may have deleted the conversation between runs,
+ * and a schedule whose thread is gone must still have somewhere to write.
+ */
+export async function openScheduledConversation(id: string, label: string): Promise<void> {
+  await serialized(() => ensureConversation(id, label, true));
+}
+
 /** First line of the task, trimmed to fit a list row. */
 export function conversationTitle(text: string): string {
   const line = (text.trim().split("\n", 1)[0] ?? "").trim();
@@ -250,7 +265,11 @@ export function retitleIfDerived(id: string, derived: string, title: string): Pr
  * active item: id-targeted writers (the bridge's MCP thread) use this without
  * disturbing the panel's open conversation.
  */
-async function ensureConversation(id: string, agent?: string): Promise<ConversationMeta> {
+async function ensureConversation(
+  id: string,
+  agent?: string,
+  scheduled?: boolean,
+): Promise<ConversationMeta> {
   const list = await indexItem.get();
   const existing = list.find((c) => c.id === id);
   if (existing) return existing;
@@ -263,6 +282,7 @@ async function ensureConversation(id: string, agent?: string): Promise<Conversat
     updatedAt: now,
     taskCount: 0,
     ...(agent ? { agent } : {}),
+    ...(scheduled ? { scheduled: true } : {}),
   };
   const kept = [meta, ...list].slice(0, MAX_CONVERSATIONS);
   const evicted = list.slice(MAX_CONVERSATIONS - 1);

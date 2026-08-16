@@ -1,4 +1,5 @@
 import type { JSONSchemaProperty, ToolDef } from "@/modules/providers/types";
+import { i18n } from "@/i18n";
 import { DURABLE_FACT_RULES, type AgentContext } from "@/modules/memory";
 import { describeRecurrence, MIN_INTERVAL_MINUTES, type Schedule } from "@/modules/schedule";
 import { SUPPORTED_KEYS } from "@/modules/browser";
@@ -25,6 +26,7 @@ const BASE_PROMPT = `You are TabRunner, a browser automation agent. You control 
 - A task the user pins to a future time or a repeat — "at 3pm…", "every morning…", "every hour from 9 to 5", "each Monday…" — is a request to SCHEDULE the work, not to do it now. Plan it as what it is ("Schedule the 9am inbox check"), and call "schedule_task" once that plan is approved. Running the job immediately instead is the mistake to avoid: they asked for 9am. When they plainly want both now and later, say so in the plan and do both.
 - You can pace yourself the same way. When something needs looking at later rather than waiting on — a delivery that has not shipped, a build still running, a price that might drop — schedule the follow-up and end this run. Never idle, poll, or loop in place to pass time.
 - A run of yours that was itself scheduled re-times only its own schedule, which is how "keep checking until X" works: do the check, then either schedule the next one or call "cancel_schedule" because the goal is met. A repeat nobody ends keeps spending the user's money while they sleep — ending it is your job.
+- A scheduled run replays its own schedule's earlier fires as this conversation's history, so you can see how the last ones went. Read that before working. When they show this task failing the same way every time — a login that no longer holds, a page that has moved, a site that now blocks you — the schedule is broken, not unlucky: stop it with "cancel_schedule" and say plainly in your "done" summary what kept failing and what the user should fix. Repeating a doomed task on a timer wastes their money and buries the notification that something needs them. A one-off failure is not that: retry, and let the next fire try again.
 - The user reviews and cancels all of it in Settings → Schedules.
 
 ## When things go wrong
@@ -115,9 +117,12 @@ function schedulesSection(schedules: Schedule[]): string {
   const rows = schedules
     .map(
       (s) =>
+        // The user's locale, matching describeRecurrence — the two halves of
+        // this line would otherwise disagree ("Todo dia às 09:00 (next: Aug 17,
+        // 9:00 AM)"), and the model echoes these times back to the user.
         `- [${s.id}] ${s.task} — ${describeRecurrence(s.recurrence)} (next: ${new Date(
           s.nextFireAt,
-        ).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })})`,
+        ).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" })})`,
     )
     .join("\n");
   return `# Scheduled tasks
@@ -167,6 +172,14 @@ export interface TaskContext {
    */
   previousTabs?: PreviousTab[];
   mode?: RunMode;
+  /**
+   * This run is a schedule firing, and this is which one. Without the id the
+   * model can only guess at its own identity among the listed schedules by
+   * matching task text — so it could re-time itself (the tool infers that from
+   * the run) but never reliably CANCEL itself, which is how a repeating check
+   * is supposed to end.
+   */
+  scheduleId?: string;
 }
 
 /**
@@ -179,7 +192,7 @@ export interface TaskContext {
  * invoice" are unanswerable without a real anchor.
  */
 export function buildTaskMessage(task: string, pageContent: string, ctx: TaskContext = {}): string {
-  const { previousTabs, mode } = ctx;
+  const { previousTabs, mode, scheduleId } = ctx;
   const now = new Date();
   const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
     now.getDate(),
@@ -201,6 +214,16 @@ export function buildTaskMessage(task: string, pageContent: string, ctx: TaskCon
   } else if (mode?.adopted) {
     parts.push(
       "You are driving the user's current tab — the page they were looking at, with whatever they already had in it (a half-filled form, a scrolled thread, a filtered search). That state is part of the task: read it and propose a plan before any action, and never wipe out a filled field or lose their place without the plan saying so. If the task isn't about this page, ask before navigating away from it.",
+    );
+  }
+  // Naming the schedule is what makes this run able to end itself: "cancel the
+  // repeating check now that it's green" needs an id, and matching the task
+  // text against the listed schedules is a guess. The history replayed above is
+  // this same schedule's earlier fires — the only place it can learn that it
+  // has been failing the same way every time.
+  if (scheduleId) {
+    parts.push(
+      `This run is a scheduled task firing on its own — schedule id ${scheduleId}, listed under "Scheduled tasks". Nobody is watching it start. Everything above this line in the conversation is this schedule's OWN earlier fires: read it before you work, so you build on what the last one found instead of repeating it.`,
     );
   }
   const count = previousTabs?.length ?? 0;

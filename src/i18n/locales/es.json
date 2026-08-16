@@ -134,6 +134,7 @@
       "running": "Ejecutando ahora",
       "open": "Abrir su conversación",
       "delete": "Eliminar esta programación",
+      "deleteRunning": "Eliminar esta programación y detener la ejecución en curso",
       "count": "{{n}} de {{max}}"
     }
   },
@@ -250,6 +251,7 @@
     "newChat": "Nueva conversación",
     "untitled": "Tarea sin título",
     "drivenBy": "Controlada por {{agent}} vía MCP",
+    "ranOnSchedule": "Ejecutado por programación, no iniciado por ti",
     "unknownAgent": "Un cliente MCP",
     "tasks_one": "{{count}} tarea",
     "tasks_other": "{{count}} tareas",

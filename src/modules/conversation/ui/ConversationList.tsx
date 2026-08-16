@@ -172,8 +172,12 @@ function ConversationRow({
             <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-neutral-500 dark:text-neutral-400">
               {conversation.agent && (
                 <>
+                  {/* The chip reads the same either way; the accessible name
+                      must not — a scheduled thread never came over MCP. */}
                   <span className="sr-only">
-                    {t("history.drivenBy", { agent: conversation.agent })}
+                    {conversation.scheduled
+                      ? t("history.ranOnSchedule")
+                      : t("history.drivenBy", { agent: conversation.agent })}
                   </span>
                   <span
                     aria-hidden

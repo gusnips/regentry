@@ -219,7 +219,11 @@ export default defineBackground(() => {
         }
 
         case "cancel_queued": {
-          const entry = listQueue().find((q) => q.id === msg.id && q.owner === "panel");
+          // Anything but the bridge's own: an external client owns its runs and
+          // has its own stop path, but a scheduled fire waiting behind the
+          // user's work is theirs to wave off — skipping one fire leaves the
+          // schedule itself standing, already armed for the next.
+          const entry = listQueue().find((q) => q.id === msg.id && q.owner !== "bridge");
           if (entry && cancelQueued(msg.id)) {
             // A cancelled queued run never produces an event — leave the
             // breadcrumb, or the thread reads as if the task vanished.
@@ -262,22 +266,10 @@ export default defineBackground(() => {
 
         case "stop": {
           const run = getActiveRun();
-          // A scheduled run halts by the same mechanics as a panel one: nobody
-          // asked for it just now, so Stop has to reach it too — the alternative
-          // is a run on the board with no way to end it, which is the dead end
-          // every other surface here is written to avoid. The schedule itself
-          // survives; stopping this fire is not cancelling the standing task.
-          if (run?.owner === "panel" || run?.owner === "schedule") {
-            // User-initiated — the run's done must not fire a notification.
-            stoppedByUser.add(run.conversationId);
-            run.controller.abort();
-            run.injectedQueue.length = 0;
-            releaseRun(run);
-          } else if (run?.owner === "bridge") {
-            // The panel's Stop on an external run — the same mechanics as the
-            // bridge's own stop, routed here so the user can reclaim the browser.
-            getBridge()?.stopFromPanel();
-          }
+          // The panel's Stop on an external run — the same mechanics as the
+          // bridge's own stop, routed here so the user can reclaim the browser.
+          if (run?.owner === "bridge") getBridge()?.stopFromPanel();
+          else haltRun(run);
           // Flush the partial stream immediately — the loop's own done arrives
           // as it unwinds and is a harmless no-op in the panel.
           send(port, { type: "done" });
@@ -398,6 +390,15 @@ export default defineBackground(() => {
       runScheduleNow(m.id);
       return;
     }
+    // Deleting a schedule while its run is in flight. "Delete this" means make
+    // it stop — a schedule removed from the list while its run keeps driving
+    // the browser is the worst kind of surprise, so the record and the run in
+    // progress go together.
+    if (m?.type === "tabrunner-stop-run" && typeof m.conversationId === "string") {
+      const run = getActiveRun();
+      if (run?.conversationId === m.conversationId) haltRun(run);
+      return;
+    }
     if (m?.type !== "tabrunner-mark" || m.action !== "open") return;
     // Land on the work, not on whatever conversation happens to be active.
     const board = currentBoard();
@@ -434,6 +435,26 @@ export default defineBackground(() => {
     notifyParkedRun();
   });
 });
+
+/**
+ * End a run the user asked to end. Covers the panel's own and a scheduled one:
+ * nobody asked for a schedule's fire just now, so every surface that can see it
+ * has to be able to stop it — a run on the board with no way out is the dead end
+ * the rest of this file is written to avoid. Stopping a fire never cancels the
+ * standing schedule; that is Settings' Delete.
+ *
+ * A bridge run is not ours to abort (it has its own stop path) and is handled by
+ * the caller. Returns whether anything was stopped.
+ */
+function haltRun(run: ReturnType<typeof getActiveRun>): boolean {
+  if (run?.owner !== "panel" && run?.owner !== "schedule") return false;
+  // User-initiated — the run's done must not fire a notification.
+  stoppedByUser.add(run.conversationId);
+  run.controller.abort();
+  run.injectedQueue.length = 0;
+  releaseRun(run);
+  return true;
+}
 
 function send(port: chrome.runtime.Port, event: Event) {
   try {
@@ -564,13 +585,20 @@ async function notifyRunEnded(conversationId: string, task: string, event: Event
   // Read before the first await: the run releases its slot moments after this
   // event, and the board's tab id goes with it.
   const tabId = currentBoard().running?.tabId;
-  if (await userIsWatching()) return;
   const done = event.type === "done";
+  const watching = await userIsWatching();
   // A failure nobody saw outlives its notification — the toolbar holds it.
-  if (!done) {
+  // "Nobody saw it" is about the CONVERSATION, not the app: a panel open on
+  // another chat is as blind to a run failing over here as a closed one, and a
+  // scheduled run is on another chat by construction. Without this, the one
+  // ending the user most needs to know about is also the quietest.
+  if (!done && !(watching && (await getActiveId()) === conversationId)) {
     unseenFailure = true;
     paintActionBadge();
   }
+  // The OS notification stays gated on the app itself — buzzing the desktop of
+  // someone already using TabRunner is noise the toolbar mark covers better.
+  if (watching) return;
   const id = `tabrunner-run-${conversationId}`;
   notificationTargets.set(id, { conversationId, ...(tabId !== undefined ? { tabId } : {}) });
   try {

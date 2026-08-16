@@ -84,9 +84,20 @@ async function openConversation(conversationId: string): Promise<void> {
   }
 }
 
-async function remove(id: string): Promise<void> {
-  await deleteSchedule(id);
-  await disarmSchedule(id);
+/**
+ * Delete means make it stop. Removing the record while its run keeps driving the
+ * browser is the surprise this avoids — so a fire in flight is halted with it.
+ * The button's label says as much while that is what will happen.
+ */
+async function remove(schedule: Schedule, running: boolean): Promise<void> {
+  await deleteSchedule(schedule.id);
+  await disarmSchedule(schedule.id);
+  if (running) {
+    void chrome.runtime.sendMessage({
+      type: "tabrunner-stop-run",
+      conversationId: schedule.conversationId,
+    });
+  }
 }
 
 /**
@@ -195,9 +206,9 @@ export function SchedulesSection() {
                   <Button
                     variant="ghost-danger"
                     size="sm"
-                    aria-label={t("schedule.ui.delete")}
-                    title={t("schedule.ui.delete")}
-                    onClick={() => void remove(s.id)}
+                    aria-label={t(running ? "schedule.ui.deleteRunning" : "schedule.ui.delete")}
+                    title={t(running ? "schedule.ui.deleteRunning" : "schedule.ui.delete")}
+                    onClick={() => void remove(s, running)}
                   >
                     <Icon>
                       <path d="M3 6h18" />
