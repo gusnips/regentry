@@ -6,9 +6,11 @@ import {
 import type { ComponentProps } from "react";
 
 /** Styled shells over @shadcn/react's headless message scroller (shadcn's chat
- *  primitives, June 2026), house tokens: the Provider owns follow-the-live-edge,
- *  turn anchoring and saved-transcript restoration; the viewport is the scroll
- *  region; items are the measurable rows anchoring works on. */
+ *  primitives, June 2026), house tokens: the Provider owns follow-the-live-edge
+ *  and saved-transcript restoration; the viewport is the scroll region; items
+ *  are the measured rows position-keeping works on. The library's turn
+ *  anchoring (scrollAnchor) stays off: a landing message must never move the
+ *  view of a reader who scrolled away. */
 export function MessageScrollerProvider(props: ComponentProps<typeof Scroller.Provider>) {
   return <Scroller.Provider {...props} />;
 }

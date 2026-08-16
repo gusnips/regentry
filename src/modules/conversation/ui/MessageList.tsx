@@ -870,9 +870,11 @@ export function MessageList() {
   return (
     <MessageScrollerProvider
       autoScroll
-      // Reopened transcripts land on the last turn with a peek of what came
-      // before, instead of flying by from the top.
-      defaultScrollPosition="last-anchor"
+      // Reopened transcripts land at the live edge. Deliberately no scroll
+      // anchors anywhere: an appended message never moves the view, so neither
+      // your own send nor a consumed steer yanks a scrolled-up reader (or the
+      // sender) off what they were reading. Follow engages by proximity only.
+      defaultScrollPosition="end"
       // Same stick threshold as before the scroller: near-bottom follows.
       scrollEdgeThreshold={80}
     >
@@ -1103,11 +1105,7 @@ function Transcript() {
                 <BurstCard burst={item} onToggleReasoning={toggleReasoning} />
               </MessageScrollerItem>
             ) : (
-              <MessageScrollerItem
-                key={item.msg.id}
-                messageId={item.msg.id}
-                scrollAnchor={item.msg.role === "user"}
-              >
+              <MessageScrollerItem key={item.msg.id} messageId={item.msg.id}>
                 <MessageBubble
                   msg={item.msg}
                   activeProvider={activeProvider}
