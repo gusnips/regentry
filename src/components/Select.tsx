@@ -18,6 +18,24 @@ export interface SelectOption {
   icon?: ReactNode;
   /** Rule above this item — separates trailing actions from the real choices. */
   separatorBefore?: boolean;
+  /**
+   * Section this option belongs to, rendered as a heading above the run of
+   * options sharing it. Use when the sections answer a question the rows
+   * can't — two ways to pay for the same list of providers — and order the
+   * options so each section is contiguous; a group is a run, not a sort key.
+   */
+  group?: string;
+}
+
+/** Consecutive options sharing a `group` form one section. Ungrouped runs render bare. */
+function sections(options: SelectOption[]): { group?: string; items: SelectOption[] }[] {
+  const runs: { group?: string; items: SelectOption[] }[] = [];
+  for (const option of options) {
+    const last = runs.at(-1);
+    if (last && last.group === option.group) last.items.push(option);
+    else runs.push({ group: option.group, items: [option] });
+  }
+  return runs;
 }
 
 function Hint({ text }: { text: string }) {
@@ -33,9 +51,17 @@ type Size = "sm" | "md";
 type Variant = "boxed" | "quiet";
 
 /** sm = panel-header density, md = forms. */
-const SIZES: Record<Size, { trigger: string; item: string }> = {
-  md: { trigger: "px-3 py-2 text-sm", item: "px-3 py-1.5 text-sm" },
-  sm: { trigger: "px-2 py-1 text-xs", item: "px-2 py-1 text-xs" },
+const SIZES: Record<Size, { trigger: string; item: string; group: string }> = {
+  md: {
+    trigger: "px-3 py-2 text-sm",
+    item: "px-3 py-1.5 text-sm",
+    group: "px-3 pt-2.5 pb-1 text-[11px]",
+  },
+  sm: {
+    trigger: "px-2 py-1 text-xs",
+    item: "px-2 py-1 text-xs",
+    group: "px-2 pt-2 pb-0.5 text-[10px]",
+  },
 };
 
 const TRIGGER_VARIANTS: Record<Variant, string> = {
@@ -83,6 +109,31 @@ export function Select({
   const labelId = useId();
   const byValue = new Map(options.map((o) => [o.value, o]));
   const s = SIZES[size];
+
+  const renderItem = (o: SelectOption) => {
+    const hint = o.hint ? <Hint text={o.hint} /> : null;
+    return (
+      <Fragment key={o.value}>
+        {/* Base UI's Select has no Separator part — a presentational
+            rule keeps it out of the listbox's accessibility tree. */}
+        {o.separatorBefore && (
+          <div aria-hidden className="my-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+        )}
+        <BaseSelect.Item
+          value={o.value}
+          className={`flex cursor-default items-center gap-1.5 text-neutral-900 data-[highlighted]:bg-brand-50 data-[highlighted]:text-brand-900 dark:text-neutral-100 dark:data-[highlighted]:bg-brand-950 dark:data-[highlighted]:text-brand-100 ${s.item}`}
+        >
+          {o.icon}
+          {o.hintLeading && hint}
+          <BaseSelect.ItemText className="min-w-0 flex-1 truncate">{o.label}</BaseSelect.ItemText>
+          {!o.hintLeading && hint}
+          <BaseSelect.ItemIndicator className="flex shrink-0 text-brand-600 dark:text-brand-400">
+            <CheckIcon />
+          </BaseSelect.ItemIndicator>
+        </BaseSelect.Item>
+      </Fragment>
+    );
+  };
 
   const trigger = (
     <BaseSelect.Trigger
@@ -137,32 +188,28 @@ export function Select({
             and looked missing. A plain dropdown always shows the list from the top. */}
         <BaseSelect.Positioner sideOffset={4} alignItemWithTrigger={false} className="z-50">
           <BaseSelect.Popup className="max-h-72 w-max min-w-[var(--anchor-width)] max-w-72 overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-            {options.map((o) => {
-              const hint = o.hint ? <Hint text={o.hint} /> : null;
-              return (
-                <Fragment key={o.value}>
-                  {/* Base UI's Select has no Separator part — a presentational
-                      rule keeps it out of the listbox's accessibility tree. */}
-                  {o.separatorBefore && (
+            {sections(options).map((section, i) =>
+              section.group ? (
+                <BaseSelect.Group key={section.group}>
+                  {/* A muted heading alone reads as a disabled row at a glance;
+                      the rule is what says "new section". The first one needs
+                      none — the popup's own edge already is that seam. */}
+                  {i > 0 && (
                     <div aria-hidden className="my-1 h-px bg-neutral-200 dark:bg-neutral-700" />
                   )}
-                  <BaseSelect.Item
-                    value={o.value}
-                    className={`flex cursor-default items-center gap-1.5 text-neutral-900 data-[highlighted]:bg-brand-50 data-[highlighted]:text-brand-900 dark:text-neutral-100 dark:data-[highlighted]:bg-brand-950 dark:data-[highlighted]:text-brand-100 ${s.item}`}
+                  <BaseSelect.GroupLabel
+                    className={`font-medium text-neutral-500 dark:text-neutral-400 ${s.group}`}
                   >
-                    {o.icon}
-                    {o.hintLeading && hint}
-                    <BaseSelect.ItemText className="min-w-0 flex-1 truncate">
-                      {o.label}
-                    </BaseSelect.ItemText>
-                    {!o.hintLeading && hint}
-                    <BaseSelect.ItemIndicator className="flex shrink-0 text-brand-600 dark:text-brand-400">
-                      <CheckIcon />
-                    </BaseSelect.ItemIndicator>
-                  </BaseSelect.Item>
-                </Fragment>
-              );
-            })}
+                    {section.group}
+                  </BaseSelect.GroupLabel>
+                  {section.items.map(renderItem)}
+                </BaseSelect.Group>
+              ) : (
+                // Keyed on its first option: an ungrouped run's identity is its
+                // contents, and every value in the list is already unique.
+                <Fragment key={section.items[0]!.value}>{section.items.map(renderItem)}</Fragment>
+              ),
+            )}
           </BaseSelect.Popup>
         </BaseSelect.Positioner>
       </BaseSelect.Portal>

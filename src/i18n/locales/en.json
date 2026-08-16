@@ -6,14 +6,15 @@
     "selectPlaceholder": "Select…",
     "showKey": "Show key",
     "hideKey": "Hide key",
-    "subscription": "Subscription"
+    "subscription": "Subscription",
+    "apiKey": "API key"
   },
   "onboarding": {
     "title": "Welcome to TabRunner",
     "tagline": "An AI agent that drives this browser — your tabs, your sessions, your logins — to get tasks done.",
     "connectPrompt": "To start, connect a provider — sign in with a subscription you already pay for, or paste an API key. Either way it stays on this device and goes straight to the provider — there is no TabRunner server.",
     "addProvider": "Add a provider",
-    "presetsNote": "{{count}} presets — Anthropic, OpenAI, Kimi, Z.ai, Ollama… — or any compatible endpoint."
+    "presetsNote": "{{count}} presets — Claude, ChatGPT, Kimi, Z.ai, Ollama… — or any compatible endpoint."
   },
   "settings": {
     "pageTitle": "TabRunner settings",
@@ -144,6 +145,8 @@
   },
   "providerForm": {
     "provider": "Provider",
+    "groupSubscription": "Subscription — a plan you already pay for",
+    "groupApiKey": "API key — paste a key, billed per use",
     "configured": "{{name}} · configured",
     "name": "Name",
     "namePlaceholder": "My gateway",
@@ -398,7 +401,7 @@
     },
     "usage": {
       "description": "Show the active subscription's usage windows",
-      "unsupported": "{{provider}} runs on an API key — usage windows only exist for subscription sign-ins (Anthropic, ChatGPT, Kimi)."
+      "unsupported": "{{provider}} runs on an API key — usage windows only exist for subscription sign-ins (Claude, ChatGPT, Kimi)."
     },
     "compact": {
       "description": "Summarize this conversation so far, to free up context",

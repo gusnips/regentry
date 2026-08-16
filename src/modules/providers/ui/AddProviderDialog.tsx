@@ -5,7 +5,7 @@ import { Dialog } from "@base-ui-components/react";
 import { XIcon } from "@/components/Icon";
 import { overlayCard, scrim } from "@/components/chrome";
 import { ProviderForm } from "./ProviderForm";
-import { providerDisplayName } from "../presets";
+import { providerName } from "../presets";
 import type { ProviderConfig } from "../types";
 
 /**
@@ -44,7 +44,7 @@ export function AddProviderDialog({
             <div>
               <Dialog.Title className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
                 {initialProvider
-                  ? t("providerForm.update", { name: providerDisplayName(initialProvider) })
+                  ? t("providerForm.update", { name: providerName(initialProvider) })
                   : t("addProvider.title")}
               </Dialog.Title>
               <Dialog.Description className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">

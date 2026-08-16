@@ -4,7 +4,7 @@ import { Button } from "@/components/Button";
 import { ProviderIcon } from "./ProviderIcon";
 import { OAUTH_FLOWS } from "../oauth-flows";
 import type { SignInPrompt } from "../oauth-flows";
-import { providerDisplayName } from "../presets";
+import { providerName } from "../presets";
 import type { ProviderPreset } from "../presets";
 import { SignInError } from "../types";
 import type { OAuthCredential, SignInFailure } from "../types";
@@ -49,8 +49,10 @@ export function OAuthSignIn({
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
   const abort = useRef<AbortController | null>(null);
-  // Every line of copy names the provider — no string in this file names a vendor.
-  const provider = providerDisplayName(preset);
+  // Every line of copy names the provider — no string in this file names a
+  // vendor. Bare: this whole card IS the subscription path, so the qualifier
+  // would land as "Uses your Claude (Subscription) subscription".
+  const provider = providerName(preset);
   const presetId = preset.id;
 
   // A dialog closed mid-sign-in must not leave a tab-watcher or poll running behind it.

@@ -193,6 +193,8 @@ describe("Bridge providerInfo", () => {
   it("reports a signed-in subscription as ready, under its display name", async () => {
     activeProvider = {
       id: "claude",
+      // The name storage held before the row was renamed to "Claude" — the
+      // preset's current one wins, so nobody has to re-save to see it.
       name: "Anthropic",
       shape: "anthropic",
       baseUrl: "https://api.anthropic.com",
@@ -201,7 +203,7 @@ describe("Bridge providerInfo", () => {
       createdAt: 0,
     };
     expect(await ask("p1")).toEqual({
-      name: "Anthropic (Subscription)",
+      name: "Claude (Subscription)",
       ready: true,
       auth: "subscription",
       model: null,
@@ -219,7 +221,7 @@ describe("Bridge providerInfo", () => {
       createdAt: 0,
     };
     expect(await ask("p2")).toEqual({
-      name: "OpenAI (API)",
+      name: "OpenAI (API key)",
       ready: false,
       auth: "key",
       model: "gpt-5",

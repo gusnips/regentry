@@ -6,14 +6,15 @@
     "selectPlaceholder": "Selecionar…",
     "showKey": "Mostrar chave",
     "hideKey": "Ocultar chave",
-    "subscription": "Assinatura"
+    "subscription": "Assinatura",
+    "apiKey": "Chave de API"
   },
   "onboarding": {
     "title": "Bem-vindo ao TabRunner",
     "tagline": "Um agente de IA que dirige este navegador — suas abas, suas sessões, seus logins — para concluir tarefas.",
     "connectPrompt": "Para começar, conecte um provedor — entre com uma assinatura que você já paga ou cole uma chave de API. Seja qual for, fica neste dispositivo e vai direto para o provedor — não existe servidor do TabRunner.",
     "addProvider": "Adicionar provedor",
-    "presetsNote": "{{count}} presets — Anthropic, OpenAI, Kimi, Z.ai, Ollama… — ou qualquer endpoint compatível."
+    "presetsNote": "{{count}} presets — Claude, ChatGPT, Kimi, Z.ai, Ollama… — ou qualquer endpoint compatível."
   },
   "settings": {
     "pageTitle": "Configurações do TabRunner",
@@ -144,6 +145,8 @@
   },
   "providerForm": {
     "provider": "Provedor",
+    "groupSubscription": "Assinatura — um plano que você já paga",
+    "groupApiKey": "Chave de API — cole uma chave, cobrada por uso",
     "configured": "{{name}} · configurado",
     "name": "Nome",
     "namePlaceholder": "Meu gateway",
@@ -398,7 +401,7 @@
     },
     "usage": {
       "description": "Mostra as janelas de uso da assinatura ativa",
-      "unsupported": "{{provider}} usa uma chave de API — janelas de uso só existem nos provedores por assinatura (Anthropic, ChatGPT, Kimi)."
+      "unsupported": "{{provider}} usa uma chave de API — janelas de uso só existem nos provedores por assinatura (Claude, ChatGPT, Kimi)."
     },
     "compact": {
       "description": "Resume esta conversa até aqui, para liberar contexto",

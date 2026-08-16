@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useProvidersStore } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { OAuthSignIn, SIGN_IN_DONE_MS } from "./OAuthSignIn";
-import { PRESETS, providerDisplayName } from "../presets";
+import { PRESETS, providerName } from "../presets";
 import { isKeyRejected } from "../models";
 import { splitErrorDetail } from "@/modules/conversation/error-detail";
 import type { OAuthCredential, ProviderConfig, ProviderShape } from "../types";
@@ -145,11 +145,8 @@ export function ProviderForm({
         AbortSignal.timeout(KEY_CHECK_TIMEOUT_MS),
       );
       if (rejected) {
-        fail(
-          t("providerForm.keyRejected", {
-            name: preset ? providerDisplayName(preset) : resolvedName,
-          }),
-        );
+        // Bare name: the sentence is about a key, so "(API key)" would say it twice.
+        fail(t("providerForm.keyRejected", { name: resolvedName }));
         return;
       }
       setBusy("saving");
@@ -185,6 +182,10 @@ export function ProviderForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <div className="flex flex-col gap-1 text-sm">
+        {/* Sections carry the payment method, so the rows drop the qualifier and
+            read as bare products — and the headers get to say the one thing the
+            picker never did: that there are two ways in, and what each costs.
+            PRESETS keeps its OAuth rows contiguous, so this tags without sorting. */}
         <Select
           label={t("providerForm.provider")}
           value={presetId}
@@ -193,11 +194,19 @@ export function ProviderForm({
             ...PRESETS.map((p) => ({
               value: p.id,
               label: providers.some((cp) => cp.id === p.id)
-                ? t("providerForm.configured", { name: providerDisplayName(p) })
-                : providerDisplayName(p),
+                ? t("providerForm.configured", { name: p.name })
+                : p.name,
               icon: <ProviderIcon icon={p.icon} size={20} />,
+              group:
+                p.auth === "oauth"
+                  ? t("providerForm.groupSubscription")
+                  : t("providerForm.groupApiKey"),
             })),
-            { value: CUSTOM, label: t("providerForm.customEndpoint") },
+            {
+              value: CUSTOM,
+              label: t("providerForm.customEndpoint"),
+              group: t("providerForm.groupApiKey"),
+            },
           ]}
         />
         {/* The endpoint is worth showing where the user is about to hand over a
@@ -289,7 +298,7 @@ export function ProviderForm({
             : busy === "saving"
               ? t("providerForm.saving")
               : existing
-                ? t("providerForm.update", { name: providerDisplayName(existing) })
+                ? t("providerForm.update", { name: providerName(existing) })
                 : t("providerForm.add")}
         </Button>
       )}

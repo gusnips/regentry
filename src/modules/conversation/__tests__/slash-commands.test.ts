@@ -171,7 +171,7 @@ describe("executeSlash", () => {
     await vi.waitFor(() => {
       expect(lastNote()).toContain("42%");
     });
-    expect(lastNote()).toContain("Anthropic");
+    expect(lastNote()).toContain("Claude");
     expect(lastNote()).toContain("68%");
     vi.unstubAllGlobals();
   });

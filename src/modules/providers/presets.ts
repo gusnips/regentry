@@ -24,6 +24,14 @@ export interface ProviderPreset {
    * the key field for a sign-in button and the list offers signing out.
    */
   auth?: "oauth";
+  /**
+   * Set on both rows of a product sold two ways. `name` stays the bare product
+   * ("Claude", "Anthropic"); `providerDisplayName` appends which way, so a user
+   * holding both a plan and a key always knows which quota a run spends. A
+   * product with a single row needs no qualifier — and neither does a surface
+   * that already says it, like the picker's own section headers.
+   */
+  paired?: true;
 }
 
 export type IconKey =
@@ -46,7 +54,16 @@ export type IconKey =
  * Order is the picker's order, and the first entry is what the add form opens
  * on: the subscriptions lead, because a plan someone already pays for is the
  * shortest path to a working provider — an API key means a console, a credit
- * card, and a billing decision before the first task ever runs.
+ * card, and a billing decision before the first task ever runs. The OAuth rows
+ * being contiguous is what lets the picker chunk this list into its two
+ * sections without sorting it.
+ *
+ * A subscription row is named for the product people actually buy (Claude,
+ * ChatGPT) and a keyed row for the company whose console issues the key
+ * (Anthropic, OpenAI) — the vendors draw that line themselves, so following it
+ * means each row wears the name its own audience already knows. Where a vendor
+ * runs one brand for both (Kimi), both rows keep it and `paired` tells them
+ * apart.
  *
  * The "coding plan" endpoints (Kimi, Z.ai, QwenCloud) speak the Anthropic wire
  * format at custom base URLs — that's why they're anthropic-shaped presets,
@@ -58,11 +75,12 @@ export const PRESETS: ProviderPreset[] = [
     // sign-in instead of a key. One row per way to pay — a user with both a key
     // and a plan always knows which quota a run spends.
     id: "claude",
-    name: "Anthropic",
+    name: "Claude",
     shape: "anthropic",
     baseUrl: "https://api.anthropic.com",
     models: ["claude-fable-5", "claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
     auth: "oauth",
+    paired: true,
     color: "#D97757",
     icon: "anthropic",
   },
@@ -72,11 +90,12 @@ export const PRESETS: ProviderPreset[] = [
     // Responses wire format at a backend with no public model-list route, so
     // the preset models ARE the picker's list.
     id: "chatgpt",
-    name: "OpenAI",
+    name: "ChatGPT",
     shape: "responses",
     baseUrl: "https://chatgpt.com/backend-api/codex",
     models: ["gpt-5.4-mini", "gpt-5.5", "gpt-5.3-codex", "gpt-5.1-codex-max"],
     auth: "oauth",
+    paired: true,
     color: "#10A37F",
     icon: "openai",
   },
@@ -90,36 +109,43 @@ export const PRESETS: ProviderPreset[] = [
     baseUrl: "https://api.kimi.com/coding",
     models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],
     auth: "oauth",
+    paired: true,
     color: "#0F172A",
     icon: "kimi",
   },
   {
     id: "anthropic",
-    name: "Anthropic (API)",
+    name: "Anthropic",
     shape: "anthropic",
     baseUrl: "https://api.anthropic.com",
     models: ["claude-fable-5", "claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
     apiKeyUrl: "https://console.anthropic.com/settings/keys",
+    paired: true,
     color: "#D97757",
     icon: "anthropic",
   },
   {
     id: "openai",
-    name: "OpenAI (API)",
+    name: "OpenAI",
     shape: "openai",
     baseUrl: "https://api.openai.com/v1",
     models: ["gpt-5", "gpt-5-mini", "gpt-4o"],
     apiKeyUrl: "https://platform.openai.com/api-keys",
+    paired: true,
     color: "#000000",
     icon: "openai",
   },
   {
     id: "kimi",
-    name: "Kimi Coding (API)",
+    // Moonshot AI issues the key, but the endpoint is Kimi's coding plan, not
+    // Moonshot's general API — naming the company here would advertise the
+    // wrong one. The key console is a click away on `apiKeyUrl`.
+    name: "Kimi Coding",
     shape: "anthropic",
     baseUrl: "https://api.kimi.com/coding",
     models: ["k3", "k3-256k", "kimi-for-coding", "kimi-for-coding-highspeed"],
     apiKeyUrl: "https://platform.moonshot.ai/console/api-keys",
+    paired: true,
     color: "#0F172A",
     icon: "kimi",
   },
@@ -217,17 +243,29 @@ export const PRESETS: ProviderPreset[] = [
 ];
 
 /**
- * Label for a stored provider. The preset's current name wins over the copy
- * saved into the config at add time, so renaming a preset shows up everywhere
- * without asking the user to re-save.
+ * The product's own name — "Claude", "Anthropic", "DeepSeek". The preset's
+ * current name wins over the copy saved into the config at add time, so
+ * renaming a preset shows up everywhere without asking the user to re-save.
+ *
+ * For surfaces whose surrounding copy already says how the provider is paid
+ * for: the picker under its section header, the sign-in card ("Sign in with
+ * Claude"), a form already sitting on one row's edit path.
+ */
+export function providerName(provider: { id: string; name: string }): string {
+  return PRESETS.find((p) => p.id === provider.id)?.name ?? provider.name;
+}
+
+/**
+ * Label for a stored provider, qualified by how it's paid for wherever the
+ * name alone is ambiguous — a chat header offering both Kimi rows, or a list
+ * where "Claude" next to "Anthropic" doesn't say which quota a run spends.
+ * Everything unpaired reads as its bare name.
  */
 export function providerDisplayName(provider: { id: string; name: string }): string {
   const preset = PRESETS.find((p) => p.id === provider.id);
-  if (!preset) return provider.name;
-  // OAuth rows append a localized payment-method label — the preset name stays
-  // clean so the plan word reads in the user's language. "(API)" is the same
-  // acronym in every language, so keyed rows keep it baked into the name.
-  return preset.auth === "oauth"
-    ? `${preset.name} (${i18n.t("common.subscription")})`
-    : preset.name;
+  if (!preset?.paired) return providerName(provider);
+  // Localized both ways — "API key" is a phrase, not the bare acronym, because
+  // it's the half of the pair a first-timer has to be taught.
+  const how = preset.auth === "oauth" ? i18n.t("common.subscription") : i18n.t("common.apiKey");
+  return `${preset.name} (${how})`;
 }
