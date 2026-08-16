@@ -95,6 +95,7 @@
   "schedule": {
     "agentLabel": "Programado",
     "lateNote": "Esta ejecución estaba programada para {{scheduled}} y empieza tarde, porque el navegador estuvo cerrado hasta ahora. Ten en cuenta el retraso y dilo en tu resumen si cambia la respuesta.",
+    "historyLostNote": "La conversación anterior de esta tarea programada ya no está almacenada, así que aquí no hay registro de lo que encontraron las ejecuciones anteriores. Trata esta como la primera ejecución — no asumas que algo ya se hizo.",
     "desc": {
       "once": "Una vez — {{when}}",
       "daily": "Todos los días a las {{time}}",
@@ -133,6 +134,11 @@
       "lastOk": "La última ejecución terminó {{when}}",
       "lastFailed": "La última ejecución falló {{when}}",
       "runNow": "Ejecutar ahora",
+      "runNowOnce": "Ejecutar ahora como prueba — seguirá disparándose a su hora programada",
+      "queued": "En cola — empieza cuando termine la tarea actual",
+      "paused": "Pausada",
+      "pause": "Pausar — conserva la tarea y su conversación, detiene el temporizador",
+      "resume": "Reanudar — el próximo disparo se recalcula desde ahora",
       "running": "Ejecutando ahora",
       "open": "Abrir su conversación",
       "delete": "Eliminar esta programación",
@@ -266,6 +272,7 @@
     "renamePlaceholder": "Nombra esta conversación",
     "deleteTitle": "¿Eliminar esta conversación?",
     "deleteBody": "La transcripción se elimina de este dispositivo. Lo que TabRunner haya aprendido queda en su memoria — puedes eliminarlo en Configuración.",
+    "deleteScheduledBody": "Esta es la conversación de una tarea programada ({{recurrence}}), y la transcripción es la memoria que cada ejecución vuelve a leer. Eliminarla también cancela la programación. Para detenerla solo un tiempo, pausa en Configuración.",
     "emptyTitle": "Aún no hay conversaciones",
     "emptyBody": "Cada tarea que envías se guarda aquí como historial — abre una para releer lo que hizo el agente, o elimina las que ya no necesites.",
     "emptyAction": "Empezar una tarea",

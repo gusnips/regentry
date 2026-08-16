@@ -38,6 +38,16 @@ export async function armSchedule(schedule: Schedule): Promise<void> {
   }
 }
 
+/**
+ * Drops the alarm, and never throws for it — symmetric with `armSchedule`, and
+ * for a sharper reason: this runs inside deleting a conversation, so letting it
+ * fail would abandon that delete half-done over an alarm that, at worst, fires
+ * once into a record `fireSchedule` will find missing anyway.
+ */
 export async function disarmSchedule(id: string): Promise<void> {
-  await chrome.alarms.clear(alarmNameFor(id));
+  try {
+    await chrome.alarms.clear(alarmNameFor(id));
+  } catch (e) {
+    log.warn("could not disarm schedule:", e instanceof Error ? e.message : String(e));
+  }
 }

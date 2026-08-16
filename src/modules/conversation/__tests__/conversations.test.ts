@@ -12,11 +12,13 @@ import {
   getMessages,
   isPartialTitle,
   listConversations,
+  openScheduledConversation,
   recordDrivenTabFor,
   renameConversation,
   retitleIfDerived,
   setActiveConversation,
 } from "../conversations";
+import { listSchedules, saveSchedule } from "@/modules/schedule/store";
 import type { Message } from "../types";
 
 let seq = 0;
@@ -127,6 +129,55 @@ describe("conversations", () => {
     expect(await getMessages(id)).toEqual([]);
     expect((await listConversations()).some((c) => c.id === id)).toBe(false);
     expect(await getActiveId()).toBeNull();
+  });
+
+  /**
+   * The bug this closes: deleting a scheduled thread left the schedule armed
+   * over a transcript that no longer existed, and the next fire re-created the
+   * row by id — so a conversation the user deleted came back, empty, at 9am,
+   * and the delete that looked like it had stopped the task hadn't.
+   */
+  it("takes the schedules that write into a thread down with it", async () => {
+    const id = await appendMessageFresh(msg("user", "check the deploy"));
+    await saveSchedule({
+      id: "sched-1",
+      task: "check the deploy",
+      recurrence: { kind: "interval", everyMinutes: 20 },
+      conversationId: id,
+      nextFireAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+
+    await deleteConversation(id);
+
+    expect(await listSchedules()).toEqual([]);
+  });
+
+  it("leaves other threads' schedules alone", async () => {
+    const mine = await appendMessageFresh(msg("user", "throwaway"));
+    await saveSchedule({
+      id: "sched-2",
+      task: "someone else's morning report",
+      recurrence: { kind: "daily", time: "09:00" },
+      conversationId: "another-thread",
+      nextFireAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    });
+
+    await deleteConversation(mine);
+
+    expect((await listSchedules()).map((s) => s.id)).toEqual(["sched-2"]);
+  });
+
+  /**
+   * A scheduled run is told the conversation above it is its own earlier fires.
+   * Eviction is the one way that premise can break now, and the run has to hear
+   * about it — an empty history otherwise reads as "I have never done this".
+   */
+  it("reports whether a schedule's thread was still there", async () => {
+    const id = "sched-thread";
+    expect(await openScheduledConversation(id, "Scheduled")).toBe(false);
+    expect(await openScheduledConversation(id, "Scheduled")).toBe(true);
   });
 
   it("keeps every message when appends are fired in the same tick", async () => {

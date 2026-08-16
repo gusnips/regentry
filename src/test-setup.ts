@@ -21,6 +21,12 @@ if (typeof globalThis.chrome === "undefined") {
     debugger: { onDetach: noop, onEvent: noop },
     // Rendering a panel surface can reach for the version (a bug report carries it).
     runtime: { getManifest: () => ({ version: "0.0.0-test" }) },
+    // Schedules arm and clear alarms as a side effect of storage writes.
+    alarms: {
+      create: () => Promise.resolve(),
+      clear: () => Promise.resolve(true),
+      getAll: () => Promise.resolve([]),
+    },
   };
 }
 

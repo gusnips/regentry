@@ -8,5 +8,5 @@
  */
 export type { Schedule } from "./types";
 export { describeRecurrence, MIN_INTERVAL_MINUTES } from "./recurrence";
-export { isScheduleAlarm } from "./alarms";
-export { listSchedules } from "./store";
+export { disarmSchedule, isScheduleAlarm } from "./alarms";
+export { deleteSchedule, listSchedules, schedulesForConversation } from "./store";

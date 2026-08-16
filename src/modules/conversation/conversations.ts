@@ -1,6 +1,7 @@
 import { defineItem } from "@/lib/storage";
 import { truncateTo } from "@/lib/format";
 import { cancelQueued, listQueue } from "@/modules/agent/run-queue";
+import { deleteSchedule, disarmSchedule, schedulesForConversation } from "@/modules/schedule";
 import type { Message } from "./types";
 
 /** A tab the conversation's runs drove — lets the next run spot a tab change. */
@@ -204,11 +205,21 @@ export async function openAgentConversation(id: string, agent: string): Promise<
 
 /**
  * Creates (or re-creates) the thread a schedule's fires append to. Called before
- * every fire, not once: the user may have deleted the conversation between runs,
- * and a schedule whose thread is gone must still have somewhere to write.
+ * every fire, not once: the transcript can fall off the conversation cap between
+ * runs, and a schedule whose thread is gone must still have somewhere to write.
+ *
+ * Returns whether the thread was already there. A scheduled run is told the
+ * conversation above it is its own earlier fires, so the caller has to know when
+ * that stopped being true — an empty history reads as "I have never done this".
+ * (Deletion is not one of these cases any more: deleting the thread cancels the
+ * schedule, so the only way back here is eviction.)
  */
-export async function openScheduledConversation(id: string, label: string): Promise<void> {
-  await serialized(() => ensureConversation(id, label, true));
+export function openScheduledConversation(id: string, label: string): Promise<boolean> {
+  return serialized(async () => {
+    const existed = (await indexItem.get()).some((c) => c.id === id);
+    await ensureConversation(id, label, true);
+    return existed;
+  });
 }
 
 /** First line of the task, trimmed to fit a list row. */
@@ -404,6 +415,16 @@ export async function deleteConversation(id: string): Promise<void> {
   // reason: writing one would recreate the ghost too.
   for (const q of listQueue()) {
     if (q.conversationId === id) cancelQueued(q.id);
+  }
+  // A schedule's thread is not incidental to it — it IS the memory the next fire
+  // reads back ("what did I find last time?"). Leaving the rule armed over a
+  // deleted transcript gives you an amnesiac agent doing unattended work at 3am,
+  // and re-creating the row at that fire resurrects a conversation the user
+  // deleted. Both are worse than ending it here; the panel's confirm says so
+  // before this runs, and Settings → Schedules can pause instead.
+  for (const s of await schedulesForConversation(id)) {
+    await deleteSchedule(s.id);
+    await disarmSchedule(s.id);
   }
   await messagesItem(id).remove();
   await indexItem.set((await indexItem.get()).filter((c) => c.id !== id));

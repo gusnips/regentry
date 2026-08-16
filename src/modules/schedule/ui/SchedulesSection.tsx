@@ -1,27 +1,25 @@
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
+import { Switch } from "@/components/Switch";
 import { useStoredItem } from "@/components/useStoredItem";
 import { runBoardItem } from "@/modules/agent/run-queue";
 import { setActiveConversation } from "@/modules/conversation/conversations";
 import { describeRecurrence } from "../recurrence";
-import { deleteSchedule, listSchedules, watchSchedules, MAX_SCHEDULES } from "../store";
-import { disarmSchedule } from "../alarms";
+import { deleteSchedule, setSchedulePaused, MAX_SCHEDULES } from "../store";
+import { armSchedule, disarmSchedule } from "../alarms";
+import { useSchedules } from "./hooks";
 import type { Schedule } from "../types";
 
-/** The stored schedules, kept live across writes the worker makes as they fire. */
-function useSchedules(): Schedule[] {
-  const [rows, setRows] = useState<Schedule[]>([]);
-  useEffect(() => {
-    let live = true;
-    void listSchedules().then((v) => live && setRows(v));
-    const unwatch = watchSchedules(setRows);
-    return () => {
-      live = false;
-      unwatch();
-    };
-  }, []);
-  return [...rows].sort((a, b) => a.nextFireAt - b.nextFireAt);
+/**
+ * Soonest first, and everything paused after everything live. A held schedule's
+ * `nextFireAt` is a leftover from before it was paused, so sorting it in by that
+ * number would file it under a time it is not going to run at.
+ */
+function useSortedSchedules(): Schedule[] {
+  const rows = useSchedules();
+  return [...rows].sort(
+    (a, b) => Number(a.paused ?? false) - Number(b.paused ?? false) || a.nextFireAt - b.nextFireAt,
+  );
 }
 
 /**
@@ -85,6 +83,18 @@ async function openConversation(conversationId: string): Promise<void> {
 }
 
 /**
+ * Pause holds the rule and the thread and drops only the alarm — the answer to
+ * "stop it for now" that deleting cannot give, since deleting a schedule's
+ * conversation takes its memory with it. Resuming re-arms from the recomputed
+ * next fire, never the stale one the record was holding while it sat still.
+ */
+async function togglePause(schedule: Schedule): Promise<void> {
+  const next = await setSchedulePaused(schedule.id, !schedule.paused);
+  if (next && !next.paused) await armSchedule(next);
+  else await disarmSchedule(schedule.id);
+}
+
+/**
  * Delete means make it stop. Removing the record while its run keeps driving the
  * browser is the surprise this avoids — so a fire in flight is halted with it.
  * The button's label says as much while that is what will happen.
@@ -108,9 +118,13 @@ async function remove(schedule: Schedule, running: boolean): Promise<void> {
  */
 export function SchedulesSection() {
   const { t, i18n } = useTranslation();
-  const schedules = useSchedules();
+  const schedules = useSortedSchedules();
   const board = useStoredItem(runBoardItem);
   const busyOn = board.running?.conversationId;
+  // A fire that landed while another run held the slot is waiting, not lost.
+  // Without this the row falls back to "Next 09:00" and reads as if the click
+  // did nothing at all.
+  const queuedOn = new Set(board.queue.map((q) => q.conversationId));
 
   return (
     <section>
@@ -144,10 +158,14 @@ export function SchedulesSection() {
         <ul className="mt-3 space-y-1.5">
           {schedules.map((s) => {
             const running = busyOn === s.conversationId;
+            const queued = !running && queuedOn.has(s.conversationId);
+            // Paused reads as off, not as a quieter live row — the whole point
+            // of the state is that this thing is not going to happen.
+            const held = Boolean(s.paused) && !running && !queued;
             return (
               <li
                 key={s.id}
-                className="flex items-start justify-between gap-3 rounded-lg bg-neutral-50 px-3 py-2 dark:bg-neutral-900/50"
+                className={`flex items-start justify-between gap-3 rounded-lg bg-neutral-50 px-3 py-2 dark:bg-neutral-900/50 ${held ? "opacity-60" : ""}`}
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
@@ -156,14 +174,23 @@ export function SchedulesSection() {
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                     <span>{describeRecurrence(s.recurrence)}</span>
                     <span aria-hidden="true">·</span>
-                    {/* The row's one live number — gold measures, per the two-lights rule. */}
-                    <span className="telemetry tabular-nums">
-                      {running
-                        ? t("schedule.ui.running")
-                        : t("schedule.ui.next", {
-                            when: formatWhen(s.nextFireAt, i18n.language),
-                          })}
-                    </span>
+                    {/* Gold measures, per the two-lights rule — so it carries the
+                        live number, and nothing else. "Paused" is a state, not a
+                        measurement, and a held row's stale next-fire is not a
+                        time anything will happen at. */}
+                    {held ? (
+                      <span className="font-medium">{t("schedule.ui.paused")}</span>
+                    ) : (
+                      <span className="telemetry tabular-nums">
+                        {running
+                          ? t("schedule.ui.running")
+                          : queued
+                            ? t("schedule.ui.queued")
+                            : t("schedule.ui.next", {
+                                when: formatWhen(s.nextFireAt, i18n.language),
+                              })}
+                      </span>
+                    )}
                     {s.lastRun && (
                       <>
                         <span aria-hidden="true">·</span>
@@ -177,12 +204,32 @@ export function SchedulesSection() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5">
+                  {/* A switch, not a play/pause glyph: this is a state, and the
+                      row already spends its one ▶ on "Run now". Two triangles
+                      side by side would be a coin toss. */}
+                  <Switch
+                    checked={!s.paused}
+                    onChange={() => void togglePause(s)}
+                    ariaLabel={t(s.paused ? "schedule.ui.resume" : "schedule.ui.pause")}
+                    title={t(s.paused ? "schedule.ui.resume" : "schedule.ui.pause")}
+                  />
                   <Button
                     variant="ghost"
                     size="sm"
-                    disabled={running}
-                    aria-label={t("schedule.ui.runNow")}
-                    title={t("schedule.ui.runNow")}
+                    disabled={running || queued}
+                    // Running it by hand is a rehearsal, not the performance: the
+                    // timer is untouched, which is the surprising half for a
+                    // one-shot — that one still goes off at its own time.
+                    aria-label={t(
+                      s.recurrence.kind === "once"
+                        ? "schedule.ui.runNowOnce"
+                        : "schedule.ui.runNow",
+                    )}
+                    title={t(
+                      s.recurrence.kind === "once"
+                        ? "schedule.ui.runNowOnce"
+                        : "schedule.ui.runNow",
+                    )}
                     onClick={() => runNow(s.id)}
                   >
                     <Icon>

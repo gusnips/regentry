@@ -53,8 +53,16 @@ export async function startScheduler(h: SchedulerHooks): Promise<void> {
       void chrome.alarms.clear(alarm.name);
     }
   }
-  for (const schedule of schedules) await armSchedule(schedule);
-  log.info("scheduler started", { schedules: schedules.length });
+  for (const schedule of schedules) {
+    // A held schedule keeps its record and its thread but owns no alarm — and
+    // boot is the one place that would hand it one back by accident.
+    if (schedule.paused) void disarmSchedule(schedule.id);
+    else await armSchedule(schedule);
+  }
+  log.info("scheduler started", {
+    schedules: schedules.length,
+    paused: schedules.filter((s) => s.paused).length,
+  });
 }
 
 /** The alarm listener's entry point — `background.ts` routes `schedule:` here. */
@@ -80,6 +88,13 @@ async function fireSchedule(id: string, opts: { manual?: boolean } = {}): Promis
     void disarmSchedule(id);
     return;
   }
+  // Held schedules own no alarm, so this is a stale one that beat the clear —
+  // take it with us. "Run now" deliberately still works: pausing stops the
+  // timer, it does not take away the button that tests the task.
+  if (schedule.paused && !opts.manual) {
+    void disarmSchedule(id);
+    return;
+  }
   const now = Date.now();
 
   // One schedule, one run at a time. An hourly task that takes ninety minutes
@@ -94,22 +109,38 @@ async function fireSchedule(id: string, opts: { manual?: boolean } = {}): Promis
     return;
   }
 
-  // Idempotent, and it re-creates the thread if the user deleted it. The label
+  // Idempotent — and it reports whether the thread was already there. The label
   // is what makes a transcript the user never started say where it came from.
-  await openScheduledConversation(schedule.conversationId, i18n.t("schedule.agentLabel"));
+  const hadThread = await openScheduledConversation(
+    schedule.conversationId,
+    i18n.t("schedule.agentLabel"),
+  );
+
+  // The notes prepended to the task, in the order they'd be read. Both exist
+  // because a scheduled run is told its own history IS the conversation above
+  // it — so when that premise stops holding, the run has to hear about it.
+  const notes: string[] = [];
 
   // A fire the browser was closed for runs late — once — and the run is told so,
   // because "summarize today's inbox" means something different at 2am the next
   // day and the model has to be able to say so.
-  const late = !opts.manual && now - schedule.nextFireAt > LATE_AFTER_MS;
-  const task = late
-    ? `${schedule.task}\n\n${i18n.t("schedule.lateNote", {
+  if (!opts.manual && now - schedule.nextFireAt > LATE_AFTER_MS) {
+    notes.push(
+      i18n.t("schedule.lateNote", {
         scheduled: new Date(schedule.nextFireAt).toLocaleString(i18n.language, {
           dateStyle: "medium",
           timeStyle: "short",
         }),
-      })}`
-    : schedule.task;
+      }),
+    );
+  }
+
+  // The thread is gone but the schedule has run before: its transcript fell off
+  // the conversation cap. Silence here is the worse failure — the run would
+  // read an empty history and quietly conclude it had never done this before.
+  if (!hadThread && schedule.lastRun) notes.push(i18n.t("schedule.historyLostNote"));
+
+  const task = notes.length ? `${schedule.task}\n\n${notes.join("\n\n")}` : schedule.task;
 
   // Never the tab the user is on: a scheduled run always names its own start
   // page, which is what keeps `resolveRunTab` out of the adoption branch.

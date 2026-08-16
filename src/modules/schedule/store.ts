@@ -1,5 +1,6 @@
 import { defineItem } from "@/lib/storage";
 import { i18n } from "@/i18n";
+import { nextFireAt } from "./recurrence";
 import type { Schedule } from "./types";
 
 /**
@@ -42,6 +43,45 @@ export function watchSchedules(cb: (list: Schedule[]) => void): () => void {
 
 export async function getSchedule(id: string): Promise<Schedule | undefined> {
   return (await schedulesItem.get()).find((s) => s.id === id);
+}
+
+/** Every schedule writing into one thread — what deleting that thread has to answer for. */
+export async function schedulesForConversation(conversationId: string): Promise<Schedule[]> {
+  return (await schedulesItem.get()).filter((s) => s.conversationId === conversationId);
+}
+
+/**
+ * Holds a schedule, or lets it go again. Resuming recomputes the next fire from
+ * NOW: the stored one has been sitting still the whole time it was paused, so
+ * arming it would fire the instant the user flipped the switch back.
+ *
+ * Returns the updated record so the caller can arm it — or `undefined` when
+ * resuming found nothing left to run, which is a one-shot whose moment passed
+ * while it was held. Retiring it here is the same rule `advanceSchedule`
+ * follows: a rule with no next fire is spent, and a spent record is deleted.
+ */
+export function setSchedulePaused(id: string, paused: boolean): Promise<Schedule | undefined> {
+  return serialized(async () => {
+    const list = await schedulesItem.get();
+    const i = list.findIndex((s) => s.id === id);
+    const current = list[i];
+    if (!current) return undefined;
+
+    if (paused) {
+      const held: Schedule = { ...current, paused: true };
+      await schedulesItem.set(list.with(i, held));
+      return held;
+    }
+
+    const when = nextFireAt(current.recurrence, Date.now());
+    if (when === null) {
+      await schedulesItem.set(list.filter((s) => s.id !== id));
+      return undefined;
+    }
+    const live: Schedule = { ...current, nextFireAt: when, paused: false };
+    await schedulesItem.set(list.with(i, live));
+    return live;
+  });
 }
 
 export type SaveResult = { ok: true; schedule: Schedule } | { ok: false; error: string };

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import type { ConversationMeta } from "../conversations";
+import { describeRecurrence, type Schedule } from "@/modules/schedule";
+import { useSchedules } from "@/modules/schedule/ui";
 import { Button } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
@@ -119,11 +121,14 @@ function relativeTime(ts: number, locale: string): string {
 function ConversationRow({
   conversation,
   active,
+  schedule,
   onOpen,
   onDelete,
 }: {
   conversation: ConversationMeta;
   active: boolean;
+  /** Set when a schedule writes into this thread — deleting it ends that too. */
+  schedule?: Schedule;
   onOpen: () => void;
   onDelete: () => void;
 }) {
@@ -226,7 +231,16 @@ function ConversationRow({
               </Button>
             }
             title={t("history.deleteTitle")}
-            description={t("history.deleteBody")}
+            // A scheduled thread is not just a transcript — it is the memory its
+            // next fire reads back, so deleting it stops the schedule. Say which
+            // one, in its own words, before the click that ends it.
+            description={
+              schedule
+                ? t("history.deleteScheduledBody", {
+                    recurrence: describeRecurrence(schedule.recurrence),
+                  })
+                : t("history.deleteBody")
+            }
             confirmLabel={t("history.delete")}
             onConfirm={onDelete}
           />
@@ -244,6 +258,9 @@ export function ConversationList({ onClose }: { onClose: () => void }) {
   const openConversation = useConversationStore((s) => s.openConversation);
   const newConversation = useConversationStore((s) => s.newConversation);
   const removeConversation = useConversationStore((s) => s.removeConversation);
+  // Keyed by thread, because that is how the rows ask the question. A schedule
+  // always owns its own conversation, so one entry per key.
+  const scheduleFor = new Map(useSchedules().map((s) => [s.conversationId, s]));
 
   const startNew = () => {
     newConversation();
@@ -278,6 +295,7 @@ export function ConversationList({ onClose }: { onClose: () => void }) {
               key={c.id}
               conversation={c}
               active={c.id === activeId}
+              schedule={scheduleFor.get(c.id)}
               onOpen={() => {
                 openConversation(c.id);
                 onClose();

@@ -42,4 +42,11 @@ export interface Schedule {
   /** Consecutive self-reschedules — the bound on an agent looping on itself. */
   chainCount?: number;
   lastRun?: { at: number; ok: boolean };
+  /**
+   * Held, not cancelled — the rule and the thread survive, only the alarm goes.
+   * `nextFireAt` keeps its stale value while paused (nothing reads it), and
+   * resuming recomputes it from now: arming a time that sat still while the
+   * schedule was off would fire the instant the user flipped the switch.
+   */
+  paused?: boolean;
 }

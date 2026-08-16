@@ -95,6 +95,7 @@
   "schedule": {
     "agentLabel": "Scheduled",
     "lateNote": "This run was scheduled for {{scheduled}} and is starting late, because the browser was closed until now. Take the delay into account, and say so in your summary if it changes the answer.",
+    "historyLostNote": "The earlier conversation for this schedule is no longer stored, so there is no record here of what its previous runs found. Treat this as a first run — do not assume any of the work was already done.",
     "desc": {
       "once": "Once — {{when}}",
       "daily": "Every day at {{time}}",
@@ -133,7 +134,12 @@
       "lastOk": "Last run finished {{when}}",
       "lastFailed": "Last run failed {{when}}",
       "runNow": "Run now",
+      "runNowOnce": "Run now as a test — it still fires at its scheduled time",
       "running": "Running now",
+      "queued": "Queued — starts when the current task finishes",
+      "paused": "Paused",
+      "pause": "Pause — keeps the task and its conversation, stops the timer",
+      "resume": "Resume — the next fire is recalculated from now",
       "open": "Open its conversation",
       "delete": "Delete this schedule",
       "deleteRunning": "Delete this schedule and stop the run in progress",
@@ -266,6 +272,7 @@
     "renamePlaceholder": "Name this conversation",
     "deleteTitle": "Delete this conversation?",
     "deleteBody": "The transcript is removed from this device. What TabRunner has learned stays in its memory — you can delete any of those in Settings.",
+    "deleteScheduledBody": "This is a scheduled task's own thread ({{recurrence}}), and the transcript is the memory each run reads back. Deleting it cancels the schedule too. To stop it only for a while, pause it in Settings instead.",
     "emptyTitle": "No conversations yet",
     "emptyBody": "Every task you send is kept here as a transcript — open one to reread what the agent did, or delete the ones you're done with.",
     "emptyAction": "Start a task",

@@ -95,6 +95,7 @@
   "schedule": {
     "agentLabel": "Agendado",
     "lateNote": "Esta execução estava agendada para {{scheduled}} e está começando atrasada, porque o navegador esteve fechado até agora. Leve o atraso em conta e diga isso no seu resumo se mudar a resposta.",
+    "historyLostNote": "A conversa anterior deste agendamento não está mais armazenada, então não há registro aqui do que as execuções anteriores encontraram. Trate esta como a primeira execução — não presuma que algo já tenha sido feito.",
     "desc": {
       "once": "Uma vez — {{when}}",
       "daily": "Todo dia às {{time}}",
@@ -133,6 +134,11 @@
       "lastOk": "Última execução terminou {{when}}",
       "lastFailed": "Última execução falhou {{when}}",
       "runNow": "Executar agora",
+      "runNowOnce": "Executar agora como teste — ela ainda dispara no horário agendado",
+      "queued": "Na fila — começa quando a tarefa atual terminar",
+      "paused": "Pausada",
+      "pause": "Pausar — mantém a tarefa e a conversa, para o cronômetro",
+      "resume": "Retomar — o próximo disparo é recalculado a partir de agora",
       "running": "Executando agora",
       "open": "Abrir a conversa dela",
       "delete": "Excluir este agendamento",
@@ -266,6 +272,7 @@
     "renamePlaceholder": "Nomeie esta conversa",
     "deleteTitle": "Excluir esta conversa?",
     "deleteBody": "A transcrição é removida deste dispositivo. O que o TabRunner aprendeu fica na memória dele — você pode apagar isso nas Configurações.",
+    "deleteScheduledBody": "Esta é a conversa de uma tarefa agendada ({{recurrence}}), e a transcrição é a memória que cada execução lê. Excluí-la também cancela o agendamento. Para parar só por um tempo, pause nas Configurações.",
     "emptyTitle": "Nenhuma conversa ainda",
     "emptyBody": "Cada tarefa que você envia fica guardada aqui como histórico — abra uma para reler o que o agente fez, ou exclua as que não precisa mais.",
     "emptyAction": "Começar uma tarefa",
