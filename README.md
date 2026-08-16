@@ -116,7 +116,11 @@ and conventions.
 
 ## Roadmap
 
-- **Firefox version.**
+Next up: **domain policy** (tell it where it may never go), **skills** (site-specific know-how that
+accumulates), and **file upload**. A **Firefox version** stays blocked — `chrome.debugger` has no
+equivalent there, so it's a rewrite of the driver rather than a port.
+
+Full reasoning, open questions and what we've ruled out: [docs/roadmap.md](docs/roadmap.md).
 
 ## License
 

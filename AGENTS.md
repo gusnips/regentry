@@ -164,6 +164,8 @@ These carry the full rationale and invariants — read the one for the area you'
 - [docs/agent/providers.md](docs/agent/providers.md) — provider wire contracts: tool-result
   shapes, auth headers, reasoning effort, image/screenshot handling, body pruning, model lists.
 - [docs/mcp.md](docs/mcp.md) — human-facing MCP setup docs.
+- [docs/roadmap.md](docs/roadmap.md) — what's next and why, open design questions, and the
+  things we've deliberately ruled out. Forward-looking; the docs above are as-built.
 
 Quick invariants that bite often:
 
