@@ -23,7 +23,12 @@ and can never drift from the panel's.
   without it the queued run's events (and its final done) would fold into the previous
   run's terminal state. Rejection stays only for direct sessions, which can't queue. MCP
   `stop` cancels the client's queued runs before stopping the active one.
-- **The bridge owns its own conversation**, created lazily and reset by `newConversation`.
+- **The bridge owns its own conversation**, created lazily and reset by `newConversation` —
+  and by nothing else. Its id is stored (`bridge-conversation`), not held on the Bridge
+  instance, because the worker underneath is disposable: Chrome suspends it after ~30s idle
+  and destroys it on every reload and version update. An in-memory id meant the next `run`
+  minted a fresh thread, so the client lost the pages it had visited and the user was left
+  with an orphaned transcript.
   It never touches the panel's active thread, but it shows up in history like any other.
   `compact` folds it through the same summarizer as the panel's /compact — refused while a
   bridge run is in flight, for the same mid-story reason.

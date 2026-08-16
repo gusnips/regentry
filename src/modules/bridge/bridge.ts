@@ -5,6 +5,7 @@ import { cancelQueued, listQueue, onBoardChanged, submitRun } from "@/modules/ag
 import { startAgentRun } from "@/modules/agent/start-run";
 import { captureVisibleTab } from "@/modules/browser";
 import { appendMessageTo, openAgentConversation } from "@/modules/conversation";
+import { bridgeThread } from "./config";
 import { DirectSession } from "./direct";
 import { TranscriptWriter } from "@/modules/conversation/transcript";
 import {
@@ -39,8 +40,6 @@ export class Bridge {
   constructor(private readonly onActivity?: (active: BridgeActive | null) => void) {}
 
   private socket: BridgeSocket | null = null;
-  /** The dedicated MCP thread — created lazily on the first run, reset by newConversation. */
-  private conversationId: string | null = null;
   private writer: TranscriptWriter | null = null;
   private status: BridgeStatus = emptyStatus();
   /** Who is in the browser right now — the panel's run_active answer. */
@@ -179,7 +178,7 @@ export class Bridge {
       this.fail(requestId, "already-running", this.alreadyRunningText());
       return;
     }
-    const conversationId = this.ensureThread();
+    const conversationId = await this.ensureThread();
     const runId = crypto.randomUUID();
     const client = agent || i18n.t("history.unknownAgent");
     await openAgentConversation(conversationId, client);
@@ -209,7 +208,7 @@ export class Bridge {
           type: "event",
           event: { type: "started", runId, conversationId },
         });
-        void this.launch(task, attached, url, background);
+        void this.launch(conversationId, task, attached, url, background);
       },
     });
     if ("queued" in outcome) {
@@ -348,7 +347,7 @@ export class Bridge {
     }
     // A direct session is its own thread; resetting means closing it.
     await this.direct.end();
-    this.conversationId = null;
+    await bridgeThread.set(null);
     this.status = emptyStatus();
     this.respond(requestId, { ok: true });
   }
@@ -366,7 +365,7 @@ export class Bridge {
       );
       return;
     }
-    const conversationId = this.conversationId;
+    const conversationId = await bridgeThread.get();
     if (!conversationId) {
       this.fail(
         requestId,
@@ -407,19 +406,24 @@ export class Bridge {
 
   // ── Run plumbing ──────────────────────────────────────────────────
 
-  /** The MCP thread's id — one conversation until newConversation resets it. */
-  private ensureThread(): string {
-    this.conversationId ??= crypto.randomUUID();
-    return this.conversationId;
+  /** The MCP thread's id — one conversation until newConversation resets it.
+   *  Read from storage, so a suspended, reloaded or updated worker resumes the
+   *  same thread instead of starting the client over on a blank one. */
+  private async ensureThread(): Promise<string> {
+    const stored = await bridgeThread.get();
+    if (stored) return stored;
+    const id = crypto.randomUUID();
+    await bridgeThread.set(id);
+    return id;
   }
 
   private async launch(
+    conversationId: string,
     task: string,
     images?: string[],
     url?: string,
     background = true,
   ): Promise<void> {
-    const conversationId = this.ensureThread();
     this.writer = new TranscriptWriter(conversationId);
     // submitRun launches this only with the slot already free — acquireRun
     // inside startAgentRun is the same synchronous turn, so it cannot conflict.

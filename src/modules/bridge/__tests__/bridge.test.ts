@@ -230,3 +230,72 @@ describe("Bridge providerInfo", () => {
     expect(await ask("p3")).toEqual({ name: null, ready: false, auth: null, model: null });
   });
 });
+
+/**
+ * The MCP thread outlives the worker. Chrome suspends the service worker after
+ * ~30s idle and destroys it on every reload and version update, so a thread id
+ * held in the Bridge instance meant the next run silently started a stranger's
+ * conversation — the client lost the pages it had visited and the user was left
+ * with an orphaned transcript. The id lives in storage now; only
+ * new_conversation ends the thread.
+ */
+describe("Bridge thread", () => {
+  /** The conversationId a run's response carries back to the daemon. */
+  function threadOf(requestId: string): string | undefined {
+    const call = sendSpy.mock.calls.find(
+      ([m]) => m?.type === "response" && m.requestId === requestId,
+    );
+    return (call?.[0] as { result?: { conversationId?: string } } | undefined)?.result
+      ?.conversationId;
+  }
+
+  /** One full run — dispatched, then finished, so the slot is free for the next. */
+  async function runOnce(bridge: InstanceType<typeof Bridge>, requestId: string): Promise<string> {
+    // Identity, not null: the previous run's emit is still on the module-level
+    // slot, so "not null" would pass before this run had started at all.
+    const previous = emitRunEvent;
+    socketHandlers.onMessage?.({
+      type: "request",
+      requestId,
+      method: "run",
+      params: { task: "read the page", agent: "Claude Code" },
+    });
+    await vi.waitFor(() => expect(emitRunEvent).not.toBe(previous));
+    emitRunEvent?.({ type: "done", summary: "done" });
+    await vi.waitFor(() => expect(bridge.activity).toBeNull());
+    const id = threadOf(requestId);
+    expect(id).toBeDefined();
+    return id as string;
+  }
+
+  it("resumes the same thread when the worker is replaced under it", async () => {
+    const before = new Bridge();
+    before.start();
+    const first = await runOnce(before, "t1");
+
+    // A fresh Bridge is exactly what a restarted worker boots with: every
+    // in-memory field back to its initial value.
+    const after = new Bridge();
+    after.start();
+
+    expect(await runOnce(after, "t2")).toBe(first);
+  });
+
+  it("starts a new thread only when new_conversation asks for one", async () => {
+    const bridge = new Bridge();
+    bridge.start();
+    const first = await runOnce(bridge, "t1");
+
+    socketHandlers.onMessage?.({
+      type: "request",
+      requestId: "reset",
+      method: "newConversation",
+      params: {},
+    });
+    await vi.waitFor(() =>
+      expect(sendSpy.mock.calls.some(([m]) => m?.requestId === "reset")).toBe(true),
+    );
+
+    expect(await runOnce(bridge, "t2")).not.toBe(first);
+  });
+});
