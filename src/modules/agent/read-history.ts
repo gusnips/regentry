@@ -90,7 +90,9 @@ function searchable(m: Message): string {
 export function formatTranscriptWindow(messages: Message[], opts: WindowOptions): HistoryWindow {
   const query = opts.query?.trim().toLowerCase();
   const readableEntries = messages.filter(readable);
-  const entries = query ? readableEntries.filter((m) => searchable(m).includes(query)) : readableEntries;
+  const entries = query
+    ? readableEntries.filter((m) => searchable(m).includes(query))
+    : readableEntries;
   const total = entries.length;
   if (total === 0) {
     const log = query

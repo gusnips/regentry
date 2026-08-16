@@ -129,12 +129,7 @@ function GeneralPane() {
         </div>
         <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
           v{version} ·{" "}
-          <a
-            href={LINKS.license}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:underline"
-          >
+          <a href={LINKS.license} target="_blank" rel="noreferrer" className="hover:underline">
             MIT
           </a>
         </p>
@@ -349,7 +344,11 @@ export default function App() {
             <path d="m11 12 10-10" />
             <path d="m16 5 3 3" />
           </NavItem>
-          <NavItem active={visiblePage === "mcp"} label={t("settings.nav.mcp")} onClick={() => go("mcp")}>
+          <NavItem
+            active={visiblePage === "mcp"}
+            label={t("settings.nav.mcp")}
+            onClick={() => go("mcp")}
+          >
             <path d="M9 2v6" />
             <path d="M15 2v6" />
             <path d="M6 8h12v4a6 6 0 0 1-12 0V8z" />

@@ -12,13 +12,7 @@
  * Upgrade path is adding patterns as new wordings are seen in the wild.
  */
 export type ErrorKind =
-  | "entitlement"
-  | "quota"
-  | "auth"
-  | "model"
-  | "rate"
-  | "overload"
-  | "context";
+  "entitlement" | "quota" | "auth" | "model" | "rate" | "overload" | "context";
 
 // The request outgrew the model's context window. Distinct from quota in the
 // one way that matters: nothing about the account is wrong and waiting fixes

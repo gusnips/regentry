@@ -28,7 +28,9 @@ describe("sanitizeForModel", () => {
 
   it("blocks credential-shaped strings and keeps ordinary prose", () => {
     expect(
-      sanitizeForModel("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"),
+      sanitizeForModel(
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+      ),
     ).toBe("[blocked]");
     expect(sanitizeForModel("Authorization: Bearer abcdef123456")).toBe("[blocked]");
     expect(sanitizeForModel("sessionid=abc123xyz; csrftoken=def456uvw")).toBe("[blocked]");

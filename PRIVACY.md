@@ -90,18 +90,18 @@ data.
 
 ## 5. Permissions, explained
 
-| Permission                      | What it's for                                                                                                                                                      |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Permission                      | What it's for                                                                                                                                                                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `debugger`                      | Real trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol so sites can't ignore them. Also the channel for the in-page script tool and the network/console log, all inside the task you approved. |
-| `scripting`                     | Injects the accessibility-tree snapshot script into the tab TabRunner reads, and the one that sets a field's value when keystrokes don't land.                                                                                       |
-| `sidePanel`                     | Hosts the chat UI where you write tasks and watch the run.                                                                                                         |
-| `tabs`                          | Adopts your current tab or opens a task's own tab, reads URL/title, and switches tabs when a task references another open tab.                                      |
-| `activeTab`                     | Grants access to the tab you submit a task from, per action.                                                                                                       |
-| `tabGroups`                     | Groups each task's tab and labels the group with the task (✓/✗/? when it finishes, then collapses it).                                                              |
-| `storage`                       | Persists provider configs, history, and memory locally.                                                                                                            |
-| `notifications`                 | Tells you when a background task finishes, errs, or stops to ask you something while the panel is closed.                                                          |
-| `alarms`                        | Periodic wake-ups: reconnects the local MCP bridge, and keeps the worker alive through a long task while the panel is closed. It runs no task and touches no page. |
-| Host permissions (`<all_urls>`) | TabRunner must be able to navigate, read, and interact with any site you ask it to use. It uses this only when a task is running.                                  |
+| `scripting`                     | Injects the accessibility-tree snapshot script into the tab TabRunner reads, and the one that sets a field's value when keystrokes don't land.                                                                                      |
+| `sidePanel`                     | Hosts the chat UI where you write tasks and watch the run.                                                                                                                                                                          |
+| `tabs`                          | Adopts your current tab or opens a task's own tab, reads URL/title, and switches tabs when a task references another open tab.                                                                                                      |
+| `activeTab`                     | Grants access to the tab you submit a task from, per action.                                                                                                                                                                        |
+| `tabGroups`                     | Groups each task's tab and labels the group with the task (✓/✗/? when it finishes, then collapses it).                                                                                                                              |
+| `storage`                       | Persists provider configs, history, and memory locally.                                                                                                                                                                             |
+| `notifications`                 | Tells you when a background task finishes, errs, or stops to ask you something while the panel is closed.                                                                                                                           |
+| `alarms`                        | Periodic wake-ups: reconnects the local MCP bridge, and keeps the worker alive through a long task while the panel is closed. It runs no task and touches no page.                                                                  |
+| Host permissions (`<all_urls>`) | TabRunner must be able to navigate, read, and interact with any site you ask it to use. It uses this only when a task is running.                                                                                                   |
 
 ## 6. Guardrails
 

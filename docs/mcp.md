@@ -65,24 +65,24 @@ update it. To run it by hand (to watch its log, say): `bun ~/.tabrunner-mcp.js` 
 
 ### Configuration
 
-| Variable                                 | Default                            | What it does                                                                                                                                                      |
-| ---------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TABRUNNER_BRIDGE_PORT`                  | `17836`                            | The localhost port. Change it in both places — Settings → MCP in the extension must match.                                                                        |
+| Variable                                 | Default                            | What it does                                                                                                                                                                                             |
+| ---------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TABRUNNER_BRIDGE_PORT`                  | `17836`                            | The localhost port. Change it in both places — Settings → MCP in the extension must match.                                                                                                               |
 | `TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID` | `ilnohobdcigbmlikjbkdpbkhciephdle` | Which extension `health` trusts. One id covers every channel: the manifest `key` pins the website's unpacked zip and dev builds to the store listing's own id. Set this to trust your own build instead. |
 
 ## The tools
 
-| Tool                                    | What it does                                                                                                                                                                                                                                                                                                                                                       |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `health`                                | Is TabRunner reachable? Reports the connection, the extension id and version, and the fix when something's off. Call it first.                                                                                                                                                                                                                                     |
+| Tool                                    | What it does                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `health`                                | Is TabRunner reachable? Reports the connection, the extension id and version, and the fix when something's off. Call it first.                                                                                                                                                                                                                            |
 | `run(task, url?, background?, images?)` | Give TabRunner a task in plain language. Returns immediately with a run id — browser work takes minutes. Opens its own tab at `url` or the default start page; `background: false` drives the tab the user is on. Optional images ride along as base64. A task submitted while another runs **queues** and answers with its position instead of an error. |
-| `get_status(wait?, waitSeconds?)`       | Where the run stands. **Blocks until something changes** by default, so following a ten-minute task costs one call per real event, not one per poll.                                                                                                                                                                                                               |
-| `answer(text)`                          | Reply to a question the run stopped on.                                                                                                                                                                                                                                                                                                                            |
-| `steer(text)`                           | Drop a note into a running task — a correction or an extra constraint. It lands between tool calls; the run doesn't restart.                                                                                                                                                                                                                                       |
-| `stop()`                                | End the run — and cancel any of this client's queued runs. Stopping is normal control flow, not an error.                                                                                                                                                                                                                                                          |
-| `screenshot()`                          | A picture of what the browser is showing right now, as an image the model can actually look at. Works run or no run.                                                                                                                                                                                                                                               |
-| `new_conversation()`                    | Forget the thread and start clean. Refused while this thread has a run active or queued — stop it first.                                                                                                                                                                                                                                                           |
-| `compact()`                             | Summarize the thread's history so far — runs then replay the summary instead of the whole transcript. Nothing is deleted; the raw messages stay in the user's panel. For long threads, or after a context-length error. Refused while a run is in flight.                                                                                                            |
+| `get_status(wait?, waitSeconds?)`       | Where the run stands. **Blocks until something changes** by default, so following a ten-minute task costs one call per real event, not one per poll.                                                                                                                                                                                                      |
+| `answer(text)`                          | Reply to a question the run stopped on.                                                                                                                                                                                                                                                                                                                   |
+| `steer(text)`                           | Drop a note into a running task — a correction or an extra constraint. It lands between tool calls; the run doesn't restart.                                                                                                                                                                                                                              |
+| `stop()`                                | End the run — and cancel any of this client's queued runs. Stopping is normal control flow, not an error.                                                                                                                                                                                                                                                 |
+| `screenshot()`                          | A picture of what the browser is showing right now, as an image the model can actually look at. Works run or no run.                                                                                                                                                                                                                                      |
+| `new_conversation()`                    | Forget the thread and start clean. Refused while this thread has a run active or queued — stop it first.                                                                                                                                                                                                                                                  |
+| `compact()`                             | Summarize the thread's history so far — runs then replay the summary instead of the whole transcript. Nothing is deleted; the raw messages stay in the user's panel. For long threads, or after a context-length error. Refused while a run is in flight.                                                                                                 |
 
 ### Driving it yourself
 
@@ -90,21 +90,21 @@ Delegating is the better path for anything long or open-ended — TabRunner's ow
 you pay one MCP turn instead of one per click. But sometimes you want the clicks. `browser_start`
 opens a direct-control session, and every `browser_*` tool drives the real tab:
 
-| Tool                                        | What it does                                                                               |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `browser_start(goal)`                       | Take the wheel, and get the first snapshot. The goal names the conversation the user sees. |
-| `browser_snapshot()`                        | The page as an accessibility tree, with a `ref` on every interactive element.              |
-| `browser_network_requests(filter?, limit?)` | What the tab asked the network — method, URL, status, failures. No bodies.                 |
-| `browser_console_messages(errors?, limit?)` | The tab's console output and uncaught exceptions.                                          |
-| `browser_navigate(url)`                     | Go somewhere.                                                                              |
-| `browser_click(ref)`                        | Click by ref — a real trusted event, not a synthetic dispatch.                             |
-| `browser_type(text)`                        | Type into whatever is focused (click the field first).                                     |
-| `browser_fill(ref, text)`                   | Set a field's value by ref — lands where typed keystrokes don't; `""` clears.              |
+| Tool                                        | What it does                                                                                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `browser_start(goal)`                       | Take the wheel, and get the first snapshot. The goal names the conversation the user sees.       |
+| `browser_snapshot()`                        | The page as an accessibility tree, with a `ref` on every interactive element.                    |
+| `browser_network_requests(filter?, limit?)` | What the tab asked the network — method, URL, status, failures. No bodies.                       |
+| `browser_console_messages(errors?, limit?)` | The tab's console output and uncaught exceptions.                                                |
+| `browser_navigate(url)`                     | Go somewhere.                                                                                    |
+| `browser_click(ref)`                        | Click by ref — a real trusted event, not a synthetic dispatch.                                   |
+| `browser_type(text)`                        | Type into whatever is focused (click the field first).                                           |
+| `browser_fill(ref, text)`                   | Set a field's value by ref — lands where typed keystrokes don't; `""` clears.                    |
 | `browser_evaluate(js)`                      | Run JS in the page — attributes, shadow DOM, the page's own fetch. Bounded, credential-stripped. |
-| `browser_press_key(key)`                    | `Enter`, `Escape`, `Tab`, an arrow.                                                        |
-| `browser_scroll(direction, amount?)`        | Content below the fold isn't in a snapshot until you scroll to it.                         |
-| `browser_tabs()` / `browser_switch_tab(id)` | Find another tab, re-target every later action at it.                                      |
-| `browser_end()`                             | Hand the browser back.                                                                     |
+| `browser_press_key(key)`                    | `Enter`, `Escape`, `Tab`, an arrow.                                                              |
+| `browser_scroll(direction, amount?)`        | Content below the fold isn't in a snapshot until you scroll to it.                               |
+| `browser_tabs()` / `browser_switch_tab(id)` | Find another tab, re-target every later action at it.                                            |
+| `browser_end()`                             | Hand the browser back.                                                                           |
 
 Every verb goes through the **same `executeTool` the agent loop uses** — one browser
 implementation, no second catalog to drift. On the wire they all arrive as a single `browserAct`
@@ -169,7 +169,7 @@ Every failure comes back as text that says what happened, why, and what to do ne
 
 | Situation                          | What you get                                                                                                                                    |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Extension not connected            | How to enable the bridge (Settings → MCP), install the extension, and wake the worker. It reconnects on its own within ~30s.                             |
+| Extension not connected            | How to enable the bridge (Settings → MCP), install the extension, and wake the worker. It reconnects on its own within ~30s.                    |
 | A different extension connected    | The id that connected, and the env var to accept it (a dev build has its own id).                                                               |
 | No provider configured             | `health` says so up front. Add one in TabRunner's settings and pick it in the panel header.                                                     |
 | Provider needs a sign-in or key    | `health` names it and which of the two it wants. Direct `browser_*` control keeps working without a provider.                                   |

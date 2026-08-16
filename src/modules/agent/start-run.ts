@@ -17,7 +17,11 @@ import {
   resolveProviderModel,
 } from "@/modules/providers";
 import type { ResolvedProviderConfig } from "@/modules/providers/types";
-import { contextWindowFor, learnContextLimit, readLearnedLimits } from "@/modules/providers/context-window";
+import {
+  contextWindowFor,
+  learnContextLimit,
+  readLearnedLimits,
+} from "@/modules/providers/context-window";
 import { getMessages, getThreadTabsFor, recordDrivenTabFor } from "@/modules/conversation";
 import {
   flushConversationWrites,

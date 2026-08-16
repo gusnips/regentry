@@ -122,14 +122,14 @@ describe("context overflow", () => {
   });
 
   it("does not swallow a per-minute token rate limit — waiting fixes that, compacting doesn't", () => {
-    expect(
-      classifyProviderError(429, "Rate limit reached: Limit 30000 tokens per min (TPM)"),
-    ).toBe("rate");
+    expect(classifyProviderError(429, "Rate limit reached: Limit 30000 tokens per min (TPM)")).toBe(
+      "rate",
+    );
   });
 
   it("leaves an image-count rejection alone — compaction can't fix it", () => {
-    expect(
-      classifyProviderError(400, "exceeds the maximum number of images allowed"),
-    ).not.toBe("context");
+    expect(classifyProviderError(400, "exceeds the maximum number of images allowed")).not.toBe(
+      "context",
+    );
   });
 });

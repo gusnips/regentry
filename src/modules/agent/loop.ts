@@ -325,13 +325,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
    */
   const compactNow = async (): Promise<boolean> => {
     try {
-      const removed = await compactRunMessages(
-        provider,
-        messages,
-        taskIndex,
-        originalTask,
-        signal,
-      );
+      const removed = await compactRunMessages(provider, messages, taskIndex, originalTask, signal);
       if (removed === 0) return false;
       callbacks.onStep?.({
         tool: "compact",

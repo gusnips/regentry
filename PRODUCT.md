@@ -45,7 +45,7 @@ Two claims a neighboring product cannot copy:
 - Distribution: the Chrome Web Store listing is the primary install (**approved 2026-08-15**);
   the GitHub Releases keyed zip (loaded unpacked) is now the fallback. Both install under one ID
   (`ilnohobdcigbmlikjbkdpbkhciephdle`, pinned via manifest `key`) — Chrome refuses to run both, so
-  the unpacked build must go *before* the store install. The store description is authored in
+  the unpacked build must go _before_ the store install. The store description is authored in
   plain text (`docs/store-listing.md`) — CWS renders no Markdown in it.
 - Also drivable over MCP: the daemon bridge (`daemon/`) hands tasks to the same browser and
   logins; runs land in history labelled by client.
@@ -56,7 +56,7 @@ Two claims a neighboring product cannot copy:
 ## Capabilities and Constraints
 
 - The model never receives raw HTML — it works from a compact accessibility tree (`[ref=e12]
-  button "Submit"`); `sanitize.ts` caps tool output and keeps passwords, one-time codes and card
+button "Submit"`); `sanitize.ts` caps tool output and keeps passwords, one-time codes and card
   numbers from leaving the page.
 - Trusted input, network/console rings, page-side `fill`/`evaluate` (CSP-exempt) — all over the
   debugger channel, attach-scoped to the tab being worked.
@@ -96,7 +96,7 @@ Two claims a neighboring product cannot copy:
   written for a reviewer.
 - `README.md`, `docs/mcp.md`, `docs/website-brief.md`: copy and the cross-repo contract.
 - `PRIVACY.md`, `TERMS.md`: legal text authored here; the site syncs it (`site/ bun run
-  sync:legal`).
+sync:legal`).
 - No testimonials, customer logos, usage numbers, or pricing exist — never fabricate them.
 
 ## Product Principles

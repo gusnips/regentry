@@ -91,32 +91,32 @@ export function Select({
       aria-labelledby={label ? labelId : undefined}
       className={`flex items-center justify-between gap-2 rounded-lg ${TRIGGER_VARIANTS[variant]} ${s.trigger} ${className}`}
     >
-        {/* min-w-0 lets the label truncate instead of shoving the chevron out. */}
-        <BaseSelect.Value className="min-w-0">
-          {(v: string) => {
-            const opt = byValue.get(v);
-            if (!opt)
-              return (
-                <span className="text-neutral-500 dark:text-neutral-400">
-                  {t("common.selectPlaceholder")}
-                </span>
-              );
-            const hint = opt.hint ? <Hint text={opt.hint} /> : null;
-            if (iconOnlyTrigger && opt.icon) return opt.icon;
+      {/* min-w-0 lets the label truncate instead of shoving the chevron out. */}
+      <BaseSelect.Value className="min-w-0">
+        {(v: string) => {
+          const opt = byValue.get(v);
+          if (!opt)
             return (
-              <span className="flex min-w-0 items-center gap-1.5">
-                {opt.icon}
-                {opt.hintLeading && hint}
-                <span className="truncate">{opt.label}</span>
-                {!opt.hintLeading && hint}
+              <span className="text-neutral-500 dark:text-neutral-400">
+                {t("common.selectPlaceholder")}
               </span>
             );
-          }}
-        </BaseSelect.Value>
-        <BaseSelect.Icon className="flex shrink-0 text-neutral-500 dark:text-neutral-400">
-          <ChevronDownIcon />
-        </BaseSelect.Icon>
-      </BaseSelect.Trigger>
+          const hint = opt.hint ? <Hint text={opt.hint} /> : null;
+          if (iconOnlyTrigger && opt.icon) return opt.icon;
+          return (
+            <span className="flex min-w-0 items-center gap-1.5">
+              {opt.icon}
+              {opt.hintLeading && hint}
+              <span className="truncate">{opt.label}</span>
+              {!opt.hintLeading && hint}
+            </span>
+          );
+        }}
+      </BaseSelect.Value>
+      <BaseSelect.Icon className="flex shrink-0 text-neutral-500 dark:text-neutral-400">
+        <ChevronDownIcon />
+      </BaseSelect.Icon>
+    </BaseSelect.Trigger>
   );
 
   return (

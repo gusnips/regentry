@@ -25,7 +25,13 @@ const LONG_BASE64 = /^[A-Za-z0-9+/]{40,}={0,2}$/;
 const LONG_HEX = /^(?:[0-9a-f]{2}){16,}$/i;
 
 function sanitizeString(s: string): string {
-  if (JWT.test(s) || BEARER.test(s) || COOKIE_PAIRS.test(s) || LONG_BASE64.test(s) || LONG_HEX.test(s)) {
+  if (
+    JWT.test(s) ||
+    BEARER.test(s) ||
+    COOKIE_PAIRS.test(s) ||
+    LONG_BASE64.test(s) ||
+    LONG_HEX.test(s)
+  ) {
     return BLOCKED;
   }
   return s.length > MAX_STRING ? `${s.slice(0, MAX_STRING)}…[truncated]` : s;

@@ -120,10 +120,7 @@ describe("executeSlash", () => {
 
   it("switches provider by name prefix", () => {
     useProvidersStore.setState({
-      providers: [
-        PROVIDER,
-        { ...PROVIDER, id: "p2", name: "OpenAI", shape: "openai" as const },
-      ],
+      providers: [PROVIDER, { ...PROVIDER, id: "p2", name: "OpenAI", shape: "openai" as const }],
     });
     executeSlash("/provider open");
     expect(lastNote()).toContain("→ OpenAI");

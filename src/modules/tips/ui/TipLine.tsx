@@ -13,7 +13,9 @@ export function TipLine({ className = "" }: { className?: string }) {
   // The caller's className REPLACES the default color, not overrides it — a
   // band-tinted tip on an emerald band would otherwise fight the neutral.
   return (
-    <p className={`line-clamp-2 text-[11px] ${className || "text-neutral-500 dark:text-neutral-400"}`}>
+    <p
+      className={`line-clamp-2 text-[11px] ${className || "text-neutral-500 dark:text-neutral-400"}`}
+    >
       {t("tips.label")}: {tip}
     </p>
   );

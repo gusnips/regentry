@@ -25,9 +25,7 @@ export function SlashMenu({
 
   // A long candidate list (many providers) scrolls — keep the highlight in view.
   useEffect(() => {
-    listRef.current
-      ?.querySelector(`[data-index="${index}"]`)
-      ?.scrollIntoView({ block: "nearest" });
+    listRef.current?.querySelector(`[data-index="${index}"]`)?.scrollIntoView({ block: "nearest" });
   }, [index]);
 
   return (

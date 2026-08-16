@@ -41,7 +41,10 @@ export function fillByRef(refId: string, text: string): FillResult {
     el.focus();
     // The prototype's setter, not el.value = …: a framework may own the
     // element's own property and only notice the change via the input event.
-    const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const proto =
+      el instanceof HTMLTextAreaElement
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
     const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
     if (setter) setter.call(el, text);
     else el.value = text;

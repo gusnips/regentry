@@ -13,7 +13,7 @@ the matching block here first.
 >   and pasted `##`, `**bold**` and `-` lists — the live page shows those characters literally.
 >   §2 is now plain text, and the store description must stay that way. Paste the corrected §2
 >   blocks and resubmit (a description edit needs no new package).
-> - **`LINKS.store` flips from plain text to an *Add to Chrome* button** on the site, and the
+> - **`LINKS.store` flips from plain text to an _Add to Chrome_ button** on the site, and the
 >   install instructions that said "until the store listing is approved" stop being true —
 >   [`docs/website-brief.md`](website-brief.md) is the contract to update in the same sitting.
 
@@ -28,7 +28,7 @@ the matching block here first.
 | **Default language** | English (listing localized: en / pt-BR / es)                              |
 | **Visibility**       | Public                                                                    |
 | **Homepage URL**     | https://tabrunner.app                                                     |
-| **Support URL**      | https://github.com/tabrunner/tabrunner/issues                               |
+| **Support URL**      | https://github.com/tabrunner/tabrunner/issues                             |
 | **Privacy policy**   | https://tabrunner.app/privacy                                             |
 | **Extension ID**     | `ilnohobdcigbmlikjbkdpbkhciephdle`                                        |
 | **Store URL**        | https://chromewebstore.google.com/detail/ilnohobdcigbmlikjbkdpbkhciephdle |
@@ -284,7 +284,7 @@ Four **1280×800 PNGs**, uploaded in this order — the first is the card image.
 | 1   | [![Side panel beside a Wikipedia article, task typed but not sent](screenshots/01-side-panel.png)](screenshots/01-side-panel.png) | **Card image.** Wikipedia's "Web browser" article with the side panel beside it, pre-task: the task typed but not yet sent. The panel is the product, not a browser takeover. |
 | 2   | [![A finished run in the panel: plan card, tool trace and summary](screenshots/02-chat.png)](screenshots/02-chat.png)             | A finished run: user bubble, plan card, tool trace, the agent's summary — with the "controlling this tab" badge on the page.                                                  |
 | 3   | [![Options page Providers tab with subscription and API-key rows](screenshots/03-providers.png)](screenshots/03-providers.png)    | The options page's Providers tab: subscription rows (Anthropic, OpenAI) and an API-key row (DeepSeek), active provider highlighted.                                           |
-| 4   | [![Hacker News with a second conversation and the floating status widget](screenshots/04-chat-2.png)](screenshots/04-chat-2.png)  | Hacker News with a second conversation and the floating status pill bottom-right (task · +1 queued · Hide — the pill itself is the way back to the run).                                                          |
+| 4   | [![Hacker News with a second conversation and the floating status widget](screenshots/04-chat-2.png)](screenshots/04-chat-2.png)  | Hacker News with a second conversation and the floating status pill bottom-right (task · +1 queued · Hide — the pill itself is the way back to the run).                      |
 
 Regenerate with `bun run build && bun run shots` — it rewrites all four in place and refreshes the
 site's webp derivatives when `../site` is checked out. Rerun after any UI rebrand and eyeball them

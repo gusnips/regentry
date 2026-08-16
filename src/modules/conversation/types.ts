@@ -1,13 +1,7 @@
 import type { ErrorKind } from "@/modules/providers/error-classify";
 
 export type MessageRole =
-  | "user"
-  | "assistant"
-  | "reasoning"
-  | "step"
-  | "error"
-  | "plan"
-  | "summary";
+  "user" | "assistant" | "reasoning" | "step" | "error" | "plan" | "summary";
 
 export interface Message {
   id: string;
