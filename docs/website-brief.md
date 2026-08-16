@@ -10,10 +10,10 @@ GitHub Releases URLs below.
 Every pushed `v*` tag builds and attaches these to the GitHub Release
 (`.github/workflows/release.yml`):
 
-| URL (stable — hotlink these)                                                                | What                                            |
-| ------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| URL (stable — hotlink these)                                                                  | What                                                |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | `https://github.com/tabrunner/tabrunner/releases/latest/download/tabrunner-latest-chrome.zip` | The download — keyed, installs under the store's id |
-| `https://github.com/tabrunner/tabrunner/releases/latest`                                      | Release notes + versioned artifacts             |
+| `https://github.com/tabrunner/tabrunner/releases/latest`                                      | Release notes + versioned artifacts                 |
 
 The versioned artifacts (`tabrunner-<version>-chrome.zip`, `-mcp.js`) sit on the same release for
 the permanent record; the site links only the `latest` aliases and the release page, so shipping a
@@ -32,13 +32,27 @@ or a Chromium without store access).
 
 **Primary — the store listing:**
 
-- One button, *Add to Chrome*, to `LINKS.store`. One-click install, auto-updates, no
+- One button, _Add to Chrome_, to `LINKS.store`. One-click install, auto-updates, no
   developer-mode nag.
 
 **Fallback — the zip, loaded unpacked:**
 
 1. Download and unzip.
 2. `chrome://extensions` → Developer mode → **Load unpacked** → select the unzipped folder.
+
+**Updating an unpacked install — the site must spell this out, because the obvious way destroys
+the user's data.** Chrome keeps an unpacked extension's storage against its install, and the
+install is the folder path. Reload that path and everything survives; press **Remove** and Chrome
+deletes the providers, the sign-ins and every conversation with it. The zip's files sit at the
+archive root, so unzipping a new version makes a _new_ folder (`tabrunner-latest-chrome 2`), and
+loading that new path is a second install of the same id — which Chrome refuses, pushing the user
+straight to Remove. So:
+
+1. Download the zip and extract it **over the existing folder**, replacing the files.
+2. `chrome://extensions` → press **⟳** on TabRunner.
+
+Never Remove-then-reinstall to update. Say so on the page, next to the steps — a user who does it
+the other way loses their API keys and their history with no warning and no way back.
 
 **There is no CRX to link, and never will be.** Chrome only installs a CRX that arrives through
 the store's own flow, and the store signs with a key only Google holds — so a self-signed CRX is
@@ -50,12 +64,14 @@ link a CRX — only `LINKS.store`.
 Caveats the site must state plainly where they apply:
 
 - The store and the unpacked build share one extension ID (`manifest.key`) — Chrome will not run
-  both, so a user with the zip must remove it *before* installing from the store. Settings do not
-  carry over.
+  both, so a user with the zip must remove it _before_ installing from the store. That Remove
+  takes the storage with it: providers, sign-ins and conversations do not carry over, and there is
+  no way to move them. Warn before the switch, not after.
 - Unpacked installs show Chrome's "disable developer mode extensions" nag on each restart (this
   is the unpacked fallback's burden, absent from the store build).
-- No auto-update for the unpacked build: new versions are manual re-installs from the site (the
-  download links are `latest` aliases, so the instructions never change).
+- No auto-update for the unpacked build: new versions are downloaded and extracted over the
+  existing folder, then reloaded — never re-installed (see **Updating** above). The download links
+  are `latest` aliases, so the instructions never change.
 
 ## Content sources in this repo
 
