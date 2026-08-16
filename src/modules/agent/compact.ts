@@ -13,9 +13,10 @@ const log = createLogger("compact");
  * - **In-run** (`compactRunMessages`): the wire conversation grew past what the
  *   model's window can hold. Older turns fold into a progress note attached to
  *   the task, and the run continues on the same step budget.
- * - **Across runs** (`summarizeTranscript`): `/compact`, or an automatic pass
- *   between runs. The transcript keeps every message — the summary is appended,
- *   never a replacement — and only what gets REPLAYED to the model changes.
+ * - **Across runs** (`summarizeTranscript`): asked for — `/compact`, the
+ *   context-error's fix button, or the MCP `compact` tool. The transcript keeps
+ *   every message — the summary is appended, never a replacement — and only
+ *   what gets REPLAYED to the model changes.
  *   That is the whole reason to prefer appending: scrollback is the user's, the
  *   replay is the model's, and compaction is a fact about the replay.
  *
@@ -81,9 +82,7 @@ async function summarize(
 /** A wire turn as plain text for the summarizer — tool calls named, results included. */
 function renderTurn(m: ChatMessage): string {
   if (m.role === "tool_results") {
-    return (m.toolResults ?? [])
-      .map((r) => `RESULT: ${truncate(r.content, 4_000)}`)
-      .join("\n");
+    return (m.toolResults ?? []).map((r) => `RESULT: ${truncate(r.content, 4_000)}`).join("\n");
   }
   const calls = (m.toolCalls ?? [])
     .map((c) => `CALL ${c.name}(${truncate(JSON.stringify(c.args), 400)})`)
@@ -133,11 +132,7 @@ export async function compactRunMessages(
   // and folding one of three turns spends a model call to save nothing.
   if (kept < KEEP_TAIL_TURNS || cut <= first) return 0;
 
-  const body = messages
-    .slice(first, cut)
-    .map(renderTurn)
-    .filter(Boolean)
-    .join("\n\n");
+  const body = messages.slice(first, cut).map(renderTurn).filter(Boolean).join("\n\n");
   if (!body.trim()) return 0;
 
   const summary = await summarize(provider, `Task: ${originalTask}\n\n${body}`, signal);
@@ -214,6 +209,14 @@ export interface CompactionResult {
  * transcript when a follow-up needs an exact wording.
  *
  * Returns null when the conversation is too short to be worth a model call.
+ *
+ * ponytail: the summary is appended wherever the tail is when the model answers,
+ * not where it was when we read. Both callers refuse to compact a conversation
+ * with a run in flight, so the only way to interleave is a user sending a task
+ * during the few seconds a summarizer takes — and the next compaction folds from
+ * this summary to the tail, so the stranded turn is swept up rather than lost
+ * for good. Ceiling: that turn is invisible to replay until then. The upgrade is
+ * an insert-at-index transcript write, so the summary lands where it was cut.
  */
 export async function compactConversation(
   provider: ChatProvider,

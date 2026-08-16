@@ -32,6 +32,20 @@ let watchersStarted = false;
 /** Shared in-flight promise — App and the header chips mount together and must fetch once. */
 let loadPromise: Promise<void> | null = null;
 
+/**
+ * Which provider the UI calls active: the stored pick, else the first one
+ * configured. One rule, because four surfaces answer the question and they must
+ * agree — the header chip, the slash commands' "Model → X", the context gauge's
+ * denominator, and the error bubble's "Update your API key" dialog. A surface
+ * that resolved it differently would name a provider the run never used.
+ *
+ * A selector, not a hook: the same function serves `useProvidersStore(...)` in
+ * a component and `useProvidersStore.getState()` outside one.
+ */
+export function activeProviderOf(state: ProvidersState): ProviderConfig | undefined {
+  return state.providers.find((p) => p.id === state.activeId) ?? state.providers[0];
+}
+
 export const useProvidersStore = create<ProvidersState>((set, get) => ({
   providers: [],
   activeId: null,

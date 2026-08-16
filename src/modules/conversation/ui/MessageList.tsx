@@ -941,11 +941,6 @@ function CompactingRow() {
 /** Rows + jump pill. The scroller hooks must run under the Provider. */
 function Transcript() {
   const { t } = useTranslation();
-  // Internal entries are the model's, not the chat's — the progress note an
-  // interrupted run leaves for the next run's history is written in the
-  // model's language ("call read_history…") and would read as the agent
-  // talking past the user. Filtered here, before grouping, so nothing
-  // downstream — bursts, the ask gate, the newest-error retry — ever counts one.
   const stored = useConversationStore((s) => s.messages);
   const status = useConversationStore((s) => s.status);
   const retry = useConversationStore((s) => s.retry);

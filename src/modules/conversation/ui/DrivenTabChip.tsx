@@ -31,6 +31,12 @@ export interface TabChipTarget {
  * plan row (`○ step`), and directly above the plan peek the two read as one
  * list. The resting surface is what says "object you can press" instead of
  * "next item" — hover alone only works once you are already on it.
+ *
+ * It places itself: `self-start` so it sizes to its label inside the band's
+ * column, and `-ml-1` cancelling its own `pl-1` so the favicon lands in the
+ * status dot's column rather than the plan's. Both callers used to wrap it in a
+ * row of their own, which left an empty row — and the column's gap — behind
+ * whenever the chip had no tab to name.
  */
 export function DrivenTabChip({ tab }: { tab?: TabChipTarget }) {
   const { t } = useTranslation();
@@ -43,24 +49,27 @@ export function DrivenTabChip({ tab }: { tab?: TabChipTarget }) {
   // hostname stands in, the same fallback TabStamp uses. Only no tab at all
   // drops the row.
   const drivingTab = tab ?? liveTab;
-  if (!drivingTab) return null;
-  const label = drivingTab.title || (drivingTab.url ? hostnameOf(drivingTab.url) : "");
-  if (!label || drivingTab.tabId === undefined) return null;
+  // Destructured before the guard: TypeScript drops a narrowing on `obj.prop`
+  // the moment it crosses into a callback, so reading tabId off the object in
+  // onClick would need a `!` the guard has already earned.
+  const { tabId, windowId, favIconUrl } = drivingTab ?? {};
+  const label = drivingTab?.title || (drivingTab?.url ? hostnameOf(drivingTab.url) : "");
+  if (!label || tabId === undefined) return null;
 
   return (
     <button
       type="button"
-      onClick={() => void focusTab(drivingTab.tabId!, drivingTab.windowId)}
+      onClick={() => void focusTab(tabId, windowId)}
       title={t("run.drivingTabTip")}
       aria-label={t("run.drivingTabTip")}
-      className="flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-full bg-brand-100/80 py-1 pr-2.5 pl-1 text-xs text-brand-900 hover:bg-brand-200 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:bg-brand-900/60 dark:text-brand-100 dark:hover:bg-brand-800"
+      className="-ml-1 flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 self-start rounded-full bg-brand-100/80 py-1 pr-2.5 pl-1 text-xs text-brand-900 hover:bg-brand-200 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:bg-brand-900/60 dark:text-brand-100 dark:hover:bg-brand-800"
     >
-      {drivingTab.favIconUrl && drivingTab.favIconUrl !== failedIconUrl && (
+      {favIconUrl && favIconUrl !== failedIconUrl && (
         <img
-          src={drivingTab.favIconUrl}
+          src={favIconUrl}
           alt=""
           className="h-3.5 w-3.5 shrink-0 rounded-[3px]"
-          onError={() => setFailedIconUrl(drivingTab.favIconUrl ?? null)}
+          onError={() => setFailedIconUrl(favIconUrl)}
         />
       )}
       <span className="truncate">{label}</span>

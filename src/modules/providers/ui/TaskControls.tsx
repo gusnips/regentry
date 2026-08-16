@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useProvidersStore } from "./store";
+import { useProvidersStore, activeProviderOf } from "./store";
 import { ProviderIcon } from "./ProviderIcon";
 import { AddProviderDialog } from "./AddProviderDialog";
-import { listModels, modelsTarget, pickLatestModel, readModelsCache, writeModelsCache } from "../models";
+import {
+  listModels,
+  modelsTarget,
+  pickLatestModel,
+  readModelsCache,
+  writeModelsCache,
+} from "../models";
 import type { ModelsTarget } from "../models";
 import { PRESETS, providerDisplayName } from "../presets";
 import { supportsUsage } from "../usage";
@@ -67,11 +73,11 @@ function useModels(target: ModelsTarget | null) {
 
 /** The active provider; the store's load is idempotent, so no guard here. */
 function useActiveProvider() {
-  const { providers, activeId, load } = useProvidersStore();
+  const load = useProvidersStore((s) => s.load);
   useEffect(() => {
     void load();
   }, [load]);
-  return providers.find((p) => p.id === activeId) ?? providers[0];
+  return useProvidersStore(activeProviderOf);
 }
 
 /**

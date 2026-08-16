@@ -355,7 +355,14 @@ gauge draws a bar and a "24.3k / 200k" ratio only when the window was measured o
 and otherwise shows the token count alone. A percentage computed against a guessed
 denominator is a statistic nobody verified, and the user would act on it. The count itself is
 the last turn's real input (`usage`), persisted as `RunSummary.lastInput` so a reopened panel
-still knows — cumulative `input` sums every turn and cannot say how full the context is.
+still knows — cumulative `input` sums every turn and cannot say how full the context is. The
+gauge is also the compact button: red inside the reserve, the number has stopped being
+information and become an instruction, and an instruction with nothing to press is a dead
+end. The fold is append-only, so a stray click costs one short model call and no history.
+
+Both entry points refuse to compact a conversation with a run in flight, and the check that
+counts is the worker's (`getActiveRun()?.conversationId`) — the panel's own guard reads its
+local status, which a panel reopened onto a background run of its own reports as idle.
 
 The panel watches the run board, not transcripts, so a compaction with no run in flight would
 write a summary nobody told the panel to look for — the card only appeared once the next

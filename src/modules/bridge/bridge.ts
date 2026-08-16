@@ -354,23 +354,24 @@ export class Bridge {
 
   /** The daemon's compact tool — folds this thread's history into a summary. */
   private async compactThread(requestId: string): Promise<void> {
-    // The same constraint as the panel's /compact: a live run's wire
-    // conversation is the run's, and a transcript summary landing mid-run
-    // would summarize a story still being written.
-    if (getActiveRun()?.owner === "bridge") {
-      this.fail(
-        requestId,
-        "run-in-progress",
-        "This thread has a run in progress — compact once it finishes.",
-      );
-      return;
-    }
     const conversationId = await bridgeThread.get();
     if (!conversationId) {
       this.fail(
         requestId,
         "nothing-to-compact",
         "This thread has no history yet — it starts on the first run.",
+      );
+      return;
+    }
+    // The same constraint as the panel's /compact, keyed on the CONVERSATION
+    // rather than the owner: a live run's wire conversation is the run's, and a
+    // transcript summary appended mid-run lands after messages that run is
+    // still writing — which is true whoever started it.
+    if (getActiveRun()?.conversationId === conversationId) {
+      this.fail(
+        requestId,
+        "run-in-progress",
+        "This thread has a run in progress — compact once it finishes.",
       );
       return;
     }

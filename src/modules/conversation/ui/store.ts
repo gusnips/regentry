@@ -720,6 +720,31 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       if (get().status === "running") {
         pushMsg(makeMsg("error", i18n.t("chat.portLost")));
       }
+      // A compaction in flight died with the worker, and no `compacted` event is
+      // ever coming — without this the shimmer row keeps promising a fold that
+      // nobody is doing. The worker owns the write, so the summary may have
+      // landed anyway: refetch rather than assume either way.
+      if (get().compacting) {
+        set({ compacting: false });
+        resumeAfterCompact = null;
+        const activeId = get().activeId;
+        const note = makeMsg(
+          "step",
+          i18n.t("commands.compact.failed", { message: i18n.t("chat.reloaded") }),
+        );
+        // The note goes on AFTER the refetch, never before: it is display-only,
+        // and a storage read landing on top of it would wipe the one line
+        // saying why the row it replaced went away.
+        if (activeId) {
+          void getMessages(activeId).then((messages) => {
+            if (get().activeId !== activeId) return;
+            set({ messages: capMessages(messages) });
+            pushDisplay(note);
+          });
+        } else {
+          pushDisplay(note);
+        }
+      }
       recallQueue();
       // A stop redirect must survive a mid-handoff port drop — back to the composer.
       returnPending();

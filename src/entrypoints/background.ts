@@ -298,6 +298,18 @@ export default defineBackground(() => {
             });
             break;
           }
+          // The authoritative busy check — the panel refuses locally too, but it
+          // only knows its OWN status: a panel reopened onto a background run of
+          // its own reads idle, and a summary appended under a live run lands
+          // after messages that run is still writing.
+          if (getActiveRun()?.conversationId === conversationId) {
+            send(port, {
+              type: "compact_failed",
+              message: i18n.t("commands.compact.busy"),
+              nothing: true,
+            });
+            break;
+          }
           try {
             const config = await getActiveProvider();
             if (!config) throw new Error(i18n.t("chat.hint.noProvider"));

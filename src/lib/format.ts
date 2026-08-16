@@ -24,6 +24,13 @@ export function hostnameOf(url: string): string {
 }
 
 export function formatTokens(n: number): string {
+  // Three significant digits is all any of these earn — a run's total, a
+  // compaction receipt, the gauge's reading and the window it divides into.
+  // The decimal survives only where it says something: "24.3k" is a different
+  // number from "24.9k", while "200.0k" (and "1000.0k") is noise around a
+  // round ceiling nobody measured to a hundred tokens.
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 100_000) return `${Math.round(n / 1000)}k`;
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 

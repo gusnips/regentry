@@ -5,7 +5,7 @@ import { formatResetRelative } from "@/modules/providers/rate-limit";
 import { EFFORT_LABEL_KEYS, isEffort, REASONING_EFFORTS } from "@/modules/providers/types";
 import { fetchProviderUsage, supportsUsage } from "@/modules/providers/usage";
 import type { UsageWindow } from "@/modules/providers/usage";
-import { useProvidersStore } from "@/modules/providers/ui";
+import { useProvidersStore, activeProviderOf } from "@/modules/providers/ui";
 import { useConversationStore } from "./store";
 
 /**
@@ -83,10 +83,9 @@ function note(content: string): void {
   useConversationStore.getState().note(content);
 }
 
-/** The provider the header chips call active — the stored pick, else the first. */
+/** The provider the header chips call active — one shared rule, see activeProviderOf. */
 function activeProvider() {
-  const { providers, activeId } = useProvidersStore.getState();
-  return providers.find((p) => p.id === activeId) ?? providers[0];
+  return activeProviderOf(useProvidersStore.getState());
 }
 
 /** Settings edits land on the stored config that the next run snapshots — a
@@ -388,9 +387,7 @@ export function resolveSlashArg(
   const candidates = command.candidates?.() ?? [];
   if (candidates.length === 0) return raw;
   const q = raw.toLowerCase();
-  const exact = candidates.find(
-    (c) => c.value.toLowerCase() === q || c.label.toLowerCase() === q,
-  );
+  const exact = candidates.find((c) => c.value.toLowerCase() === q || c.label.toLowerCase() === q);
   if (exact) return exact.value;
   const prefix = candidates.filter(
     (c) => c.value.toLowerCase().startsWith(q) || c.label.toLowerCase().startsWith(q),

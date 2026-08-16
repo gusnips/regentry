@@ -21,7 +21,6 @@ export function RunStatus() {
   const replanning = useConversationStore((s) => s.replanning);
   const usage = useConversationStore((s) => s.usage);
   const bridgeActive = useConversationStore((s) => s.bridgeActive);
-  const drivingTab = useConversationStore((s) => s.drivingTab);
   // Selecting only the plan message (reference-stable until rewritten) keeps
   // this bar from re-rendering on every unrelated message churn mid-run.
   const plan = useConversationStore((s) => s.messages.findLast((m) => m.role === "plan"));
@@ -155,19 +154,13 @@ export function RunStatus() {
         </div>
         {/* The tab the work happened on, named — same row and same chip the live
             band wears, so the run's target doesn't vanish the moment it ends. */}
-        {lastTab?.tabId !== undefined && (
-          <div className="-ml-1 flex">
-            <DrivenTabChip tab={lastTab} />
-          </div>
-        )}
+        <DrivenTabChip tab={lastTab} />
         {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
         {/* Bottom right, under the plan: the gauge is what you read LAST — after
             the outcome and the checklist, when the only question left is whether
             the next message still fits. The band outlives the run, so it is
             still there when you go to type it. */}
-        <div className="flex justify-end">
-          <ContextGauge />
-        </div>
+        <ContextGauge />
       </div>
     );
   }
@@ -224,20 +217,12 @@ export function RunStatus() {
           timer it truncated to a letter, and a chip you cannot read cannot be
           clicked. It belongs to the header, so it sits in the DOT's column,
           not the plan's — indented to 1.125rem its favicon landed exactly on
-          the glyph column and the tab read as a fifth step. The -ml-1 cancels
-          the pill's own pl-1 so the favicon aligns with the dot above it, and
-          the plan then indents under both. */}
-      {drivingTab && (
-        <div className="-ml-1 flex">
-          <DrivenTabChip />
-        </div>
-      )}
+          the glyph column and the tab read as a fifth step. */}
+      <DrivenTabChip />
       {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
       {/* Same corner as the settled band's, so the number does not move when the
           run ends — you look in one place whether it is working or done. */}
-      <div className="flex justify-end">
-        <ContextGauge />
-      </div>
+      <ContextGauge />
       {/* The working band is the one place the user watches while waiting —
           Claude Code's spinner-tip slot; idle/composer gets the same line. */}
       {!queueBusy && <TipLine className="text-brand-800/60 dark:text-brand-200/50" />}
