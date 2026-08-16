@@ -47,14 +47,15 @@ export function RunTargetToggle() {
     return (
       <Button
         type="button"
-        variant="ghost"
+        variant="quiet-brand"
         size="sm"
         disabled={!ready}
         // Deliberately no setRunTarget: this is an act on the run in flight,
-        // not a vote on where the next one goes.
+        // not a vote on where the next one goes — so it dresses as the action
+        // it is (brand, pressable), not the preference it was a second ago.
         onClick={() => window.close()}
         title={t(ready ? "run.backgroundNowTitle" : "run.backgroundNowGated")}
-        className="flex shrink-0 items-center gap-1.5 hover:text-neutral-900 dark:hover:text-neutral-100"
+        className="flex shrink-0 items-center gap-1.5"
       >
         <BackgroundIcon />
         <span className="truncate">{t("run.backgroundNow")}</span>

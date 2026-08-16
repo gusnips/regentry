@@ -172,6 +172,9 @@ describe("run target: a preference while idle, the walk-away while running", () 
     const close = vi.spyOn(window, "close").mockImplementation(() => {});
     const h = await render(<RunTargetToggle />);
     expect(toggleButton(h).textContent).toBe("Run in background");
+    // A trigger, not a switch: the live action dresses in brand, the idle
+    // preference stays ghost.
+    expect(toggleButton(h).className).toContain("text-brand-700");
     await click(toggleButton(h));
     expect(close).toHaveBeenCalledTimes(1);
     // An act on the run in flight, not a vote on where the next one goes.
