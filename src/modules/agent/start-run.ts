@@ -1,6 +1,7 @@
 import { i18n } from "@/i18n";
 import { buildConversationHistory, runAgentLoop } from ".";
 import { extractAndRemember } from "@/modules/memory";
+import { maybeAutoTitle } from "@/modules/conversation/title";
 import {
   clearAgentWait,
   createDriver,
@@ -119,6 +120,10 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     const thread = await getThreadTabsFor(conversationId);
     const continuation = hasPendingQuestion(transcript) ? thread.tabs[0] : undefined;
     const target = await resolveRunTab(opts, continuation, thread);
+
+    // The auto-titler's one shot: this task opens the conversation. Counted
+    // from the transcript read above, before this run's own message lands.
+    const firstTask = transcript.some((m) => m.role === "user") ? undefined : task;
     if ("error" in target) {
       emit({ type: "error", message: target.error });
       return { ok: true };
@@ -345,6 +350,18 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         void extractAndRemember(resolvedProvider, wire, run.controller.signal).finally(() => {
           void chrome.alarms.clear(MEMORY_KEEPALIVE_ALARM);
         });
+        // The first task's one-line title may be a fragment ("hey" off a
+        // two-line message) — one cheap call names it for real. Same keepalive
+        // umbrella as memory: it rides this run's hold on the worker, and a
+        // failed call leaves the derived title standing.
+        if (firstTask) {
+          void chrome.alarms.create(MEMORY_KEEPALIVE_ALARM, { periodInMinutes: 0.5 });
+          void maybeAutoTitle(conversationId, firstTask, resolvedProvider, run.controller.signal)
+            .catch(() => {})
+            .finally(() => {
+              void chrome.alarms.clear(MEMORY_KEEPALIVE_ALARM);
+            });
+        }
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);

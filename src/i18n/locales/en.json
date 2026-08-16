@@ -207,6 +207,9 @@
     "tasks_other": "{{count}} tasks",
     "delete": "Delete",
     "deleteAria": "Delete conversation: {{title}}",
+    "rename": "Rename",
+    "renameAria": "Rename conversation: {{title}}",
+    "renamePlaceholder": "Name this conversation",
     "deleteTitle": "Delete this conversation?",
     "deleteBody": "The transcript is removed from this device. What TabRunner has learned stays in its memory — you can delete any of those in Settings.",
     "emptyTitle": "No conversations yet",
@@ -323,6 +326,12 @@
       "currentOnly": "Provider: {{name}} — the only one configured.",
       "set": "Provider → {{name}}",
       "unknown": "No provider \"{{value}}\" — configured: {{list}}."
+    },
+    "rename": {
+      "description": "Name this conversation — no argument shows the current name",
+      "current": "This conversation is \"{{title}}\" — /rename <name> to change it.",
+      "none": "Send a task first — a chat with no messages has nothing to name.",
+      "set": "Conversation → \"{{title}}\""
     },
     "new": {
       "description": "Start a new chat"

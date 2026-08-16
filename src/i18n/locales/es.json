@@ -207,6 +207,9 @@
     "tasks_other": "{{count}} tareas",
     "delete": "Eliminar",
     "deleteAria": "Eliminar conversación: {{title}}",
+    "rename": "Renombrar",
+    "renameAria": "Renombrar conversación: {{title}}",
+    "renamePlaceholder": "Nombra esta conversación",
     "deleteTitle": "¿Eliminar esta conversación?",
     "deleteBody": "La transcripción se elimina de este dispositivo. Lo que TabRunner haya aprendido queda en su memoria — puedes eliminarlo en Configuración.",
     "emptyTitle": "Aún no hay conversaciones",
@@ -323,6 +326,12 @@
       "currentOnly": "Proveedor: {{name}} — el único configurado.",
       "set": "Proveedor → {{name}}",
       "unknown": "El proveedor \"{{value}}\" no existe — configurados: {{list}}."
+    },
+    "rename": {
+      "description": "Nombra esta conversación — sin argumento, muestra el nombre actual",
+      "current": "Esta conversación es \"{{title}}\" — /rename <nombre> para cambiarlo.",
+      "none": "Envía una tarea primero — una conversación sin mensajes no tiene qué nombrar.",
+      "set": "Conversación → \"{{title}}\""
     },
     "new": {
       "description": "Empieza un chat nuevo"

@@ -37,6 +37,7 @@ type CommandDescriptionKey =
   | "commands.effort.description"
   | "commands.model.description"
   | "commands.provider.description"
+  | "commands.rename.description"
   | "commands.usage.description"
   | "commands.compact.description"
   | "commands.new.description"
@@ -269,6 +270,27 @@ export const COMMANDS: readonly SlashCommand[] = [
       }
       void useProvidersStore.getState().activate(pick.id);
       note(i18n.t("commands.provider.set", { name: providerDisplayName(pick) }) + nextTaskSuffix());
+    },
+  },
+  {
+    name: "rename",
+    descriptionKey: "commands.rename.description",
+    // A free-form arg, never a candidate list: any title goes.
+    takesArg: true,
+    run: (arg) => {
+      const store = useConversationStore.getState();
+      const id = store.activeId;
+      // A fresh chat is not in the index yet — nothing stored to name.
+      if (!id) {
+        note(i18n.t("commands.rename.none"));
+        return;
+      }
+      if (!arg) {
+        note(i18n.t("commands.rename.current", { title: store.conversations.find((c) => c.id === id)?.title ?? "" }));
+        return;
+      }
+      store.renameConversation(id, arg);
+      note(i18n.t("commands.rename.set", { title: arg }));
     },
   },
   {

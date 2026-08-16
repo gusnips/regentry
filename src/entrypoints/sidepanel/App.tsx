@@ -7,6 +7,7 @@ import {
   ConversationList,
   HistoryToggle,
   NewChatButton,
+  TitleInput,
   useConversationStore,
 } from "@/modules/conversation/ui";
 import {
@@ -66,6 +67,11 @@ export default function App() {
   const chatTitle = useConversationStore(
     (s) => s.conversations.find((c) => c.id === s.activeId)?.title ?? "",
   );
+  const activeId = useConversationStore((s) => s.activeId);
+  const renameChat = useConversationStore((s) => s.renameConversation);
+  // A fresh chat has no stored row to name yet — the title only becomes
+  // editable once the first message has minted one.
+  const [renaming, setRenaming] = useState(false);
   const providers = useProvidersStore((s) => s.providers);
   const loaded = useProvidersStore((s) => s.loaded);
   const load = useProvidersStore((s) => s.load);
@@ -129,12 +135,31 @@ export default function App() {
             wordmark is duplicate chrome. Row 2: who answers and with what, as
             quiet chips — the header is read a hundred times per change. */}
         <div className="flex items-center gap-1 pb-1">
-          <span
-            className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-neutral-700 dark:text-neutral-200"
-            title={chatTitle || undefined}
-          >
-            {historyOpen ? "" : chatTitle || t("history.newChat")}
-          </span>
+          {renaming && activeId && !historyOpen ? (
+            <TitleInput
+              value={chatTitle}
+              placeholder={t("history.renamePlaceholder")}
+              aria-label={t("history.rename")}
+              onCommit={(title) => {
+                renameChat(activeId, title);
+                setRenaming(false);
+              }}
+              onCancel={() => setRenaming(false)}
+              className="mx-1 flex-1 text-sm font-medium text-neutral-700 dark:text-neutral-200"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => activeId && setRenaming(true)}
+              disabled={!activeId}
+              title={activeId ? t("history.rename") : undefined}
+              className={`min-w-0 flex-1 truncate rounded px-2 text-left text-sm font-medium text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-neutral-200 ${
+                activeId ? "hover:bg-neutral-100 dark:hover:bg-neutral-800" : "cursor-default"
+              }`}
+            >
+              {historyOpen ? "" : chatTitle || t("history.newChat")}
+            </button>
+          )}
           {!needsProvider && (
             <HistoryToggle open={historyOpen} onToggle={() => setHistoryOpen((v) => !v)} />
           )}

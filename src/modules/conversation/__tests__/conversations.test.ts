@@ -10,8 +10,11 @@ import {
   getActiveId,
   getThreadTabsFor,
   getMessages,
+  isPartialTitle,
   listConversations,
   recordDrivenTabFor,
+  renameConversation,
+  retitleIfDerived,
   setActiveConversation,
 } from "../conversations";
 import type { Message } from "../types";
@@ -28,6 +31,47 @@ describe("conversationTitle", () => {
   it("takes the first line and truncates long tasks", () => {
     expect(conversationTitle("  go to hn\nand summarize  ")).toBe("go to hn");
     expect(conversationTitle("x".repeat(80))).toHaveLength(60);
+  });
+});
+
+describe("isPartialTitle", () => {
+  it("is false only when the first line IS the whole task", () => {
+    expect(isPartialTitle("book a flight")).toBe(false);
+    // A second line the title never saw.
+    expect(isPartialTitle("hey\nbook a flight")).toBe(true);
+    // A first line longer than the row fits.
+    expect(isPartialTitle("x".repeat(80))).toBe(true);
+  });
+});
+
+describe("renameConversation", () => {
+  it("sets the title without disturbing recency", async () => {
+    const id = await appendMessageFresh(msg("user", "first task"));
+    const before = (await listConversations()).find((c) => c.id === id)!;
+
+    await renameConversation(id, "  My Trip Planning  ");
+    const after = (await listConversations()).find((c) => c.id === id)!;
+    expect(after.title).toBe("My Trip Planning");
+    // A rename is not activity — the row keeps its place in history.
+    expect(after.updatedAt).toBe(before.updatedAt);
+  });
+});
+
+describe("retitleIfDerived", () => {
+  it("retitles an untouched title, never a renamed one", async () => {
+    const id = await appendMessageFresh(msg("user", "hey\nbook a table"));
+    const derived = conversationTitle("hey\nbook a table");
+
+    await retitleIfDerived(id, derived, "Book a table at Rossi's");
+    expect((await listConversations()).find((c) => c.id === id)!.title).toBe(
+      "Book a table at Rossi's",
+    );
+
+    // A user rename after that must survive a late auto-title for the same
+    // conversation — the derived-string comparison is the only guard.
+    await renameConversation(id, "Dinner");
+    await retitleIfDerived(id, derived, "Another title");
+    expect((await listConversations()).find((c) => c.id === id)!.title).toBe("Dinner");
   });
 });
 

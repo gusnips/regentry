@@ -203,6 +203,48 @@ export function conversationTitle(text: string): string {
 }
 
 /**
+ * Whether the derived title is only a FRAGMENT of the task — the first line was
+ * clipped, or there were further lines it never saw. This is the whole test for
+ * "the heuristic did badly here": a one-line task that fits is its own best
+ * title, while "hey\ngo book me a table" titles as "hey".
+ */
+export function isPartialTitle(text: string): boolean {
+  return conversationTitle(text) !== text.trim();
+}
+
+/**
+ * Renames a conversation. `updatedAt` deliberately stays put: renaming is not
+ * activity, and re-heading the index would yank the row to the top of history
+ * for a cosmetic edit. An empty title restores the derived one on the next
+ * message (appendTo fills a blank title), which is what clearing the field means.
+ */
+export function renameConversation(id: string, title: string): Promise<void> {
+  return serialized(async () => {
+    const list = await indexItem.get();
+    if (!list.some((c) => c.id === id)) return;
+    const next = conversationTitle(title);
+    await indexItem.set(list.map((c) => (c.id === id ? { ...c, title: next } : c)));
+  });
+}
+
+/**
+ * Replaces a title the user has not touched. The auto-titler lands a run late,
+ * long after a rename could have happened, and must never overwrite one — but a
+ * title still equal to what the first message derived is provably untouched, so
+ * the comparison IS the flag and no stored field is needed.
+ */
+export function retitleIfDerived(id: string, derived: string, title: string): Promise<void> {
+  return serialized(async () => {
+    const list = await indexItem.get();
+    const row = list.find((c) => c.id === id);
+    if (!row || row.title !== derived) return;
+    const next = conversationTitle(title);
+    if (!next) return;
+    await indexItem.set(list.map((c) => (c.id === id ? { ...c, title: next } : c)));
+  });
+}
+
+/**
  * Resolves the conversation's metadata, creating it if it doesn't exist — or
  * if the record was deleted mid-run and left the id dangling. Never touches the
  * active item: id-targeted writers (the bridge's MCP thread) use this without

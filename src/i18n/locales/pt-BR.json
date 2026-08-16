@@ -207,6 +207,9 @@
     "tasks_other": "{{count}} tarefas",
     "delete": "Excluir",
     "deleteAria": "Excluir conversa: {{title}}",
+    "rename": "Renomear",
+    "renameAria": "Renomear conversa: {{title}}",
+    "renamePlaceholder": "Nomeie esta conversa",
     "deleteTitle": "Excluir esta conversa?",
     "deleteBody": "A transcrição é removida deste dispositivo. O que o TabRunner aprendeu fica na memória dele — você pode apagar isso nas Configurações.",
     "emptyTitle": "Nenhuma conversa ainda",
@@ -323,6 +326,12 @@
       "currentOnly": "Provedor: {{name}} — o único configurado.",
       "set": "Provedor → {{name}}",
       "unknown": "O provedor \"{{value}}\" não existe — configurados: {{list}}."
+    },
+    "rename": {
+      "description": "Nomeia esta conversa — sem argumento, mostra o nome atual",
+      "current": "Esta conversa é \"{{title}}\" — /rename <nome> para mudar.",
+      "none": "Envie uma tarefa primeiro — uma conversa sem mensagens não tem o que nomear.",
+      "set": "Conversa → \"{{title}}\""
     },
     "new": {
       "description": "Começa uma nova conversa"

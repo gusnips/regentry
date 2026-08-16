@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationStore } from "./store";
 import type { ConversationMeta } from "../conversations";
 import { Button } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
+import { TitleInput } from "./TitleInput";
 
 function BackIcon() {
   return (
@@ -25,6 +27,14 @@ function TrashIcon() {
   return (
     <Icon>
       <path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14" />
+    </Icon>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <Icon>
+      <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
     </Icon>
   );
 }
@@ -118,6 +128,8 @@ function ConversationRow({
   onDelete: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  const renameConversation = useConversationStore((s) => s.renameConversation);
+  const [editing, setEditing] = useState(false);
   const title = conversation.title || t("history.untitled");
   return (
     <div
@@ -127,64 +139,95 @@ function ConversationRow({
           : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
       }`}
     >
-      <button
-        type="button"
-        onClick={onOpen}
-        className="min-w-0 flex-1 cursor-pointer rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950"
-      >
-        <div
-          className={`truncate text-sm ${
-            active
-              ? "font-medium text-brand-700 dark:text-brand-300"
-              : "text-neutral-800 dark:text-neutral-100"
-          }`}
-        >
-          {title}
-        </div>
-        <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-neutral-500 dark:text-neutral-400">
-          {conversation.agent && (
-            <>
-              <span className="sr-only">
-                {t("history.drivenBy", { agent: conversation.agent })}
+      {editing ? (
+        // Swapped IN for the open button rather than nested inside it — an
+        // <input> in a <button> is invalid markup and eats its own clicks.
+        <TitleInput
+          value={conversation.title}
+          placeholder={t("history.renamePlaceholder")}
+          aria-label={t("history.rename")}
+          onCommit={(next) => {
+            renameConversation(conversation.id, next);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+          className="flex-1 text-sm text-neutral-800 dark:text-neutral-100"
+        />
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={onOpen}
+            className="min-w-0 flex-1 cursor-pointer rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950"
+          >
+            <div
+              className={`truncate text-sm ${
+                active
+                  ? "font-medium text-brand-700 dark:text-brand-300"
+                  : "text-neutral-800 dark:text-neutral-100"
+              }`}
+            >
+              {title}
+            </div>
+            <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-neutral-500 dark:text-neutral-400">
+              {conversation.agent && (
+                <>
+                  <span className="sr-only">
+                    {t("history.drivenBy", { agent: conversation.agent })}
+                  </span>
+                  <span
+                    aria-hidden
+                    className="size-1.5 shrink-0 rounded-full bg-neutral-300 dark:bg-neutral-600"
+                  />
+                  <span
+                    aria-hidden
+                    className="shrink-0 font-medium text-brand-600 dark:text-brand-400"
+                  >
+                    {conversation.agent}
+                  </span>
+                  <span aria-hidden>·</span>
+                </>
+              )}
+              <span className="truncate">
+                {/* No count on a thread that has none to show (an MCP thread opened
+                    but not yet driven, a row written before the count meant tasks) —
+                    "0 tasks" says less than the time alone. */}
+                {conversation.taskCount
+                  ? `${t("history.tasks", { count: conversation.taskCount })} · `
+                  : ""}
+                {relativeTime(conversation.updatedAt, i18n.language)}
               </span>
-              <span
-                aria-hidden
-                className="size-1.5 shrink-0 rounded-full bg-neutral-300 dark:bg-neutral-600"
-              />
-              <span aria-hidden className="shrink-0 font-medium text-brand-600 dark:text-brand-400">
-                {conversation.agent}
-              </span>
-              <span aria-hidden>·</span>
-            </>
-          )}
-          <span className="truncate">
-            {/* No count on a thread that has none to show (an MCP thread opened
-                but not yet driven, a row written before the count meant tasks) —
-                "0 tasks" says less than the time alone. */}
-            {conversation.taskCount
-              ? `${t("history.tasks", { count: conversation.taskCount })} · `
-              : ""}
-            {relativeTime(conversation.updatedAt, i18n.language)}
-          </span>
-        </div>
-      </button>
-      <ConfirmDialog
-        trigger={
+            </div>
+          </button>
           <Button
-            variant="ghost-danger"
+            variant="ghost"
             size="sm"
             className="shrink-0 px-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-            title={t("history.delete")}
-            aria-label={t("history.deleteAria", { title })}
+            title={t("history.rename")}
+            aria-label={t("history.renameAria", { title })}
+            onClick={() => setEditing(true)}
           >
-            <TrashIcon />
+            <PencilIcon />
           </Button>
-        }
-        title={t("history.deleteTitle")}
-        description={t("history.deleteBody")}
-        confirmLabel={t("history.delete")}
-        onConfirm={onDelete}
-      />
+          <ConfirmDialog
+            trigger={
+              <Button
+                variant="ghost-danger"
+                size="sm"
+                className="shrink-0 px-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                title={t("history.delete")}
+                aria-label={t("history.deleteAria", { title })}
+              >
+                <TrashIcon />
+              </Button>
+            }
+            title={t("history.deleteTitle")}
+            description={t("history.deleteBody")}
+            confirmLabel={t("history.delete")}
+            onConfirm={onDelete}
+          />
+        </>
+      )}
     </div>
   );
 }

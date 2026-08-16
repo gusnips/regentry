@@ -14,6 +14,7 @@ import {
   getMessages,
   listConversations,
   MAX_MESSAGES,
+  renameConversation,
   setActiveConversation,
   watchConversations,
 } from "../conversations";
@@ -122,6 +123,8 @@ interface ConversationState {
   newConversation: () => void;
   openConversation: (id: string) => void;
   removeConversation: (id: string) => void;
+  /** Names a conversation by hand — clearing it lets the next message re-derive one. */
+  renameConversation: (id: string, title: string) => void;
 }
 
 let port: chrome.runtime.Port | null = null;
@@ -1049,6 +1052,12 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         // A switch that raced this read wins — never paint a stale transcript.
         if (get().activeId === id) set({ messages });
       });
+    },
+
+    // No optimistic set: the index watch already feeds `conversations`, and one
+    // write's echo repaints both the header and the row that raised it.
+    renameConversation: (id, title) => {
+      void renameConversation(id, title);
     },
 
     removeConversation: (id) => {
