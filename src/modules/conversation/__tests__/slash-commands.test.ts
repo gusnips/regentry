@@ -35,7 +35,13 @@ function lastNote(): string {
 
 beforeEach(() => {
   useProvidersStore.setState({ providers: [PROVIDER], activeId: "p1", loaded: true });
-  useConversationStore.setState({ messages: [], runTarget: "thisPage", status: "idle" });
+  useConversationStore.setState({
+    messages: [],
+    runTarget: "thisPage",
+    status: "idle",
+    queuedRun: null,
+    board: { queue: [] },
+  });
 });
 
 describe("parseSlash", () => {
@@ -198,5 +204,39 @@ describe("slashItems", () => {
     expect(slashItems("/effort h")?.items.map((i) => i.key)).toEqual(["high"]);
     // A no-arg command's exact name shows nothing — Enter runs it.
     expect(slashItems("/new")?.items).toEqual([]);
+  });
+});
+
+/**
+ * The one command that acts on the live run. It exists because the composer's
+ * ■ button yields to ↑ Send the moment there is text: a run you decide to kill
+ * halfway through typing a steer has no mouse target until the line is cleared.
+ */
+describe("/stop", () => {
+  it("stops a run working this conversation, and says nothing — the seam line does", () => {
+    useConversationStore.setState({ status: "running" });
+    const before = useConversationStore.getState().messages.length;
+
+    command("stop").run(undefined);
+
+    expect(useConversationStore.getState().status).toBe("idle");
+    expect(useConversationStore.getState().messages).toHaveLength(before);
+  });
+
+  it("takes a still-queued submission out of the line instead", () => {
+    useConversationStore.setState({
+      status: "idle",
+      queuedRun: { id: "q1", position: 2, task: "check the price" },
+    });
+
+    command("stop").run(undefined);
+
+    expect(useConversationStore.getState().queuedRun).toBeNull();
+    expect(lastNote()).toContain("queue");
+  });
+
+  it("orients instead of failing silently when there is nothing to stop", () => {
+    command("stop").run(undefined);
+    expect(lastNote()).toContain("no task to stop");
   });
 });

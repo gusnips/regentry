@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
 import { useConversationStore } from "../ui/store";
+import { COMMANDS, runSlash } from "../ui/slash-commands";
 import { appendMessageTo, setActiveConversation } from "../conversations";
 
 /**
@@ -69,7 +70,13 @@ beforeEach(async () => {
     content: "compare the three listings",
     timestamp: 1,
   });
-  useConversationStore.setState({ compacting: false, contextTokens: 0, status: "idle" });
+  useConversationStore.setState({
+    compacting: false,
+    contextTokens: 0,
+    status: "idle",
+    deferred: null,
+    pendingSend: null,
+  });
   useConversationStore.getState().connect();
   await settled();
 });
@@ -110,5 +117,62 @@ describe("a compaction the panel asked for", () => {
     // Otherwise the shimmer keeps promising a fold nobody is doing.
     expect(state.compacting).toBe(false);
     expect(state.messages.some((m) => m.content.startsWith("Couldn't compact:"))).toBe(true);
+  });
+});
+
+/**
+ * /compact is the one command that cannot just fire: it costs a model call and
+ * writes the transcript a live run is still writing. So it waits instead of
+ * refusing — "come back later" would make the user remember and retype the
+ * command they already typed.
+ */
+describe("/compact typed while a run works", () => {
+  /** Through the real registry and the real gate — the deferral is enforced in
+   *  runSlash, so a test that called store.compact() would prove nothing. */
+  function typeCompact(): void {
+    const command = COMMANDS.find((c) => c.name === "compact");
+    if (!command) throw new Error("no /compact in COMMANDS");
+    runSlash(command, undefined);
+  }
+
+  it("parks instead of firing, and goes when the run ends", async () => {
+    useConversationStore.setState({ status: "running" });
+    typeCompact();
+
+    // Nothing crossed the port — a summary must not land under a live run.
+    expect(port.posted.some((c) => c.type === "compact")).toBe(false);
+    expect(useConversationStore.getState().deferred?.name).toBe("compact");
+
+    port.fireMessage({ type: "done" });
+    await settled();
+
+    expect(port.posted.some((c) => c.type === "compact")).toBe(true);
+    expect(useConversationStore.getState().deferred).toBeNull();
+  });
+
+  it("stays parked when the stop was a redirect — the next run is already committed", async () => {
+    useConversationStore.setState({ status: "running" });
+    typeCompact();
+    // The composer's Stop with a queued line: the halt is a handoff, not an end.
+    useConversationStore.setState({ pendingSend: "and the fourth listing too" });
+
+    port.fireMessage({ type: "done" });
+    await settled();
+
+    // sendTask only reaches `running` after an await — a drain in that gap
+    // would fold a conversation whose next task is already on its way.
+    expect(port.posted.some((c) => c.type === "compact")).toBe(false);
+    expect(useConversationStore.getState().deferred?.name).toBe("compact");
+  });
+
+  it("is take-back-able — the card's × drops it before it ever runs", async () => {
+    useConversationStore.setState({ status: "running" });
+    typeCompact();
+    useConversationStore.getState().cancelDeferred();
+
+    port.fireMessage({ type: "done" });
+    await settled();
+
+    expect(port.posted.some((c) => c.type === "compact")).toBe(false);
   });
 });

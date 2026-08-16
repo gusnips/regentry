@@ -348,6 +348,17 @@
     "current": "Atual",
     "unknown": "O comando /{{name}} não existe — digite / para ver a lista.",
     "nextTask": "Vale para a próxima tarefa, não para a que está rodando.",
+    "deferred": {
+      "chip": "Quando terminar",
+      "title": "Esperando a execução terminar — dispara assim que nada estiver rodando aqui",
+      "cancelAria": "Descartar o comando em espera"
+    },
+    "stop": {
+      "description": "Para a tarefa em execução",
+      "none": "Nada rodando aqui — não há tarefa para parar.",
+      "elsewhere": "Nada rodando nesta conversa — a tarefa em andamento é de outra.",
+      "cancelledQueued": "Tirei sua tarefa da fila — nada chegou a começar."
+    },
     "background": {
       "description": "Alterna onde a próxima tarefa roda — nesta página ou em segundo plano",
       "current": "Destino: {{target}}.",

@@ -348,6 +348,17 @@
     "current": "Actual",
     "unknown": "El comando /{{name}} no existe — escribe / para ver la lista.",
     "nextTask": "Se aplica a la próxima tarea, no a la que se está ejecutando.",
+    "deferred": {
+      "chip": "Al terminar",
+      "title": "Esperando a que termine la ejecución — se lanza en cuanto no haya nada trabajando aquí",
+      "cancelAria": "Descartar el comando en espera"
+    },
+    "stop": {
+      "description": "Detiene la tarea en curso",
+      "none": "Aquí no hay nada ejecutándose — no hay tarea que detener.",
+      "elsewhere": "No hay nada ejecutándose en esta conversación — la tarea que trabaja ahora es de otra.",
+      "cancelledQueued": "Saqué tu tarea de la cola — no se llegó a iniciar nada."
+    },
     "background": {
       "description": "Alterna dónde corre la próxima tarea — esta página o segundo plano",
       "current": "Destino: {{target}}.",

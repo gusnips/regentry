@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useConversationStore } from "./store";
+import { runsHere, useConversationStore } from "./store";
 import { pendingAskId } from "./ask-gate";
 import { toAttachment } from "./image";
 import { recallStep, sentMessages } from "./history-recall";
@@ -10,7 +10,7 @@ import { useQueueBusy } from "./hooks";
 import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
 import { RunTargetToggle } from "./RunTargetToggle";
 import { SlashMenu } from "./SlashMenu";
-import { COMMANDS, executeSlash, slashItems } from "./slash-commands";
+import { COMMANDS, executeSlash, runSlash, slashItems } from "./slash-commands";
 import type { SlashItem } from "./slash-commands";
 import { TipLine } from "@/modules/tips/ui";
 import { TextArea } from "@/components/TextArea";
@@ -125,6 +125,8 @@ export function ChatInput() {
   const boardRunHere = useConversationStore(
     (s) => s.activeId !== null && s.board.running?.conversationId === s.activeId,
   );
+  const deferred = useConversationStore((s) => s.deferred);
+  const cancelDeferred = useConversationStore((s) => s.cancelDeferred);
   const bridgeActive = useConversationStore((s) => s.bridgeActive);
   const drivingTab = useConversationStore((s) => s.drivingTab);
   const stepBusy = useConversationStore((s) => s.pendingStepId !== null);
@@ -137,10 +139,12 @@ export function ChatInput() {
   const sentHistory = useMemo(() => sentMessages(messages), [messages]);
 
   const running = status === "running";
-  // Steering = typing into a run that is driving THIS conversation: either this
-  // panel's own run in flight, or one the board reports here after a reopen.
-  // While our own submission waits in the queue, input starts another task.
-  const steering = queuedRun ? false : running || boardRunHere;
+  // Steering = typing into a run that is driving THIS conversation — the same
+  // question /stop and the deferral gate ask, so it comes from the one
+  // predicate. While our own submission only waits in the queue, input starts
+  // another task instead.
+  const runHere = useConversationStore(runsHere);
+  const steering = queuedRun ? false : runHere;
   // The composer's one button is a single morphing slot (the agentic-IDE idiom):
   // ■ Stop appears only while a live run owns this conversation AND the input is
   // empty — the moment there's text, ↑ Send/Queue takes the slot back, so the
@@ -341,7 +345,7 @@ export function ChatInput() {
   const acceptSlash = (item: SlashItem) => {
     if (!slash) return;
     if (slash.kind === "candidates") {
-      slash.command.run(item.key);
+      runSlash(slash.command, item.key);
       resetComposer();
       return;
     }
@@ -350,7 +354,7 @@ export function ChatInput() {
     if (command.takesArg) {
       setText(`/${command.name} `);
     } else {
-      command.run(undefined);
+      runSlash(command, undefined);
       resetComposer();
     }
   };
@@ -502,6 +506,18 @@ export function ChatInput() {
           text={queuedRun.task}
           onRemove={cancelQueuedRun}
           removeAria={t("queue.cancel")}
+        />
+      )}
+      {/* A command that had to wait its turn — the same card as a queued steer,
+          because it is the same fact: something committed, not yet run, still
+          take-back-able. */}
+      {deferred && (
+        <QueueCard
+          chip={t("commands.deferred.chip")}
+          title={t("commands.deferred.title")}
+          text={`/${deferred.name}`}
+          onRemove={cancelDeferred}
+          removeAria={t("commands.deferred.cancelAria")}
         />
       )}
       {attachments.length > 0 && (

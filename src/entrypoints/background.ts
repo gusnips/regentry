@@ -298,10 +298,16 @@ export default defineBackground(() => {
           // is every run whose notification the user just clicked — would come
           // back unanswerable: a question on screen with no way to say yes.
           const parked = getActiveRun();
-          if (parked?.owner === "panel" && parked.planApproval) {
-            const { steps, reapproval } = parked.planApproval;
-            if ((await getActiveId()) === parked.conversationId) {
+          if (parked?.owner === "panel" && (await getActiveId()) === parked.conversationId) {
+            if (parked.planApproval) {
+              const { steps, reapproval } = parked.planApproval;
               send(port, { type: "plan_approval", steps, reapproval });
+            }
+            // Same reason as the plan card above: the queue is the worker's,
+            // its cards are the panel's. Without this the steers still land
+            // while the composer shows nothing to cancel.
+            if (parked.injectedQueue.length > 0) {
+              send(port, { type: "queued_steers", items: [...parked.injectedQueue] });
             }
           }
           break;

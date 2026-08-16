@@ -348,6 +348,17 @@
     "current": "Current",
     "unknown": "No command /{{name}} — type / for the list.",
     "nextTask": "Applies to the next task, not the one running.",
+    "deferred": {
+      "chip": "After the run",
+      "title": "Waiting for the run to finish — it fires the moment nothing is working here",
+      "cancelAria": "Drop the waiting command"
+    },
+    "stop": {
+      "description": "Stop the running task",
+      "none": "Nothing is running here — there's no task to stop.",
+      "elsewhere": "Nothing is running in this conversation — the task working now belongs to another one.",
+      "cancelledQueued": "Took your task out of the queue — nothing was started."
+    },
     "background": {
       "description": "Toggle where the next task runs — this page, or background",
       "current": "Run target: {{target}}.",

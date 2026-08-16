@@ -6,15 +6,28 @@ import { EFFORT_LABEL_KEYS, isEffort, REASONING_EFFORTS } from "@/modules/provid
 import { fetchProviderUsage, supportsUsage } from "@/modules/providers/usage";
 import type { UsageWindow } from "@/modules/providers/usage";
 import { useProvidersStore, activeProviderOf } from "@/modules/providers/ui";
-import { useConversationStore } from "./store";
+import { runsHere, useConversationStore } from "./store";
 
 /**
- * Slash commands — /background, /effort, /model, /provider, /new, /help.
+ * Slash commands — /stop, /background, /effort, /model, /provider, /new, /help.
  * A draft whose first character is "/" (and that stays on one line) is a
  * command, not a task: it runs LOCALLY against the panel's stores and is never
  * sent to the model, never written to the transcript (the transcript is the
  * model's memory — a settings echo would pose as a turn). Each result lands as
  * a display-only note row (a tool-less step message), gone on panel reopen.
+ *
+ * A command is chrome, not conversation, so it never joins the run queue —
+ * queueing /help behind a three-minute run helps nobody, and /model is exactly
+ * what you reach for WHILE watching a run go wrong. What a command touches
+ * decides its class, and there are three:
+ *
+ * - **Panel-local** (/help, /new, /rename, /usage) and **settings the next run
+ *   snapshots** (/model, /effort, /provider, /background — these say so, via
+ *   nextTaskSuffix): fire immediately, always.
+ * - **Acts on the live run** (/stop): fires immediately — that is the point.
+ * - **Costs a model call or writes the transcript** (/compact, and any command
+ *   added later that produces a task): `deferWhileBusy`. It parks until the
+ *   conversation is quiet instead of dead-ending on "try again later".
  *
  * A bare picker command (/effort, /model, /provider, /background) opens its
  * candidates in the menu with the current value checked and pre-highlighted —
@@ -33,6 +46,7 @@ export interface SlashCandidate {
 }
 
 type CommandDescriptionKey =
+  | "commands.stop.description"
   | "commands.background.description"
   | "commands.effort.description"
   | "commands.model.description"
@@ -53,6 +67,9 @@ export interface SlashCommand {
   /** The candidate value in effect right now — the menu checks it and lands
    *  the highlight on it, so Enter on an untouched picker is a harmless no-op. */
   current?: () => string | undefined;
+  /** Needs a quiet conversation: it costs a model call, or writes the transcript
+   *  a live run is still writing. `runSlash` parks it instead of firing it. */
+  deferWhileBusy?: boolean;
   run: (arg: string | undefined) => void;
 }
 
@@ -92,9 +109,7 @@ function activeProvider() {
 /** Settings edits land on the stored config that the next run snapshots — a
  *  bare "Model → X" while a run is live would read as if it applied mid-run. */
 function nextTaskSuffix(): string {
-  return useConversationStore.getState().status === "running"
-    ? ` ${i18n.t("commands.nextTask")}`
-    : "";
+  return runsHere(useConversationStore.getState()) ? ` ${i18n.t("commands.nextTask")}` : "";
 }
 
 /** The effort picker's full set, as typable tokens — never translated. */
@@ -110,6 +125,32 @@ function windowLine(label: string, window: UsageWindow): string {
 
 export const COMMANDS: readonly SlashCommand[] = [
   {
+    name: "stop",
+    descriptionKey: "commands.stop.description",
+    // First in the list because it is the one command you type against the
+    // clock — and the only one whose button can be unreachable: the composer's
+    // ■ yields to ↑ Send the moment there is text, so a run you decide to kill
+    // halfway through typing a steer has no mouse target until the line is
+    // cleared. "/s" + Enter is that target.
+    run: () => {
+      const store = useConversationStore.getState();
+      // Our own submission is still in line rather than working — dropping it
+      // from the queue is what "stop" means while nothing of ours is running.
+      if (store.queuedRun) {
+        store.cancelQueuedRun();
+        note(i18n.t("commands.stop.cancelledQueued"));
+        return;
+      }
+      if (!runsHere(store)) {
+        note(i18n.t(store.board.running ? "commands.stop.elsewhere" : "commands.stop.none"));
+        return;
+      }
+      // No note — the run's own "Stopped" seam line is the acknowledgment, and
+      // queued steers become the next task exactly as the ■ button does.
+      store.stop();
+    },
+  },
+  {
     name: "background",
     descriptionKey: "commands.background.description",
     takesArg: true,
@@ -124,7 +165,7 @@ export const COMMANDS: readonly SlashCommand[] = [
         note(
           i18n.t("commands.background.current", {
             target: i18n.t(store.runTarget === "thisPage" ? "run.thisPage" : "run.background"),
-          }),
+          }) + nextTaskSuffix(),
         );
         return;
       }
@@ -134,12 +175,15 @@ export const COMMANDS: readonly SlashCommand[] = [
       }
       const next = arg === "on" ? "background" : "thisPage";
       store.setRunTarget(next);
+      // The suffix is not decoration here: sendTask reads runTarget at send
+      // time, so mid-run this would otherwise read as having just moved the
+      // live run off the page the user is watching it work.
       note(
         i18n.t(
           next === "background"
             ? "commands.background.nowBackground"
             : "commands.background.nowThisPage",
-        ),
+        ) + nextTaskSuffix(),
       );
     },
   },
@@ -286,7 +330,11 @@ export const COMMANDS: readonly SlashCommand[] = [
         return;
       }
       if (!arg) {
-        note(i18n.t("commands.rename.current", { title: store.conversations.find((c) => c.id === id)?.title ?? "" }));
+        note(
+          i18n.t("commands.rename.current", {
+            title: store.conversations.find((c) => c.id === id)?.title ?? "",
+          }),
+        );
         return;
       }
       store.renameConversation(id, arg);
@@ -325,6 +373,7 @@ export const COMMANDS: readonly SlashCommand[] = [
     // The one command that is not local: summarizing takes a model call, and
     // the transcript it writes to is the worker's. The store's action posts it
     // and reports back through the compacted/compact_failed events.
+    deferWhileBusy: true,
     run: () => {
       useConversationStore.getState().compact();
     },
@@ -417,6 +466,21 @@ export function resolveSlashArg(
   return prefix.length === 1 && prefix[0] ? prefix[0].value : raw;
 }
 
+/**
+ * The one place a command is fired — Enter and the menu's click both come
+ * through here, so the deferral gate cannot be bypassed by picking a row. A
+ * parked command is not lost and not refused: the composer shows it as a card
+ * waiting its turn, and the store fires it the moment the conversation is quiet.
+ */
+export function runSlash(command: SlashCommand, arg: string | undefined): void {
+  const store = useConversationStore.getState();
+  if (command.deferWhileBusy && runsHere(store)) {
+    store.deferCommand(command.name, () => command.run(arg));
+    return;
+  }
+  command.run(arg);
+}
+
 export type SlashOutcome = "not-slash" | "executed" | { complete: string };
 
 /**
@@ -429,7 +493,7 @@ export function executeSlash(text: string): SlashOutcome {
   const parsed = parseSlash(text);
   if (!parsed) return "not-slash";
   if (parsed.command) {
-    parsed.command.run(resolveSlashArg(parsed.command, parsed.arg));
+    runSlash(parsed.command, resolveSlashArg(parsed.command, parsed.arg));
     return "executed";
   }
   if (!parsed.fragment) return "executed"; // a bare "/" — the menu already said everything
@@ -437,7 +501,7 @@ export function executeSlash(text: string): SlashOutcome {
   if (matches.length === 1 && matches[0]) {
     const command = matches[0];
     if (command.takesArg) return { complete: `/${command.name} ` };
-    command.run(undefined);
+    runSlash(command, undefined);
     return "executed";
   }
   note(i18n.t("commands.unknown", { name: parsed.fragment }));

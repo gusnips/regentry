@@ -83,6 +83,11 @@ interface ConversationState {
   /** A compaction is in flight — a second /compact while one runs is a no-op.
    *  Progress shows as a transcript note that the result replaces. */
   compacting: boolean;
+  /** A slash command parked until this conversation goes quiet — the one class
+   *  of command that cannot just fire, because it costs a model call and writes
+   *  the transcript a live run is still writing. The composer card is its
+   *  receipt; the drain fires it the moment nothing here is running. */
+  deferred: { name: string; run: () => void } | null;
   /** Input tokens the last turn actually sent — the real context size, straight
    *  from the provider's own usage. Cumulative `usage.input` is the sum of every
    *  turn and says nothing about how full the window is. */
@@ -98,6 +103,10 @@ interface ConversationState {
    *  `resume` re-runs the failed task once the summary lands: the CTA's promise
    *  is "compact and carry on", one click. */
   compact: (opts?: { resume?: boolean }) => void;
+  /** Park a command until nothing is running here (see `deferred`). */
+  deferCommand: (name: string, run: () => void) => void;
+  /** Drop the parked command — the card's ×. */
+  cancelDeferred: () => void;
   queueMessage: (text: string) => void;
   unqueueMessage: (id: string) => void;
   /** Cancel this panel's still-waiting queued run. */
@@ -125,6 +134,19 @@ interface ConversationState {
   removeConversation: (id: string) => void;
   /** Names a conversation by hand — clearing it lets the next message re-derive one. */
   renameConversation: (id: string, title: string) => void;
+}
+
+/**
+ * Is a run working on THIS conversation — ours in flight, or one the board
+ * reports here after a reopen? The composer's steering, /stop and the deferral
+ * gate all ask the same question, and a panel that reopened onto its own
+ * background run reads `status` idle, so the board half is not optional.
+ */
+export function runsHere(s: ConversationState): boolean {
+  return (
+    s.status === "running" ||
+    (s.activeId !== null && s.board.running?.conversationId === s.activeId)
+  );
 }
 
 let port: chrome.runtime.Port | null = null;
@@ -282,6 +304,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     pastedTexts: [],
     collapseDisabled: false,
     drivingTab: null,
+    // A deferral is scoped to the conversation it was typed in — /compact folds
+    // whatever is open when it fires, so it must not survive a switch.
+    deferred: null,
     // Per-conversation measurements: another chat's fill is not this chat's.
     compacting: false,
     contextTokens: 0,
@@ -360,6 +385,20 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       draft: mergeIntoDraft(q.map((x) => x.text).join("\n")),
       collapseDisabled: false,
     });
+  };
+
+  /**
+   * Fire the parked command once this conversation is quiet. "Quiet" is stricter
+   * than "the run ended": a stop redirect and a queued run are both a next run
+   * already committed, and a /compact landing between them would summarize a
+   * story about to continue. The card just stays up until they clear.
+   */
+  const drainDeferred = () => {
+    const s = get();
+    if (!s.deferred || runsHere(s) || s.pendingSend !== null || s.queuedRun) return;
+    const { run } = s.deferred;
+    set({ deferred: null });
+    run();
   };
 
   /** A stop's pending redirect that errored instead of unwinding cleanly returns to the composer. */
@@ -564,6 +603,12 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         break;
       }
 
+      case "queued_steers":
+        // The worker's answer on reconnect — its queue is the authority, so this
+        // replaces rather than merges. Any card the panel still shows is in it.
+        set({ queued: event.items });
+        break;
+
       case "injected":
         // The loop consumed a queued message at a tool boundary — the pending
         // line becomes a real transcript entry in the order the model saw it.
@@ -655,6 +700,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         returnPending();
         pushDisplay(makeMsg("error", event.message, { kind: event.kind }));
         settleRun("error");
+        // A failed run is a finished one — and a context overflow is the very
+        // case where the parked /compact is what the user needs next.
+        drainDeferred();
         break;
       }
 
@@ -682,9 +730,14 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         // next task now that the old run has fully unwound.
         const pending = get().pendingSend;
         if (pending !== null) {
-          // Clear BEFORE sendTask — the guard above would otherwise bail.
+          // Clear BEFORE sendTask — the guard above would otherwise bail. The
+          // parked command sits this one out: sendTask only reaches `running`
+          // after an await, so a drain here would land in the gap and fold a
+          // conversation whose next run is already committed.
           set({ pendingSend: null });
           void sendTask(pending);
+        } else {
+          drainDeferred();
         }
         break;
       }
@@ -802,6 +855,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     board: { queue: [] },
     queuedRun: null,
     compacting: false,
+    deferred: null,
     contextTokens: 0,
 
     connect: () => {
@@ -847,6 +901,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         // covers the close/has-none cases already.
         const running = board.running?.conversationId === activeId ? board.running : undefined;
         if (running) set({ runStartedAt: running.startedAt });
+        // A run this panel only watches (reopened onto its own background run)
+        // ends here, not on a `done` event — this is that run's settle point.
+        drainDeferred();
         void getMessages(activeId).then((messages) => {
           if (get().activeId === activeId) set({ messages });
         });
@@ -882,9 +939,12 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       // Mid-run the wire conversation is the run's, not the transcript's — the
       // loop folds its own turns when it needs to (see compactRunMessages), and
       // a transcript summary landing under a live run would summarize a story
-      // still being written.
-      if (get().status === "running") {
-        pushDisplay(makeMsg("step", i18n.t("commands.compact.busy")));
+      // still being written. So it waits rather than refusing: "come back later"
+      // makes the user remember and retype the one command they already typed.
+      // Both callers park here — /compact routes through runSlash, but the
+      // context-error CTA can be clicked long after a fresh run has started.
+      if (runsHere(get())) {
+        get().deferCommand("compact", () => get().compact(opts));
         return;
       }
       // No progress note: `compacting` draws a live shimmer row at the tail,
@@ -900,6 +960,12 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         : null;
       post({ type: "compact" });
     },
+
+    // One slot: a command parked twice is still one thing waiting, and the
+    // second ask is the same ask.
+    deferCommand: (name, run) => set({ deferred: { name, run } }),
+
+    cancelDeferred: () => set({ deferred: null }),
 
     cancelQueuedRun: () => {
       const queued = get().queuedRun;

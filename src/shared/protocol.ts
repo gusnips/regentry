@@ -125,6 +125,14 @@ export type Event =
   | { type: "plan_approval"; steps: string[]; reapproval: boolean }
   /** A queued message was inserted into the conversation at a tool boundary */
   | { type: "injected"; id: string; text: string }
+  /**
+   * The steering messages still waiting at a tool boundary, answered on
+   * `query_run`. The queue lives in the worker, but its cards live in the
+   * panel — a panel that closed and came back would otherwise show none of
+   * them while the worker still delivers every one, leaving the user with a
+   * committed message they can no longer take back.
+   */
+  | { type: "queued_steers"; items: { id: string; text: string }[] }
   /** The submitted run is waiting in the serial queue — position is 1-based. */
   | { type: "run_queued"; id: string; position: number }
   | { type: "usage"; input: number; output: number }
