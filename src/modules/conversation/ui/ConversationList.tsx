@@ -158,7 +158,12 @@ function ConversationRow({
             </>
           )}
           <span className="truncate">
-            {t("history.messages", { count: conversation.messageCount })} ·{" "}
+            {/* No count on a thread that has none to show (an MCP thread opened
+                but not yet driven, a row written before the count meant tasks) —
+                "0 tasks" says less than the time alone. */}
+            {conversation.taskCount
+              ? `${t("history.tasks", { count: conversation.taskCount })} · `
+              : ""}
             {relativeTime(conversation.updatedAt, i18n.language)}
           </span>
         </div>

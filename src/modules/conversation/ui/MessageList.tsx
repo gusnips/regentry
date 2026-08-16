@@ -15,7 +15,14 @@ import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore, activeProviderOf } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { Button } from "@/components/Button";
-import { CheckIcon, ChevronRightIcon, DotIcon, Icon, XIcon } from "@/components/Icon";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  DotIcon,
+  Icon,
+  XIcon,
+} from "@/components/Icon";
 import { Bubble, BubbleContent } from "@/components/Bubble";
 import {
   MessageScroller,
@@ -646,7 +653,20 @@ function TabStamp({ tab }: { tab: NonNullable<Message["tab"]> }) {
  */
 const RENDER_WINDOW = 50;
 
-/** The fold's own row: what is hidden, and the one click that brings it back. */
+/**
+ * The transcript's top edge: how much is folded away above, and the one click
+ * that brings it back.
+ *
+ * Drawn as a pill centered on a rule — deliberately unlike anything else in the
+ * chat. A left-aligned chevron line is this panel's disclosure idiom (tool rows,
+ * bursts, thoughts), so wearing it made the only way to reach the rest of the
+ * conversation read as one more tool call to skip past. A seam across the column
+ * says boundary, and a pill says button.
+ *
+ * Manual on purpose: this fold is what keeps ~50 message subtrees and their
+ * decoded screenshots out of the DOM, so auto-loading whenever a reader reaches
+ * the top would quietly undo it every time they scrolled up.
+ */
 function EarlierFold({
   count,
   open,
@@ -658,17 +678,26 @@ function EarlierFold({
 }) {
   const { t } = useTranslation();
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={open}
-      className="flex items-center gap-1.5 self-start rounded px-1 text-xs text-neutral-500 select-none hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:text-neutral-400 dark:hover:text-neutral-300"
-    >
-      <ChevronRightIcon
-        className={`shrink-0 text-neutral-400 transition-transform dark:text-neutral-500 ${open ? "rotate-90" : ""}`}
-      />
-      <span>{t("compact.earlier", { count })}</span>
-    </button>
+    <div className="flex items-center gap-2 py-0.5">
+      <span aria-hidden className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex min-w-0 items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 transition-colors select-none hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+      >
+        {/* Points the way the click travels: up into what is hidden, back down
+            to fold it away again. */}
+        <ChevronDownIcon
+          size={12}
+          className={`shrink-0 transition-transform ${open ? "" : "rotate-180"}`}
+        />
+        <span className="truncate">
+          {open ? t("compact.hideEarlier") : t("compact.showEarlier", { count })}
+        </span>
+      </button>
+      <span aria-hidden className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
+    </div>
   );
 }
 
@@ -1018,7 +1047,16 @@ function Transcript() {
   // are not hidden, they are unmounted: `display:none` and a closed <details>
   // both keep every node and every decoded screenshot alive in memory, which is
   // the thing that made a long transcript heavy in the first place.
-  const [earlierOpen, setEarlierOpen] = useState(false);
+  // A fold belongs to its transcript, so the state holds WHICH conversation is
+  // unfolded rather than a bare flag: opening one and switching threads would
+  // otherwise mount every message of a transcript nobody asked to expand.
+  const activeId = useConversationStore((s) => s.activeId);
+  const [openFor, setOpenFor] = useState<string | null>(null);
+  const earlierOpen = openFor !== null && openFor === activeId;
+  const toggleEarlier = useCallback(
+    () => setOpenFor((id) => (id === activeId ? null : activeId)),
+    [activeId],
+  );
   const foldAt = useMemo(() => {
     const compactedAt = messages.map((m) => m.role).lastIndexOf("summary");
     return Math.max(compactedAt, messages.length - RENDER_WINDOW, 0);
@@ -1044,16 +1082,17 @@ function Transcript() {
   return (
     <MessageScroller>
       <MessageScrollerViewport>
+        {/* Above the content, not inside it: the scroller treats every child of
+            the content as a message, and a permanent first "message" hides the
+            prepend it needs to see — unfolding read as fifty new messages
+            arriving and threw the reader down the transcript. Outside, the
+            recovered messages prepend properly and the reading position holds. */}
+        {foldAt > 0 && (
+          <div className="mb-2">
+            <EarlierFold count={foldAt} open={earlierOpen} onToggle={toggleEarlier} />
+          </div>
+        )}
         <MessageScrollerContent>
-          {foldAt > 0 && (
-            <MessageScrollerItem>
-              <EarlierFold
-                count={foldAt}
-                open={earlierOpen}
-                onToggle={() => setEarlierOpen((v) => !v)}
-              />
-            </MessageScrollerItem>
-          )}
           {(showReasoningOn
             ? shown.map((m) => ({ kind: "message" as const, msg: m }))
             : groupBursts(shown, status === "running")

@@ -203,8 +203,8 @@
     "untitled": "Tarea sin título",
     "drivenBy": "Controlada por {{agent}} vía MCP",
     "unknownAgent": "Un cliente MCP",
-    "messages_one": "{{count}} mensaje",
-    "messages_other": "{{count}} mensajes",
+    "tasks_one": "{{count}} tarea",
+    "tasks_other": "{{count}} tareas",
     "delete": "Eliminar",
     "deleteAria": "Eliminar conversación: {{title}}",
     "deleteTitle": "¿Eliminar esta conversación?",
@@ -346,8 +346,9 @@
     "folded": "Se plegaron {{count}} turnos anteriores en un resumen para liberar contexto",
     "summaryTitle": "Compactado",
     "receipt": "{{count}} mensajes · {{before}} → {{after}}",
-    "earlier_one": "Anteriores · {{count}} mensaje",
-    "earlier_other": "Anteriores · {{count}} mensajes",
+    "showEarlier_one": "Mostrar {{count}} mensaje anterior",
+    "showEarlier_other": "Mostrar {{count}} mensajes anteriores",
+    "hideEarlier": "Ocultar mensajes anteriores",
     "explain": "Los mensajes de arriba siguen aquí para ti — el agente reproduce este resumen en su lugar."
   },
   "context": {

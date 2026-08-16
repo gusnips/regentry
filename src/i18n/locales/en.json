@@ -203,8 +203,8 @@
     "untitled": "Untitled task",
     "drivenBy": "Driven by {{agent}} over MCP",
     "unknownAgent": "An MCP client",
-    "messages_one": "{{count}} message",
-    "messages_other": "{{count}} messages",
+    "tasks_one": "{{count}} task",
+    "tasks_other": "{{count}} tasks",
     "delete": "Delete",
     "deleteAria": "Delete conversation: {{title}}",
     "deleteTitle": "Delete this conversation?",
@@ -346,8 +346,9 @@
     "folded": "Folded {{count}} earlier turns into a summary to free up context",
     "summaryTitle": "Compacted",
     "receipt": "{{count}} messages · {{before}} → {{after}}",
-    "earlier_one": "Earlier · {{count}} message",
-    "earlier_other": "Earlier · {{count}} messages",
+    "showEarlier_one": "Show {{count}} earlier message",
+    "showEarlier_other": "Show {{count}} earlier messages",
+    "hideEarlier": "Hide earlier messages",
     "explain": "The messages above stay here for you — the agent replays this summary instead."
   },
   "context": {

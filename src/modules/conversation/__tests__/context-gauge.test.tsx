@@ -90,7 +90,7 @@ describe("the context gauge", () => {
           title: "t",
           createdAt: 0,
           updatedAt: 0,
-          messageCount: 2,
+          taskCount: 1,
           lastRun: { startedAt: 0, endedAt: 1, input: 90_000, output: 10, lastInput: 31_200 },
         },
       ],

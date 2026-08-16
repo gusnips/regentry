@@ -40,7 +40,18 @@ export interface ConversationMeta {
   title: string;
   createdAt: number;
   updatedAt: number;
-  messageCount: number;
+  /**
+   * How many tasks the user sent — one per run, which is the unit a history row
+   * is scanned for. Counting stored entries instead pegged every row at
+   * MAX_MESSAGES: one run writes dozens of step and reasoning rows, so any real
+   * conversation reported the cap and every row read alike.
+   *
+   * Optional because rows last written before the count meant tasks carry no
+   * value — they show their time alone until their next message fills it in.
+   * Backfilling would mean reading fifty transcripts at panel open for a number
+   * that costs nothing to wait for.
+   */
+  taskCount?: number;
   /** Tabs this conversation's runs drove, most recently worked first. */
   tabs?: LastTab[];
   /**
@@ -208,7 +219,7 @@ async function ensureConversation(id: string, agent?: string): Promise<Conversat
     title: "",
     createdAt: now,
     updatedAt: now,
-    messageCount: 0,
+    taskCount: 0,
     ...(agent ? { agent } : {}),
   };
   const kept = [meta, ...list].slice(0, MAX_CONVERSATIONS);
@@ -297,7 +308,7 @@ async function appendTo(id: string, msg: Message): Promise<string> {
     ...meta,
     title: meta.title || (msg.role === "user" ? conversationTitle(msg.content) : ""),
     updatedAt: msg.timestamp,
-    messageCount: messages.length,
+    taskCount: messages.filter((m) => m.role === "user").length,
   };
   // A fresh task retires the last run's summary — the band above the composer
   // keeps it only until the next message.

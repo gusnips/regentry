@@ -34,11 +34,14 @@ describe("conversationTitle", () => {
 describe("conversations", () => {
   it("creates on first append, titles from the user message, tracks recency", async () => {
     const first = await appendMessageFresh(msg("user", "book a flight to Lisbon"));
+    await appendMessageTo(first, msg("step", "click"));
     await appendMessageTo(first, msg("assistant", "done"));
 
     expect(await getActiveId()).toBe(first);
+    // One task, not three entries: the count is what the user sent, so a run's
+    // steps and replies can't peg every history row at the transcript cap.
     expect(await listConversations()).toEqual([
-      expect.objectContaining({ id: first, title: "book a flight to Lisbon", messageCount: 2 }),
+      expect.objectContaining({ id: first, title: "book a flight to Lisbon", taskCount: 1 }),
     ]);
 
     // "New chat" — a fresh transcript, created by its own first message.
@@ -47,7 +50,7 @@ describe("conversations", () => {
 
     const list = await listConversations();
     expect(list.map((c) => c.id)).toEqual([second, first]); // newest touched first
-    expect(await getMessages(first)).toHaveLength(2); // the first transcript survives
+    expect(await getMessages(first)).toHaveLength(3); // the first transcript survives
 
     // Reopening an old conversation appends to it and re-heads the list.
     await appendMessageTo(first, msg("user", "and again"));

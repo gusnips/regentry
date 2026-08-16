@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import puppeteer from "puppeteer-core";
+import puppeteer, { type Page } from "puppeteer-core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const extPath = join(root, "dist", "chrome-mv3");
@@ -67,7 +67,12 @@ console.log(`extension id: ${extId}`);
  */
 const SIDEPANEL_WIDTH = 400;
 
-async function shoot(page_: string, name: string, dark: boolean, width = 1280) {
+async function shoot(
+  page_: string,
+  name: string,
+  dark: boolean,
+  { width = 1280, prepare }: { width?: number; prepare?: (page: Page) => Promise<void> } = {},
+) {
   const page = await browser.newPage();
   await page.setViewport({ width, height: 800 });
   await page.emulateMediaFeatures([
@@ -76,6 +81,12 @@ async function shoot(page_: string, name: string, dark: boolean, width = 1280) {
   await page.goto(`chrome-extension://${extId}/${page_}`, { waitUntil: "networkidle0" });
   await page.evaluate(() => void document.fonts.ready);
   await new Promise((r) => setTimeout(r, 600));
+  // Surfaces a click or a scroll away — history, the folded top of a long
+  // transcript — are as worth reviewing as the one the panel opens on.
+  if (prepare) {
+    await prepare(page);
+    await new Promise((r) => setTimeout(r, 400));
+  }
   await page.screenshot({ path: join(outDir, `${name}.png`) });
   console.log(`${name}: shot`);
   await page.close();
@@ -117,7 +128,7 @@ async function seedConversation() {
           title: "Pull the latest invoice from my inbox into the expense report",
           createdAt: t,
           updatedAt: t + 60_000,
-          messageCount: 8,
+          taskCount: 1,
         },
       ],
       [`tabrunner:conversation:${id}`]: [
@@ -169,14 +180,94 @@ async function seedConversation() {
   await page.close();
 }
 
+/**
+ * A thread long enough to fold, plus the neighbours that make a history list a
+ * list. Seeded after the chat shots so those keep showing the demo transcript.
+ */
+async function seedLongThread() {
+  const page = await browser.newPage();
+  await page.goto(`chrome-extension://${extId}/sidepanel.html`);
+  await page.evaluate(() => {
+    const id = "shots-long";
+    const t = 1_700_000_000_000;
+    let n = 0;
+    const msg = (m: Record<string, unknown>) => ({ id: `l${++n}`, timestamp: t + n * 1000, ...m });
+    const messages = Array.from({ length: 12 }, (_, i) => [
+      msg({ role: "user", content: `Check order #${1000 + i} and note its ship date` }),
+      msg({
+        role: "step",
+        tool: "navigate",
+        ok: true,
+        content: "",
+        args: { url: `https://shop.example.com/orders/${1000 + i}` },
+      }),
+      msg({
+        role: "step",
+        tool: "snapshot",
+        ok: true,
+        content: "",
+        detail: "Captured 118 elements",
+      }),
+      msg({ role: "step", tool: "click", ok: true, content: "", args: { ref: "e12" } }),
+      msg({ role: "assistant", content: `Order #${1000 + i} ships on the 12th.` }),
+    ]).flat();
+    return chrome.storage.local.set({
+      "tabrunner:active-conversation": id,
+      "tabrunner:conversations": [
+        {
+          id,
+          title: "Check every open order and note the ship dates",
+          createdAt: t,
+          updatedAt: t + 600_000,
+          taskCount: 12,
+        },
+        {
+          id: "shots-demo",
+          title: "Pull the latest invoice from my inbox into the expense report",
+          createdAt: t,
+          updatedAt: t - 3_600_000,
+          taskCount: 1,
+        },
+        {
+          id: "shots-agent",
+          title: "Read the release notes and summarize what changed",
+          createdAt: t,
+          updatedAt: t - 86_400_000,
+          taskCount: 4,
+          agent: "Claude Code",
+        },
+      ],
+      [`tabrunner:conversation:${id}`]: messages,
+    });
+  });
+  await page.close();
+}
+
 for (const dark of [false, true]) {
   const mode = dark ? "dark" : "light";
   await shoot("options.html", `ext-options-${mode}`, dark);
-  await shoot("sidepanel.html", `ext-sidepanel-${mode}`, dark, SIDEPANEL_WIDTH);
+  await shoot("sidepanel.html", `ext-sidepanel-${mode}`, dark, { width: SIDEPANEL_WIDTH });
 }
 await seedConversation();
 for (const dark of [false, true]) {
   const mode = dark ? "dark" : "light";
-  await shoot("sidepanel.html", `ext-chat-${mode}`, dark, SIDEPANEL_WIDTH);
+  await shoot("sidepanel.html", `ext-chat-${mode}`, dark, { width: SIDEPANEL_WIDTH });
+}
+await seedLongThread();
+for (const dark of [false, true]) {
+  const mode = dark ? "dark" : "light";
+  await shoot("sidepanel.html", `ext-fold-${mode}`, dark, {
+    width: SIDEPANEL_WIDTH,
+    prepare: (page) =>
+      page.evaluate(() =>
+        document.querySelector('[data-slot="message-scroller-viewport"]')?.scrollTo({ top: 0 }),
+      ),
+  });
+  await shoot("sidepanel.html", `ext-history-${mode}`, dark, {
+    width: SIDEPANEL_WIDTH,
+    // The history toggle by shape, not by label — the panel speaks whatever
+    // language the shooting browser is set to.
+    prepare: (page) => page.click("button[aria-pressed]"),
+  });
 }
 await browser.close();
