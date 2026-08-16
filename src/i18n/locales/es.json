@@ -353,7 +353,7 @@
   "context": {
     "used": "{{used}} de contexto",
     "usedOf": "{{used}} / {{window}}",
-    "tooltip": "Contexto: {{used}} de la ventana de {{window}} del modelo en uso — haz clic para resumir la conversación y liberar espacio",
+    "tooltip": "Contexto: el último turno envió {{used}} de la ventana de {{window}} del modelo — haz clic para resumir la conversación y liberar espacio",
     "tooltipUnknown": "Contexto: el último turno envió {{used}}. No se conoce el tamaño de ventana de este modelo, así que no hay porcentaje que mostrar — haz clic para resumir la conversación y liberar espacio"
   },
   "indicator": {

@@ -106,6 +106,11 @@ export function RunStatus() {
     return () => clearTimeout(rotate);
   }, [running, awaiting, idleVerbs.length]);
 
+  // A running approximation, not the run's total: this counts the usage events
+  // THIS panel received, and mid-run nobody has published the authoritative sum
+  // yet (the writer stamps it at the end). A panel that joined a run already in
+  // flight therefore counts low until it settles — see the settled band below,
+  // which swaps in the writer's complete number the moment the run ends.
   const totalTokens = usage.input + usage.output;
   const tokenNote =
     totalTokens > 0 ? ` · ${t("run.tokens", { count: formatTokens(totalTokens) })}` : "";
@@ -120,12 +125,23 @@ export function RunStatus() {
     // This panel watched its run end; otherwise the stored summary of the run
     // that ended while the panel was closed stands in — same band either way.
     // A live error marks the band failed: "Done" over a 429 reads as a lie.
+    //
+    // The TOKENS come from the writer whenever it has stamped them, even on the
+    // path where the panel has its own. `usage` is summed from the events this
+    // panel received, and a panel receives none while it is closed — so a run
+    // dispatched to the background (which closes the panel at the plan gate by
+    // design) or one the panel reconnected into reports whatever fraction of the
+    // turns it happened to witness, as if it were the whole run. The elapsed
+    // clock does not have this problem: it is anchored to the board's real
+    // startedAt, which is why a band could read "3m 25s · 15.9k" for a run whose
+    // last turn alone sent 15.6k.
     const finished =
       runStartedAt !== null && runEndedAt !== null
         ? {
             startedAt: runStartedAt,
             endedAt: runEndedAt,
-            ...usage,
+            input: lastRun?.input ?? usage.input,
+            output: lastRun?.output ?? usage.output,
             ok: status !== "error",
             stopped: runStopped,
           }

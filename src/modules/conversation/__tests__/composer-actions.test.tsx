@@ -16,6 +16,7 @@ import { ChatInput } from "../ui/ChatInput";
 import { RunTargetToggle } from "../ui/RunTargetToggle";
 import { RunStatus } from "../ui/RunStatus";
 import { useConversationStore } from "../ui/store";
+import type { RunSummary } from "../conversations";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -206,7 +207,7 @@ describe("the run band's plan peek", () => {
           title: "t",
           createdAt: 0,
           updatedAt: 0,
-          messageCount: 1,
+          taskCount: 1,
           lastRun: { startedAt: 0, endedAt: 1000, input: 1, output: 1, ok: true },
         },
       ],
@@ -245,6 +246,41 @@ describe("the run band's plan peek", () => {
   });
 });
 
+describe("the finished band's token total", () => {
+  // `usage` is summed from the events THIS panel received, and a panel receives
+  // none while it is closed — a background run closes it at the plan gate by
+  // design. Left to its own sum the band reported the fraction of turns it
+  // happened to witness as if it were the whole run: "3m 25s · 15.9k" for a run
+  // whose last turn alone sent 15.6k. The writer counted every turn.
+  const settledWith = (lastRun: RunSummary) =>
+    useConversationStore.setState({
+      status: "idle",
+      activeId: "c1",
+      runStartedAt: 1000,
+      runEndedAt: 206_000,
+      usage: { input: 15_600, output: 300 },
+      conversations: [{ id: "c1", title: "t", createdAt: 0, updatedAt: 0, taskCount: 1, lastRun }],
+    });
+
+  const band = (h: Harness) => h.container.textContent ?? "";
+
+  it("prefers the writer's complete count over this panel's partial sum", async () => {
+    settledWith({ startedAt: 1000, endedAt: 206_000, input: 88_000, output: 4_100, ok: true });
+    const h = await render(<RunStatus />);
+    expect(band(h)).toContain("92.1k");
+    expect(band(h)).not.toContain("15.9k");
+    await unmount(h);
+  });
+
+  it("falls back to its own sum in the tick before the summary lands", async () => {
+    settledWith({ startedAt: 0, endedAt: 0, input: 0, output: 0, ok: true });
+    useConversationStore.setState({ conversations: [] });
+    const h = await render(<RunStatus />);
+    expect(band(h)).toContain("15.9k");
+    await unmount(h);
+  });
+});
+
 describe("the finished band's go-to-tab action", () => {
   // The bare "Go to tab" button became the same chip the live band wears: it
   // NAMES the tab instead of only admitting one exists, and stays visible for
@@ -262,7 +298,7 @@ describe("the finished band's go-to-tab action", () => {
           title: "t",
           createdAt: 0,
           updatedAt: 0,
-          messageCount: 1,
+          taskCount: 1,
           lastRun: { startedAt: 0, endedAt: 1000, input: 1, output: 1, ok: true },
           tabs: [{ url: "https://example.com/cart", title: "Cart", tabId: 42 }],
         },
@@ -299,7 +335,7 @@ describe("the finished band's go-to-tab action", () => {
           title: "t",
           createdAt: 0,
           updatedAt: 0,
-          messageCount: 1,
+          taskCount: 1,
           lastRun: { startedAt: 0, endedAt: 1000, input: 1, output: 1, ok: true },
         },
       ],
