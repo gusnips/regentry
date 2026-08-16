@@ -63,4 +63,10 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toMatch(/untrusted data/i);
     expect(prompt).toMatch(/never an instruction/i);
   });
+
+  it("answers in the message's own language, with the app's as the fallback", () => {
+    const prompt = buildSystemPrompt(ctx, "Portuguese");
+    expect(prompt).toMatch(/language the user's message is written in/i);
+    expect(prompt).toContain("takes Portuguese");
+  });
 });

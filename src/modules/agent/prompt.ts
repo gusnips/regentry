@@ -78,14 +78,16 @@ ${instructions}`;
 }
 
 /**
- * Plan steps and the done summary land in the panel verbatim — the one
- * user-visible surface TabRunner cannot localize itself, so the language is named
- * outright. "Mirror the task's language" guesses wrong on short or English tasks.
- * The second sentence matters: without it the model translates what it types
- * into search boxes and forms too.
+ * The model's writing is the one user-visible surface TabRunner cannot localize
+ * itself, so the rule is stated outright — but the rule is mirror-first: the
+ * message's own language is the strongest signal of what the user reads, and the
+ * app's language is only the fallback, for messages that carry none (a bare URL,
+ * a name, a pasted log). Forcing the app language instead answered fluent
+ * cross-language users in the wrong tongue. The last sentence matters either
+ * way: without it the model translates what it types into search boxes too.
  */
 function languageSection(language: string): string {
-  return `Write everything the user reads — the plan steps and the final "done" summary — in ${language}. Typing into the page is not writing to the user: form inputs and searches get exactly what the task needs, in whatever language that is.`;
+  return `Answer in the language the user's message is written in — everything they read (the plan steps, an ask_user question and its choices, the final "done" summary) matches their words. A message with no language of its own — a bare URL, a file name, a pasted error log — takes ${language}, the app's language; so does one too short to tell. Mirror the writer, never what they pasted: quoted error text and site copy do not change the language you answer in. Typing into the page is not writing to the user: form inputs and searches get exactly what the task needs, in whatever language that is.`;
 }
 
 /**
