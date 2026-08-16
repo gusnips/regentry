@@ -70,6 +70,23 @@ describe("toolHint", () => {
     expect(displacedHint("group_tab", { tab_id: 42 })).toBe("#42");
   });
 
+  it("reads a chord as the chord", () => {
+    expect(toolHint("press_key", { key: "a", modifiers: ["Mod"] })).toBe("Mod+a");
+    expect(toolHint("press_key", { key: "Enter" })).toBe("Enter");
+  });
+
+  it("names a find by its query and a go_back by its destination", () => {
+    expect(toolHint("find", { query: "Total due" })).toBe("Total due");
+    expect(toolHint("go_back", { intent: "the search results" })).toBe("the search results");
+    expect(toolHint("go_back", {})).toBeUndefined();
+  });
+
+  it("treats an opened tab like a navigation — the host leads", () => {
+    expect(
+      toolHint("open_tab", { url: "https://www.amazon.com/x", intent: "the comparison" }),
+    ).toBe("amazon.com: the comparison");
+  });
+
   it("has no hint for tools that take no distinguishing argument", () => {
     expect(toolHint("snapshot", {})).toBeUndefined();
     expect(toolHint("screenshot", {})).toBeUndefined();
@@ -107,6 +124,10 @@ describe("toolHint / stepHint parity", () => {
     ["evaluate", { expression: "document.title", intent: "the page title" }],
     ["type", { text: "hello" }],
     ["press_key", { key: "Enter" }],
+    ["press_key", { key: "a", modifiers: ["Mod"] }],
+    ["find", { query: "Total due" }],
+    ["go_back", { intent: "the listing" }],
+    ["open_tab", { url: "https://www.example.com/x", intent: "the comparison" }],
     ["scroll_down", { amount: 800 }],
     ["scroll_up", { amount: 800 }],
     ["evaluate", { expression: "document.title" }],
@@ -127,7 +148,7 @@ describe("toolHint / stepHint parity", () => {
   });
 
   it("only the tab tools diverge — the transcript keeps the id the panel drops", () => {
-    for (const tool of ["switch_tab", "group_tab"] as const) {
+    for (const tool of ["switch_tab", "group_tab", "close_tab"] as const) {
       const args = { tab_id: 42 };
       expect(toolHint(tool, args)).toBeUndefined();
       expect(stepHint(tool, args)).toBe("#42");

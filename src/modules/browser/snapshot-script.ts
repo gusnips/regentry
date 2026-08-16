@@ -326,7 +326,7 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
 
   let pageContent = lines.join("\n");
   if (count >= maxElements) {
-    pageContent += `\n[truncated at ${maxElements} elements — use a ref or smaller depth to focus]`;
+    pageContent += `\n[truncated at ${maxElements} elements — call find with a distinctive word to locate what you need, or a smaller depth to focus]`;
   }
 
   return {

@@ -446,6 +446,11 @@
   "run": {
     "tool": {
       "navigate": "Navegando",
+      "read_page_text": "Lendo o texto da página",
+      "find": "Procurando",
+      "go_back": "Voltando",
+      "open_tab": "Abrindo uma aba",
+      "close_tab": "Fechando a aba",
       "list_tabs": "Listando abas",
       "switch_tab": "Trocando de aba",
       "group_tab": "Agrupando aba",
@@ -665,6 +670,8 @@
     "openedTabAt": "Abriu {{host}}",
     "openedTab": "Abriu uma nova aba",
     "closedTab": "Fechou a aba",
+    "tabOpenFailed": "Não foi possível abrir uma nova aba. Navegue a aba atual para lá, ou tente de novo.",
+    "closedTabNamed": "Fechou {{title}}",
     "planEmpty": "O plano precisa de pelo menos um passo — envie uma lista não vazia de frases curtas.",
     "planRejected": "Plano rejeitado — interrompido antes de qualquer ação na página.",
     "planGate": "Bloqueado — o plano precisa da sua aprovação primeiro",

@@ -111,7 +111,7 @@ This file is sent to the model provider on every run.`;
  * must say the image path is gone outright — otherwise it spends turns asking
  * for something that can never arrive.
  */
-const TEXT_ONLY_NOTE = `Your model is text-only: it cannot receive images, so there is no screenshot tool. You see the page only through accessibility snapshots — rely on them for everything, and when a task needs something visual you cannot verify from structure and attributes, say so plainly in your final summary.`;
+const TEXT_ONLY_NOTE = `Your model is text-only: it cannot receive images, so there is no screenshot tool. You see the page through accessibility snapshots and read_page_text — rely on them for everything, and when a task needs something visual you cannot verify from structure and text, say so plainly in your final summary.`;
 
 /**
  * The standing schedules, shown the way MEMORY.md is: a list the model already
@@ -429,7 +429,7 @@ const TOOL_DEFS: ToolDef[] = [
   {
     name: "evaluate",
     description:
-      "Run JavaScript in the page's context and get the result back — promises are awaited; return JSON-serializable values (scalars, plain objects), not DOM nodes. This is the escape hatch, not the default: snapshot, click, type and fill cover almost everything. Use it for what they cannot do — reading an attribute the tree omits, piercing shadow DOM, calling the page's own functions, fetching an endpoint the page itself uses. The same rules as every other action: it needs an approved plan, and anything consequential (sending, deleting, paying, submitting — by fetch or any other means) needs the user's explicit permission through ask_user first. Results are bounded and credential-shaped values are stripped.",
+      "Run JavaScript in the page's context and get the result back — promises are awaited; return JSON-serializable values (scalars, plain objects), not DOM nodes. This is the escape hatch, not the default: snapshot, read_page_text, find, click, type and fill cover almost everything. Use it for what they cannot do — reading an attribute the tree omits, piercing shadow DOM, calling the page's own functions, fetching an endpoint the page itself uses. Reading the page's text with it is the tell you wanted read_page_text. The same rules as every other action: it needs an approved plan, and anything consequential (sending, deleting, paying, submitting — by fetch or any other means) needs the user's explicit permission through ask_user first. Results are bounded and credential-shaped values are stripped.",
     params: {
       type: "object",
       properties: {

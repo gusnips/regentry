@@ -42,6 +42,8 @@ let nextTabId = 10;
     onUpdated: { addListener: () => {}, removeListener: () => {} },
     get: async (id: number) => {
       if (id === 1) return { id: 1, windowId: 10, title: "Orders", url: "https://shop.example" };
+      if (id === 2)
+        return { id: 2, windowId: 10, title: "Invoice #1042", url: "https://shop.example/i/1042" };
       if (id === nextTabId - 1)
         return { id, windowId: 10, title: "New", url: created.at(-1)?.url ?? "" };
       throw new Error(`No tab with id: ${id}`);
@@ -99,9 +101,16 @@ describe("driver.closeTab", () => {
     expect(removed).toEqual([]);
   });
 
-  it("closes any other tab", async () => {
+  it("closes any other tab and returns what it was — the row names what closed", async () => {
     const driver = createDriver(1);
-    await driver.closeTab(2);
+    const closed = await driver.closeTab(2);
+    expect(closed).toMatchObject({ id: 2, title: "Invoice #1042" });
     expect(removed).toEqual([2]);
+  });
+
+  it("surfaces a dead tab id as a thrown error, and removes nothing", async () => {
+    const driver = createDriver(1);
+    await expect(driver.closeTab(99)).rejects.toThrow("No tab with id: 99");
+    expect(removed).toEqual([]);
   });
 });

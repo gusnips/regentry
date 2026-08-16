@@ -113,9 +113,8 @@ export async function executeTool(
       }
 
       case "close_tab": {
-        const tabId = call.args.tab_id as number;
-        await driver.closeTab(tabId);
-        return { ok: true, data: { closed: tabId } };
+        const tab = await driver.closeTab(call.args.tab_id as number);
+        return { ok: true, data: tab };
       }
 
       case "click": {
@@ -277,6 +276,17 @@ export function formatDetail(
   return json && json !== "{}" ? truncate(json, MAX_DETAIL) : undefined;
 }
 
+/** Host without the www — the one-line trace of where the browser went. */
+function summaryHost(url: string | undefined): string {
+  if (!url) return "";
+  try {
+    return new URL(url).host.replace(/^www\./, "");
+  } catch {
+    // Not a parseable URL — the raw value is the best trace there is.
+    return url;
+  }
+}
+
 export function formatSuccessSummary(tool: string, data: unknown): string {
   if (tool === "snapshot" && data && typeof data === "object") {
     const snap = data as { pageContent?: string };
@@ -310,12 +320,7 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
   }
   if (tool === "navigate") {
     const { url } = (data ?? {}) as { url?: string };
-    let where = url ?? "";
-    try {
-      if (url) where = new URL(url).host.replace(/^www\./, "");
-    } catch {
-      // Not a parseable URL — the raw value is the best trace there is.
-    }
+    const where = summaryHost(url);
     return where ? i18n.t("errors.navigatedTo", { host: where }) : i18n.t("errors.navigatedBare");
   }
   if (tool === "read_page_text") {
@@ -337,15 +342,15 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
   if (tool === "go_back") return i18n.t("errors.wentBack");
   if (tool === "open_tab") {
     const { url } = (data ?? {}) as { url?: string };
-    let where = url ?? "";
-    try {
-      if (url) where = new URL(url).host.replace(/^www\./, "");
-    } catch {
-      // Not a parseable URL — the raw value is the best trace there is.
-    }
+    const where = summaryHost(url);
     return where ? i18n.t("errors.openedTabAt", { host: where }) : i18n.t("errors.openedTab");
   }
-  if (tool === "close_tab") return i18n.t("errors.closedTab");
+  if (tool === "close_tab") {
+    const { title } = (data ?? {}) as { title?: string };
+    return title
+      ? i18n.t("errors.closedTabNamed", { title: truncate(title, 60) })
+      : i18n.t("errors.closedTab");
+  }
   if (tool === "switch_tab" && data && typeof data === "object") {
     return i18n.t("errors.switchedTo", { title: (data as { title?: string }).title ?? "" });
   }

@@ -147,8 +147,16 @@ export async function insertText(text: string): Promise<void> {
   await send("Input.insertText", { text });
 }
 
+/** A key name resolved to its CDP event fields. */
+interface KeySpec {
+  key: string;
+  code: string;
+  vkc: number;
+  text?: string;
+}
+
 /** Press a key (Enter, Tab, Escape, etc.) via CDP key events. */
-const KEY_MAP: Record<string, { key: string; code: string; vkc: number; text?: string }> = {
+const KEY_MAP: Record<string, KeySpec> = {
   enter: { key: "Enter", code: "Enter", vkc: 13, text: "\r" },
   escape: { key: "Escape", code: "Escape", vkc: 27 },
   tab: { key: "Tab", code: "Tab", vkc: 9, text: "\t" },
@@ -184,13 +192,6 @@ const MODIFIER_BITS: Record<string, number> = {
  * single character — the character case is what makes chords like Mod+a work
  * without listing all 36 alphanumerics in the schema.
  */
-interface KeySpec {
-  key: string;
-  code: string;
-  vkc: number;
-  text?: string;
-}
-
 export function resolveKey(key: string): KeySpec {
   const named = KEY_MAP[key.toLowerCase()];
   if (named) return named;

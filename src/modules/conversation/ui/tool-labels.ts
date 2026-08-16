@@ -7,10 +7,15 @@ import { truncateTo } from "@/lib/format";
  */
 const TOOL_VERB_KEYS = {
   navigate: "run.tool.navigate",
+  go_back: "run.tool.go_back",
+  open_tab: "run.tool.open_tab",
+  close_tab: "run.tool.close_tab",
   list_tabs: "run.tool.list_tabs",
   switch_tab: "run.tool.switch_tab",
   group_tab: "run.tool.group_tab",
   snapshot: "run.tool.snapshot",
+  read_page_text: "run.tool.read_page_text",
+  find: "run.tool.find",
   click: "run.tool.click",
   type: "run.tool.type",
   fill: "run.tool.fill",
@@ -59,7 +64,7 @@ function host(value: unknown): string | undefined {
  * human cannot read. The phrase replaces the opaque locator only; a value the
  * call also carries is already readable and stays beside it.
  */
-const INTENT_TOOLS = new Set(["navigate", "click", "fill", "evaluate"]);
+const INTENT_TOOLS = new Set(["navigate", "go_back", "open_tab", "click", "fill", "evaluate"]);
 
 /**
  * The distinguishing argument of a tool call, short enough for one row:
@@ -72,13 +77,19 @@ export function toolHint(
   if (!tool || !args) return undefined;
   const intent = INTENT_TOOLS.has(tool) ? text(args.intent) : undefined;
   switch (tool) {
-    case "navigate": {
+    case "navigate":
+    case "open_tab": {
       // The host is the row's only trace of where the browser went — the result
       // summary just says "Navigated successfully". On a browser agent that fact
       // outranks the model's phrase, so it leads and the phrase follows.
       const where = host(args.url);
       return where && intent ? `${where}: ${intent}` : (intent ?? where);
     }
+    case "go_back":
+      // Where the tab returns to is unknowable at call time — the intent is it.
+      return intent;
+    case "find":
+      return text(args.query);
     case "click":
       return intent ?? text(args.ref);
     case "type":
@@ -98,8 +109,14 @@ export function toolHint(
       return text(args.url_filter);
     case "read_history":
       return text(args.query);
-    case "press_key":
-      return text(args.key);
+    case "press_key": {
+      // A chord reads as the chord: "Mod+a", not just "a".
+      const mods = Array.isArray(args.modifiers)
+        ? args.modifiers.filter((m): m is string => typeof m === "string" && m.trim() !== "")
+        : [];
+      const key = text(args.key);
+      return key ? [...mods, key].join("+") : undefined;
+    }
     case "scroll_down":
     case "scroll_up":
       return typeof args.amount === "number" ? `${args.amount}px` : undefined;
@@ -121,6 +138,7 @@ export function displacedHint(
   switch (tool) {
     case "switch_tab":
     case "group_tab":
+    case "close_tab":
       // The call's only handle; the tab's title is the result's job.
       return typeof args.tab_id === "number" ? `#${args.tab_id}` : undefined;
     default:

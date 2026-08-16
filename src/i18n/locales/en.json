@@ -446,6 +446,11 @@
   "run": {
     "tool": {
       "navigate": "Navigating",
+      "read_page_text": "Reading the page text",
+      "find": "Finding",
+      "go_back": "Going back",
+      "open_tab": "Opening a tab",
+      "close_tab": "Closing a tab",
       "list_tabs": "Listing tabs",
       "switch_tab": "Switching tab",
       "group_tab": "Grouping tab",
@@ -665,6 +670,8 @@
     "openedTabAt": "Opened {{host}}",
     "openedTab": "Opened a new tab",
     "closedTab": "Closed the tab",
+    "tabOpenFailed": "Couldn't open a new tab. Navigate the current one there instead, or try again.",
+    "closedTabNamed": "Closed {{title}}",
     "planEmpty": "The plan needs at least one step — pass a non-empty list of short phrases.",
     "planRejected": "Plan rejected — stopped before any page action ran.",
     "planGate": "Blocked — the plan needs your approval first",

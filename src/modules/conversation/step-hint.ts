@@ -7,8 +7,8 @@ import { truncateTo } from "@/lib/format";
  * boundary keeps ui/ code out of the writer and the agent tools, so the two hint
  * functions live on their own sides of it.
  *
- * switch_tab/group_tab are the one intentional divergence: the panel drops the
- * id once the result names the tab, while the transcript note keeps it —
+ * switch_tab/group_tab/close_tab are the one intentional divergence: the panel
+ * drops the id once the result names the tab, while the transcript note keeps it —
  * `#42 — Switched to Gmail` pins the attempt even after the tab is gone.
  */
 export function stepHint(
@@ -20,12 +20,12 @@ export function stepHint(
     typeof value === "string" && value.trim() ? truncateTo(value, 48) : undefined;
   // Tools that declare an `intent` (agent/prompt.ts) — see the panel twin for
   // why the phrase replaces the locator but never a readable value.
-  const intent =
-    tool === "navigate" || tool === "click" || tool === "fill" || tool === "evaluate"
-      ? text(args.intent)
-      : undefined;
+  const intent = ["navigate", "go_back", "open_tab", "click", "fill", "evaluate"].includes(tool)
+    ? text(args.intent)
+    : undefined;
   switch (tool) {
-    case "navigate": {
+    case "navigate":
+    case "open_tab": {
       const url = text(args.url);
       if (!url) return intent;
       let where = url;
@@ -36,6 +36,11 @@ export function stepHint(
       }
       return intent ? `${where}: ${intent}` : where;
     }
+    case "go_back":
+      // Where the tab returns to is unknowable at call time — the intent is it.
+      return intent;
+    case "find":
+      return text(args.query);
     case "click":
       return intent ?? text(args.ref);
     case "type":
@@ -52,13 +57,20 @@ export function stepHint(
       return text(args.url_filter);
     case "read_history":
       return text(args.query);
-    case "press_key":
-      return text(args.key);
+    case "press_key": {
+      // A chord reads as the chord: "Mod+a", not just "a".
+      const mods = Array.isArray(args.modifiers)
+        ? args.modifiers.filter((m): m is string => typeof m === "string" && m.trim() !== "")
+        : [];
+      const key = text(args.key);
+      return key ? [...mods, key].join("+") : undefined;
+    }
     case "scroll_down":
     case "scroll_up":
       return typeof args.amount === "number" ? `${args.amount}px` : undefined;
     case "switch_tab":
     case "group_tab":
+    case "close_tab":
       return typeof args.tab_id === "number" ? `#${args.tab_id}` : undefined;
     default:
       return undefined;

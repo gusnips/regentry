@@ -446,6 +446,11 @@
   "run": {
     "tool": {
       "navigate": "Navegando",
+      "read_page_text": "Leyendo el texto de la página",
+      "find": "Buscando",
+      "go_back": "Volviendo atrás",
+      "open_tab": "Abriendo una pestaña",
+      "close_tab": "Cerrando la pestaña",
       "list_tabs": "Listando pestañas",
       "switch_tab": "Cambiando de pestaña",
       "group_tab": "Agrupando pestaña",
@@ -665,6 +670,8 @@
     "openedTabAt": "Abrió {{host}}",
     "openedTab": "Abrió una pestaña nueva",
     "closedTab": "Cerró la pestaña",
+    "tabOpenFailed": "No se pudo abrir una pestaña nueva. Navega la actual allí, o inténtalo de nuevo.",
+    "closedTabNamed": "Cerró {{title}}",
     "planEmpty": "El plan necesita al menos un paso — envía una lista no vacía de frases breves.",
     "planRejected": "Plan rechazado — detenido antes de cualquier acción en la página.",
     "planGate": "Bloqueado — el plan necesita tu aprobación primero",

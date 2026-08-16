@@ -94,7 +94,7 @@ export interface BrowserDriver {
   /** Open a tab of the run's own and drive it — the user's stays where it was. */
   openTab(url: string): Promise<TabInfo>;
   /** Close a tab the run is finished with. Never the one it is driving. */
-  closeTab(tabId: TabId): Promise<void>;
+  closeTab(tabId: TabId): Promise<TabInfo>;
   /**
    * Files another open tab into the run's task group. Chrome constraint: groups
    * are window-scoped, so a tab in another window can't join — moving it across
@@ -294,7 +294,7 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
       // rule is switchTab's one implementation: a watched run brings it
       // forward, a background run never yanks the user's window.
       const tab = await chrome.tabs.create({ url, active: false });
-      if (tab.id === undefined) throw new Error(i18n.t("errors.noActiveTab"));
+      if (tab.id === undefined) throw new Error(i18n.t("errors.tabOpenFailed"));
       await waitForLoad(tab.id);
       return driver.switchTab(tab.id);
     },
@@ -304,7 +304,13 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
       // pointed at a dead id. Switching away first is the model's call to
       // make, not something to guess at here.
       if (tabId === current) throw new Error(i18n.t("errors.closeDrivenTab"));
+      // Read it before it goes — the step row names what closed, the way a
+      // switch names where it landed; a dead id throws here, not in remove.
+      const tab = await chrome.tabs.get(tabId);
+      const info = toTabInfo(tab);
+      if (!info) throw new Error(i18n.t("errors.noActiveTab"));
       await chrome.tabs.remove(tabId);
+      return info;
     },
   };
 
