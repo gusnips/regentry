@@ -332,7 +332,8 @@ const TOOL_DEFS: ToolDef[] = [
       properties: {
         from: {
           type: "number",
-          description: "Character offset to start from (default 0) — pass the window's end to continue",
+          description:
+            "Character offset to start from (default 0) — pass the window's end to continue",
         },
         limit: {
           type: "number",
