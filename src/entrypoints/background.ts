@@ -152,9 +152,10 @@ export default defineBackground(() => {
     port.onMessage.addListener(async (msg: Command) => {
       switch (msg.type) {
         case "run": {
-          // The panel's task message was stored (and its id adopted) before the
-          // run command left — so the active conversation is this run's home.
-          const conversationId = (await getActiveId()) ?? crypto.randomUUID();
+          // The panel stored its task message (and adopted the conversation)
+          // before the run command left — the id rides the command, so this
+          // run's transcript lands exactly where its message did.
+          const conversationId = msg.conversationId;
           const launch = () => {
             // Persistence lives here, not in the panel store: the panel closes
             // itself after submit, and its writer would die with it.
@@ -280,7 +281,11 @@ export default defineBackground(() => {
           // close mid-summarization and the summary still lands.
           const conversationId = await getActiveId();
           if (!conversationId) {
-            send(port, { type: "compact_failed", message: i18n.t("commands.compact.nothing"), nothing: true });
+            send(port, {
+              type: "compact_failed",
+              message: i18n.t("commands.compact.nothing"),
+              nothing: true,
+            });
             break;
           }
           try {
@@ -423,9 +428,12 @@ function boardToWidget(board: RunBoard): WidgetState | null {
   if (!lead) {
     if (!board.pendingQuestion) return null;
     return {
+      // The question itself leads — it is the ask, more informative than a
+      // generic "waiting" line. The "?" badge carries the blocked state.
       task: truncate(board.pendingQuestion.question, 120),
       queuedText: "",
       awaiting: true,
+      awaitingText: "",
       hideLabel: i18n.t("widget.hide"),
       openHint: i18n.t("widget.openHint"),
       hideHint: i18n.t("widget.hideHint"),
@@ -433,10 +441,14 @@ function boardToWidget(board: RunBoard): WidgetState | null {
     };
   }
   const extra = board.running ? board.queue.length : board.queue.length - 1;
+  const parked = board.running?.awaiting === true;
   return {
     task: truncate(lead.task, 120),
     queuedText: extra > 0 ? i18n.t("widget.queued", { count: extra }) : "",
-    awaiting: board.running?.awaiting === true,
+    awaiting: parked,
+    // A parked run's task excerpt can't say the run is blocked on you — swap
+    // the text for the state (the excerpt stays on the tooltip).
+    awaitingText: parked ? i18n.t("run.awaitingApproval") : "",
     hideLabel: i18n.t("widget.hide"),
     openHint: i18n.t("widget.openHint"),
     hideHint: i18n.t("widget.hideHint"),

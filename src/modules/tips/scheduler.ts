@@ -13,7 +13,7 @@ const tipStats = defineItem<TipStats>("tipStats", { opens: 0, shown: {} });
 /**
  * Every read-modify-write is serialized on one chain — the panel fires picks
  * from an event stream, and concurrent ones would read the same stats and
- * double-record (the same race `appendMessage` serializes against).
+ * double-record (the same race conversation appends serialize against).
  */
 let chain: Promise<unknown> = Promise.resolve();
 function serialized<T>(fn: () => Promise<T>): Promise<T> {

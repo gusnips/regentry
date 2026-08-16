@@ -265,6 +265,8 @@
     "askUserHint": "Elige una opción o escribe la tuya",
     "askUserOpenHint": "Escribe tu respuesta abajo",
     "answerPlaceholder": "Escribe tu respuesta…",
+    "planPlaceholder": "Aprueba el plan de arriba, o escribe qué debe cambiar…",
+    "planSendTitle": "Devolver el plan con tu nota",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensó durante {{duration}}",
     "reasoningToggle": "Mostrar u ocultar el razonamiento del modelo (se guarda para todas las conversaciones)",

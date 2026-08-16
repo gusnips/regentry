@@ -82,7 +82,7 @@ describe("retry", () => {
       { id: "e1", role: "error", content: "boom", timestamp: 3 },
     ];
     // The reopened panel: nothing of the dispatching session survived.
-    useConversationStore.setState({ messages, status: "error", lastRun: null });
+    useConversationStore.setState({ messages, status: "error", lastRun: null, activeId: "c1" });
 
     useConversationStore.getState().retry();
 
@@ -90,15 +90,16 @@ describe("retry", () => {
     expect(runCommands()).toEqual([
       {
         type: "run",
+        conversationId: "c1",
         task: "second task",
         images: ["data:image/png;base64,x"],
         thisPage: true,
       },
     ]);
     // No duplicate user row — the failed attempt sits right above the error.
-    expect(
-      useConversationStore.getState().messages.filter((m) => m.role === "user"),
-    ).toHaveLength(2);
+    expect(useConversationStore.getState().messages.filter((m) => m.role === "user")).toHaveLength(
+      2,
+    );
   });
 
   it("an unstamped message retries as an ordinary run — no thisPage", () => {
@@ -108,11 +109,12 @@ describe("retry", () => {
         { id: "e1", role: "error", content: "boom", timestamp: 1 },
       ],
       status: "error",
+      activeId: "c1",
     });
 
     useConversationStore.getState().retry();
 
-    expect(runCommands()).toEqual([{ type: "run", task: "do the thing" }]);
+    expect(runCommands()).toEqual([{ type: "run", conversationId: "c1", task: "do the thing" }]);
   });
 
   it("no user message above the error → no run, no crash", () => {

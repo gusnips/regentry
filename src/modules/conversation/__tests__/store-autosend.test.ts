@@ -88,7 +88,13 @@ describe("stop auto-sends the queue", () => {
     const s = useConversationStore.getState();
     s.connect();
     await s.sendTask("original task");
-    expect(port.fake.postMessage).toHaveBeenLastCalledWith({ type: "run", task: "original task" });
+    // The run's home rides the command — where its task message just landed.
+    const conversationId = useConversationStore.getState().activeId;
+    expect(port.fake.postMessage).toHaveBeenLastCalledWith({
+      type: "run",
+      conversationId,
+      task: "original task",
+    });
 
     s.queueMessage("go back");
     s.queueMessage("then reload");
@@ -100,6 +106,7 @@ describe("stop auto-sends the queue", () => {
     await vi.waitFor(() =>
       expect(port.fake.postMessage).toHaveBeenLastCalledWith({
         type: "run",
+        conversationId,
         task: "go back\nthen reload",
       }),
     );
@@ -110,12 +117,17 @@ describe("stop auto-sends the queue", () => {
     const s = useConversationStore.getState();
     s.connect();
     await s.sendTask("original task");
+    const conversationId = useConversationStore.getState().activeId;
 
     s.stop();
     port.fireMessage({ type: "done" });
     await Promise.resolve();
 
-    expect(port.fake.postMessage).not.toHaveBeenCalledWith({ type: "run", task: "go back" });
+    expect(port.fake.postMessage).not.toHaveBeenCalledWith({
+      type: "run",
+      conversationId,
+      task: "go back",
+    });
     expect(useConversationStore.getState().status).toBe("idle");
   });
 
@@ -123,12 +135,17 @@ describe("stop auto-sends the queue", () => {
     const s = useConversationStore.getState();
     s.connect();
     await s.sendTask("original task");
+    const conversationId = useConversationStore.getState().activeId;
     s.queueMessage("go back");
 
     port.fireMessage({ type: "done" });
     await Promise.resolve();
 
-    expect(port.fake.postMessage).not.toHaveBeenCalledWith({ type: "run", task: "go back" });
+    expect(port.fake.postMessage).not.toHaveBeenCalledWith({
+      type: "run",
+      conversationId,
+      task: "go back",
+    });
     expect(useConversationStore.getState().queued).toEqual([]);
     expect(useConversationStore.getState().draft).toBe("go back");
   });
@@ -151,6 +168,7 @@ describe("stop auto-sends the queue", () => {
     const s = useConversationStore.getState();
     s.connect();
     await s.sendTask("original task");
+    const conversationId = useConversationStore.getState().activeId;
     s.queueMessage("go back");
 
     s.stop();
@@ -158,7 +176,11 @@ describe("stop auto-sends the queue", () => {
     port.fireMessage({ type: "done" });
 
     await vi.waitFor(() =>
-      expect(port.fake.postMessage).toHaveBeenLastCalledWith({ type: "run", task: "go back" }),
+      expect(port.fake.postMessage).toHaveBeenLastCalledWith({
+        type: "run",
+        conversationId,
+        task: "go back",
+      }),
     );
   });
 });

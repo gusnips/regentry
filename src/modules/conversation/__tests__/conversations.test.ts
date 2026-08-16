@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 // Storage stand-in and i18n come from src/test-setup.ts (vitest setupFiles).
 
 import {
-  appendMessage,
+  appendMessageFresh,
   appendMessageTo,
   conversationTitle,
   deleteConversation,
@@ -33,17 +33,16 @@ describe("conversationTitle", () => {
 
 describe("conversations", () => {
   it("creates on first append, titles from the user message, tracks recency", async () => {
-    const first = await appendMessage(msg("user", "book a flight to Lisbon"));
-    await appendMessage(msg("assistant", "done"));
+    const first = await appendMessageFresh(msg("user", "book a flight to Lisbon"));
+    await appendMessageTo(first, msg("assistant", "done"));
 
     expect(await getActiveId()).toBe(first);
     expect(await listConversations()).toEqual([
       expect.objectContaining({ id: first, title: "book a flight to Lisbon", messageCount: 2 }),
     ]);
 
-    // "New chat" — a fresh transcript, created lazily by its own first message.
-    await setActiveConversation(null);
-    const second = await appendMessage(msg("user", "summarize this PR"));
+    // "New chat" — a fresh transcript, created by its own first message.
+    const second = await appendMessageFresh(msg("user", "summarize this PR"));
     expect(second).not.toBe(first);
 
     const list = await listConversations();
@@ -51,15 +50,30 @@ describe("conversations", () => {
     expect(await getMessages(first)).toHaveLength(2); // the first transcript survives
 
     // Reopening an old conversation appends to it and re-heads the list.
-    await setActiveConversation(first);
-    await appendMessage(msg("user", "and again"));
+    await appendMessageTo(first, msg("user", "and again"));
     expect((await listConversations()).map((c) => c.id)).toEqual([first, second]);
     expect((await listConversations())[0]?.title).toBe("book a flight to Lisbon"); // title is sticky
   });
 
+  it("a fresh thread's opener never files under a re-pointed active slot", async () => {
+    // The "conversation switched itself" regression: between "New conversation"
+    // and the first message, a pill or notification click re-points the shared
+    // active slot at the run's thread. Resolving that slot on append would
+    // file the fresh opener under THAT thread — the panel adopts the id, keeps
+    // rendering the live stream, and the old transcript materializes at run
+    // end. The fresh append mints its own id instead of reading the slot.
+    const old = await appendMessageFresh(msg("user", "the thread a run is working"));
+    await setActiveConversation(old); // the click lands before the first keystroke
+
+    const fresh = await appendMessageFresh(msg("user", "what the fresh thread asked"));
+
+    expect(fresh).not.toBe(old);
+    expect((await getMessages(old)).map((m) => m.content)).toEqual(["the thread a run is working"]);
+    expect(await getActiveId()).toBe(fresh);
+  });
+
   it("delete drops the transcript, its index entry, and the active pointer", async () => {
-    await setActiveConversation(null);
-    const id = await appendMessage(msg("user", "throwaway task"));
+    const id = await appendMessageFresh(msg("user", "throwaway task"));
 
     await deleteConversation(id);
 
@@ -72,15 +86,13 @@ describe("conversations", () => {
     // The regression: read-modify-write appends started together all read the
     // same array and the last write won, silently dropping the others — which
     // cost the next run the exchange it was asked to continue.
-    await setActiveConversation(null);
-    const ids = await Promise.all([
-      appendMessage(msg("user", "propose names")),
-      appendMessage(msg("assistant", "here is the list")),
-      appendMessage(msg("user", "search them")),
+    const id = await appendMessageFresh(msg("user", "propose names"));
+    await Promise.all([
+      appendMessageTo(id, msg("assistant", "here is the list")),
+      appendMessageTo(id, msg("user", "search them")),
     ]);
 
-    expect(new Set(ids).size).toBe(1); // one conversation, not three
-    expect((await getMessages(ids[0]!)).map((m) => m.content)).toEqual([
+    expect((await getMessages(id)).map((m) => m.content)).toEqual([
       "propose names",
       "here is the list",
       "search them",
@@ -88,20 +100,18 @@ describe("conversations", () => {
   });
 
   it("re-creates a conversation whose record was deleted mid-run", async () => {
-    await setActiveConversation(null);
-    const id = await appendMessage(msg("user", "long run"));
+    const id = await appendMessageFresh(msg("user", "long run"));
     await deleteConversation(id);
-    await setActiveConversation(id); // dangling id, as a racing run would leave it
 
-    await appendMessage(msg("step", "clicked"));
+    // A racing run's write re-creates the record under the same id.
+    await appendMessageTo(id, msg("step", "clicked"));
 
     expect((await listConversations()).some((c) => c.id === id)).toBe(true);
     expect(await getMessages(id)).toHaveLength(1);
   });
 
   it("remembers the tabs a conversation's runs drove, newest first", async () => {
-    await setActiveConversation(null);
-    const first = await appendMessage(msg("user", "check gmail"));
+    const first = await appendMessageFresh(msg("user", "check gmail"));
     expect(await threadTabs(first)).toEqual([]); // no run yet
 
     await recordDrivenTabFor(first, { url: "https://mail.google.com/", title: "Inbox", tabId: 7 });
@@ -123,12 +133,11 @@ describe("conversations", () => {
     ]);
 
     // Later appends rewrite the index row without dropping the list.
-    await appendMessage(msg("assistant", "done"));
+    await appendMessageTo(first, msg("assistant", "done"));
     expect(await threadTabs(first)).toHaveLength(2);
 
     // Tabs belong to their own conversation — a second thread starts clean.
-    await setActiveConversation(null);
-    const second = await appendMessage(msg("user", "unrelated task"));
+    const second = await appendMessageFresh(msg("user", "unrelated task"));
     expect(await threadTabs(second)).toEqual([]);
     expect(await threadTabs(first)).toHaveLength(2);
   });
@@ -139,7 +148,7 @@ describe("conversations", () => {
     // Both rewrite the index row, so an unserialized record loses the whole
     // list to theirs — and a thread that forgets its strip mints a new one on
     // every follow-up.
-    const id = await appendMessage(msg("user", "book a flight"));
+    const id = await appendMessageFresh(msg("user", "book a flight"));
     void appendMessageTo(id, msg("assistant", "booked"));
     await recordDrivenTabFor(id, { url: "https://air.test/", title: "Air", tabId: 4, groupId: 7 });
     await appendMessageTo(id, msg("assistant", "done"));
@@ -154,7 +163,7 @@ describe("conversations", () => {
     // list — "which group is this thread's" — and holds pages the run only
     // filed. Keeping it out of `tabs` keeps filed reference pages out of the
     // model's "earlier work" line and out of that list's tighter cap.
-    const id = await appendMessage(msg("user", "copy from the doc"));
+    const id = await appendMessageFresh(msg("user", "copy from the doc"));
     await recordDrivenTabFor(id, { url: "https://air.test/", title: "Air", tabId: 4, groupId: 7 }, [
       "https://air.test/",
       "https://docs.test/spec",
@@ -171,7 +180,7 @@ describe("conversations", () => {
     // A read-only run groups nothing, so it has no membership to report —
     // erasing the record would cost the thread the only key that survives a
     // restart, and the next run would mint a second strip beside the first.
-    const id = await appendMessage(msg("user", "check the page"));
+    const id = await appendMessageFresh(msg("user", "check the page"));
     await recordDrivenTabFor(id, { url: "https://air.test/", title: "Air", groupId: 7 }, [
       "https://air.test/",
       "https://docs.test/spec",
@@ -185,14 +194,14 @@ describe("conversations", () => {
   });
 
   it("caps the strip snapshot too — a big working set stays bounded", async () => {
-    const id = await appendMessage(msg("user", "many tabs"));
+    const id = await appendMessageFresh(msg("user", "many tabs"));
     const urls = Array.from({ length: 14 }, (_, i) => `https://filed${i}.test/`);
     await recordDrivenTabFor(id, { url: urls[0] ?? "", title: "First" }, urls);
     expect((await getThreadTabsFor(id)).stripUrls).toHaveLength(10);
   });
 
   it("caps the tab list so a long multi-tab session stays bounded", async () => {
-    const id = await appendMessage(msg("user", "many tabs"));
+    const id = await appendMessageFresh(msg("user", "many tabs"));
     for (let i = 0; i < 8; i++) {
       await recordDrivenTabFor(id, { url: `https://site${i}.com/`, title: `Site ${i}` });
     }

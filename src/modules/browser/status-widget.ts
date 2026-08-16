@@ -39,6 +39,10 @@ export interface WidgetState {
   queuedText: string;
   /** Parked on the user's answer — the pulse becomes a still "?". */
   awaiting: boolean;
+  /** What the task line says while parked ("" keeps the task excerpt): a parked
+   *  run's excerpt can't say it is blocked on you, so the state leads and the
+   *  excerpt moves to the tooltip. */
+  awaitingText: string;
   hideLabel: string;
   /** The pill's own tooltip — clicking anywhere on it opens the panel. */
   openHint: string;
@@ -72,6 +76,7 @@ export function paintWidget(
   hideHint: string,
   expandHint: string,
   awaiting: boolean,
+  awaitingText: string,
 ): void {
   const old = document.getElementById(hostId);
   // A repaint that changes nothing must not wipe the pill: rebuilding the host
@@ -85,6 +90,7 @@ export function paintWidget(
     hideHint,
     expandHint,
     awaiting,
+    awaitingText,
   ]);
   if (old?.dataset.signature === signature) return;
   const wasCollapsed = old?.dataset.collapsed === "1";
@@ -198,7 +204,9 @@ export function paintWidget(
   brand.textContent = "TabRunner ·";
   const text = document.createElement("span");
   text.className = "task";
-  text.textContent = task;
+  // Parked: the state leads ("Waiting for your approval"), the task excerpt
+  // keeps the tooltip. Working: the excerpt itself, as always.
+  text.textContent = awaitingText || task;
   text.title = task;
   open.append(makeStatus(), brand, text);
   if (queuedText) {
@@ -253,6 +261,7 @@ function argsOf(state: WidgetState): Parameters<typeof paintWidget> {
     state.hideHint,
     state.expandHint,
     state.awaiting,
+    state.awaitingText,
   ];
 }
 

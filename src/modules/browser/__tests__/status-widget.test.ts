@@ -7,7 +7,7 @@ import { paintWidget, removeWidget } from "../status-widget";
 
 const HOST_ID = "tabrunner-status-widget";
 
-function paint(awaiting = false) {
+function paint(awaiting = false, awaitingText = "") {
   paintWidget(
     HOST_ID,
     "Summarize the thread",
@@ -17,6 +17,7 @@ function paint(awaiting = false) {
     "Hide hint",
     "Expand hint",
     awaiting,
+    awaitingText,
   );
 }
 
@@ -105,6 +106,15 @@ describe("status widget collapse", () => {
     const { mini } = parts();
     expect(mini.querySelector(".wait")?.textContent).toBe("?");
     expect(mini.querySelector(".dot")).toBeNull();
+  });
+
+  it("a parked run names the wait in words, keeping the task on the tooltip", () => {
+    paint(true, "Waiting for your approval");
+
+    const line = parts().open.querySelector<HTMLElement>(".task")!;
+    // The excerpt can't say the run is blocked on you — the state leads.
+    expect(line.textContent).toBe("Waiting for your approval");
+    expect(line.title).toBe("Summarize the thread");
   });
 
   it("removeWidget still takes the whole thing down", () => {

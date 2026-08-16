@@ -101,6 +101,11 @@ export function ChatInput() {
   // An unanswered ask_user turns the composer into the answer field — the
   // placeholder says so (the card's chips/hint use the same gate, ask-gate.ts).
   const questionPending = pendingAskId(messages, status) !== undefined;
+  // A parked plan gate does the same, stronger: the run is BLOCKED on the
+  // answer with no tool boundary ahead, so a queued steer could never land.
+  // Typed text is the answer — it sends the plan back with the note.
+  const parkedAtPlan = useConversationStore((s) => s.planApproval !== null);
+  const revisePlan = useConversationStore((s) => s.revisePlan);
   const queued = useConversationStore((s) => s.queued);
   const queueBusy = useQueueBusy();
   const sendTask = useConversationStore((s) => s.sendTask);
@@ -362,7 +367,12 @@ export function ChatInput() {
       else setText(outcome.complete);
       return;
     }
-    if (steering) {
+    if (parkedAtPlan) {
+      // The gate's answer, not a steer: a parked run has no next tool call a
+      // queued line could ever land between. Text sends the plan back with the
+      // note attached — approve/reject stay the card's one-click buttons.
+      revisePlan(task);
+    } else if (steering) {
       // Inserted between the next tool batches, never mid-stream.
       queueMessage(task);
     } else {
@@ -554,11 +564,13 @@ export function ChatInput() {
           aria-controls={slashOpen ? "slash-menu" : undefined}
           aria-activedescendant={slashActive ? `slash-menu-item-${slashActive.key}` : undefined}
           placeholder={
-            steering
-              ? t("chat.queuePlaceholder")
-              : questionPending
-                ? t("chat.answerPlaceholder")
-                : t("chat.placeholder")
+            parkedAtPlan
+              ? t("chat.planPlaceholder")
+              : steering
+                ? t("chat.queuePlaceholder")
+                : questionPending
+                  ? t("chat.answerPlaceholder")
+                  : t("chat.placeholder")
           }
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -594,8 +606,16 @@ export function ChatInput() {
               className="ml-auto shrink-0"
               onClick={submit}
               disabled={!text.trim()}
-              title={steering ? t("chat.queueTitle") : t("chat.sendTitle")}
-              aria-label={steering ? t("chat.queue") : t("chat.send")}
+              title={
+                parkedAtPlan
+                  ? t("chat.planSendTitle")
+                  : steering
+                    ? t("chat.queueTitle")
+                    : t("chat.sendTitle")
+              }
+              aria-label={
+                parkedAtPlan ? t("chat.planSendTitle") : steering ? t("chat.queue") : t("chat.send")
+              }
             >
               <SendIcon />
             </Button>

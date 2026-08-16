@@ -265,6 +265,8 @@
     "askUserHint": "Pick one, or write your own",
     "askUserOpenHint": "Type your answer below",
     "answerPlaceholder": "Write your answer…",
+    "planPlaceholder": "Approve the plan above, or type what should change…",
+    "planSendTitle": "Send the plan back with your note",
     "thinkingFor": "Thinking · {{duration}}",
     "thoughtFor": "Thought for {{duration}}",
     "reasoningToggle": "Show or hide the model's reasoning (saved for all conversations)",

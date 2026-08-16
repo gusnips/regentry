@@ -12,7 +12,16 @@ export type Command =
   /** images are data URLs the user attached; the task text references them as "[Image #1]";
    *  thisPage drives the user's current tab with the panel open; background drives the same
    *  tab but closes the panel after plan approval */
-  | { type: "run"; task: string; images?: string[]; thisPage?: boolean }
+  | {
+      type: "run";
+      /** The conversation the task message was just stored in — the run's home.
+       *  Carried, not re-derived worker-side: the shared active slot can be
+       *  re-pointed (pill/notification click) between send and handling. */
+      conversationId: string;
+      task: string;
+      images?: string[];
+      thisPage?: boolean;
+    }
   | { type: "stop" }
   /**
    * Message typed while a run is in flight — the loop inserts it between tool
