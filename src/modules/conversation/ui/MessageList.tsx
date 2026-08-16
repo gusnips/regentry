@@ -478,13 +478,19 @@ function burstCountKey(tool: string | undefined): BurstCountKey {
 }
 
 /**
- * A collapsed action run: one quiet line — "Thinking for 4m 12s, 5 clicks,
- * 3 entries and 2 page reads · 6m 40s" — that expands back to the rows it
- * replaces. The thinking segment only appears when the run actually thought;
- * a thought-free run is counts only ("5 clicks and 2 page reads · 40s").
- * Counts keep the run's shape without truncation; the per-action hints live on
- * the expanded rows. Live bursts stay open (same rule as the plan card) and
- * settle closed when the run ends.
+ * A collapsed action run: one quiet line — "6m 40s · 5 clicks, 3 entries and
+ * 2 page reads" — that expands back to the rows it replaces. Counts keep the
+ * run's shape without truncation; the per-action hints live on the expanded
+ * rows. Live bursts stay open (same rule as the plan card) and settle closed
+ * when the run ends.
+ *
+ * The elapsed leads, and it is the line's only duration. Trailing, it landed
+ * at a different x on every burst — a ragged gold rag down the transcript —
+ * and it read as a rival to the "Thinking for 3s" the summary used to open
+ * with, two numbers with no stated relationship. Leading, every burst's time
+ * starts at the same x (chevron + icon are fixed width), truncation eats the
+ * tail of the description instead of the number, and thinking is simply part
+ * of the total — where it went is on the thought rows one click away.
  */
 const BurstCard = memo(function BurstCard({
   burst,
@@ -514,19 +520,14 @@ const BurstCard = memo(function BurstCard({
     (burst.endedAt ?? (burst.live ? now : (last?.timestamp ?? burst.startedAt))) - burst.startedAt;
   const failed = burst.steps.some((s) => s.ok === false);
 
-  const thinkMs = burst.items.reduce(
-    (sum, m) => sum + (m.role === "reasoning" ? (m.elapsed ?? 0) : 0),
-    0,
-  );
   const counts = new Map<BurstCountKey, number>();
   for (const s of burst.steps) {
     const key = burstCountKey(s.tool);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  const list = new Intl.ListFormat(i18n.language, { type: "conjunction" }).format([
-    ...(thinkMs > 0 ? [t("chat.burstThinking", { duration: formatDuration(thinkMs) })] : []),
-    ...[...counts].map(([key, count]) => t(key, { count })),
-  ]);
+  const list = new Intl.ListFormat(i18n.language, { type: "conjunction" }).format(
+    [...counts].map(([key, count]) => t(key, { count })),
+  );
 
   return (
     <details
@@ -536,8 +537,8 @@ const BurstCard = memo(function BurstCard({
       <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none hover:text-neutral-700 dark:hover:text-neutral-300">
         <ChevronRightIcon className="shrink-0 text-neutral-400 transition-transform group-open:rotate-90 dark:text-neutral-500" />
         <StepIcon live={burst.live} ok={failed ? false : true} />
+        <span className="telemetry shrink-0">{formatDuration(elapsed)}</span>
         <span className="truncate">{list}</span>
-        <span className="telemetry shrink-0">· {formatDuration(elapsed)}</span>
       </summary>
       <div className="mt-1 ml-4 flex flex-col gap-1.5">
         {burst.items.map((m) =>

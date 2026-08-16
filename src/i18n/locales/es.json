@@ -274,7 +274,6 @@
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensó durante {{duration}}",
     "reasoningToggle": "Mostrar u ocultar el razonamiento del modelo (se guarda para todas las conversaciones)",
-    "burstThinking": "Pensando durante {{duration}}",
     "burstCount": {
       "navigate_one": "{{count}} navegación",
       "navigate_other": "{{count}} navegaciones",
