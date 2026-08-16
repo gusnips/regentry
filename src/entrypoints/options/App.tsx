@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { AddProviderDialog, ProviderList, useProvidersStore } from "@/modules/providers/ui";
 import { InstructionsSection, MemorySection } from "@/modules/memory/ui";
+import { SchedulesSection } from "@/modules/schedule/ui";
 import { Button } from "@/components/Button";
 import { BrandMark } from "@/components/BrandMark";
 import { Icon } from "@/components/Icon";
@@ -16,7 +17,7 @@ import { LINKS } from "@/lib/links";
 import { StatusStrip } from "./StatusStrip";
 import { McpPane } from "./McpPane";
 
-const PAGES = ["general", "behavior", "knowledge", "providers", "mcp"] as const;
+const PAGES = ["general", "behavior", "schedules", "knowledge", "providers", "mcp"] as const;
 type PageId = (typeof PAGES)[number];
 
 /** The hash is the page's deep link — a reload or a copied URL lands back here. */
@@ -328,6 +329,17 @@ export default function App() {
             <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" />
           </NavItem>
           <NavItem
+            active={visiblePage === "schedules"}
+            label={t("settings.nav.schedules")}
+            onClick={() => go("schedules")}
+          >
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M3 10h18" />
+            <path d="M8 3v4" />
+            <path d="M16 3v4" />
+            <path d="M12 14v3l2 1" />
+          </NavItem>
+          <NavItem
             active={visiblePage === "knowledge"}
             label={t("settings.nav.knowledge")}
             onClick={() => go("knowledge")}
@@ -359,6 +371,7 @@ export default function App() {
         <main className="min-w-0 flex-1">
           {visiblePage === "general" && <GeneralPane />}
           {visiblePage === "behavior" && <BehaviorPane />}
+          {visiblePage === "schedules" && <SchedulesSection />}
           {visiblePage === "knowledge" && (
             /* The module sections carry their own mt-8 — flush the first. */
             <div className="[&>section:first-child]:mt-0">

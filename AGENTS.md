@@ -113,6 +113,15 @@ never reach the service-worker bundle.
   durable facts from the transcript — capped at 3, and "none" is the expected answer, since a run
   that only read a page teaches nothing. Edited on the options page (no filesystem in an
   extension — the filenames are the mental model, not a path).
+- `schedule/` — unattended runs on a timer: one-shot, daily, or every-N-minutes with an optional
+  weekday filter and active-hours window. Wall-clock rules recomputed after every fire (never
+  `periodInMinutes` — it can't hold 9am across a DST shift), one `chrome.alarms` one-shot per
+  record, storage re-armed at boot because alarms don't survive every extension update. Fires
+  through `submitRun` as a third `RunOwner`, so a scheduled run is just another caller of the one
+  run slot; its plan auto-approves because the user approved the schedule's creation. One
+  conversation per schedule, so a recurring run can read what it did last time. `recurrence.ts` is
+  pure and holds the whole calendar; `scheduler.ts` is the only file that reaches into the agent,
+  which is why the barrel stops short of it. Background-only except `ui/`.
 - `bridge/` — the MCP bridge's extension half. Background-only.
 - `tips/` — the rotating "Tip: …" line; i18n data + cooldown scheduler (panel opens,
   least-recently-shown wins, re-picked on panel open / run end). Shows in the running run

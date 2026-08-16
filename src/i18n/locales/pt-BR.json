@@ -43,6 +43,7 @@
     "nav": {
       "general": "Geral",
       "behavior": "Comportamento",
+      "schedules": "Agendamentos",
       "knowledge": "Conhecimento",
       "providers": "Provedores",
       "mcp": "MCP"
@@ -88,6 +89,53 @@
     "off": "A memória está desligada — o TabRunner não está salvando o que aprende. Ligue acima para retomar.",
     "saved": "Salvo",
     "deleteMemory": "Excluir este fato"
+  },
+  "schedule": {
+    "agentLabel": "Agendado",
+    "lateNote": "Esta execução estava agendada para {{scheduled}} e está começando atrasada, porque o navegador esteve fechado até agora. Leve o atraso em conta e diga isso no seu resumo se mudar a resposta.",
+    "desc": {
+      "once": "Uma vez — {{when}}",
+      "daily": "Todo dia às {{time}}",
+      "dailyDays": "{{days}} às {{time}}",
+      "interval": "A cada {{every}}",
+      "intervalWindow": "A cada {{every}}, das {{from}} às {{to}}",
+      "onDays": "{{base}} · {{days}}"
+    },
+    "step": {
+      "scheduled": "{{recurrence}} — próxima {{next}}",
+      "cancelled": "Cancelado: {{task}}",
+      "cancelledBare": "Agendamento cancelado"
+    },
+    "errors": {
+      "pastFire": "Esse horário já passou — escolha um no futuro.",
+      "badDays": "days precisa ser números de 0 (domingo) a 6 (sábado).",
+      "badTime": "\"{{value}}\" não é um horário — use HH:MM em 24 horas, como \"09:00\".",
+      "tooFrequent": "Uma tarefa repetida roda no máximo a cada {{min}} minutos.",
+      "badWindow": "O fim da janela precisa vir depois do início.",
+      "badRecurrence": "recurrence precisa de um kind \"once\", \"daily\" ou \"interval\", mais o campo que esse kind exige: at, time ou every_minutes.",
+      "neverFires": "Essa regra nunca chega a acontecer — confira o horário e os dias.",
+      "tooMany": "Já existem {{max}} tarefas agendadas, o máximo que o TabRunner guarda. Cancele uma antes de criar outra.",
+      "selfOnly": "Uma execução agendada só pode reprogramar o próprio agendamento, nunca criar um novo. Se for para agendar algo novo, pergunte ao usuário.",
+      "chainExhausted": "Este agendamento se reprogramou {{max}} vezes sem o usuário intervir. Pare por aqui e relate o que encontrou.",
+      "noTask": "task é obrigatório — diga o que a execução agendada deve fazer.",
+      "noId": "id é obrigatório — pegue na lista de tarefas agendadas.",
+      "notFound": "Nenhum agendamento com id {{id}} — ele pode já ter sido cancelado."
+    },
+    "ui": {
+      "title": "Tarefas agendadas",
+      "help": "Trabalhos que o TabRunner executa sozinho, em uma aba própria. Cada um mantém sua conversa e avisa você quando termina.",
+      "emptyTitle": "Nada agendado",
+      "emptyBody": "Tarefas agendadas rodam sem ninguém olhando — um resumo da caixa de entrada de manhã, uma checagem de preço a cada hora.",
+      "emptyAction": "Peça uma no painel lateral: “todo dia útil às 9h, resuma minha caixa de entrada”. Aprove o plano e ela aparece aqui.",
+      "next": "Próxima {{when}}",
+      "lastOk": "Última execução terminou {{when}}",
+      "lastFailed": "Última execução falhou {{when}}",
+      "runNow": "Executar agora",
+      "running": "Executando agora",
+      "open": "Abrir a conversa dela",
+      "delete": "Excluir este agendamento",
+      "count": "{{n}} de {{max}}"
+    }
   },
   "addProvider": {
     "title": "Adicionar provedor",
@@ -500,7 +548,8 @@
     "memory": "O TabRunner lembra fatos úteis das suas tarefas — revise ou apague em Configurações → O que o TabRunner lembra.",
     "usage": "Num provedor por assinatura, o ícone de medidor ao lado do seletor de modelo mostra seu uso de 5 horas e semanal — clique para ver quando reinicia.",
     "slashCommands": "Digite / no campo de texto para ver comandos — troque provedor, modelo ou esforço no chat.",
-    "compact": "Conversa longa enchendo? /compact troca as mensagens antigas por um resumo — o histórico continua aí."
+    "compact": "Conversa longa enchendo? /compact troca as mensagens antigas por um resumo — o histórico continua aí.",
+    "schedule": "Peça trabalho com hora marcada — “todo dia útil às 9h, veja meu e-mail”. Gerencie em Configurações."
   },
   "notify": {
     "doneFallback": "Tarefa concluída."

@@ -1,5 +1,6 @@
 import type { JSONSchemaProperty, ToolDef } from "@/modules/providers/types";
 import { DURABLE_FACT_RULES, type AgentContext } from "@/modules/memory";
+import { describeRecurrence, MIN_INTERVAL_MINUTES, type Schedule } from "@/modules/schedule";
 import { SUPPORTED_KEYS } from "@/modules/browser";
 
 const BASE_PROMPT = `You are TabRunner, a browser automation agent. You control the user's real browser via tools.
@@ -18,6 +19,13 @@ const BASE_PROMPT = `You are TabRunner, a browser automation agent. You control 
 
 - Consequential actions need explicit permission: paying or spending money, sending anything on the user's behalf (email, message, post, review), deleting data, submitting forms or applications. The task must name the action — a follow-up like "continue" or "handle it" is not permission. When permission is missing, call "ask_user" and end your turn.
 - Never ask the user a question in plain text. A written-out question does not pause the run — the run just continues past it and the user has no way to answer. To ask anything (missing details, a choice between options, permission), call "ask_user" and end your turn; the answer arrives as the next message. Add "choices" only when the answer really is one of a few concrete options — a question with an open answer (a file name, an address, free text) takes none, and the user simply types their reply. Never invent a filler option to have a list.
+
+## Working on a timer
+
+- A task the user pins to a future time or a repeat — "at 3pm…", "every morning…", "every hour from 9 to 5", "each Monday…" — is a request to SCHEDULE the work, not to do it now. Plan it as what it is ("Schedule the 9am inbox check"), and call "schedule_task" once that plan is approved. Running the job immediately instead is the mistake to avoid: they asked for 9am. When they plainly want both now and later, say so in the plan and do both.
+- You can pace yourself the same way. When something needs looking at later rather than waiting on — a delivery that has not shipped, a build still running, a price that might drop — schedule the follow-up and end this run. Never idle, poll, or loop in place to pass time.
+- A run of yours that was itself scheduled re-times only its own schedule, which is how "keep checking until X" works: do the check, then either schedule the next one or call "cancel_schedule" because the goal is met. A repeat nobody ends keeps spending the user's money while they sleep — ending it is your job.
+- The user reviews and cancels all of it in Settings → Schedules.
 
 ## When things go wrong
 
@@ -45,7 +53,7 @@ When the user asks how to do something in TabRunner, or what something on their 
 - **The side panel** is where this conversation lives. Header: provider and model chips (tap to switch), history, new chat, and the settings menu (theme, language, the status-widget toggle, "Add provider", "All settings"). The composer at the bottom takes the task, image/file attachments, and has the run-target toggle: "This page" (you drive the tab they're looking at, with the panel open) or background (you drive the same tab, but the panel closes after they approve the plan). Typing / as the first character of the composer opens local slash commands — /provider, /model, /effort, /background, /usage, /new, /help — they change those settings directly and never reach you as messages.
 - **A run in the panel:** your plan appears as a card they can approve, adjust, or reject — nothing acts before approval. While you work they see the run band (a shimmering verb, elapsed time, token spend) and each tool call as a row in the transcript. Stop button or Esc halts you; anything they type mid-run queues as your next task.
 - **On the page:** the driven tab carries a "TabRunner is controlling this tab" badge top-right (dark pill, amber dot) and a pulsing amber dot on its favicon; when you end on ask_user the badge lifts and the favicon settles into a still "?" — that means "waiting for you". Every tab you act on joins a green tab group named after the task — the strip appears at your first action, not when the message arrives, one per conversation, retitled ✓, ? or ✗ when the run ends; tabs you only read stay out of it unless you file them with group_tab. Their other tabs get a floating status widget bottom-right (the task, queued count, Open to jump to the panel, Hide to collapse it to a dot — click the dot to bring it back; hide for good in Settings).
-- **Settings** (the gear menu → "All settings", or chrome://extensions → TabRunner → options): General (appearance, language), Behavior (widget, background start page, tips), Knowledge (standing instructions that apply to every chat, and your remembered facts — they can review or delete both), Providers (subscription sign-in for Anthropic/OpenAI/Kimi, or an API key across 15 presets plus any OpenAI/Anthropic-compatible endpoint), MCP (the bridge that lets external clients drive you — port and connection status).
+- **Settings** (the gear menu → "All settings", or chrome://extensions → TabRunner → options): General (appearance, language), Behavior (widget, background start page, tips), Schedules (the tasks set to run on their own — each one's cadence, when it next runs, and how the last run went, with Run now, its conversation, and Delete), Knowledge (standing instructions that apply to every chat, and your remembered facts — they can review or delete both), Providers (subscription sign-in for Anthropic/OpenAI/Kimi, or an API key across 15 presets plus any OpenAI/Anthropic-compatible endpoint), MCP (the bridge that lets external clients drive you — port and connection status).
 - The marketing site (tagline, screenshots, install guide) is tabrunner.app.`;
 
 /**
@@ -96,16 +104,41 @@ This file is sent to the model provider on every run.`;
  */
 const TEXT_ONLY_NOTE = `Your model is text-only: it cannot receive images, so there is no screenshot tool. You see the page only through accessibility snapshots — rely on them for everything, and when a task needs something visual you cannot verify from structure and attributes, say so plainly in your final summary.`;
 
+/**
+ * The standing schedules, shown the way MEMORY.md is: a list the model already
+ * has, so "what do I have scheduled?" and "cancel the morning one" both answer
+ * without a lookup tool. Emitted only when some exist — an empty section would
+ * spend tokens on every run to say nothing, and the tool descriptions already
+ * teach the capability.
+ */
+function schedulesSection(schedules: Schedule[]): string {
+  const rows = schedules
+    .map(
+      (s) =>
+        `- [${s.id}] ${s.task} — ${describeRecurrence(s.recurrence)} (next: ${new Date(
+          s.nextFireAt,
+        ).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })})`,
+    )
+    .join("\n");
+  return `# Scheduled tasks
+
+Tasks the user has set to run on their own, without anyone watching. Use these ids with "cancel_schedule", and answer questions about what is scheduled straight from this list.
+
+${rows}`;
+}
+
 export function buildSystemPrompt(
   ctx: AgentContext,
   language: string,
   supportsImages = true,
+  schedules: Schedule[] = [],
 ): string {
   const sections = [BASE_PROMPT];
   if (!supportsImages) sections.push(TEXT_ONLY_NOTE);
   sections.push(languageSection(language));
   if (ctx.instructions) sections.push(instructionsSection(ctx.instructions));
   if (ctx.memoryOn) sections.push(memorySection(ctx.memory));
+  if (schedules.length > 0) sections.push(schedulesSection(schedules));
   return sections.join("\n\n");
 }
 
@@ -440,6 +473,86 @@ const TOOL_DEFS: ToolDef[] = [
         },
       },
       required: ["steps", "current", "deviates_from_approved"],
+    },
+  },
+  {
+    name: "schedule_task",
+    description: `Set a task to run later, on its own, with nobody watching — once ("at 3pm, check the delivery"), or on a repeat ("every weekday at 9am, summarize my inbox"). The scheduled run drives the browser exactly like this one, in its own conversation, and notifies the user when it finishes.
+
+This is also how you pace yourself: to check back on something later, schedule the follow-up rather than waiting. A run of yours that was itself scheduled can only re-time ITS OWN schedule — pass no id and it re-times the one you are running from — which is what a "keep checking until X" loop is. Stop such a loop by calling "cancel_schedule" once the goal is met; a loop that never ends spends the user's money while they sleep.
+
+Only schedule what the user asked to be scheduled. Needs an approved plan, like any other action.`,
+    params: {
+      type: "object",
+      properties: {
+        task: {
+          type: "string",
+          description:
+            "What the future run should do, written to stand alone — it starts with none of this conversation's context. Name the site, the account, the thing.",
+        },
+        recurrence: {
+          type: "object",
+          description: "When it runs.",
+          properties: {
+            kind: {
+              type: "string",
+              description:
+                '"once" for a single run, "daily" for a wall-clock time each day, "interval" for every N minutes',
+              enum: ["once", "daily", "interval"],
+            },
+            at: {
+              type: "string",
+              description:
+                'kind=once: local date and time, e.g. "2026-08-17T15:00". Use the current date you were given — never guess the year.',
+            },
+            time: { type: "string", description: 'kind=daily: 24-hour local time, e.g. "09:00"' },
+            every_minutes: {
+              type: "number",
+              description: `kind=interval: minutes between runs (minimum ${MIN_INTERVAL_MINUTES})`,
+            },
+            from: {
+              type: "string",
+              description:
+                'kind=interval: only run at or after this local time, e.g. "09:00". Omit for around the clock.',
+            },
+            to: {
+              type: "string",
+              description: 'kind=interval: stop running after this local time, e.g. "17:00"',
+            },
+            days: {
+              type: "array",
+              description:
+                "Restrict to these weekdays — 0 is Sunday, 6 is Saturday. Weekdays are [1,2,3,4,5]. Omit for every day.",
+              items: { type: "number" },
+            },
+          },
+          required: ["kind"],
+        },
+        url: {
+          type: "string",
+          description:
+            "The page the scheduled run starts on. Give one whenever the task has an obvious home — it opens in a tab of its own, never the user's.",
+        },
+        id: {
+          type: "string",
+          description:
+            "Change an existing schedule instead of creating one — the id from the scheduled-tasks list.",
+        },
+        intent: intentParam("the morning inbox check", "tomorrow's price check"),
+      },
+      required: ["task", "recurrence"],
+    },
+  },
+  {
+    name: "cancel_schedule",
+    description:
+      "Delete a scheduled task so it never runs again — by its id from the scheduled-tasks list. Use it when the user asks, and to end a repeating check of your own once its goal is met.",
+    params: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "The schedule id" },
+      },
+      required: ["id"],
     },
   },
   {

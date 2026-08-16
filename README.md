@@ -46,6 +46,10 @@ vendor lock-in, no relay, no account with us. Your API key — or the subscripti
   header.
 - **Remembers across runs** — your standing instructions (`AGENTS.md`) and the agent's own notes
   (`MEMORY.md`) load into every run. Editable on the options page, off with one toggle.
+- **Runs on a timer** — "every weekday at 9am, summarize my inbox", "at 3pm, check the delivery".
+  Ask for it in the panel and approving the plan is the consent; the run fires later in a tab of
+  its own and notifies you when it lands. The agent can pace itself the same way — schedule a
+  follow-up, keep checking, cancel when the goal is met. Review and cancel them in Settings.
 - **Drivable over MCP** — Claude Code, Claude Desktop, or any Model Context Protocol client can
   hand TabRunner a task and follow it to the answer, using the same browser and the same logins.
   The client says what it wants done and TabRunner's own model does it — or, when the job is small
@@ -112,9 +116,6 @@ and conventions.
 
 ## Roadmap
 
-- **Scheduled tasks** — "at 3pm, open site X and do Y": one-shot and recurring runs on a timer,
-  plus a `schedule_task` agent tool. Design and hook points in
-  [docs/roadmap.md](docs/roadmap.md).
 - **Firefox version.**
 
 ## License

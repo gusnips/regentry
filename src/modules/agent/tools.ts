@@ -1,9 +1,11 @@
 import type { BrowserDriver } from "@/modules/browser";
 import type { ToolCall } from "@/modules/providers/types";
 import { remember } from "@/modules/memory";
+import { cancelSchedule, scheduleTask } from "@/modules/schedule/agent-tools";
 import { i18n } from "@/i18n";
 import { truncate } from "@/lib/logger";
 import { readStepLog } from "./read-history";
+import type { RunOwner } from "./active-runs";
 
 /** Longer than this and the plan card stops being scannable in a side panel. */
 const MAX_PLAN_STEPS = 20;
@@ -39,6 +41,10 @@ export interface ToolContext {
   conversationId?: string;
   /** The run's tab strip — group_tab's target. Absent under direct control, which has none. */
   runGroup?: RunGroup;
+  /** Which client started the run — bounds what `schedule_task` may write. */
+  owner?: RunOwner;
+  /** The schedule this run fired from — the only record it may re-time. */
+  scheduleId?: string;
 }
 
 /** Execute a single tool call against the browser driver. */
@@ -161,6 +167,17 @@ export async function executeTool(
         return { ok: true, data: { fact: stored } };
       }
 
+      case "schedule_task":
+        // Gated on an approved plan (see GATED_TOOLS): committing the browser to
+        // unattended future work needs the same yes an action on the page does.
+        return scheduleTask(call.args, {
+          ...(ctx.owner ? { owner: ctx.owner } : {}),
+          ...(ctx.scheduleId ? { scheduleId: ctx.scheduleId } : {}),
+        });
+
+      case "cancel_schedule":
+        return cancelSchedule(call.args);
+
       case "ask_user":
         // No driver interaction — the loop ends the run on this call and the
         // panel renders the question; the answer arrives as the next message.
@@ -278,6 +295,21 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
   if (tool === "ask_user" && data && typeof data === "object") {
     // The question is the summary — the card renders it as the headline.
     return (data as { question?: string }).question ?? "";
+  }
+  if (tool === "schedule_task" && data && typeof data === "object") {
+    // The cadence and the next fire ARE the news — "scheduled a task" would
+    // leave the user checking Settings to find out what they just agreed to.
+    const s = data as { recurrence?: string; next_run?: string };
+    return i18n.t("schedule.step.scheduled", {
+      recurrence: s.recurrence ?? "",
+      next: s.next_run ?? "",
+    });
+  }
+  if (tool === "cancel_schedule" && data && typeof data === "object") {
+    const s = data as { task?: string };
+    return s.task
+      ? i18n.t("schedule.step.cancelled", { task: truncate(s.task, 60) })
+      : i18n.t("schedule.step.cancelledBare");
   }
   return i18n.t("errors.toolCompleted", { tool });
 }

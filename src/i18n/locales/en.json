@@ -43,6 +43,7 @@
     "nav": {
       "general": "General",
       "behavior": "Behavior",
+      "schedules": "Schedules",
       "knowledge": "Knowledge",
       "providers": "Providers",
       "mcp": "MCP"
@@ -88,6 +89,53 @@
     "off": "Memory is off — TabRunner isn't saving what it learns. Turn it on above to resume.",
     "saved": "Saved",
     "deleteMemory": "Delete this fact"
+  },
+  "schedule": {
+    "agentLabel": "Scheduled",
+    "lateNote": "This run was scheduled for {{scheduled}} and is starting late, because the browser was closed until now. Take the delay into account, and say so in your summary if it changes the answer.",
+    "desc": {
+      "once": "Once — {{when}}",
+      "daily": "Every day at {{time}}",
+      "dailyDays": "{{days}} at {{time}}",
+      "interval": "Every {{every}}",
+      "intervalWindow": "Every {{every}}, {{from}}–{{to}}",
+      "onDays": "{{base}} · {{days}}"
+    },
+    "step": {
+      "scheduled": "{{recurrence}} — next {{next}}",
+      "cancelled": "Cancelled: {{task}}",
+      "cancelledBare": "Schedule cancelled"
+    },
+    "errors": {
+      "pastFire": "That time has already passed — pick one in the future.",
+      "badDays": "days must be numbers from 0 (Sunday) to 6 (Saturday).",
+      "badTime": "\"{{value}}\" is not a time — use 24-hour HH:MM, like \"09:00\".",
+      "tooFrequent": "A repeating task runs at most every {{min}} minutes.",
+      "badWindow": "The window's end time has to come after its start.",
+      "badRecurrence": "recurrence needs a kind of \"once\", \"daily\" or \"interval\", plus the field that kind requires: at, time, or every_minutes.",
+      "neverFires": "That rule never comes around — check the time and the days.",
+      "tooMany": "There are already {{max}} scheduled tasks, the most TabRunner keeps. Cancel one before adding another.",
+      "selfOnly": "A scheduled run can only re-time the schedule it is running from, never create a new one. If new work should be scheduled, ask the user.",
+      "chainExhausted": "This schedule has rescheduled itself {{max}} times without the user stepping in. Stop here and report what you found.",
+      "noTask": "task is required — say what the scheduled run should do.",
+      "noId": "id is required — take it from the scheduled-tasks list.",
+      "notFound": "No schedule with id {{id}} — it may already be cancelled."
+    },
+    "ui": {
+      "title": "Scheduled tasks",
+      "help": "Work TabRunner runs on its own, in a tab of its own. Each one keeps its own conversation, and notifies you when it finishes.",
+      "emptyTitle": "Nothing scheduled",
+      "emptyBody": "Scheduled tasks run with nobody watching — a morning inbox summary, an hourly price check.",
+      "emptyAction": "Ask for one in the side panel: “every weekday at 9am, summarize my inbox”. Approve the plan and it appears here.",
+      "next": "Next {{when}}",
+      "lastOk": "Last run finished {{when}}",
+      "lastFailed": "Last run failed {{when}}",
+      "runNow": "Run now",
+      "running": "Running now",
+      "open": "Open its conversation",
+      "delete": "Delete this schedule",
+      "count": "{{n}} of {{max}}"
+    }
   },
   "addProvider": {
     "title": "Add provider",
@@ -500,7 +548,8 @@
     "memory": "TabRunner remembers useful facts from your tasks — review or prune them under Settings → What TabRunner remembers.",
     "usage": "On a subscription provider, the gauge icon next to the model picker shows your 5-hour and weekly usage — click it for the reset times.",
     "slashCommands": "Type / in the composer for commands — switch provider, model, or effort mid-chat.",
-    "compact": "Long chat filling up? /compact swaps the older messages for a summary — you keep the scrollback."
+    "compact": "Long chat filling up? /compact swaps the older messages for a summary — you keep the scrollback.",
+    "schedule": "Ask for work on a timer — “every weekday at 9am, check my inbox”. Manage them in Settings."
   },
   "notify": {
     "doneFallback": "Task finished."

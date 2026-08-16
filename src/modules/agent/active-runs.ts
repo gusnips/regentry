@@ -3,8 +3,10 @@ import { createLogger } from "@/lib/logger";
 const log = createLogger("runs");
 
 /** Which client started the run — decides who may stop/steer it and how a
- *  conflict is worded. Only the owner's stop/inject commands touch a run. */
-export type RunOwner = "panel" | "bridge";
+ *  conflict is worded. Only the owner's stop/inject commands touch a run.
+ *  "schedule" is an alarm firing with nobody present: it carries the user's
+ *  consent from when the schedule was created, not from a panel at run time. */
+export type RunOwner = "panel" | "bridge" | "schedule";
 
 /** The single live run slot. The injected queue lives here too, so both clients
  *  steer their own runs without any per-port state. */

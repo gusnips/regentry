@@ -43,6 +43,7 @@
     "nav": {
       "general": "General",
       "behavior": "Comportamiento",
+      "schedules": "Programaciones",
       "knowledge": "Conocimiento",
       "providers": "Proveedores",
       "mcp": "MCP"
@@ -88,6 +89,53 @@
     "off": "La memoria está desactivada: TabRunner no está guardando lo que aprende. Actívala arriba para retomarlo.",
     "saved": "Guardado",
     "deleteMemory": "Eliminar este dato"
+  },
+  "schedule": {
+    "agentLabel": "Programado",
+    "lateNote": "Esta ejecución estaba programada para {{scheduled}} y empieza tarde, porque el navegador estuvo cerrado hasta ahora. Ten en cuenta el retraso y dilo en tu resumen si cambia la respuesta.",
+    "desc": {
+      "once": "Una vez — {{when}}",
+      "daily": "Todos los días a las {{time}}",
+      "dailyDays": "{{days}} a las {{time}}",
+      "interval": "Cada {{every}}",
+      "intervalWindow": "Cada {{every}}, de {{from}} a {{to}}",
+      "onDays": "{{base}} · {{days}}"
+    },
+    "step": {
+      "scheduled": "{{recurrence}} — próxima {{next}}",
+      "cancelled": "Cancelado: {{task}}",
+      "cancelledBare": "Programación cancelada"
+    },
+    "errors": {
+      "pastFire": "Esa hora ya pasó — elige una futura.",
+      "badDays": "days deben ser números de 0 (domingo) a 6 (sábado).",
+      "badTime": "\"{{value}}\" no es una hora — usa HH:MM en 24 horas, como \"09:00\".",
+      "tooFrequent": "Una tarea repetida se ejecuta como mucho cada {{min}} minutos.",
+      "badWindow": "El fin de la ventana debe ir después del inicio.",
+      "badRecurrence": "recurrence necesita un kind \"once\", \"daily\" o \"interval\", más el campo que ese kind exige: at, time o every_minutes.",
+      "neverFires": "Esa regla nunca llega a cumplirse — revisa la hora y los días.",
+      "tooMany": "Ya hay {{max}} tareas programadas, el máximo que TabRunner guarda. Cancela una antes de añadir otra.",
+      "selfOnly": "Una ejecución programada solo puede reprogramar su propia programación, nunca crear una nueva. Si hay que programar algo nuevo, pregunta al usuario.",
+      "chainExhausted": "Esta programación se ha reprogramado {{max}} veces sin que el usuario intervenga. Detente aquí e informa de lo que encontraste.",
+      "noTask": "task es obligatorio — di qué debe hacer la ejecución programada.",
+      "noId": "id es obligatorio — tómalo de la lista de tareas programadas.",
+      "notFound": "No hay programación con id {{id}} — puede que ya esté cancelada."
+    },
+    "ui": {
+      "title": "Tareas programadas",
+      "help": "Trabajo que TabRunner ejecuta por su cuenta, en una pestaña propia. Cada una mantiene su conversación y te avisa cuando termina.",
+      "emptyTitle": "Nada programado",
+      "emptyBody": "Las tareas programadas se ejecutan sin que nadie mire — un resumen del correo por la mañana, una comprobación de precio cada hora.",
+      "emptyAction": "Pide una en el panel lateral: “cada día laborable a las 9, resume mi bandeja de entrada”. Aprueba el plan y aparecerá aquí.",
+      "next": "Próxima {{when}}",
+      "lastOk": "La última ejecución terminó {{when}}",
+      "lastFailed": "La última ejecución falló {{when}}",
+      "runNow": "Ejecutar ahora",
+      "running": "Ejecutando ahora",
+      "open": "Abrir su conversación",
+      "delete": "Eliminar esta programación",
+      "count": "{{n}} de {{max}}"
+    }
   },
   "addProvider": {
     "title": "Añadir proveedor",
@@ -500,7 +548,8 @@
     "memory": "TabRunner recuerda datos útiles de tus tareas — revísalos o bórralos en Ajustes → Lo que TabRunner recuerda.",
     "usage": "En un proveedor por suscripción, el icono de medidor junto al selector de modelo muestra tu uso de 5 horas y semanal — haz clic para ver cuándo se reinicia.",
     "slashCommands": "Escribe / en el campo de texto para ver comandos — cambia proveedor, modelo o esfuerzo.",
-    "compact": "¿Chat largo llenándose? /compact cambia los mensajes viejos por un resumen — conservas el historial."
+    "compact": "¿Chat largo llenándose? /compact cambia los mensajes viejos por un resumen — conservas el historial.",
+    "schedule": "Pide trabajo con temporizador — “cada día laborable a las 9, mira mi correo”. Gestiónalas en Ajustes."
   },
   "notify": {
     "doneFallback": "Tarea terminada."

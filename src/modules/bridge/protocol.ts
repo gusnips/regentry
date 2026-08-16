@@ -91,7 +91,10 @@ export interface BridgeProviderInfo {
 export interface BridgeQueueEntry {
   position: number;
   task: string;
-  owner: "panel" | "bridge";
+  /** "schedule" is an alarm firing on its own — the browser is busy with work
+   *  nobody is watching, which an external client waiting on the slot must be
+   *  able to tell from a user typing in the panel. */
+  owner: "panel" | "bridge" | "schedule";
 }
 
 export interface BridgeStatus {

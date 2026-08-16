@@ -62,6 +62,12 @@ button "Submit"`); `sanitize.ts` caps tool output and keeps passwords, one-time 
   debugger channel, attach-scoped to the tab being worked.
 - Memory: the user's `AGENTS.md` and the agent's `MEMORY.md` load into every run; the `remember`
   tool and post-run distillation maintain them; one toggle stops both halves.
+- Scheduled tasks: one-shot, daily, or every-N-minutes (with an optional weekday filter and
+  active-hours window), fired by `chrome.alarms` into the same run queue. Created by asking in the
+  panel — the plan gate is the consent — and reviewed in Settings → Schedules. The agent holds
+  `schedule_task` and `cancel_schedule`, which is also how it paces itself; a scheduled run may
+  only re-time its own schedule, never create new ones, and 20 records / 20 self-reschedules bound
+  the unattended spend.
 - Reasoning effort (`none` → `max`) is the only model knob — no sampling params ever. Auto model
   resolution runs the newest model the endpoint lists.
 - MV3 reality: a service worker kept alive by an open Port or alarms; durable state in

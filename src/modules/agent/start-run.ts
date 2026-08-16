@@ -54,6 +54,9 @@ export interface StartRunOptions {
    *  or the bridge's dedicated MCP thread. */
   conversationId: string;
   owner: RunOwner;
+  /** The schedule this run fired from — what `schedule_task` is allowed to
+   *  re-time, and the only record it may touch. Set for `owner: "schedule"`. */
+  scheduleId?: string;
   task: string;
   images?: string[];
   /** Where a background run's tab starts — wins over the default start URL. */
@@ -245,6 +248,8 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         task,
         conversationId,
         runGroup,
+        owner,
+        ...(opts.scheduleId ? { scheduleId: opts.scheduleId } : {}),
         images,
         supportsImages: resolvedProvider?.supportsImages,
         history: history.length > 0 ? history : undefined,
@@ -269,11 +274,13 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
           onStep: (step) => emit({ type: "step", ...step }),
           onPlan: (plan) => emit({ type: "plan", ...plan }),
           onPlanApproval: (steps, reapproval) => {
-            // The bridge client is itself an AI carrying the consequential-action
-            // policy — there is no human at its end of the wire to click approve,
-            // and parking here would hang the run. The gate is the panel's; the
-            // plan still crosses the bridge's event stream for its own review.
-            if (owner === "bridge") return Promise.resolve({ approved: true });
+            // The gate is the panel's, because the panel is the only owner with
+            // a human at the other end. A bridge client is itself an AI carrying
+            // the consequential-action policy, and a scheduled run's consent was
+            // given when the user approved creating the schedule — parking
+            // either one would hang a run nobody can answer. The plan still
+            // crosses the event stream and lands in the transcript for review.
+            if (owner !== "panel") return Promise.resolve({ approved: true });
             emit({ type: "plan_approval", steps, reapproval });
             // Parked runs stall silently otherwise — the user has usually tabbed
             // away by the time a mid-run replan asks again.

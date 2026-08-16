@@ -12,9 +12,11 @@ import type { StepPayload, PlanPayload } from "@/shared/protocol";
 import { createLogger, truncate } from "@/lib/logger";
 import { i18n, currentLanguageName } from "@/i18n";
 import { loadAgentContext } from "@/modules/memory";
+import { listSchedules } from "@/modules/schedule";
 import type { ToolDef } from "@/modules/providers/types";
 import { executeTool, formatDetail, formatSuccessSummary } from "./tools";
 import type { RunGroup } from "./tools";
+import type { RunOwner } from "./active-runs";
 import { buildSystemPrompt, buildTaskMessage, buildToolDefs } from "./prompt";
 import type { PreviousTab, RunMode } from "./prompt";
 import { compactRunMessages } from "./compact";
@@ -76,6 +78,17 @@ const ACTION_TOOLS = new Set([
   "scroll_down",
   "scroll_up",
 ]);
+
+/**
+ * What the plan gate holds back. Every action tool, plus `schedule_task` —
+ * which touches no page but commits the browser to future unattended work, so
+ * it needs the same yes. It is deliberately NOT in ACTION_TOOLS: that set also
+ * decides what mints the run's tab strip, and scheduling has no tab to file.
+ *
+ * `cancel_schedule` is ungated on purpose. Cancelling only ever removes future
+ * work, and it is how a self-paced loop ends itself.
+ */
+const GATED_TOOLS = new Set([...ACTION_TOOLS, "schedule_task"]);
 
 /**
  * A turn's tool calls with `plan` first. Models routinely batch the plan with
@@ -145,6 +158,10 @@ export interface LoopOptions {
   conversationId?: string;
   /** The run's tab strip — minted at the first action, group_tab's target. */
   runGroup?: RunGroup;
+  /** Which client started the run — `schedule_task` is bounded by it. Absent in tests. */
+  owner?: RunOwner;
+  /** The schedule this run fired from — the only record `schedule_task` may re-time. */
+  scheduleId?: string;
   /** Data-URL images the user attached to the task, referenced in the text as "[Image #1]". */
   images?: string[];
   /**
@@ -267,6 +284,8 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     task,
     conversationId,
     runGroup,
+    owner,
+    scheduleId,
     images,
     supportsImages: supportsImagesOpt,
     previousTabs,
@@ -293,13 +312,22 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
 
   // AGENTS.md / MEMORY.md are read once, here: a run keeps the context it started
   // with, so editing a doc mid-run never rewrites the instructions under the model.
-  // The snapshot is independent of the docs — both run concurrently.
-  const [context, initial] = await Promise.all([loadAgentContext(), driver.snapshot()]);
+  // The standing schedules ride along for the same reason and in the same shape
+  // — a list the model is shown, so "what do I have scheduled?" costs no call.
+  // The snapshot is independent of all of it — they run concurrently.
+  const [context, schedules, initial] = await Promise.all([
+    loadAgentContext(),
+    listSchedules(),
+    driver.snapshot(),
+  ]);
   const tools = buildToolDefs(context.memoryOn, supportsImages);
 
   // Auto-snapshot merged into the task message — Anthropic rejects consecutive user messages
   const messages: ChatMessage[] = [
-    { role: "system", content: buildSystemPrompt(context, currentLanguageName(), supportsImages) },
+    {
+      role: "system",
+      content: buildSystemPrompt(context, currentLanguageName(), supportsImages, schedules),
+    },
     ...(history ?? []),
     {
       role: "user",
@@ -506,7 +534,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
 
       // The gate: no page action runs before the user has approved a plan.
       // The tool-result error tells the model exactly how to unblock itself.
-      if (ACTION_TOOLS.has(call.name) && !approvedPlan) {
+      if (GATED_TOOLS.has(call.name) && !approvedPlan) {
         log.warn(`tool ${call.name} blocked — no approved plan yet`, call.args);
         callbacks.onStep?.({
           tool: call.name,
@@ -528,7 +556,12 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // rather than adding a row, so it gets no spinner and no step of its own.
       const bookkeeping = call.name === "plan";
       if (!bookkeeping) callbacks.onStepStart?.(call.name, call.args);
-      const result = await executeTool(call, driver, { conversationId, runGroup });
+      const result = await executeTool(call, driver, {
+        conversationId,
+        runGroup,
+        owner,
+        scheduleId,
+      });
       // The strip appears when the work does: landing a gated action files the
       // driven tab into the run's group. Reads never group — a tab the user was
       // merely passing through stays exactly as they filed it.

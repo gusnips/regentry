@@ -35,6 +35,8 @@ import { createLogger, truncate } from "@/lib/logger";
 import type { Command, Event } from "@/shared/protocol";
 import { PORT_NAME } from "@/shared/protocol";
 import { getBridge, startBridge } from "@/modules/bridge";
+import { isScheduleAlarm } from "@/modules/schedule";
+import { onScheduleAlarm, runScheduleNow, startScheduler } from "@/modules/schedule/scheduler";
 
 const log = createLogger("bg");
 /**
@@ -140,8 +142,22 @@ export default defineBackground(() => {
   widgetHidden.watch((hidden) => {
     void syncStatusWidget(hidden ? null : widgetState, currentBoard().running?.tabId);
   });
-  // Firing is the whole point — the wake resets the MV3 idle timer.
-  chrome.alarms.onAlarm.addListener(() => {});
+  // Scheduled tasks: alarms outlive the worker but NOT every extension update,
+  // so storage is the truth and this re-arms from it at every boot. The two
+  // hooks are the surfaces the scheduler has no business owning — a run that
+  // fires at 3am is unwatched by definition, so its ending has to reach out.
+  void startScheduler({
+    onRunEnded: (conversationId, task, event) => void notifyRunEnded(conversationId, task, event),
+    onAskUser: (conversationId, question, choices) =>
+      void notifyIfAway("tabrunner-question", question, conversationId, choices),
+  });
+
+  // Most alarms exist only to fire — the wake itself resets the MV3 idle timer,
+  // which is what the keepalive and bridge-reconcile alarms are for. A schedule
+  // alarm is the one that carries work.
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (isScheduleAlarm(alarm.name)) onScheduleAlarm(alarm.name);
+  });
   log.debug("background initialized");
 
   chrome.runtime.onConnect.addListener((port) => {
@@ -246,7 +262,12 @@ export default defineBackground(() => {
 
         case "stop": {
           const run = getActiveRun();
-          if (run?.owner === "panel") {
+          // A scheduled run halts by the same mechanics as a panel one: nobody
+          // asked for it just now, so Stop has to reach it too — the alternative
+          // is a run on the board with no way to end it, which is the dead end
+          // every other surface here is written to avoid. The schedule itself
+          // survives; stopping this fire is not cancelling the standing task.
+          if (run?.owner === "panel" || run?.owner === "schedule") {
             // User-initiated — the run's done must not fire a notification.
             stoppedByUser.add(run.conversationId);
             run.controller.abort();
@@ -364,6 +385,13 @@ export default defineBackground(() => {
   // in-page and never reaches the worker).
   chrome.runtime.onMessage.addListener((msg: unknown, sender) => {
     const m = typeof msg === "object" && msg !== null ? (msg as Record<string, unknown>) : null;
+    // Settings' "Run now". Runs live in the worker — the options page is a
+    // separate context with no run slot, no driver and no board, so the button
+    // asks rather than calls.
+    if (m?.type === "tabrunner-run-schedule" && typeof m.id === "string") {
+      runScheduleNow(m.id);
+      return;
+    }
     if (m?.type !== "tabrunner-mark" || m.action !== "open") return;
     // Land on the work, not on whatever conversation happens to be active.
     const board = currentBoard();

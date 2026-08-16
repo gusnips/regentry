@@ -168,6 +168,10 @@ export interface JSONSchemaProperty {
   enum?: string[];
   /** Element schema for `type: "array"` — both wire formats pass it through verbatim. */
   items?: { type: string };
+  /** Nested fields for `type: "object"` — a rule with several parts (a
+   *  recurrence) reads far better as one argument than as five flat ones. */
+  properties?: Record<string, JSONSchemaProperty>;
+  required?: string[];
 }
 
 /** Streaming delta from the provider. */
