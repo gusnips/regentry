@@ -54,6 +54,25 @@ function listedWindow(provider: ProviderConfig): number | undefined {
 }
 
 /**
+ * The window we actually KNOW, or undefined when the answer would be the
+ * default guess. The difference matters to anything the user reads: planning
+ * against 200k is a safe internal assumption, but *telling* someone their
+ * conversation is "42% full" against a number nobody verified is a made-up
+ * statistic. Callers that display something ask this one and stay quiet — or
+ * show the raw count — when it answers undefined.
+ */
+export function knownContextWindow(
+  provider: ProviderConfig,
+  learned: Record<string, number>,
+): number | undefined {
+  // A learned ceiling outranks everything: it is the only number that came from
+  // this endpoint actually refusing this model's input.
+  const observed = learned[limitKey(provider)];
+  if (observed !== undefined && observed > 0) return observed;
+  return listedWindow(provider);
+}
+
+/**
  * The window to plan against, best guess. Synchronous on purpose — the run loop
  * checks it every turn and the panel's gauge reads it during render, so the
  * learned map is handed in rather than awaited (see `readLearnedLimits`).
@@ -62,11 +81,7 @@ export function contextWindowFor(
   provider: ProviderConfig,
   learned: Record<string, number>,
 ): number {
-  // A learned ceiling outranks everything: it is the only number that came from
-  // this endpoint actually refusing this model's input.
-  const known = learned[limitKey(provider)];
-  if (known !== undefined && known > 0) return known;
-  return listedWindow(provider) ?? DEFAULT_CONTEXT_WINDOW;
+  return knownContextWindow(provider, learned) ?? DEFAULT_CONTEXT_WINDOW;
 }
 
 /** The learned map, for callers that can await (the run loop reads it once per run). */

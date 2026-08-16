@@ -305,11 +305,17 @@ sidepanel App — never on a timer. One module-level current tip, so both slots 
 
 **Conversation storage** (`conversation/conversations.ts`): a `conversations` index of
 metadata (id, title, counts, driven tabs) plus one `conversation:<id>` key per transcript
-— appending rewrites a single transcript, never the whole store. The panel writes through
-`appendMessage`, which resolves the active id itself, so the background worker can append
-(e.g. a cancelled queued run's breadcrumb) without knowing which conversation is open.
+— appending rewrites a single transcript, never the whole store. Every write names its
+conversation: the panel appends by the id it is showing (`appendMessageTo`) and mints a
+fresh thread outright (`appendMessageFresh`), so the worker appends (e.g. a cancelled
+queued run's breadcrumb) the same way. The shared `active-conversation` slot is never a
+routing input — a pill or notification click can re-point it between "New conversation"
+and the first keystroke, and an append that resolved it would file the fresh opener under
+the thread the user just left (the "conversation switched itself" bug). The `run` command
+carries the adopted conversation id for the same reason: the run files where its task
+message landed, not wherever the slot happens to point when the worker handles it.
 Every write is read-modify-write and the panel fires them from an event stream, so
-`appendMessage`/`replaceMessage` are **serialized** on one promise chain — concurrent
+appends/replaces are **serialized** on one promise chain — concurrent
 appends otherwise read the same array and the last write wins. `sendTask` **awaits** its
 user message before posting `run`: the worker builds the run's history by reading the
 transcript, and a fire-and-forget write loses that race every time. A fresh conversation
@@ -334,8 +340,23 @@ keeps. A live run folds its own wire turns instead (`compactRunMessages`): proac
 the last turn's real input tokens come within a fixed reserve of the window, reactively once
 when the provider rejects the prompt as too long. The window itself is never a hardcoded
 model table — `providers/context-window.ts` prefers ceilings learned from actual rejections,
-then the model listing's own `context_length`, then a 200k default — and the run band's
-gauge reads the same number.
+then the model listing's own `context_length`, then a 200k default.
+
+That last rung is the reason the module exposes **two** readings. `contextWindowFor` always
+answers a number and is what the loop plans against: guessing 200k only risks compacting a
+little early, and the reactive path corrects it for good. `knownContextWindow` returns
+undefined instead of guessing, and is what anything the USER reads must call — the run band's
+gauge draws a bar and a "24.3k / 200k" ratio only when the window was measured or published,
+and otherwise shows the token count alone. A percentage computed against a guessed
+denominator is a statistic nobody verified, and the user would act on it. The count itself is
+the last turn's real input (`usage`), persisted as `RunSummary.lastInput` so a reopened panel
+still knows — cumulative `input` sums every turn and cannot say how full the context is.
+
+The panel watches the run board, not transcripts, so a compaction with no run in flight would
+write a summary nobody told the panel to look for — the card only appeared once the next
+message started a run. The `compacted` event is that signal: the store refetches the
+transcript on it, and drops the receipt's delta from the gauge so the number moves when the
+work does.
 
 A run that ends before writing any closing summary used to fall through that design —
 no assistant words, so the work vanished from the replay and "continue" started blind.

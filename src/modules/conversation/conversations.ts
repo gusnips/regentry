@@ -21,6 +21,12 @@ export interface RunSummary {
   endedAt: number;
   input: number;
   output: number;
+  /**
+   * The LAST turn's input tokens — how full the context actually was when the
+   * run ended, which `input` (every turn summed) cannot say. The gauge reads it
+   * so a reopened panel still knows, instead of blanking until the next run.
+   */
+  lastInput?: number;
   /** False when the run ended on an error — the band names it, never "done". */
   ok?: boolean;
   /** True when the user halted it — the band says "Stopped", not "Done". */
@@ -212,21 +218,26 @@ async function ensureConversation(id: string, agent?: string): Promise<Conversat
   return meta;
 }
 
+/** Appends to a specific conversation and returns its id. */
+export function appendMessageTo(id: string, msg: Message): Promise<string> {
+  return serialized(() => appendTo(id, msg));
+}
+
 /**
- * The conversation the panel's messages belong to. A fresh conversation (active
- * id null) is created lazily on its first message and becomes the active one;
- * a dangling id (deleted mid-run) is re-created under the same id.
+ * The first message of the panel's fresh thread — mints the conversation
+ * outright instead of resolving the shared active slot. Between "New
+ * conversation" (slot → null) and this append, a pill or notification click
+ * can re-point the slot at another thread, and a read here would file the
+ * fresh opener under THAT one: the panel adopts the id but keeps rendering
+ * the live stream, and the old transcript materializes at run end — the
+ * "conversation switched itself" bug. The panel knows it is fresh; say so.
  */
-async function ensureActive(): Promise<ConversationMeta> {
-  const activeId = await activeItem.get();
-  if (activeId) {
-    const list = await indexItem.get();
-    const existing = list.find((c) => c.id === activeId);
-    if (existing) return existing;
-  }
-  const meta = await ensureConversation(activeId ?? crypto.randomUUID());
-  await activeItem.set(meta.id);
-  return meta;
+export function appendMessageFresh(msg: Message): Promise<string> {
+  return serialized(async () => {
+    const id = crypto.randomUUID();
+    await activeItem.set(id);
+    return appendTo(id, msg);
+  });
 }
 
 /**
@@ -276,18 +287,8 @@ export function flushConversationWrites(): Promise<void> {
   return serialized(async () => {});
 }
 
-/** Appends to the active conversation and returns its id. */
-export function appendMessage(msg: Message): Promise<string> {
-  return serialized(() => appendTo(null, msg));
-}
-
-/** Appends to a specific conversation (the bridge's MCP thread) and returns its id. */
-export function appendMessageTo(id: string, msg: Message): Promise<string> {
-  return serialized(() => appendTo(id, msg));
-}
-
-async function appendTo(id: string | null, msg: Message): Promise<string> {
-  const meta = id ? await ensureConversation(id) : await ensureActive();
+async function appendTo(id: string, msg: Message): Promise<string> {
+  const meta = await ensureConversation(id);
   const item = messagesItem(meta.id);
   const messages = [...(await item.get()), stripTransientImages(msg)].slice(-MAX_MESSAGES);
   await item.set(messages);

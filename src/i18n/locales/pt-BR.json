@@ -348,7 +348,10 @@
     "explain": "As mensagens acima continuam aqui para você — o agente passa a reproduzir este resumo."
   },
   "context": {
-    "tooltip": "Contexto: {{used}} de {{window}} usados ({{percent}}%) — /compact resume a conversa para liberar espaço"
+    "used": "{{used}} de contexto",
+    "usedOf": "{{used}} / {{window}}",
+    "tooltip": "Contexto: {{used}} da janela de {{window}} do modelo em uso — /compact resume a conversa para liberar espaço",
+    "tooltipUnknown": "Contexto: o último turno enviou {{used}}. O tamanho da janela deste modelo não é conhecido, então não há porcentagem a mostrar — /compact resume a conversa para liberar espaço"
   },
   "indicator": {
     "driving": "O TabRunner está controlando esta aba",
@@ -436,8 +439,6 @@
       "Gingando"
     ],
     "tokens": "{{count}} tokens",
-    "goToTab": "Ir para a aba",
-    "goToTabTip": "Traz para a frente a aba em que a execução trabalhou — {{title}}",
     "finished": "Concluído",
     "failed": "Falhou",
     "stopped": "Interrompido",

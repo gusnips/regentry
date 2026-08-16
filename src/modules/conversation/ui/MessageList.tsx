@@ -946,6 +946,34 @@ function WorkingDots() {
   );
 }
 
+/**
+ * The fold, while it happens. A compaction is a model call over a long
+ * transcript — seconds of nothing, and the panel owes the same "alive" signal
+ * every other wait gets. It wears the live step row's exact clothes (amber dot,
+ * shimmering label), because that is what it is: work in flight, at the tail.
+ *
+ * It leaves no trace of its own. The summary card the worker writes replaces it
+ * the moment the fold lands — same spot, same gold, now expandable — so the
+ * transient state becomes the permanent record instead of stacking beside it.
+ */
+function CompactingRow() {
+  const { t } = useTranslation();
+  const compacting = useConversationStore((s) => s.compacting);
+  if (!compacting) return null;
+  return (
+    <MessageScrollerItem>
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center gap-1.5 self-start px-1 text-xs text-neutral-500 dark:text-neutral-400"
+      >
+        <DotIcon filled className="shrink-0 text-amber-500 dark:text-amber-300" />
+        <span className="shimmer-text font-medium">{t("commands.compact.running")}</span>
+      </div>
+    </MessageScrollerItem>
+  );
+}
+
 /** Rows + jump pill. The scroller hooks must run under the Provider. */
 function Transcript() {
   const { t } = useTranslation();
@@ -1098,6 +1126,7 @@ function Transcript() {
               </MessageScrollerItem>
             ),
           )}
+          <CompactingRow />
           <LiveReasoning show={showReasoningOn} onToggle={toggleReasoning} />
           {planApproval && (
             <MessageScrollerItem>

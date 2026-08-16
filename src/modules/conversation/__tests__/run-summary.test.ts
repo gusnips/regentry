@@ -33,6 +33,9 @@ describe("last-run summary", () => {
     if (!lastRun) throw new Error("summary not recorded");
     expect(lastRun).toMatchObject({ input: 15, output: 6 });
     expect(lastRun.endedAt).toBeGreaterThanOrEqual(lastRun.startedAt);
+    // The LAST turn's input, not the sum — it is the one that says how full the
+    // context actually was, and the gauge shows it after a panel reopen.
+    expect(lastRun.lastInput).toBe(5);
   });
 
   it("stamps an error end too — the band settles the same either way", async () => {

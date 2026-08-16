@@ -348,7 +348,10 @@
     "explain": "The messages above stay here for you — the agent replays this summary instead."
   },
   "context": {
-    "tooltip": "Context: {{used}} of {{window}} used ({{percent}}%) — /compact summarizes the conversation to free some up"
+    "used": "{{used}} context",
+    "usedOf": "{{used}} / {{window}}",
+    "tooltip": "Context: {{used}} of the model's {{window}} window is in use — /compact summarizes the conversation to free some up",
+    "tooltipUnknown": "Context: the last turn sent {{used}}. This model's window size isn't known, so there's no percentage to show — /compact summarizes the conversation to free some up"
   },
   "indicator": {
     "driving": "TabRunner is controlling this tab",
@@ -436,8 +439,6 @@
       "Vibing"
     ],
     "tokens": "{{count}} tokens",
-    "goToTab": "Go to tab",
-    "goToTabTip": "Bring the tab the run worked to the front — {{title}}",
     "finished": "Done",
     "failed": "Failed",
     "stopped": "Stopped",

@@ -11,7 +11,6 @@ import { Button } from "@/components/Button";
 import { ChevronRightIcon } from "@/components/Icon";
 import type { BridgeActive } from "@/shared/protocol";
 import { formatDuration, formatTokens } from "@/lib/format";
-import { focusTab } from "@/modules/browser";
 
 export function RunStatus() {
   const { t } = useTranslation();
@@ -153,23 +152,22 @@ export function RunStatus() {
             {formatDuration(finished.endedAt - finished.startedAt)}
             {finishedNote}
           </span>
-          {/* The band outlives the run, so this is the gauge you read before
-              typing the next message — the one moment compacting is a choice. */}
-          <ContextGauge />
-          {lastTab?.tabId !== undefined && (
-            <Button
-              size="sm"
-              variant="quiet-brand"
-              className="-my-0.5 ml-auto shrink-0"
-              onClick={() => void focusTab(lastTab.tabId!)}
-              title={t("run.goToTabTip", { title: lastTab.title })}
-              aria-label={t("run.goToTabTip", { title: lastTab.title })}
-            >
-              {t("run.goToTab")}
-            </Button>
-          )}
         </div>
+        {/* The tab the work happened on, named — same row and same chip the live
+            band wears, so the run's target doesn't vanish the moment it ends. */}
+        {lastTab?.tabId !== undefined && (
+          <div className="-ml-1 flex">
+            <DrivenTabChip tab={lastTab} />
+          </div>
+        )}
         {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
+        {/* Bottom right, under the plan: the gauge is what you read LAST — after
+            the outcome and the checklist, when the only question left is whether
+            the next message still fits. The band outlives the run, so it is
+            still there when you go to type it. */}
+        <div className="flex justify-end">
+          <ContextGauge />
+        </div>
       </div>
     );
   }
@@ -215,7 +213,6 @@ export function RunStatus() {
           {formatDuration(now - liveStartedAt)}
           {tokenNote}
         </span>
-        <ContextGauge />
         {/* The composer's send/stop morphs away the moment a draft exists, so
             the band carries the one Stop that is always there — same control
             the bridge band already wears. */}
@@ -236,6 +233,11 @@ export function RunStatus() {
         </div>
       )}
       {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
+      {/* Same corner as the settled band's, so the number does not move when the
+          run ends — you look in one place whether it is working or done. */}
+      <div className="flex justify-end">
+        <ContextGauge />
+      </div>
       {/* The working band is the one place the user watches while waiting —
           Claude Code's spinner-tip slot; idle/composer gets the same line. */}
       {!queueBusy && <TipLine className="text-brand-800/60 dark:text-brand-200/50" />}

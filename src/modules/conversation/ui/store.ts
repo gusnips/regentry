@@ -7,7 +7,8 @@ import type { ConversationMeta } from "../conversations";
 import { runBoardItem } from "@/modules/agent/run-queue";
 import type { RunBoard } from "@/modules/agent/run-queue";
 import {
-  appendMessage,
+  appendMessageFresh,
+  appendMessageTo,
   deleteConversation,
   getActiveId,
   getMessages,
@@ -227,12 +228,23 @@ export function capMessages(list: Message[]): Message[] {
 }
 
 export const useConversationStore = create<ConversationState>((set, get) => {
-  /** Resolves once the message is stored — awaited only where ordering matters. */
-  const pushMsg = (msg: Message): Promise<void> => {
+  /**
+   * Resolves with the message's conversation id once stored — awaited only
+   * where ordering matters. Where the message lands is the conversation the
+   * panel is SHOWING, never the shared active slot: between "New conversation"
+   * (slot → null) and this write, a pill or notification click can re-point
+   * that slot at another thread, and a read here would file the message under
+   * it — the panel would adopt the id, keep rendering the live stream, and the
+   * other thread's transcript would materialize at run end.
+   */
+  const pushMsg = (msg: Message): Promise<string> => {
     set({ messages: capMessages([...get().messages, msg]) });
     // A fresh conversation is created by the first append — adopt its id.
-    return appendMessage(msg).then((id) => {
+    const activeId = get().activeId;
+    const write = activeId === null ? appendMessageFresh(msg) : appendMessageTo(activeId, msg);
+    return write.then((id) => {
       if (get().activeId !== id) set({ activeId: id });
+      return id;
     });
   };
 
@@ -241,14 +253,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     set({ messages: capMessages([...get().messages, msg]) });
   };
 
-  /** The in-flight compaction's progress note — its result replaces it. */
-  let compactNoteId: string | null = null;
   /** A compaction armed to re-run the failed task on success — the id of the
    *  user message it would resend, so a newer message disarms it. */
   let resumeAfterCompact: string | null = null;
-  const dropDisplay = (id: string | null): void => {
-    if (id) set({ messages: get().messages.filter((m) => m.id !== id) });
-  };
 
   /** Transcript-independent state — reset whenever the panel switches transcripts. */
   const resetRun = () => ({
@@ -361,6 +368,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
   const startRun = (
     p: chrome.runtime.Port,
+    conversationId: string,
     task: string,
     images?: string[],
     thisPage?: boolean,
@@ -387,6 +395,10 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     });
     p.postMessage({
       type: "run",
+      // The run's home is where its task message just landed — carried here so
+      // the worker never re-derives it from the shared active slot, which a
+      // pill or notification click can re-point mid-flight.
+      conversationId,
       task,
       ...(images?.length ? { images } : {}),
       ...(thisPage ? { thisPage } : {}),
@@ -435,10 +447,10 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     // Stored BEFORE the run starts: the worker builds this run's history by
     // reading the transcript, so a fire-and-forget write would race it and
     // cost the model the exchange it is being asked to continue.
-    await pushMsg(
+    const conversationId = await pushMsg(
       makeMsg("user", task, { ...(images?.length ? { images } : {}), ...(tab ? { tab } : {}) }),
     );
-    startRun(p, task, images, thisPage || undefined);
+    startRun(p, conversationId, task, images, thisPage || undefined);
     // The panel stays up through the plan: a background run's FIRST act is to
     // read the page and ask you to approve what it intends to do, and closing
     // before that turns the approval into an OS notification you have to click
@@ -578,30 +590,45 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         break;
 
       case "compacted": {
-        set({ compacting: false });
-        // The summary card lands through the transcript watch carrying the same
-        // receipt — a note here would only say it twice. Progress note out.
-        dropDisplay(compactNoteId);
-        compactNoteId = null;
-        // The context-error CTA armed this: compact, then carry on. Fires only
-        // when the failed task is still the newest thing said and nothing has
-        // started since — otherwise the user moved on mid-summarize.
-        const resumeId = resumeAfterCompact;
-        resumeAfterCompact = null;
-        if (
-          resumeId !== null &&
-          get().status !== "running" &&
-          get().messages.findLast((m) => m.role === "user")?.id === resumeId
-        ) {
-          get().retry();
+        set({
+          compacting: false,
+          // The fold shrank the replay by exactly this much, so the gauge moves
+          // the moment the work lands instead of sitting on a number describing
+          // a request that will never be sent again. An estimate until the next
+          // turn reports real usage and overwrites it — the run's own overhead
+          // (system prompt, tools, the page snapshot) is untouched by a fold.
+          contextTokens: Math.max(0, get().contextTokens - (event.before - event.after)),
+        });
+        // The summary lands in STORAGE, written by the worker — and the panel
+        // watches the run board, not the transcript, so with no run in flight
+        // nothing would tell it to look. Without this the card only appeared
+        // once the next message started a run. This event is that signal.
+        const conversationId = get().activeId;
+        if (conversationId) {
+          void getMessages(conversationId).then((messages) => {
+            if (get().activeId === conversationId) set({ messages: capMessages(messages) });
+            // The context-error CTA armed this: compact, then carry on. Fires
+            // only when the failed task is still the newest thing said and
+            // nothing has started since — otherwise the user moved on while
+            // the summarizer ran. Resumed after the refetch so the resumed run
+            // builds its history from the transcript the summary is now in.
+            const resumeId = resumeAfterCompact;
+            resumeAfterCompact = null;
+            if (
+              resumeId !== null &&
+              get().activeId === conversationId &&
+              get().status !== "running" &&
+              get().messages.findLast((m) => m.role === "user")?.id === resumeId
+            ) {
+              get().retry();
+            }
+          });
         }
         break;
       }
 
       case "compact_failed":
         set({ compacting: false });
-        dropDisplay(compactNoteId);
-        compactNoteId = null;
         // No summary, no resume — retrying into the same wall helps no one.
         resumeAfterCompact = null;
         // "Nothing to compact" is an answer, not a failure — it arrives as the
@@ -819,10 +846,10 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         pushDisplay(makeMsg("step", i18n.t("commands.compact.busy")));
         return;
       }
+      // No progress note: `compacting` draws a live shimmer row at the tail,
+      // the same way a running step does, and the summary card replaces it
+      // in place when the fold lands.
       set({ compacting: true });
-      const note = makeMsg("step", i18n.t("commands.compact.running"));
-      compactNoteId = note.id;
-      pushDisplay(note);
       // Arm the resume against the task as it stands now: on success it fires
       // only if this is still the newest thing said — anything fresher (typed
       // while the summarizer ran, or a conversation switch, whose ids differ)
@@ -888,7 +915,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
     retry: () => {
       const target = retryTargetFrom(get().messages);
-      if (!target || get().status === "running") return;
+      const conversationId = get().activeId;
+      if (!target || get().status === "running" || conversationId === null) return;
       // No duplicate user row — the failed attempt sits right above.
       let p: chrome.runtime.Port;
       try {
@@ -899,7 +927,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       }
       // Same as sendTask: the retry goes back through the plan gate, and the
       // panel leaves with the approval.
-      startRun(p, target.task, target.images, target.thisPage);
+      startRun(p, conversationId, target.task, target.images, target.thisPage);
     },
 
     stop: () => {

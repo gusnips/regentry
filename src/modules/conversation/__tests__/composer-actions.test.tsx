@@ -111,6 +111,37 @@ describe("morph button", () => {
   });
 });
 
+describe("the parked plan gate", () => {
+  it("typed text answers the gate instead of queueing behind a run that cannot move", async () => {
+    useConversationStore.setState({
+      status: "running",
+      runStartedAt: Date.now(),
+      planApproval: { steps: ["a"], reapproval: false },
+      draft: "isso",
+    });
+    const h = await render(<ChatInput />);
+    // The composer names where the text goes — never "add to the running task",
+    // because a parked run has no tool boundary a queued line could land at.
+    const area = h.container.querySelector("textarea")!;
+    expect(area.placeholder).toBe("Approve the plan above, or type what should change…");
+
+    const send = morphButton(h, "Send the plan back with your note");
+    expect(send).not.toBeNull();
+    await click(send!);
+
+    const st = useConversationStore.getState();
+    expect(st.queued).toEqual([]);
+    expect(st.planApproval).toBeNull();
+    // The band switches to "Revising the plan…" until the new card arrives.
+    expect(st.replanning).toBe(true);
+    // The note lands as a user message — the transcript shows what the plan
+    // was sent back with.
+    expect(st.messages.some((m) => m.role === "user" && m.content === "isso")).toBe(true);
+    expect(st.draft).toBe("");
+    await unmount(h);
+  });
+});
+
 describe("run target: a preference while idle, the walk-away while running", () => {
   const toggleButton = (h: Harness) => {
     const btn = h.container.querySelector("button");
@@ -215,10 +246,13 @@ describe("the run band's plan peek", () => {
 });
 
 describe("the finished band's go-to-tab action", () => {
+  // The bare "Go to tab" button became the same chip the live band wears: it
+  // NAMES the tab instead of only admitting one exists, and stays visible for
+  // the whole settled band rather than reading as a one-shot action.
   const goToTab = (h: Harness) =>
-    [...h.container.querySelectorAll("button")].find((b) => b.textContent === "Go to tab");
+    [...h.container.querySelectorAll("button")].find((b) => b.textContent === "Cart");
 
-  it("offers the run's last tab, and the click brings it forward", async () => {
+  it("names the run's last tab, and the click brings it forward", async () => {
     useConversationStore.setState({
       status: "idle",
       activeId: "c1",

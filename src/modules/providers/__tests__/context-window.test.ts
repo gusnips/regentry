@@ -3,6 +3,7 @@ import {
   CONTEXT_RESERVE,
   DEFAULT_CONTEXT_WINDOW,
   contextWindowFor,
+  knownContextWindow,
   needsCompaction,
 } from "../context-window";
 import { writeModelsCache, modelsTarget } from "../models";
@@ -40,6 +41,22 @@ describe("contextWindowFor", () => {
   it("keys the learned map by provider AND model, so one endpoint never teaches another", () => {
     expect(contextWindowFor(config(), { "anthropic:gpt-5": 8_000 })).toBe(DEFAULT_CONTEXT_WINDOW);
     expect(contextWindowFor(config(), { "openai:gpt-4": 8_000 })).toBe(DEFAULT_CONTEXT_WINDOW);
+  });
+});
+
+describe("knownContextWindow", () => {
+  it("says nothing rather than hand back the default guess", () => {
+    // The gauge draws a bar and a ratio off this. A guessed denominator would
+    // render a made-up percentage the user then acts on — so the honest answer
+    // to "how big is this window" is often "we don't know".
+    expect(knownContextWindow(config(), {})).toBeUndefined();
+  });
+
+  it("answers with the numbers somebody actually measured or published", () => {
+    const provider = config({ id: "openrouter", baseUrl: "https://openrouter.ai/api/v1" });
+    writeModelsCache(modelsTarget(provider), [{ id: "gpt-5", contextLength: 400_000 }]);
+    expect(knownContextWindow(provider, {})).toBe(400_000);
+    expect(knownContextWindow(provider, { "openrouter:gpt-5": 128_000 })).toBe(128_000);
   });
 });
 

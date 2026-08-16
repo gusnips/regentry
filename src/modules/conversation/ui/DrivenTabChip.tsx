@@ -4,22 +4,37 @@ import { useConversationStore } from "./store";
 import { focusTab } from "@/modules/browser";
 import { hostnameOf } from "@/lib/format";
 
+/** Enough of a tab to name it and go there — the live run's, or a stored one. */
+export interface TabChipTarget {
+  tabId?: number;
+  windowId?: number;
+  title?: string;
+  url?: string;
+  favIconUrl?: string;
+}
+
 /**
- * Chip naming the tab the live run is driving — the panel is window-scoped
- * and stays open everywhere, so without this the run's target is invisible.
- * Lives on the live band, on its own row under the verb line (run context,
- * same lifecycle as the band): squeezed between the verb and the timer it
- * truncated to a letter. No dot of its own — the band's is the live signal.
- * One click brings the tab to the front.
+ * Chip naming the tab a run is working — the panel is window-scoped and stays
+ * open everywhere, so without this the run's target is invisible. Lives on the
+ * live band, on its own row under the verb line (run context, same lifecycle as
+ * the band): squeezed between the verb and the timer it truncated to a letter.
+ * No dot of its own — the band's is the live signal. One click brings the tab
+ * to the front.
+ *
+ * The settled band passes the conversation's last tab explicitly, so the row
+ * survives the run that made it. It replaced a bare "Go to tab" button there:
+ * the button spent a whole control saying only that a tab exists somewhere,
+ * while the chip names WHICH tab and is just as clickable — a label and an
+ * action in the space the label alone used to take.
  *
  * A filled pill, not bare text: favicon-then-title is the same shape as a
  * plan row (`○ step`), and directly above the plan peek the two read as one
  * list. The resting surface is what says "object you can press" instead of
  * "next item" — hover alone only works once you are already on it.
  */
-export function DrivenTabChip() {
+export function DrivenTabChip({ tab }: { tab?: TabChipTarget }) {
   const { t } = useTranslation();
-  const drivingTab = useConversationStore((s) => s.drivingTab);
+  const liveTab = useConversationStore((s) => s.drivingTab);
   // Keyed on the url, not a boolean: a re-targeted tab gets a fresh icon try
   // without an effect to reset state.
   const [failedIconUrl, setFailedIconUrl] = useState<string | null>(null);
@@ -27,14 +42,15 @@ export function DrivenTabChip() {
   // A title-less tab (a PDF, some file:// pages) still gets its row — the
   // hostname stands in, the same fallback TabStamp uses. Only no tab at all
   // drops the row.
+  const drivingTab = tab ?? liveTab;
   if (!drivingTab) return null;
   const label = drivingTab.title || (drivingTab.url ? hostnameOf(drivingTab.url) : "");
-  if (!label) return null;
+  if (!label || drivingTab.tabId === undefined) return null;
 
   return (
     <button
       type="button"
-      onClick={() => void focusTab(drivingTab.tabId, drivingTab.windowId)}
+      onClick={() => void focusTab(drivingTab.tabId!, drivingTab.windowId)}
       title={t("run.drivingTabTip")}
       aria-label={t("run.drivingTabTip")}
       className="flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-full bg-brand-100/80 py-1 pr-2.5 pl-1 text-xs text-brand-900 hover:bg-brand-200 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none dark:bg-brand-900/60 dark:text-brand-100 dark:hover:bg-brand-800"

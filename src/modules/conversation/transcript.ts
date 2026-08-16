@@ -66,6 +66,9 @@ export class TranscriptWriter {
   private readonly startedAt = Date.now();
   /** Cumulative tokens, from the run's usage events. */
   private usage = { input: 0, output: 0 };
+  /** The newest turn's input alone — the context's real size, which the
+   *  cumulative total cannot express. Drops when the loop folds its own turns. */
+  private lastInput = 0;
   /** done after an error is the same end unwinding — stamp the summary once. */
   private summaryRecorded = false;
 
@@ -97,6 +100,7 @@ export class TranscriptWriter {
       endedAt: Date.now(),
       input: this.usage.input,
       output: this.usage.output,
+      ...(this.lastInput > 0 ? { lastInput: this.lastInput } : {}),
       ok,
       ...(stopped ? { stopped } : {}),
     }).catch((e) => {
@@ -215,6 +219,7 @@ export class TranscriptWriter {
       case "usage":
         this.usage.input += event.input;
         this.usage.output += event.output;
+        if (event.input > 0) this.lastInput = event.input;
         break;
 
       case "driving":

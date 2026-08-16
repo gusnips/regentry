@@ -348,7 +348,10 @@
     "explain": "Los mensajes de arriba siguen aquí para ti — el agente reproduce este resumen en su lugar."
   },
   "context": {
-    "tooltip": "Contexto: {{used}} de {{window}} usados ({{percent}}%) — /compact resume la conversación para liberar espacio"
+    "used": "{{used}} de contexto",
+    "usedOf": "{{used}} / {{window}}",
+    "tooltip": "Contexto: {{used}} de la ventana de {{window}} del modelo en uso — /compact resume la conversación para liberar espacio",
+    "tooltipUnknown": "Contexto: el último turno envió {{used}}. No se conoce el tamaño de ventana de este modelo, así que no hay porcentaje que mostrar — /compact resume la conversación para liberar espacio"
   },
   "indicator": {
     "driving": "TabRunner está controlando esta pestaña",
@@ -436,8 +439,6 @@
       "Zumbando"
     ],
     "tokens": "{{count}} tokens",
-    "goToTab": "Ir a la pestaña",
-    "goToTabTip": "Trae al frente la pestaña en la que trabajó la ejecución — {{title}}",
     "finished": "Listo",
     "failed": "Falló",
     "stopped": "Detenido",
