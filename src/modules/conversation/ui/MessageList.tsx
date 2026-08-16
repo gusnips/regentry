@@ -12,11 +12,10 @@ import { splitErrorDetail } from "../error-detail";
 import type { ErrorKind } from "@/modules/providers/error-classify";
 import { formatDuration, formatTokens, hostnameOf } from "@/lib/format";
 import { showReasoning } from "@/lib/prefs";
-import { AddProviderDialog, useProvidersStore } from "@/modules/providers/ui";
+import { AddProviderDialog, useProvidersStore, activeProviderOf } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { Button } from "@/components/Button";
 import { CheckIcon, ChevronRightIcon, DotIcon, Icon, XIcon } from "@/components/Icon";
-import { TextArea } from "@/components/TextArea";
 import { Bubble, BubbleContent } from "@/components/Bubble";
 import {
   MessageScroller,
@@ -261,20 +260,17 @@ function PlanApprovalCard({
   reapproval,
   onApprove,
   onReject,
-  onRevise,
 }: {
   steps: string[];
   reapproval: boolean;
   onApprove: () => void;
   onReject: () => void;
-  onRevise: (feedback: string) => void;
 }) {
   const { t } = useTranslation();
-  // "Adjust" swaps the buttons for the note the plan goes back with — the run
-  // stays alive and the revised plan comes back here for a fresh approval.
-  const [adjusting, setAdjusting] = useState(false);
-  const [note, setNote] = useState("");
-  const sendable = note.trim().length > 0;
+  // The card carries only the one-click verdicts. The note channel is the
+  // composer: typed text at the gate sends the plan back (ChatInput's
+  // parkedAtPlan), the same way an unanswered ask_user turns it into the
+  // answer field — one input surface per wait, not two.
 
   return (
     <div className="flex max-w-[85%] flex-col gap-2 self-start rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-900 dark:bg-brand-950/60">
@@ -291,46 +287,14 @@ function PlanApprovalCard({
           </li>
         ))}
       </ol>
-      {adjusting ? (
-        <div className="flex flex-col gap-2">
-          <TextArea
-            autoFocus
-            rows={2}
-            value={note}
-            placeholder={t("plan.adjustPlaceholder")}
-            onChange={(e) => setNote(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && sendable) {
-                e.preventDefault();
-                onRevise(note);
-              } else if (e.key === "Escape") {
-                setAdjusting(false);
-              }
-            }}
-            className="w-full bg-white px-2 py-1.5 text-xs text-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
-          />
-          <div className="flex gap-2">
-            <Button size="sm" disabled={!sendable} onClick={() => onRevise(note)}>
-              {t("chat.send")}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setAdjusting(false)}>
-              {t("common.cancel")}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex gap-2">
-          <Button size="sm" onClick={onApprove}>
-            {t("plan.approve")}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setAdjusting(true)}>
-            {t("plan.adjust")}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onReject}>
-            {t("plan.reject")}
-          </Button>
-        </div>
-      )}
+      <div className="flex gap-2">
+        <Button size="sm" onClick={onApprove}>
+          {t("plan.approve")}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onReject}>
+          {t("plan.reject")}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -989,8 +953,9 @@ function Transcript() {
   const planApproval = useConversationStore((s) => s.planApproval);
   const approvePlan = useConversationStore((s) => s.approvePlan);
   const rejectPlan = useConversationStore((s) => s.rejectPlan);
-  const revisePlan = useConversationStore((s) => s.revisePlan);
-  const activeProvider = useProvidersStore((s) => s.providers.find((p) => p.id === s.activeId));
+  // The same provider every other surface calls active — the error bubble's
+  // "Update your API key" must open the config the failed run actually used.
+  const activeProvider = useProvidersStore(activeProviderOf);
   // One global preference, read and watched once here — never per reasoning block.
   const showReasoningOn = useStoredItem(showReasoning);
   const toggleReasoning = useCallback(
@@ -1135,7 +1100,6 @@ function Transcript() {
                 reapproval={planApproval.reapproval}
                 onApprove={approvePlan}
                 onReject={rejectPlan}
-                onRevise={revisePlan}
               />
             </MessageScrollerItem>
           )}

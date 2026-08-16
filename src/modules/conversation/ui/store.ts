@@ -998,7 +998,14 @@ export const useConversationStore = create<ConversationState>((set, get) => {
 
     openConversation: (id) => {
       if (get().activeId === id) return;
-      void setActiveConversation(id);
+      void setActiveConversation(id).then(() => {
+        // The slot write must land first: the worker scopes its answer to it.
+        // A parked plan gate and the driven-tab chip re-arm only on a fresh
+        // query, so without this, switching back to a parked conversation
+        // shows "waiting for your approval" with the card gone — and typed
+        // text would queue behind a run that cannot move.
+        post({ type: "query_run" });
+      });
       set({ ...resetRun(), messages: [], activeId: id });
       void getMessages(id).then((messages) => {
         // A switch that raced this read wins — never paint a stale transcript.

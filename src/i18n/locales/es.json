@@ -267,6 +267,7 @@
     "answerPlaceholder": "Escribe tu respuesta…",
     "planPlaceholder": "Aprueba el plan de arriba, o escribe qué debe cambiar…",
     "planSendTitle": "Devolver el plan con tu nota",
+    "planNoImages": "Las imágenes no acompañan la nota del plan — escribe qué debe cambiar y pega la imagen cuando la ejecución continúe.",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensó durante {{duration}}",
     "reasoningToggle": "Mostrar u ocultar el razonamiento del modelo (se guarda para todas las conversaciones)",
@@ -368,8 +369,6 @@
     "approvalTitle": "¿Aprobar este plan?",
     "reapprovalTitle": "El plan cambió — ¿aprobar el nuevo?",
     "approve": "Aprobar",
-    "adjust": "Ajustar",
-    "adjustPlaceholder": "¿Qué debería cambiar?",
     "revisionNote": "The user sent this plan back with requested changes. Call `plan` again with a revised list — it goes back to the user for approval, and no page action runs before that.",
     "narrowedNote": "This list dropped steps the run already finished — the progress card lost them. Call `plan` again with the whole arc (finished steps included, cursor past them) unless the user cancelled those steps.",
     "reject": "Rechazar"

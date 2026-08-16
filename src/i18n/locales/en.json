@@ -267,6 +267,7 @@
     "answerPlaceholder": "Write your answer…",
     "planPlaceholder": "Approve the plan above, or type what should change…",
     "planSendTitle": "Send the plan back with your note",
+    "planNoImages": "Images can't ride a plan note — type what should change, and paste the image once the run is moving.",
     "thinkingFor": "Thinking · {{duration}}",
     "thoughtFor": "Thought for {{duration}}",
     "reasoningToggle": "Show or hide the model's reasoning (saved for all conversations)",
@@ -368,8 +369,6 @@
     "approvalTitle": "Approve this plan?",
     "reapprovalTitle": "The plan changed — approve the new one?",
     "approve": "Approve",
-    "adjust": "Adjust",
-    "adjustPlaceholder": "What should change?",
     "revisionNote": "The user sent this plan back with requested changes. Call `plan` again with a revised list — it goes back to the user for approval, and no page action runs before that.",
     "narrowedNote": "This list dropped steps the run already finished — the progress card lost them. Call `plan` again with the whole arc (finished steps included, cursor past them) unless the user cancelled those steps.",
     "reject": "Reject"

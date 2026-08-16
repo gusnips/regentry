@@ -277,7 +277,8 @@ export function ChatInput() {
     if (files.length > 0) {
       e.preventDefault();
       if (steering) {
-        setAttachError(t("chat.queueNoImages"));
+        // At the plan gate "queue the text" doesn't exist — point at what does.
+        setAttachError(t(parkedAtPlan ? "chat.planNoImages" : "chat.queueNoImages"));
         return;
       }
       setAttachError(null);

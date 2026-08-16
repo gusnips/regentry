@@ -166,7 +166,12 @@ list's one writer and a merged list would put words in its mouth. A bare rejecti
 summary; a rejection WITH feedback is a revision request instead — the note rides back
 inside the plan tool's own result (a separate user message would collide with the
 tool_results turn, which Anthropic forbids), the gate re-arms, and the revised plan is
-asked about again. A parked approval fires the same away-only OS notification as ask_user
+asked about again. The note's channel is the composer: a parked gate turns it into the
+answer field (the placeholder says so, like ask_user does), because a queued steer could
+never land — a parked run has no tool boundary ahead — so typed text sends the plan back
+and the card keeps only the one-click verdicts. The gate's arming lives only in panel
+memory, so the worker re-sends it on every `query_run`: port connect, and each panel
+conversation switch, both scoped to the active slot. A parked approval fires the same away-only OS notification as ask_user
 (`tabrunner-plan`), since the user has usually tabbed away by the time a replan asks
 again. **Parked speaks "waiting", never "working"**: while the loop sits on an answer the
 driven tab's pulsing favicon and badge settle into the still "?" (`waitAgentIndicator` —
