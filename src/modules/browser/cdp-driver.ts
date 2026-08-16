@@ -101,19 +101,30 @@ export async function clickAt(x: number, y: number): Promise<void> {
 }
 
 // CDP modifier bitmask: Alt=1, Ctrl=2, Meta/Cmd=4, Shift=8
-let selectAllModifier: number | null = null;
+const ALT = 1;
+const CTRL = 2;
+const META = 4;
+const SHIFT = 8;
 
-async function getSelectAllModifier(): Promise<number> {
-  if (selectAllModifier === null) {
+let platformModifier: number | null = null;
+
+/** Cmd on macOS, Ctrl everywhere else — what "Mod" and select-all both mean. */
+async function getPlatformModifier(): Promise<number> {
+  if (platformModifier === null) {
     const info = await chrome.runtime.getPlatformInfo();
-    selectAllModifier = info.os === "mac" ? 4 : 2;
+    platformModifier = info.os === "mac" ? META : CTRL;
   }
-  return selectAllModifier;
+  return platformModifier;
+}
+
+/** Test seam: the OS lookup is deliberately cached — this resets it. */
+export function resetPlatformModifierForTest(): void {
+  platformModifier = null;
 }
 
 /** Type text via CDP insertText (trusted input). Clears existing field first. */
 export async function typeText(text: string): Promise<void> {
-  const mod = await getSelectAllModifier();
+  const mod = await getPlatformModifier();
   await send("Input.dispatchKeyEvent", {
     type: "keyDown",
     key: "a",
@@ -150,29 +161,95 @@ const KEY_MAP: Record<string, { key: string; code: string; vkc: number; text?: s
   space: { key: " ", code: "Space", vkc: 32, text: " " },
 };
 
-/** The supported key names. The model-facing press_key enum is built from this
- *  list, so the schema the model sees and what the driver accepts can't drift. */
+/** The named keys. The model-facing press_key description is built from this
+ *  list, so what the model is told and what the driver accepts can't drift. */
 export const SUPPORTED_KEYS = Object.keys(KEY_MAP);
 
-export async function pressKey(key: string): Promise<void> {
-  const k = key.toLowerCase();
-  const spec = KEY_MAP[k];
-  if (!spec)
-    throw new Error(i18n.t("errors.unsupportedKey", { key, supported: SUPPORTED_KEYS.join(", ") }));
-  const down: Record<string, unknown> = {
-    type: "keyDown",
-    key: spec.key,
+/** What the model may name as a modifier. "Mod" spares it the platform guess. */
+export const SUPPORTED_MODIFIERS = ["Mod", "Control", "Alt", "Shift", "Meta"];
+
+const MODIFIER_BITS: Record<string, number> = {
+  alt: ALT,
+  option: ALT,
+  control: CTRL,
+  ctrl: CTRL,
+  meta: META,
+  cmd: META,
+  command: META,
+  shift: SHIFT,
+};
+
+/**
+ * A key name resolved to its CDP event fields: one of KEY_MAP's names, or any
+ * single character — the character case is what makes chords like Mod+a work
+ * without listing all 36 alphanumerics in the schema.
+ */
+interface KeySpec {
+  key: string;
+  code: string;
+  vkc: number;
+  text?: string;
+}
+
+export function resolveKey(key: string): KeySpec {
+  const named = KEY_MAP[key.toLowerCase()];
+  if (named) return named;
+  const chars = [...key];
+  const ch = chars[0];
+  if (chars.length === 1 && ch) {
+    const upper = ch.toUpperCase();
+    // A code only exists for keys that have a physical one; leaving it empty
+    // for punctuation is better than inventing a wrong `Key;`.
+    const code = /[a-z]/i.test(ch) ? `Key${upper}` : /[0-9]/.test(ch) ? `Digit${ch}` : "";
+    return { key: ch, code, vkc: upper.charCodeAt(0), text: ch };
+  }
+  throw new Error(i18n.t("errors.unsupportedKey", { key, supported: SUPPORTED_KEYS.join(", ") }));
+}
+
+/** The bitmask for a list of model-supplied modifier names. */
+export async function resolveModifiers(modifiers: string[]): Promise<number> {
+  let bits = 0;
+  for (const name of modifiers) {
+    const key = name.trim().toLowerCase();
+    const bit = key === "mod" ? await getPlatformModifier() : MODIFIER_BITS[key];
+    if (bit === undefined) {
+      throw new Error(
+        i18n.t("errors.unsupportedModifier", {
+          modifier: name,
+          supported: SUPPORTED_MODIFIERS.join(", "),
+        }),
+      );
+    }
+    bits |= bit;
+  }
+  return bits;
+}
+
+export async function pressKey(key: string, modifiers: string[] = []): Promise<void> {
+  const spec = resolveKey(key);
+  const bits = await resolveModifiers(modifiers);
+  const shifted = (bits & SHIFT) !== 0;
+  // A chord with Ctrl/Alt/Cmd is a shortcut, not typing: sending `text` with
+  // one held makes Chrome insert the character instead of firing the
+  // accelerator, so Mod+a would type "a" over the selection it meant to make.
+  // Shift alone IS typing — it just uppercases. The modifier keys themselves
+  // are never dispatched as their own events; the bitmask is what sets
+  // event.metaKey/ctrlKey, which is what pages actually read (typeText's
+  // select-all has run this way since day one).
+  const accelerated = (bits & ~SHIFT) !== 0;
+  const text = accelerated ? undefined : shifted && spec.text ? spec.text.toUpperCase() : spec.text;
+  const event = {
+    key: shifted && spec.key.length === 1 ? spec.key.toUpperCase() : spec.key,
     code: spec.code,
     windowsVirtualKeyCode: spec.vkc,
+    modifiers: bits,
   };
-  if (spec.text) down.text = spec.text;
-  await send("Input.dispatchKeyEvent", down);
   await send("Input.dispatchKeyEvent", {
-    type: "keyUp",
-    key: spec.key,
-    code: spec.code,
-    windowsVirtualKeyCode: spec.vkc,
+    type: "keyDown",
+    ...event,
+    ...(text ? { text } : {}),
   });
+  await send("Input.dispatchKeyEvent", { type: "keyUp", ...event });
 }
 
 /** Scroll the page by relative amounts. */
@@ -253,6 +330,20 @@ export async function navigateToUrl(tabId: TabId, url: string): Promise<void> {
   await chrome.tabs.update(tabId, { url });
   await waitForLoad(tabId);
   // The new document wiped the badge — put it back before the agent acts here.
+  await refreshAgentIndicator(tabId);
+}
+
+/** Back one entry in the tab's own history — the way out of a dead end. */
+export async function goBack(tabId: TabId): Promise<void> {
+  try {
+    await chrome.tabs.goBack(tabId);
+  } catch (e) {
+    // Chrome's own message for an empty history reads as a forward-navigation
+    // error ("Cannot find a next page in history"), which sends the model
+    // looking for the wrong problem.
+    throw new Error(i18n.t("errors.noHistoryBack"), { cause: e });
+  }
+  await waitForLoad(tabId);
   await refreshAgentIndicator(tabId);
 }
 

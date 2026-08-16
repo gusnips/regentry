@@ -70,6 +70,9 @@ const MAX_ATTACHED_IMAGES = 2;
  */
 const ACTION_TOOLS = new Set([
   "navigate",
+  "go_back",
+  "open_tab",
+  "close_tab",
   "click",
   "type",
   "fill",

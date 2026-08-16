@@ -1,5 +1,7 @@
 import { captureSnapshot, resolveRefRect } from "./snapshot";
 import type { SnapshotOptions, SnapshotResult } from "./snapshot";
+import { capturePageText } from "./page-text";
+import type { PageTextResult } from "./page-text";
 import { fillField } from "./fill";
 import { sanitizeForModel } from "./sanitize";
 import { listRequests, listConsoleMessages } from "./inspect";
@@ -13,6 +15,8 @@ import {
   screenshot,
   evaluateRaw,
   navigateToUrl,
+  goBack as goBackInTab,
+  waitForLoad,
   ensureAttached,
 } from "./cdp-driver";
 import { focusTab } from "./focus-tab";
@@ -37,8 +41,23 @@ export interface TabInfo {
   favIconUrl?: string;
 }
 
+/** Past this many hits the query was too loose to be worth answering in full. */
+const MAX_FIND_MATCHES = 50;
+
+/** Snapshot lines matching a query — a targeted lookup on a page too big to re-read. */
+export interface FindResult {
+  query: string;
+  url: string;
+  matches: string[];
+  total: number;
+}
+
 export interface BrowserDriver {
   snapshot(opts?: SnapshotOptions): Promise<SnapshotResult>;
+  /** The page as prose — what the snapshot's 100-char name cap cannot carry. */
+  readPageText(from?: number, limit?: number): Promise<PageTextResult>;
+  /** The snapshot, filtered to what matches — refs included, at a fraction of the tokens. */
+  find(query: string, limit?: number): Promise<FindResult>;
   click(ref: string): Promise<{ x: number; y: number }>;
   type(text: string): Promise<void>;
   insert(text: string): Promise<void>;
@@ -62,7 +81,9 @@ export interface BrowserDriver {
     onlyErrors?: boolean,
     limit?: number,
   ): Promise<{ messages: ConsoleEntry[]; total: number; note?: string }>;
-  key(key: string): Promise<void>;
+  key(key: string, modifiers?: string[]): Promise<void>;
+  /** Back one entry in the driven tab's history — the way out of a dead end. */
+  goBack(): Promise<void>;
   scrollDown(amount?: number): Promise<void>;
   scrollUp(amount?: number): Promise<void>;
   screenshot(): Promise<string>;
@@ -70,6 +91,10 @@ export interface BrowserDriver {
   listTabs(): Promise<TabInfo[]>;
   /** Re-targets every later action at this tab — foregrounding it is `activateOnSwitch`'s call. */
   switchTab(tabId: TabId): Promise<TabInfo>;
+  /** Open a tab of the run's own and drive it — the user's stays where it was. */
+  openTab(url: string): Promise<TabInfo>;
+  /** Close a tab the run is finished with. Never the one it is driving. */
+  closeTab(tabId: TabId): Promise<void>;
   /**
    * Files another open tab into the run's task group. Chrome constraint: groups
    * are window-scoped, so a tab in another window can't join — moving it across
@@ -119,9 +144,28 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
   // multi-tab (attach re-targets per call), so the driver just tracks a target.
   let current = initialTabId;
 
-  return {
+  const driver: BrowserDriver = {
     async snapshot(opts) {
       return captureSnapshot(current, opts);
+    },
+
+    async readPageText(from, limit) {
+      return capturePageText(current, from, limit);
+    },
+
+    async find(query, limit = MAX_FIND_MATCHES) {
+      // Built on the snapshot rather than a walk of its own: one ref registry,
+      // one notion of what an element is called. The saving is in what crosses
+      // the wire, not in what the page does.
+      const snap = await captureSnapshot(current);
+      const needle = query.trim().toLowerCase();
+      const hits = snap.pageContent
+        .split("\n")
+        // The indent encoded a tree these lines are no longer part of.
+        .map((line) => line.trim())
+        .filter((line) => line.toLowerCase().includes(needle));
+      const cap = Math.min(Math.max(1, Math.trunc(limit)), MAX_FIND_MATCHES);
+      return { query, url: snap.url, matches: hits.slice(0, cap), total: hits.length };
     },
 
     async click(ref) {
@@ -168,9 +212,13 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
       return listConsoleMessages(current, onlyErrors, limit);
     },
 
-    async key(key) {
+    async key(key, modifiers) {
       await ensureAttached(current);
-      await pressKey(key);
+      await pressKey(key, modifiers);
+    },
+
+    async goBack() {
+      await goBackInTab(current);
     },
 
     async scrollDown(amount = 300) {
@@ -240,5 +288,25 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
       onSwitch?.(info);
       return info;
     },
+
+    async openTab(url) {
+      // Created in the background and only then switched to, so the follow
+      // rule is switchTab's one implementation: a watched run brings it
+      // forward, a background run never yanks the user's window.
+      const tab = await chrome.tabs.create({ url, active: false });
+      if (tab.id === undefined) throw new Error(i18n.t("errors.noActiveTab"));
+      await waitForLoad(tab.id);
+      return driver.switchTab(tab.id);
+    },
+
+    async closeTab(tabId) {
+      // Closing the tab underneath the run would leave every later action
+      // pointed at a dead id. Switching away first is the model's call to
+      // make, not something to guess at here.
+      if (tabId === current) throw new Error(i18n.t("errors.closeDrivenTab"));
+      await chrome.tabs.remove(tabId);
+    },
   };
+
+  return driver;
 }

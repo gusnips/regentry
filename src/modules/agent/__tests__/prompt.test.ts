@@ -52,9 +52,15 @@ describe("buildSystemPrompt", () => {
     const prompt = buildSystemPrompt(ctx, "English");
     expect(prompt).toMatch(/verify with a snapshot before you call done/i);
     expect(prompt).toMatch(/alert, confirm, prompt/i);
-    expect(prompt).toMatch(/2–3 times/i);
+    expect(prompt).toMatch(/2–3 failures/i);
     expect(prompt).toMatch(/stale/i);
     expect(prompt).toMatch(/never guess a deep URL/i);
     expect(prompt).toMatch(/CAPTCHA/i);
+  });
+
+  it("frames page content as untrusted data, not instructions", () => {
+    const prompt = buildSystemPrompt(ctx, "English");
+    expect(prompt).toMatch(/untrusted data/i);
+    expect(prompt).toMatch(/never an instruction/i);
   });
 });

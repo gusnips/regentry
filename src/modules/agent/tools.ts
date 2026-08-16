@@ -86,6 +86,38 @@ export async function executeTool(
         return { ok: true, data: result };
       }
 
+      case "read_page_text":
+        return {
+          ok: true,
+          data: await driver.readPageText(
+            call.args.from as number | undefined,
+            call.args.limit as number | undefined,
+          ),
+        };
+
+      case "find": {
+        const query = String(call.args.query ?? "").trim();
+        // An empty query matches every line — the whole snapshot, billed as a
+        // search. Bounce it rather than answer it.
+        if (!query) return { ok: false, error: i18n.t("errors.findEmpty") };
+        return { ok: true, data: await driver.find(query, call.args.limit as number | undefined) };
+      }
+
+      case "go_back":
+        await driver.goBack();
+        return { ok: true };
+
+      case "open_tab": {
+        const tab = await driver.openTab(call.args.url as string);
+        return { ok: true, data: tab };
+      }
+
+      case "close_tab": {
+        const tabId = call.args.tab_id as number;
+        await driver.closeTab(tabId);
+        return { ok: true, data: { closed: tabId } };
+      }
+
       case "click": {
         const { x, y } = await driver.click(call.args.ref as string);
         return { ok: true, data: { x, y } };
@@ -123,7 +155,14 @@ export async function executeTool(
         };
 
       case "press_key":
-        await driver.key(call.args.key as string);
+        // Coerced once, here: a model that sends a bare string for `modifiers`
+        // would otherwise have it iterated character by character downstream.
+        await driver.key(
+          call.args.key as string,
+          Array.isArray(call.args.modifiers)
+            ? call.args.modifiers.filter((m): m is string => typeof m === "string")
+            : undefined,
+        );
         return { ok: true };
 
       case "scroll_down":
@@ -219,6 +258,15 @@ export function formatDetail(
     const snapshot = result.data as { pageContent?: string } | undefined;
     return snapshot?.pageContent ? truncate(snapshot.pageContent, MAX_DETAIL) : undefined;
   }
+  if (tool === "read_page_text") {
+    // The prose IS the action's result — show it, not the JSON envelope.
+    const page = result.data as { text?: string } | undefined;
+    return page?.text ? truncate(page.text, MAX_DETAIL) : undefined;
+  }
+  if (tool === "find") {
+    const found = result.data as { matches?: string[]; total?: number } | undefined;
+    return found?.matches?.length ? truncate(found.matches.join("\n"), MAX_DETAIL) : undefined;
+  }
   if (tool === "read_history") {
     // The log is already formatted text — showing it as escaped JSON would be unreadable.
     const window = result.data as { log?: string } | undefined;
@@ -270,6 +318,34 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
     }
     return where ? i18n.t("errors.navigatedTo", { host: where }) : i18n.t("errors.navigatedBare");
   }
+  if (tool === "read_page_text") {
+    const page = data as { text?: string; total?: number } | undefined;
+    const chars = page?.text?.length ?? 0;
+    const total = page?.total ?? chars;
+    return chars >= total
+      ? i18n.t("errors.pageTextRead", { count: chars })
+      : i18n.t("errors.pageTextReadPartial", { count: chars, total });
+  }
+  if (tool === "find") {
+    const found = data as { matches?: string[]; total?: number } | undefined;
+    const shown = found?.matches?.length ?? 0;
+    const total = found?.total ?? 0;
+    return shown < total
+      ? i18n.t("errors.foundPartial", { count: shown, total })
+      : i18n.t("errors.found", { count: total });
+  }
+  if (tool === "go_back") return i18n.t("errors.wentBack");
+  if (tool === "open_tab") {
+    const { url } = (data ?? {}) as { url?: string };
+    let where = url ?? "";
+    try {
+      if (url) where = new URL(url).host.replace(/^www\./, "");
+    } catch {
+      // Not a parseable URL — the raw value is the best trace there is.
+    }
+    return where ? i18n.t("errors.openedTabAt", { host: where }) : i18n.t("errors.openedTab");
+  }
+  if (tool === "close_tab") return i18n.t("errors.closedTab");
   if (tool === "switch_tab" && data && typeof data === "object") {
     return i18n.t("errors.switchedTo", { title: (data as { title?: string }).title ?? "" });
   }
