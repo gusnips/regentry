@@ -11,10 +11,11 @@ import type { Message } from "../types";
 import { splitErrorDetail } from "../error-detail";
 import type { ErrorKind } from "@/modules/providers/error-classify";
 import { formatDuration, formatTokens, hostnameOf } from "@/lib/format";
+import { newIssueUrl } from "@/lib/report";
 import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore, activeProviderOf } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
-import { Button } from "@/components/Button";
+import { Button, buttonClasses } from "@/components/Button";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -98,6 +99,28 @@ function kindCta(kind: ErrorKind, signedIn: boolean): CtaKey | undefined {
   // failed task re-runs itself when the summary lands.
   if (kind === "context") return "compact";
   return undefined;
+}
+
+/**
+ * Whether this failure is worth a bug report — deliberately narrow.
+ *
+ * Almost every error here is an anticipated condition we wrote copy for: a
+ * chrome:// page Chrome won't let us read, a rate limit, a wrong key, a tab
+ * the user closed. Each already states its cause and its fix, and a "Report"
+ * next to them would invite noise while diluting the one action that actually
+ * resolves it. None of them is a bug.
+ *
+ * `unexpected` is set at the three emit sites that produce text nobody
+ * authored — two raw exception catches and a provider failure the classifier
+ * couldn't read. Those dead-end: Retry is all they offer, and when Retry fails
+ * twice there is nowhere left to go. The house rule says an error must always
+ * offer a way forward; for these, telling us IS the way forward.
+ *
+ * The hint guard is the last filter: a crash whose text still smells like
+ * connectivity ("Failed to fetch") gets the network advice, not a bug report.
+ */
+function reportable(msg: Message, hint: HintKey | undefined): boolean {
+  return msg.unexpected === true && hint === undefined;
 }
 
 /** The error notice's landmark — quiet surface, drawn accent (single-use: stays local). */
@@ -838,6 +861,24 @@ const MessageBubble = memo(function MessageBubble({
                   </Button>
                 }
               />
+            )}
+            {reportable(msg, hint?.key) && (
+              // A real anchor, wearing the button's classes: this action leaves
+              // the extension, and Base UI's Button would stamp `type="button"`
+              // onto the <a>. The summary leads so it becomes the issue title;
+              // the raw body follows so the report carries what Details is
+              // hiding — the one thing a maintainer cannot ask a user to retype.
+              <a
+                href={newIssueUrl({
+                  provider: activeProvider,
+                  error: detail ? `${summary}\n\n${detail}` : msg.content,
+                })}
+                target="_blank"
+                rel="noreferrer"
+                className={`inline-block ${buttonClasses("ghost", "sm")} ${ERROR_ACTION_CLASSES}`}
+              >
+                {t("chat.report")}
+              </a>
             )}
           </div>
         </Bubble>

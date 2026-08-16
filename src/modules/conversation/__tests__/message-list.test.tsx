@@ -403,3 +403,67 @@ describe("transcript scroll when the run finishes", () => {
     container.remove();
   });
 });
+
+/**
+ * The bug-report affordance is opt-in and must stay that way: almost every
+ * error in the catalog is an anticipated condition with its own cause and fix
+ * (a chrome:// page, a rate limit, a closed tab), and offering "Report on
+ * GitHub" next to those would both invite noise and bury the real remedy.
+ * Only text nobody authored — a raw exception, an unreadable provider failure
+ * — carries `unexpected`.
+ */
+describe("error bubble report affordance", () => {
+  const RESTRICTED =
+    "TabRunner can't read this page — Chrome blocks extensions on chrome:// and Web Store pages. Navigate the tab to a regular page and resend the task.";
+
+  async function renderError(msg: Omit<Message, "id" | "role" | "timestamp">) {
+    useConversationStore.setState({
+      messages: [{ id: "e1", role: "error", timestamp: 0, ...msg }],
+      status: "idle",
+      streamingText: "",
+      reasoningText: "",
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<MessageList />));
+    return { container, root };
+  }
+
+  const reportLink = (c: HTMLElement) =>
+    [...c.querySelectorAll("a")].find((a) => a.textContent === "Report on GitHub");
+
+  it("stays away from an anticipated condition", async () => {
+    const view = await renderError({ content: RESTRICTED });
+    expect(reportLink(view.container)).toBeUndefined();
+    await unmount(view);
+  });
+
+  it("stays away from a classified provider state", async () => {
+    const view = await renderError({
+      content: "Anthropic is rate-limiting requests — try again in a moment",
+      kind: "rate",
+    });
+    expect(reportLink(view.container)).toBeUndefined();
+    await unmount(view);
+  });
+
+  it("offers a pre-filled issue for text nobody wrote copy for", async () => {
+    const view = await renderError({
+      content: "Cannot read properties of undefined (reading 'targetId')",
+      unexpected: true,
+    });
+    const link = reportLink(view.container);
+    expect(link).toBeDefined();
+    const url = new URL(link!.href);
+    expect(url.pathname).toBe("/tabrunner/tabrunner/issues/new");
+    expect(url.searchParams.get("title")).toContain("Cannot read properties");
+    await unmount(view);
+  });
+
+  it("yields to a hint even when unexpected — connectivity advice beats a bug report", async () => {
+    const view = await renderError({ content: "Failed to fetch", unexpected: true });
+    expect(reportLink(view.container)).toBeUndefined();
+    await unmount(view);
+  });
+});

@@ -232,7 +232,12 @@ export class TranscriptWriter {
         // deterministic one. The error message itself never replays into
         // history, so without the note the next run would start blind.
         this.writeProgressNote(event.message);
-        this.append(makeMsg("error", event.message, { kind: event.kind }));
+        this.append(
+          makeMsg("error", event.message, {
+            kind: event.kind,
+            unexpected: event.unexpected,
+          }),
+        );
         this.recordSummary(false);
         break;
 

@@ -698,7 +698,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
         recallQueue();
         // A stop redirect must never auto-fire into an error — hand it back.
         returnPending();
-        pushDisplay(makeMsg("error", event.message, { kind: event.kind }));
+        pushDisplay(
+          makeMsg("error", event.message, { kind: event.kind, unexpected: event.unexpected }),
+        );
         settleRun("error");
         // A failed run is a finished one — and a context overflow is the very
         // case where the parked /compact is what the user needs next.

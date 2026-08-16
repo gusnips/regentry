@@ -142,6 +142,14 @@ export type Event =
       message: string;
       kind?: ErrorKind;
       /** user-initiated ending (driven tab closed) — no notification */ silent?: boolean;
+      /**
+       * Nobody wrote copy for this one: a raw exception, or a provider failure
+       * the classifier couldn't read — the same line loop.ts draws between
+       * `log.warn` and `log.error`. Opt-in, so an anticipated condition added
+       * later (a blocked page, a closed tab) never inherits it by default.
+       * The bubble turns it into the "Report on GitHub" affordance.
+       */
+      unexpected?: boolean;
     }
   /** summary is the done tool's final answer — present when the model ends on a tool-only turn;
    *  question marks a run that ended on ask_user — its own notification already fired;

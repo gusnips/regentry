@@ -12,6 +12,13 @@ export interface Message {
    * leads with its own actionable line, so the bubble skips the generic hint.
    */
   kind?: ErrorKind;
+  /**
+   * For error messages: nothing anticipated this one — a raw exception, or a
+   * provider failure the classifier couldn't read. Every other error in the
+   * catalog was authored with its own cause and fix; these have neither, so
+   * this is the flag that offers a bug report as the way forward.
+   */
+  unexpected?: boolean;
   /** For step messages: which tool ran */
   tool?: string;
   /** For step messages: the arguments the model passed — drives the row's hint and drill-down */

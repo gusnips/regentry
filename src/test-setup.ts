@@ -19,6 +19,8 @@ if (typeof globalThis.chrome === "undefined") {
   (globalThis as Record<string, unknown>).chrome = {
     tabs: { onRemoved: noop, onUpdated: noop },
     debugger: { onDetach: noop, onEvent: noop },
+    // Rendering a panel surface can reach for the version (a bug report carries it).
+    runtime: { getManifest: () => ({ version: "0.0.0-test" }) },
   };
 }
 

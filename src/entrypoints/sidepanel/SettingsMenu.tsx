@@ -2,8 +2,8 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { Popover } from "@base-ui-components/react";
 import { useTranslation } from "react-i18next";
-import { AddProviderDialog } from "@/modules/providers/ui";
-import { Button } from "@/components/Button";
+import { AddProviderDialog, useProvidersStore, activeProviderOf } from "@/modules/providers/ui";
+import { Button, buttonClasses } from "@/components/Button";
 import { Switch } from "@/components/Switch";
 import { overlayCard } from "@/components/chrome";
 import { useStoredItem } from "@/components/useStoredItem";
@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/ThemeControl";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Icon } from "@/components/Icon";
 import { widgetHidden } from "@/lib/prefs";
+import { newIssueUrl } from "@/lib/report";
 
 function GearIcon() {
   return (
@@ -43,6 +44,9 @@ export function SettingsMenu() {
   // Stored inverted ("hidden") so the default needs no write; shown here as
   // the positive toggle.
   const hidden = useStoredItem(widgetHidden);
+  // The same provider every other surface calls active — a report is only
+  // reproducible if it names the one the run actually used.
+  const provider = useProvidersStore(activeProviderOf);
 
   return (
     <>
@@ -108,6 +112,19 @@ export function SettingsMenu() {
                 >
                   {t("settings.allSettings")}
                 </Button>
+                {/* The other half of the feedback path. The error bubble covers
+                    "it broke"; the report worth the most — "it did the wrong
+                    thing" — ends a run green, with no red bubble to click, so
+                    it needs a door that is open at all times. */}
+                <a
+                  href={newIssueUrl({ provider })}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setOpen(false)}
+                  className={`block text-left ${buttonClasses("ghost", "sm")}`}
+                >
+                  {t("settings.reportIssue")}
+                </a>
               </div>
             </Popover.Popup>
           </Popover.Positioner>

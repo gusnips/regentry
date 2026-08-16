@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { AddProviderDialog, ProviderList, useProvidersStore } from "@/modules/providers/ui";
+import {
+  AddProviderDialog,
+  ProviderList,
+  useProvidersStore,
+  activeProviderOf,
+} from "@/modules/providers/ui";
 import { InstructionsSection, MemorySection } from "@/modules/memory/ui";
 import { SchedulesSection } from "@/modules/schedule/ui";
 import { Button } from "@/components/Button";
@@ -14,6 +19,7 @@ import { ThemeToggle } from "@/components/ThemeControl";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { defaultStartUrl, tipsEnabled, widgetHidden } from "@/lib/prefs";
 import { LINKS } from "@/lib/links";
+import { newIssueUrl } from "@/lib/report";
 import { StatusStrip } from "./StatusStrip";
 import { McpPane } from "./McpPane";
 
@@ -80,6 +86,9 @@ function GithubMark({ size = 14, className }: { size?: number; className?: strin
 function GeneralPane() {
   const { t } = useTranslation();
   const version = chrome.runtime.getManifest().version;
+  // The same provider every other surface calls active — a report is only
+  // reproducible if it names the one the runs actually used.
+  const provider = useProvidersStore(activeProviderOf);
   const linkClass = "text-brand-600 hover:underline dark:text-brand-400";
   return (
     <>
@@ -119,10 +128,21 @@ function GeneralPane() {
             className={`inline-flex items-center gap-1.5 ${linkClass}`}
           >
             <GithubMark />
-            gusnips/tabrunner
+            tabrunner/tabrunner
           </a>
           <a href={LINKS.issues} target="_blank" rel="noreferrer" className={linkClass}>
             {t("settings.aboutIssues")}
+          </a>
+          {/* Browsing issues and filing one are different errands — the first
+              is how you find out it's known, the second how it becomes known.
+              This one arrives pre-filled with the version and provider. */}
+          <a
+            href={newIssueUrl({ provider })}
+            target="_blank"
+            rel="noreferrer"
+            className={linkClass}
+          >
+            {t("settings.reportIssue")}
           </a>
           <a href={LINKS.site} target="_blank" rel="noreferrer" className={linkClass}>
             tabrunner.app

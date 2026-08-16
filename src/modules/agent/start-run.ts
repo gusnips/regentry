@@ -110,7 +110,8 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       log.error("provider setup failed:", message);
-      emit({ type: "error", message });
+      // Raw exception text — we wrote no copy for it, so the bubble offers a report.
+      emit({ type: "error", message, unexpected: true });
       return { ok: true };
     }
 
@@ -323,7 +324,12 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
           onUsage: (input, output) => emit({ type: "usage", input, output }),
           onError: (message, kind) => {
             runFailed = true;
-            emit({ type: "error", message, kind });
+            // An unclassified provider failure is the signal that a provider
+            // changed something we don't know yet — the same distinction the
+            // loop draws when it picks log.error over log.warn. Classified
+            // states (rate limit, quota, auth) are not bugs and carry their
+            // own fix, so they stay off the report path.
+            emit({ type: "error", message, kind, ...(kind ? {} : { unexpected: true }) });
           },
           onDone: (summary) =>
             emit({
@@ -374,7 +380,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       const message = e instanceof Error ? e.message : String(e);
       log.error("run crashed:", message);
       runFailed = true;
-      emit({ type: "error", message });
+      emit({ type: "error", message, unexpected: true });
     } finally {
       chrome.tabs.onRemoved.removeListener(onTabGone);
       if (endedOnQuestion) void waitAgentIndicator(drivenTabId);
