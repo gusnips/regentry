@@ -48,6 +48,7 @@ beforeEach(() => {
   (globalThis as Record<string, unknown>).chrome = {
     runtime: { connect: () => port.fake as unknown as chrome.runtime.Port },
     tabs: { query: async () => [] },
+    windows: { getCurrent: async () => ({ id: 1 }) },
   };
   useConversationStore.getState().disconnect();
   useConversationStore.setState({

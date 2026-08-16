@@ -46,6 +46,7 @@ beforeEach(() => {
         { id: 1, active: true, currentWindow: true, url: "https://example.com", title: "Example" },
       ],
     },
+    windows: { getCurrent: async () => ({ id: 1 }) },
   };
   useConversationStore.getState().disconnect();
   useConversationStore.setState({

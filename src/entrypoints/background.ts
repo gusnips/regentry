@@ -37,8 +37,14 @@ import { PORT_NAME } from "@/shared/protocol";
 import { getBridge, startBridge } from "@/modules/bridge";
 
 const log = createLogger("bg");
-/** Every open panel — an external agent starting work must reach them all. */
-const panelPorts = new Set<chrome.runtime.Port>();
+/**
+ * Every open panel — an external agent starting work must reach them all —
+ * mapped to the window it lives in (its `hello`, undefined until that lands).
+ * The window matters: notifications are gated on whether the user can see the
+ * panel, and "a panel is open" plus "a window is focused" can be two facts
+ * about two different windows.
+ */
+const panelPorts = new Map<chrome.runtime.Port, number | undefined>();
 /** Wakes the worker through long provider silences while a run is up and the
  *  panel (whose ping does this when open) is closed. */
 const KEEPALIVE_ALARM = "tabrunner-run-keepalive";
@@ -99,7 +105,7 @@ export default defineBackground(() => {
   // no daemon is listening. Activity changes are broadcast to open panels: the
   // run is already blinking the driven tab's favicon, the panel just names it.
   startBridge((active) => {
-    for (const p of panelPorts) send(p, { type: "run_active", active });
+    for (const p of panelPorts.keys()) send(p, { type: "run_active", active });
   });
 
   // Both ambient surfaces follow the run board. The toolbar badge is the floor
@@ -141,7 +147,7 @@ export default defineBackground(() => {
   chrome.runtime.onConnect.addListener((port) => {
     if (port.name !== PORT_NAME) return;
     log.debug("side panel connected");
-    panelPorts.add(port);
+    panelPorts.set(port, undefined);
     // The panel is open: whatever failed while you were away is about to be on
     // screen (the transcript kept it), so the toolbar stops shouting about it.
     if (unseenFailure) {
@@ -151,6 +157,11 @@ export default defineBackground(() => {
 
     port.onMessage.addListener(async (msg: Command) => {
       switch (msg.type) {
+        case "hello": {
+          panelPorts.set(port, msg.windowId);
+          break;
+        }
+
         case "run": {
           // The panel stored its task message (and adopted the conversation)
           // before the run command left — the id rides the command, so this
@@ -179,11 +190,7 @@ export default defineBackground(() => {
               onAskUser: (question, choices) =>
                 void notifyIfAway("tabrunner-question", question, conversationId, choices),
               onPlanApprovalRequest: (steps, reapproval) =>
-                void notifyIfAway(
-                  "tabrunner-plan",
-                  `${reapproval ? i18n.t("plan.reapprovalTitle") : i18n.t("plan.approvalTitle")} ${steps.join(" · ")}`,
-                  conversationId,
-                ),
+                void notifyPlanParked(conversationId, steps, reapproval),
             }).catch((e) => {
               log.error("panel run failed to start:", e instanceof Error ? e.message : String(e));
             });
@@ -230,6 +237,9 @@ export default defineBackground(() => {
           // The user's answer to a parked plan prompt — resolves the loop's wait.
           // Owner-scoped like stop: a bridge run never parks, so this is a no-op there.
           chrome.notifications.clear("tabrunner-plan");
+          // The gate is answered — a mid-run replan is a fresh ask and gets its
+          // own notification, so release the one-buzz-per-park hold.
+          notifiedPlanFor = null;
           if (getActiveRun()?.owner === "panel") answerPlanApproval(msg.approved, msg.feedback);
           break;
         }
@@ -331,20 +341,9 @@ export default defineBackground(() => {
     port.onDisconnect.addListener(() => {
       panelPorts.delete(port);
       log.debug("side panel disconnected");
-      // A parked run's notification is suppressed while a panel is open — the
-      // card is right there. Close that panel and the ask has nowhere left to
-      // live: the approval card is panel memory, so the run sits blocked with
-      // nothing on screen but a "?" on the tab strip. Fire it now, on the way
-      // out, so leaving never strands a run that is waiting on you.
-      const parked = getActiveRun();
-      if (panelPorts.size === 0 && parked?.owner === "panel" && parked.planApproval) {
-        const { steps, reapproval } = parked.planApproval;
-        void notifyIfAway(
-          "tabrunner-plan",
-          `${reapproval ? i18n.t("plan.reapprovalTitle") : i18n.t("plan.approvalTitle")} ${steps.join(" · ")}`,
-          parked.conversationId,
-        );
-      }
+      // Closing the panel is one of the two ways to stop watching a parked run
+      // — see notifyParkedRun for the other.
+      notifyParkedRun();
     });
   });
 
@@ -382,7 +381,12 @@ export default defineBackground(() => {
   // The widget lives on each window's active tab: activation and focus churn
   // move it there and pull it from tabs that lost activation.
   chrome.tabs.onActivated.addListener(() => void reconcileStatusWidgets());
-  chrome.windows.onFocusChanged.addListener(() => void reconcileStatusWidgets());
+  chrome.windows.onFocusChanged.addListener(() => {
+    void reconcileStatusWidgets();
+    // Leaving the browser (or moving to a window with no panel) is the other
+    // way to stop watching a parked run — see notifyParkedRun.
+    notifyParkedRun();
+  });
 });
 
 function send(port: chrome.runtime.Port, event: Event) {
@@ -471,13 +475,20 @@ function paintActionBadge(board: RunBoard = currentBoard()): void {
  * Is the user actually looking at TabRunner? An open panel is not enough: a
  * side panel behind the editor you are working in is as unseen as a closed one,
  * and "it errored an hour ago" is the thing dispatch-and-forget must never say.
- * So the browser has to be the frontmost app too.
+ * So the browser has to be the frontmost app too — and the panel has to be open
+ * in the window that has focus. Those last two are separate facts: a panel open
+ * in window A while you work in window B is on nobody's screen, and taking "a
+ * panel exists" for "you can see it" drops the notification silently.
  */
 async function userIsWatching(): Promise<boolean> {
   if (panelPorts.size === 0) return false;
   try {
     const win = await chrome.windows.getLastFocused({ windowTypes: ["normal"] });
-    return win.focused === true;
+    if (win.focused !== true) return false;
+    // A port that has not said hello yet counts as watching: the gap is one
+    // message wide, and over-suppressing costs a late notification while
+    // under-suppressing buzzes about something already on screen.
+    return [...panelPorts.values()].some((id) => id === undefined || id === win.id);
   } catch {
     // Can't tell — an open panel is the better guess than a duplicate ping.
     return true;
@@ -493,6 +504,14 @@ async function userIsWatching(): Promise<boolean> {
  * so a second finishing run never replaces the first's notification.
  */
 async function notifyRunEnded(conversationId: string, task: string, event: Event): Promise<void> {
+  // The plan gate died with the run, so its notification must not outlive it —
+  // clicking a stale "Approve this plan?" opens the panel on a conversation
+  // with no card to answer, the dead end every error state here is written to
+  // avoid. Cleared ahead of the early returns below on purpose: a silent error
+  // (the driven tab closed under a parked plan) and a user stop are exactly the
+  // endings that leave one behind.
+  chrome.notifications.clear("tabrunner-plan");
+  notifiedPlanFor = null;
   if (event.type === "done" && event.question) return;
   if (event.type === "error" && event.silent) return;
   if (stoppedByUser.delete(conversationId)) return;
@@ -528,18 +547,20 @@ async function notifyRunEnded(conversationId: string, task: string, event: Event
 }
 
 /**
- * Fires an OS notification when a run needs the user and no panel is open to
- * see it — an unanswered ask_user or a parked plan approval stalls silently
- * otherwise, and the strip mark is invisible from another app. A question's
- * choices ride in the message so the ask is actionable even from here.
+ * Fires an OS notification when a run needs the user and nobody is watching a
+ * panel that could show it — an unanswered ask_user or a parked plan approval
+ * stalls silently otherwise, and the strip mark is invisible from another app.
+ * A question's choices ride in the message so the ask is actionable even from
+ * here. Returns whether it actually fired, so a caller holding a one-buzz-per-
+ * ask latch only arms it when there is something out there to be seen.
  */
 async function notifyIfAway(
   id: string,
   message: string,
   conversationId?: string,
   choices?: string[],
-): Promise<void> {
-  if (await userIsWatching()) return;
+): Promise<boolean> {
+  if (await userIsWatching()) return false;
   if (conversationId) notificationTargets.set(id, { conversationId });
   const body = choices?.length ? `${message} — ${choices.join(" · ")}` : message;
   try {
@@ -549,9 +570,45 @@ async function notifyIfAway(
       title: "TabRunner",
       message: truncate(body, 256),
     });
+    return true;
   } catch {
     // Notifications can fail silently — the strip mark still carries the signal.
+    return false;
   }
+}
+
+/**
+ * The plan gate's ask, fired at most once per park. A run parked while the user
+ * was watching sends nothing — the approval card is right there — so the ask
+ * has to be re-offered the moment they stop watching, or the run sits blocked
+ * behind a panel nobody is looking at with only a "?" on the tab strip to say
+ * so. `notifiedPlanFor` is what keeps "re-offered" from meaning "buzzed on
+ * every window switch"; the gate being answered or the run ending releases it.
+ */
+let notifiedPlanFor: string | null = null;
+
+async function notifyPlanParked(
+  conversationId: string,
+  steps: string[],
+  reapproval: boolean,
+): Promise<void> {
+  if (notifiedPlanFor === conversationId) return;
+  const title = reapproval ? i18n.t("plan.reapprovalTitle") : i18n.t("plan.approvalTitle");
+  if (await notifyIfAway("tabrunner-plan", `${title} ${steps.join(" · ")}`, conversationId)) {
+    notifiedPlanFor = conversationId;
+  }
+}
+
+/**
+ * Re-offer the parked ask after the fact — called on every window-focus change
+ * and when a panel closes, the two ways a watched park becomes an unwatched
+ * one. No-op unless a panel run is actually sitting at the gate.
+ */
+function notifyParkedRun(): void {
+  const run = getActiveRun();
+  if (run?.owner !== "panel" || !run.planApproval) return;
+  const { steps, reapproval } = run.planApproval;
+  void notifyPlanParked(run.conversationId, steps, reapproval);
 }
 
 // Notification click opens the panel at the right conversation so the user can

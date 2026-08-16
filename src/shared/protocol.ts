@@ -24,6 +24,13 @@ export type Command =
     }
   | { type: "stop" }
   /**
+   * The panel naming the window it lives in, sent once right after connect.
+   * "Is the user watching?" — the test every OS notification is gated on — has
+   * to know WHICH window holds an open panel, not merely that one is open
+   * somewhere: a panel open in the window behind is as unseen as a closed one.
+   */
+  | { type: "hello"; windowId: number }
+  /**
    * Message typed while a run is in flight — the loop inserts it between tool
    * batches, so the model sees it in order without interrupting the run.
    */

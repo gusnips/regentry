@@ -729,6 +729,19 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     // Ask on connect: the broadcast may have happened while the panel was
     // closed, and a stale state must never read as "the browser is idle".
     post({ type: "query_run" });
+    // Name our window, so the worker's "is the user watching?" test can tell an
+    // open panel in the focused window from one sitting behind another window.
+    // A beat later than the connect — there is no synchronous way to ask — and
+    // the worker treats a port that has not said hello yet as watching, so the
+    // gap costs at most a suppressed notification, never a duplicate one.
+    void chrome.windows.getCurrent().then(
+      (w) => {
+        if (w.id !== undefined) post({ type: "hello", windowId: w.id });
+      },
+      () => {
+        // No window id — the worker keeps its "assume watching" default.
+      },
+    );
     return p;
   };
 
