@@ -5,3 +5,5 @@ export { RunStatus } from "./RunStatus";
 export { RunBoard } from "./RunBoard";
 export { TitleInput } from "./TitleInput";
 export { useConversationStore } from "./store";
+export { HelpDialog } from "./HelpDialog";
+export { openHelp } from "./help-open";

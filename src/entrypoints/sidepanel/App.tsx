@@ -8,6 +8,7 @@ import {
   HistoryToggle,
   NewChatButton,
   TitleInput,
+  HelpDialog,
   useConversationStore,
 } from "@/modules/conversation/ui";
 import {
@@ -191,6 +192,9 @@ export default function App() {
           <ChatInput />
         </>
       )}
+      {/* One instance for all three doors (/help, "?", the settings item) —
+          portaled, so its tree position carries no layout weight. */}
+      <HelpDialog />
     </div>
   );
 }

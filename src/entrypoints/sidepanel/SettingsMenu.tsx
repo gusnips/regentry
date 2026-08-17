@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Popover } from "@base-ui-components/react";
 import { useTranslation } from "react-i18next";
 import { AddProviderDialog, useProvidersStore, activeProviderOf } from "@/modules/providers/ui";
+import { openHelp } from "@/modules/conversation/ui";
 import { Button, buttonClasses } from "@/components/Button";
 import { Switch } from "@/components/Switch";
 import { overlayCard } from "@/components/chrome";
@@ -111,6 +112,20 @@ export function SettingsMenu() {
                   }}
                 >
                   {t("settings.allSettings")}
+                </Button>
+                {/* The lost user's door sits above the broken-build door:
+                    "what can this do?" is the more common question, and the
+                    sheet it opens carries the report link too. */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start text-left"
+                  onClick={() => {
+                    setOpen(false);
+                    openHelp();
+                  }}
+                >
+                  {t("help.title")}
                 </Button>
                 {/* The other half of the feedback path. The error bubble covers
                     "it broke"; the report worth the most — "it did the wrong

@@ -6,6 +6,7 @@ import { EFFORT_LABEL_KEYS, isEffort, REASONING_EFFORTS } from "@/modules/provid
 import { fetchProviderUsage, supportsUsage } from "@/modules/providers/usage";
 import type { UsageWindow } from "@/modules/providers/usage";
 import { useProvidersStore, activeProviderOf } from "@/modules/providers/ui";
+import { openHelp } from "./help-open";
 import { runsHere, useConversationStore } from "./store";
 
 /**
@@ -14,7 +15,9 @@ import { runsHere, useConversationStore } from "./store";
  * command, not a task: it runs LOCALLY against the panel's stores and is never
  * sent to the model, never written to the transcript (the transcript is the
  * model's memory — a settings echo would pose as a turn). Each result lands as
- * a display-only note row (a tool-less step message), gone on panel reopen.
+ * a display-only note row (a tool-less step message), gone on panel reopen —
+ * /help excepted: its reference sheet (HelpDialog) is no use as a line that
+ * scrolls away.
  *
  * A command is chrome, not conversation, so it never joins the run queue —
  * queueing /help behind a three-minute run helps nobody, and /model is exactly
@@ -390,7 +393,9 @@ export const COMMANDS: readonly SlashCommand[] = [
     name: "help",
     descriptionKey: "commands.help.description",
     run: () => {
-      note(COMMANDS.map((c) => `/${c.name} — ${i18n.t(c.descriptionKey)}`).join("\n"));
+      // The sheet, not a note: a reference is only useful WHILE you work, and
+      // a transcript line scrolls away and dies on panel reopen.
+      openHelp();
     },
   },
 ];

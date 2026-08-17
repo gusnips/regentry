@@ -10,6 +10,7 @@ import { useQueueBusy } from "./hooks";
 import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
 import { RunTargetToggle } from "./RunTargetToggle";
 import { SlashMenu } from "./SlashMenu";
+import { openHelp } from "./help-open";
 import { COMMANDS, executeSlash, runSlash, slashItems } from "./slash-commands";
 import type { SlashItem } from "./slash-commands";
 import { TipLine } from "@/modules/tips/ui";
@@ -390,6 +391,14 @@ export function ChatInput() {
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // "?" on a pristine composer opens the help sheet instead of starting a
+    // draft — the GitHub/Linear (and Claude Code) convention. A task that
+    // genuinely starts with "?" types any other character first, or pastes.
+    if (e.key === "?" && !text && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      openHelp();
+      return;
+    }
     // An open slash menu owns the keys — its arrows/Tab/Enter/Esc never reach
     // history recall or submit.
     if (slashOpen && slash) {

@@ -12,6 +12,7 @@ export const TIPS = [
   { id: "thisPage", cooldownOpens: 4 },
   { id: "queueSteer", cooldownOpens: 4 },
   { id: "slashCommands", cooldownOpens: 4 },
+  { id: "help", cooldownOpens: 4 },
   { id: "pasteImage", cooldownOpens: 6 },
   { id: "pasteCollapse", cooldownOpens: 6 },
   { id: "planApproval", cooldownOpens: 6 },

@@ -13,6 +13,8 @@ import type { Root } from "react-dom/client";
 import { setI18n } from "react-i18next";
 import { i18n } from "@/i18n";
 import { ChatInput } from "../ui/ChatInput";
+import { HelpDialog } from "../ui/HelpDialog";
+import { setHelpOpen } from "../ui/help-open";
 import { RunTargetToggle } from "../ui/RunTargetToggle";
 import { RunStatus } from "../ui/RunStatus";
 import { useConversationStore } from "../ui/store";
@@ -281,6 +283,38 @@ describe("the finished band's token total", () => {
     const h = await render(<RunStatus />);
     expect(band(h)).toContain("15.9k");
     await unmount(h);
+  });
+});
+
+describe("the ? help gesture", () => {
+  const pressKey = (h: Harness, key: string) =>
+    act(async () => {
+      h.container
+        .querySelector("textarea")!
+        .dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    });
+
+  it("opens the sheet only on a pristine composer — with a draft, ? is a character", async () => {
+    const h = await render(
+      <>
+        <ChatInput />
+        <HelpDialog />
+      </>,
+    );
+    await act(async () => useConversationStore.getState().setDraft("what does this page say"));
+    await pressKey(h, "?");
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+
+    await act(async () => useConversationStore.getState().setDraft(""));
+    await pressKey(h, "?");
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    // The command table is generated — one row per registered slash command.
+    expect(dialog!.textContent).toContain("/compact");
+    // And the gesture never became a draft character.
+    expect(useConversationStore.getState().draft).toBe("");
+    await unmount(h);
+    setHelpOpen(false);
   });
 });
 

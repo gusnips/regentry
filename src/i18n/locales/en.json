@@ -420,8 +420,22 @@
       "failed": "Couldn't compact: {{message}}"
     },
     "help": {
-      "description": "List the commands"
+      "description": "Show every shortcut and command"
     }
+  },
+  "help": {
+    "title": "Help & shortcuts",
+    "shortcuts": "Shortcuts",
+    "commands": "Commands",
+    "keys": {
+      "send": "Send",
+      "newline": "New line",
+      "stop": "Stop the running task",
+      "recall": "Walk back through what you've sent",
+      "plan": "Expand or collapse every plan card",
+      "open": "Open this panel — the composer must be empty"
+    },
+    "docs": "Guides & download — tabrunner.app →"
   },
   "compact": {
     "folded": "Folded {{count}} earlier turns into a summary to free up context",
@@ -579,7 +593,8 @@
     "usage": "On a subscription provider, the gauge icon next to the model picker shows your 5-hour and weekly usage — click it for the reset times.",
     "slashCommands": "Type / in the composer for commands — switch provider, model, or effort mid-chat.",
     "compact": "Long chat filling up? /compact swaps the older messages for a summary — you keep the scrollback.",
-    "schedule": "Ask for work on a timer — “every weekday at 9am, check my inbox”. Manage them in Settings."
+    "schedule": "Ask for work on a timer — “every weekday at 9am, check my inbox”. Manage them in Settings.",
+    "help": "Press ? on an empty composer for every shortcut and command — /help works too."
   },
   "notify": {
     "doneFallback": "Task finished."

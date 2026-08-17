@@ -420,8 +420,22 @@
       "failed": "No se pudo compactar: {{message}}"
     },
     "help": {
-      "description": "Lista los comandos"
+      "description": "Muestra todos los atajos y comandos"
     }
+  },
+  "help": {
+    "title": "Ayuda y atajos",
+    "shortcuts": "Atajos",
+    "commands": "Comandos",
+    "keys": {
+      "send": "Enviar",
+      "newline": "Nueva línea",
+      "stop": "Detener la tarea en ejecución",
+      "recall": "Recorrer lo que ya enviaste",
+      "plan": "Expandir o contraer todos los planes",
+      "open": "Abrir este panel — el campo de texto debe estar vacío"
+    },
+    "docs": "Guías y descarga — tabrunner.app →"
   },
   "compact": {
     "folded": "Se plegaron {{count}} turnos anteriores en un resumen para liberar contexto",
@@ -579,7 +593,8 @@
     "usage": "En un proveedor por suscripción, el icono de medidor junto al selector de modelo muestra tu uso de 5 horas y semanal — haz clic para ver cuándo se reinicia.",
     "slashCommands": "Escribe / en el campo de texto para ver comandos — cambia proveedor, modelo o esfuerzo.",
     "compact": "¿Chat largo llenándose? /compact cambia los mensajes viejos por un resumen — conservas el historial.",
-    "schedule": "Pide trabajo con temporizador — “cada día laborable a las 9, mira mi correo”. Gestiónalas en Ajustes."
+    "schedule": "Pide trabajo con temporizador — “cada día laborable a las 9, mira mi correo”. Gestiónalas en Ajustes.",
+    "help": "Pulsa ? con el campo vacío para ver atajos y comandos — /help también sirve."
   },
   "notify": {
     "doneFallback": "Tarea terminada."
