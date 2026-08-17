@@ -370,12 +370,17 @@ export function EnginePicker() {
           <Button
             variant="ghost"
             size="sm"
-            aria-label={t("enginePicker.triggerTitle", { label })}
-            title={t("enginePicker.triggerTitle", { label })}
+            aria-label={t("enginePicker.triggerTitle", { label: label.full })}
+            title={t("enginePicker.triggerTitle", { label: label.full })}
             className="flex min-w-0 shrink items-center gap-1.5 hover:text-neutral-900 dark:hover:text-neutral-100"
           >
             <ProviderMark provider={active} size={14} />
-            <span className="truncate">{label}</span>
+            {/* The model id is the half that can afford to abbreviate; the
+                effort is pinned, so narrowing the panel eats the name and
+                never the setting. The send button outranks both — it is
+                shrink-0 in the footer row, so this whole chip gives first. */}
+            <span className="truncate">{label.model}</span>
+            {label.effort && <span className="shrink-0">· {label.effort}</span>}
             <ChevronDownIcon size={12} className="shrink-0 text-neutral-400" />
           </Button>
         }
