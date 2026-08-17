@@ -241,10 +241,8 @@
   },
   "enginePicker": {
     "triggerTitle": "{{label}} — proveedor, modelo y esfuerzo para la próxima tarea",
-    "current": "actual",
-    "useProviderTitle": "Cambiar a este proveedor — su modelo y esfuerzo guardados vienen con él",
+    "useProviderTitle": "Cambiar a {{name}} — {{choice}}",
     "loadingModels": "Cargando modelos…",
-    "browseTitle": "Ver los modelos de este proveedor",
     "filterAria": "Filtrar modelos",
     "filterPlaceholder": "Filtrar {{n}} modelos…",
     "noMatch": "Ningún modelo coincide con «{{query}}» — borra el filtro para ver la lista completa.",

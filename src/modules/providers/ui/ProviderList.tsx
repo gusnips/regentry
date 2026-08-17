@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useProvidersStore } from "./store";
-import { ProviderIcon } from "./ProviderIcon";
+import { ProviderMark } from "./ProviderIcon";
 import { AddProviderDialog } from "./AddProviderDialog";
 import { PRESETS, providerDisplayName } from "../presets";
 import { byCredentialStatus, credentialStatus, isOAuthProvider } from "../status";
@@ -89,16 +89,7 @@ export function ProviderList() {
             }`}
           >
             <div className="flex min-w-0 items-center gap-2.5">
-              {preset ? (
-                <ProviderIcon icon={preset.icon} size={24} />
-              ) : (
-                <span
-                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-neutral-500 text-[10px] font-bold text-white"
-                  aria-hidden
-                >
-                  {p.shape === "anthropic" ? "A" : "O"}
-                </span>
-              )}
+              <ProviderMark provider={p} size={24} />
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-sm font-medium text-neutral-900 dark:text-neutral-100">
                   <span className="truncate">{name}</span>

@@ -1,5 +1,6 @@
 import type { IconKey } from "../presets";
 import { PRESETS } from "../presets";
+import type { ProviderShape } from "../types";
 
 /**
  * Official brand glyphs, white on the brand-color tile. Data-only — the paths
@@ -106,6 +107,31 @@ export function ProviderIcon({
           <path key={d} d={d} />
         ))}
       </svg>
+    </span>
+  );
+}
+
+/**
+ * Any provider's mark: the vendor's brand tile when it's a preset, else a
+ * neutral tile lettered by wire shape — a custom endpoint has no logo, and
+ * "which dialect does this speak" is the only thing we honestly know about it.
+ */
+export function ProviderMark({
+  provider,
+  size = 20,
+}: {
+  provider: { id: string; shape: ProviderShape };
+  size?: number;
+}) {
+  const preset = PRESETS.find((p) => p.id === provider.id);
+  if (preset) return <ProviderIcon icon={preset.icon} size={size} />;
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-md bg-neutral-500 font-bold text-white"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}
+      aria-hidden
+    >
+      {provider.shape === "anthropic" ? "A" : "O"}
     </span>
   );
 }

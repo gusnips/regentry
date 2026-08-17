@@ -27,7 +27,11 @@ export interface NarrowedModels {
  * display name and the wire id (a user who knows "sonnet-4-5" and a user who
  * knows "Claude Sonnet" both find it), then capped.
  */
-export function narrowModels(models: ModelInfo[], query: string, cap = MODEL_ROW_CAP): NarrowedModels {
+export function narrowModels(
+  models: ModelInfo[],
+  query: string,
+  cap = MODEL_ROW_CAP,
+): NarrowedModels {
   const q = query.trim().toLowerCase();
   const matched = q
     ? models.filter(

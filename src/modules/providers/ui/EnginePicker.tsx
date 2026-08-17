@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useProvidersStore, activeProviderOf } from "./store";
 import { engineLabel } from "./engine-label";
 import { FILTER_THRESHOLD, narrowModels } from "./narrow-models";
-import { ProviderIcon } from "./ProviderIcon";
+import { ProviderMark } from "./ProviderIcon";
 import { AddProviderDialog } from "./AddProviderDialog";
 import { UsageSection } from "./UsageSection";
 import {
@@ -24,35 +24,41 @@ import { Popover } from "@/components/Popover";
 import { Select } from "@/components/Select";
 import { TextField } from "@/components/TextField";
 import { Button } from "@/components/Button";
-import { CheckIcon, ChevronDownIcon, ChevronRightIcon } from "@/components/Icon";
+import { CheckIcon, ChevronDownIcon } from "@/components/Icon";
 
 /**
  * The engine picker — provider, model, and reasoning effort behind one quiet
  * chip in the composer footer (the layout every agent harness converged on:
  * the control sits where the task is typed, and effort folds into the model
  * picker rather than living as a peer select). Choices persist onto the
- * provider's stored config; the background snapshots it at run start, so
- * edits apply to the next task, never a run in flight.
+ * provider's stored config; the background snapshots it at run start, so edits
+ * apply to the next task, never a run in flight.
  *
- * **It has to hold ten connected providers, not two.** So the list is an
- * accordion, and that shape is load-bearing twice over:
+ * **Model is the frequent choice, provider the rare one**, and the layout says
+ * so: the model list owns the popover body, and the providers are a strip of
+ * their brand tiles across the top. That shape is what makes ten connected
+ * providers a non-event:
  *
- * - Only an OPEN group lists models, because listing means an authenticated
- *   request to that endpoint. Rendering every provider's models at once fired
- *   one per connected provider on every open — ten calls, several of them to
- *   rate-sensitive subscription endpoints, for a list the user wasn't reading.
- *   A closed row costs nothing: it names its saved choice from the session
- *   cache (or the preset), which is already in memory.
- * - A closed row is one line, so the popover stays a glance at any count. An
- *   open group is bounded too — OpenRouter lists 300+ models and Ollama lists
- *   whatever is installed, so long lists grow a filter and cap their rows.
+ * - Provider count costs *horizontal* space — one tile each, wrapping past
+ *   eight — instead of a row apiece, so the list you came for still starts at
+ *   the top of the popover rather than below ten rows of chrome.
+ * - Only the active provider is ever listed. Listing means an authenticated
+ *   request to that endpoint, and drawing every provider's models at once fired
+ *   one per connected provider on every open — several to rate-sensitive
+ *   subscription endpoints, for lists nobody was reading.
+ * - A tile click switches and the models beneath it swap in place: no expanding,
+ *   no drilling in and back out. It commits immediately, carrying that
+ *   provider's own saved model and effort (those are stored per provider), which
+ *   is what keeps the effort row and the usage section below honest — they
+ *   always describe the provider whose tile is lit.
  *
- * Clicking a provider's row switches to it with its own saved model and effort
- * intact — the one-click common case, since those choices are per provider. The
- * chevron opens it to browse instead, and a model row switches AND pins in one
- * go. Below the list: one effort row for the active provider, then the
- * rare-but-real utilities — subscription usage and adding a provider — that
- * used to cost their own header chrome.
+ * One provider — most installs — hides the strip entirely.
+ *
+ * The listing is warmed at panel mount, not on open: one request for the
+ * provider that's about to run the task, which buys a popover that opens on a
+ * list instead of a spinner and a trigger that names the model in the
+ * endpoint's own words. Long lists stay bounded — OpenRouter serves 300+ and
+ * Ollama serves whatever is installed — so they grow a filter and cap rows.
  */
 
 interface ModelsResult {
@@ -86,9 +92,9 @@ function useModels(target: ModelsTarget | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  // Cache hits resolve during render (a reopened or switched group never waits
+  // Cache hits resolve during render (switching back to a provider never waits
   // on a fetch it already paid for); errors are never cached, so a failed
-  // listing retries the next time the group is opened.
+  // listing retries the next time that provider is selected.
   const cached = target ? readModelsCache(target) : undefined;
   const current: ModelsResult | null =
     key && fetched?.key === key
@@ -147,44 +153,99 @@ function Row({
 }
 
 /**
- * One open group's model rows. Its own component so the fetch hook mounts only
- * while the group is open — that is the whole reason ten connected providers
- * don't mean ten listing calls per popover.
+ * The connected providers as brand tiles. Toggle-button semantics rather than
+ * ARIA tabs: there's no tabpanel to own and no arrow-key contract to honor —
+ * one of these is pressed, and that's the whole truth of it.
  */
+function ProviderTabs({
+  providers,
+  activeId,
+  onSelect,
+}: {
+  providers: ProviderConfig[];
+  activeId: string;
+  onSelect: (p: ProviderConfig) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div
+      role="group"
+      aria-label={t("modelPicker.provider")}
+      className="mb-2 flex flex-wrap items-center gap-1 border-b border-neutral-100 pb-2 dark:border-neutral-800"
+    >
+      {providers.map((p) => {
+        const active = p.id === activeId;
+        const name = providerDisplayName(p);
+        return (
+          <button
+            key={p.id}
+            type="button"
+            aria-pressed={active}
+            // The lit tile names itself; the rest answer "which is this, and
+            // set to what?" on hover, so a strip of logos is never a puzzle.
+            title={
+              active
+                ? name
+                : t("enginePicker.useProviderTitle", {
+                    name,
+                    choice: savedChoiceLabel(p, t("modelPicker.auto")),
+                  })
+            }
+            onClick={() => onSelect(p)}
+            className={`flex max-w-full cursor-pointer items-center gap-1.5 rounded-md py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+              active
+                ? "bg-brand-50 px-1.5 text-xs font-medium text-brand-800 ring-1 ring-brand-200 dark:bg-brand-950/60 dark:text-brand-200 dark:ring-brand-900"
+                : "px-1 opacity-60 hover:bg-neutral-100 hover:opacity-100 dark:hover:bg-neutral-800"
+            }`}
+          >
+            <ProviderMark provider={p} size={16} />
+            {active && <span className="min-w-0 truncate">{name}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The active provider's models — the popover's body, and its only fetch. */
 function ModelList({
   provider,
-  isActive,
+  models,
+  loading,
+  error,
   onPick,
 }: {
   provider: ProviderConfig;
-  isActive: boolean;
+  models: ModelInfo[];
+  loading: boolean;
+  error: string | null;
   onPick: (model: string | undefined) => void;
 }) {
   const { t } = useTranslation();
-  const { models, loading, error } = useModels(modelsTarget(provider));
   const [filter, setFilter] = useState("");
   const preset = PRESETS.find((pr) => pr.id === provider.id);
-  // Live list wins; presets are the fallback for endpoints without a list route.
+  // Live list wins; presets are both the fallback for endpoints without a list
+  // route AND what fills the wait, so a cold open shows models rather than a
+  // spinner and refines in place when the listing lands.
   const listed: ModelInfo[] =
     models.length > 0 ? models : (preset?.models.map((id) => ({ id })) ?? []);
   const autoTarget = pickLatestModel(models) ?? listed[0];
 
-  if (loading) {
-    return (
-      <div className="px-2 py-1 text-xs text-neutral-400 dark:text-neutral-500">
-        {t("enginePicker.loadingModels")}
-      </div>
-    );
-  }
-
-  // No list route and no preset data (custom endpoints, a dead listing) → free text.
   if (listed.length === 0) {
+    if (loading) {
+      return (
+        <div className="px-2 py-1 text-xs text-neutral-400 dark:text-neutral-500">
+          {t("enginePicker.loadingModels")}
+        </div>
+      );
+    }
+    // No list route and no preset data (custom endpoints, a dead listing) → free text.
     return (
       <TextField
         size="sm"
         aria-label={t("modelPicker.model")}
         title={error ? t("modelPicker.noModelListHint") : undefined}
-        className="mx-1.5 mt-0.5"
+        className="mt-0.5"
         value={provider.model ?? ""}
         onChange={(e) => onPick(e.target.value || undefined)}
         placeholder={t("modelPicker.freeTextPlaceholder")}
@@ -193,16 +254,15 @@ function ModelList({
   }
 
   const { shown, hidden, matched } = narrowModels(listed, filter);
-  const filterable = listed.length > FILTER_THRESHOLD;
 
   return (
     <>
-      {filterable && (
+      {listed.length > FILTER_THRESHOLD && (
         <TextField
           size="sm"
           autoFocus
           aria-label={t("enginePicker.filterAria")}
-          className="mx-1.5 mt-0.5 mb-1"
+          className="mb-1"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder={t("enginePicker.filterPlaceholder", { n: listed.length })}
@@ -214,7 +274,7 @@ function ModelList({
           mode, not a match, so filtering never hides it. */}
       {autoTarget && (
         <Row
-          selected={isActive && provider.model === undefined}
+          selected={provider.model === undefined}
           onClick={() => onPick(undefined)}
           title={autoTarget.id}
         >
@@ -228,7 +288,7 @@ function ModelList({
       {shown.map((m) => (
         <Row
           key={m.id}
-          selected={isActive && provider.model === m.id}
+          selected={provider.model === m.id}
           onClick={() => onPick(m.id)}
           title={m.id}
         >
@@ -249,7 +309,7 @@ function ModelList({
       )}
 
       {/* A persisted id the endpoint no longer lists stays selectable. */}
-      {isActive && provider.model && !listed.some((m) => m.id === provider.model) && (
+      {provider.model && !listed.some((m) => m.id === provider.model) && (
         <Row selected onClick={() => onPick(provider.model)} title={t("modelPicker.notListed")}>
           <span className="min-w-0 truncate">{provider.model}</span>
           <span className="ml-auto shrink-0 text-[10px] text-neutral-400 dark:text-neutral-500">
@@ -261,90 +321,19 @@ function ModelList({
   );
 }
 
-/**
- * One provider: a row that switches to it (keeping its own saved model and
- * effort), plus a chevron that opens its models. The active provider's row
- * toggles instead of switching — switching to what is already running is a
- * no-op, so the click may as well do the useful thing.
- */
-function ProviderSection({
-  provider,
-  isActive,
-  open,
-  onToggle,
-  onSwitch,
-  onPick,
-}: {
-  provider: ProviderConfig;
-  isActive: boolean;
-  open: boolean;
-  onToggle: () => void;
-  onSwitch: () => void;
-  onPick: (model: string | undefined) => void;
-}) {
-  const { t } = useTranslation();
-  const preset = PRESETS.find((pr) => pr.id === provider.id);
-  const saved = savedChoiceLabel(provider, t("modelPicker.auto"));
-
-  return (
-    <div className="flex flex-col">
-      <div className="flex items-center gap-0.5">
-        <button
-          type="button"
-          onClick={isActive ? onToggle : onSwitch}
-          title={isActive ? t("enginePicker.browseTitle") : t("enginePicker.useProviderTitle")}
-          className={`flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-neutral-800 ${
-            isActive
-              ? "font-medium text-neutral-900 dark:text-neutral-100"
-              : "text-neutral-600 dark:text-neutral-400"
-          }`}
-        >
-          {preset && <ProviderIcon icon={preset.icon} size={13} />}
-          <span className="shrink-0 truncate">{providerDisplayName(provider)}</span>
-          {/* The saved choice, so a closed row still answers "set to what?" —
-              dimmed, because the provider's name is what you scan for. */}
-          <span className="min-w-0 truncate text-[11px] text-neutral-400 dark:text-neutral-500">
-            {saved}
-          </span>
-          {isActive && (
-            <span className="ml-auto shrink-0 rounded bg-brand-50 px-1 py-px text-[10px] font-medium text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
-              {t("enginePicker.current")}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
-          aria-label={t("enginePicker.browseTitle")}
-          title={t("enginePicker.browseTitle")}
-          className="flex shrink-0 cursor-pointer items-center rounded-md px-1 py-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-        >
-          {open ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
-        </button>
-      </div>
-
-      {open && <ModelList provider={provider} isActive={isActive} onPick={onPick} />}
-    </div>
-  );
-}
-
 export function EnginePicker() {
   const { t } = useTranslation();
   const { providers, activate, update } = useProvidersStore();
   const active = useActiveProvider();
   const [open, setOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  // Which group is open. One at a time: two open lists are two fetches and a
-  // popover you have to scroll. null = every group closed; undefined would mean
-  // "not decided yet", which is what the active-provider default below covers.
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const listing = useModels(active ? modelsTarget(active) : null);
 
   // With zero providers the side panel shows Onboarding instead.
   if (!active) return null;
 
-  // The trigger's label reads the session-cached/preset list synchronously —
-  // the popover's live fetch must not be the price of painting the composer.
+  // The trigger reads the cached/preset list synchronously — the warm fetch
+  // must never be the price of painting the composer.
   const known = knownModels(active);
   const autoTarget = pickLatestModel(known);
   const label = engineLabel({
@@ -358,16 +347,10 @@ export function EnginePicker() {
       : {}),
   });
 
-  // Picking a model under another provider IS the provider switch — one click,
-  // both choices. The row's own switch path keeps that provider's saved model.
-  const pick = (p: ProviderConfig, model: string | undefined) => {
-    if (p.id !== active.id) void activate(p.id);
-    void update(p.id, { model });
-    setOpen(false);
-  };
-
-  const switchTo = (p: ProviderConfig) => {
-    void activate(p.id);
+  // Picking a model is the commit-and-close; everything else leaves the popover
+  // open, because a tile click is normally the first half of a model change.
+  const pick = (model: string | undefined) => {
+    void update(active.id, { model });
     setOpen(false);
   };
 
@@ -377,18 +360,11 @@ export function EnginePicker() {
     ...REASONING_EFFORTS.map((effort) => ({ value: effort, label: t(EFFORT_LABEL_KEYS[effort]) })),
   ];
 
-  const preset = PRESETS.find((pr) => pr.id === active.id);
-
   return (
     <>
       <Popover
         open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          // Every open starts on the active provider's models — the list you
-          // came for — and forgets whatever you were browsing last time.
-          if (next) setOpenGroup(active.id);
-        }}
+        onOpenChange={setOpen}
         className="max-h-[70vh] w-72 overflow-y-auto"
         trigger={
           <Button
@@ -398,24 +374,23 @@ export function EnginePicker() {
             title={t("enginePicker.triggerTitle", { label })}
             className="flex min-w-0 shrink items-center gap-1.5 hover:text-neutral-900 dark:hover:text-neutral-100"
           >
-            {preset && <ProviderIcon icon={preset.icon} size={14} />}
+            <ProviderMark provider={active} size={14} />
             <span className="truncate">{label}</span>
             <ChevronDownIcon size={12} className="shrink-0 text-neutral-400" />
           </Button>
         }
       >
+        {providers.length > 1 && (
+          <ProviderTabs
+            providers={providers}
+            activeId={active.id}
+            onSelect={(p) => void activate(p.id)}
+          />
+        )}
+
+        {/* Keyed on the provider so a switch resets the filter with the list. */}
         <div className="flex flex-col gap-0.5">
-          {providers.map((p) => (
-            <ProviderSection
-              key={p.id}
-              provider={p}
-              isActive={p.id === active.id}
-              open={openGroup === p.id}
-              onToggle={() => setOpenGroup((cur) => (cur === p.id ? null : p.id))}
-              onSwitch={() => switchTo(p)}
-              onPick={(model) => pick(p, model)}
-            />
-          ))}
+          <ModelList key={active.id} provider={active} {...listing} onPick={pick} />
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2 border-t border-neutral-100 pt-2 dark:border-neutral-800">
@@ -439,7 +414,7 @@ export function EnginePicker() {
         {supportsUsage(active.id) && (
           <div className="mt-2 border-t border-neutral-100 pt-2 dark:border-neutral-800">
             {/* Keyed: the section's snapshot is fetched per provider, and a key
-                change is the only correct remount if active moves under us. */}
+                change is the only correct remount when active moves under us. */}
             <UsageSection key={active.id} provider={active} />
           </div>
         )}
