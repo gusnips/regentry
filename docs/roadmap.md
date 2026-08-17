@@ -70,6 +70,21 @@ it that**: `memory/AGENTS.md` is a general, always-loaded skill.
 sections of the existing docs, filtered by `loadAgentContext()` at run start. Ship that, see if
 anyone's instructions file gets unwieldy, and let that decide whether tiers 3–5 are real.
 
+**"Site memory" is this same change, seen from the other side — not a third store.** The two
+directions are already two documents:
+
+- `AGENTS.md` — what the **user** teaches it. Scoped to a site, that is a domain skill (tier 2).
+- `MEMORY.md` — what the **agent** learns. Scoped to a site, that is site memory.
+
+So both are one scope axis on the docs we already ship, and the same `url:` matcher serves them.
+Building site memory as its own subsystem would give us two mechanisms for one idea, and a user
+with no way to tell which document their fact landed in.
+
+It also fixes something already broken: `MEMORY.md` is global and capped, so facts about twenty
+sites compete for one budget and **every run loads all of them.** Scoping means a run on Gmail
+carries Gmail's facts and not Jira's — better behaviour and a smaller prompt, from the same edit.
+That makes tier 2 worth doing on the memory side even before the skills side proves out.
+
 **Tier 5 is the one nothing else can build.** A sandboxed agent starts cold on every task, so
 site-specific waypoints have nowhere to accumulate. We come back to the same logged-in page every
 day — that's a memory only this architecture can hold. Speculative, and named here so it isn't
@@ -82,56 +97,47 @@ forgotten.
 
 ## Soon
 
-### 3. Schedule follow-ups
+### 3. Schedule follow-ups — ✅ shipped v0.4.3
 
-Small, all confirmed against the code.
+**Pause / resume** — the record, the task and the thread survive; only the alarm goes. Resuming
+recomputes `nextFireAt` from _now_: the stored one sat still the whole time it was held, so arming
+it verbatim would fire the instant the switch flipped. Resuming a one-shot whose moment passed
+retires it. Rendered as a switch, not a ⏸/▶ glyph — the row already spends its one ▶ on "Run now",
+and two triangles side by side is a coin toss.
 
-**Pause / resume** — genuinely simple. `paused?: boolean` was in the original plan and cut from
-v1; add the field, `disarmSchedule` on pause, recompute `nextFireAt` from _now_ on resume (never
-from the stale one). Settings row gets a toggle.
+**"Run now" doesn't consume a one-shot** — logged as a bug; it is **correct behaviour that never
+said so.** Running it by hand is a rehearsal, not the performance: consuming the one-shot would
+make testing it destroy it. Fixed in copy, not logic.
 
-**"Run now" doesn't consume a one-shot** — logged as a bug, but it's **correct behaviour badly
-communicated.** "Run now" is how you verify a schedule does what you meant before trusting it at
-3am; consuming the one-shot would make testing it destroy it. The fix is copy, not logic: the row
-should say the scheduled fire still stands.
-
-**The real "Run now" problem is the one you named.** It fires into the _schedule's own_
-conversation, not the panel's current one — so you click it in Settings and nothing visibly
-happens. The fix is to close that loop: the row reports the run inline, and offers to open that
-conversation.
+**Queued fires now say so.** A fire that lands while another run holds the slot was falling back to
+"Next 09:00", which read as though the click had done nothing. (An earlier draft of this file said
+"you click Run now and nothing visibly happens" — wrong: the row already flipped to "Running now"
+once the run _started_. The queued case was the only gap.)
 
 **MCP exposure** of `schedule_task` / `cancel_schedule` — still deferred, same reason: an MCP
 client scheduling browser work that fires long after the client is gone is a different trust story,
 and it needs the domain policy under it first.
 
-### 4. Deleting a scheduled conversation — a real bug today
+### 4. Deleting a scheduled conversation — ✅ fixed v0.4.3
 
-`deleteConversation` (`conversations.ts:401`) cancels queued runs but **never looks at schedules**.
-The schedule survives with a `conversationId` pointing at a dead thread, and at the next fire
-`openScheduledConversation` → `ensureConversation` **re-creates the row with the same id**
-(`conversations.ts:275`). So:
+`deleteConversation` cancelled queued runs but **never looked at schedules**. The rule stayed armed
+over a `conversationId` pointing at a dead thread, and the next fire's
+`openScheduledConversation` → `ensureConversation` **re-created the row with the same id**. So the
+chat you deleted came back, empty, at 9am — and the delete that _looked_ like it stopped the
+recurring task hadn't.
 
-- The chat you deleted **comes back from the dead**, empty, at 9am.
-- Worse: deleting the thread _looks_ like it stopped the recurring task. It didn't.
+**Resolved by deciding the two objects are not as separable as they first appear.** A schedule's
+thread is not incidental to it: it IS the memory each fire reads back, which is the whole reason
+there is one conversation per schedule. Leaving the rule armed over a deleted transcript means an
+amnesiac agent doing unattended work at 3am — worse than either clean outcome. So deleting the
+thread cancels the schedule, and the panel's confirm names the schedule in its own words first.
+"Stop it for a while" is what **pause** is for; that is why the two shipped together.
 
-**These are two different objects with two different lifetimes.** Deleting a chat is housekeeping;
-cancelling a schedule is a commitment change. Auto-deleting the schedule destroys unattended work
-the user never asked to stop. Silently resurrecting is what we do now. Neither is defensible, so:
-
-**Decision — surface the coupling at the one moment the information exists.** Deleting a
-conversation a live schedule points at names the schedule in the confirm and offers both doors:
-_delete the chat and cancel the schedule_ (default — someone deleting a scheduled thread almost
-always means "stop this thing") or _delete the chat, keep it running_. Not a guess, and asked once.
-
-**Backstop for the case nobody sees:** at fire time, if the conversation is gone, mint a **fresh
-id**, note in the transcript that the earlier history was lost, and keep running — never silently
-reuse the dead one. Also covers eviction, which is narrow but real: `appendTo` re-heads the index
-on every message so an actively-firing schedule stays near the top, but a monthly one-shot three
-weeks out can still fall off the 50-conversation cap.
-
-**Alerting:** no notification for the delete (the user is right there, they'll see the confirm).
-The fresh-conversation backstop _is_ worth a line in the transcript — silence there is how a
-recurring task quietly forgets everything it knew.
+**Backstop, now the only way in:** eviction. `openScheduledConversation` reports whether the thread
+was still there, and a fire that finds it gone tells the run its earlier history is unavailable —
+silence is how a recurring task quietly forgets everything it knew. Narrow but real: `appendTo`
+re-heads the index on every message so an actively-firing schedule stays near the top, but a
+monthly one-shot three weeks out can still fall off the 50-conversation cap.
 
 ### 5. File upload
 
