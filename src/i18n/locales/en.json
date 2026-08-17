@@ -243,7 +243,12 @@
     "triggerTitle": "{{label}} — provider, model, and effort for the next task",
     "current": "current",
     "useProviderTitle": "Switch to this provider — its saved model and effort come with it",
-    "loadingModels": "Loading models…"
+    "loadingModels": "Loading models…",
+    "browseTitle": "Browse this provider's models",
+    "filterAria": "Filter models",
+    "filterPlaceholder": "Filter {{n}} models…",
+    "noMatch": "No model matches “{{query}}” — clear the filter to see the full list.",
+    "moreModels": "{{n}} more — narrow the filter to reach them."
   },
   "usage": {
     "title": "Subscription usage",

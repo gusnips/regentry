@@ -243,7 +243,12 @@
     "triggerTitle": "{{label}} — provedor, modelo e esforço para a próxima tarefa",
     "current": "atual",
     "useProviderTitle": "Mudar para este provedor — o modelo e o esforço salvos vêm junto",
-    "loadingModels": "Carregando modelos…"
+    "loadingModels": "Carregando modelos…",
+    "browseTitle": "Ver os modelos deste provedor",
+    "filterAria": "Filtrar modelos",
+    "filterPlaceholder": "Filtrar {{n}} modelos…",
+    "noMatch": "Nenhum modelo corresponde a “{{query}}” — limpe o filtro para ver a lista completa.",
+    "moreModels": "Mais {{n}} — refine o filtro para alcançá-los."
   },
   "usage": {
     "title": "Uso da assinatura",
