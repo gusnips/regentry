@@ -5,6 +5,7 @@
 
 import type { TabId } from "./types";
 import type { ErrorKind } from "@/modules/providers/error-classify";
+import type { ReasoningEffort } from "@/modules/providers/types";
 
 // ── Commands (side panel → background) ──────────────────────────────
 
@@ -111,6 +112,14 @@ export interface BridgeActive {
 }
 
 export type Event =
+  /**
+   * The resolved engine for this run — the concrete model id ("auto" is
+   * already resolved) plus the effort when one is set. Emitted once, right
+   * after provider setup, so the writer can stamp the run's summary with what
+   * answered; the panel's display path ignores it (the composer chip shows the
+   * live selection). The bridge's compact mirror drops it via its default case.
+   */
+  | { type: "engine"; model: string; effort?: ReasoningEffort }
   | ({ type: "driving" } & DrivingPayload)
   | { type: "token"; text: string }
   | { type: "reasoning"; text: string }

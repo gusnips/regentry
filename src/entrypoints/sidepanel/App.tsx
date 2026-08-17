@@ -11,12 +11,7 @@ import {
   HelpDialog,
   useConversationStore,
 } from "@/modules/conversation/ui";
-import {
-  ProviderSelect,
-  ModelControls,
-  Onboarding,
-  useProvidersStore,
-} from "@/modules/providers/ui";
+import { Onboarding, useProvidersStore } from "@/modules/providers/ui";
 import { SettingsMenu } from "./SettingsMenu";
 import { notePanelOpen, refreshTip } from "@/modules/tips/ui";
 import { Button } from "@/components/Button";
@@ -127,14 +122,16 @@ export default function App() {
   return (
     <div className="flex h-screen flex-col bg-white dark:bg-neutral-950">
       <header className="border-b border-neutral-200 px-3 pt-2 dark:border-neutral-800">
-        {/* Row 1: the open chat's title, then the rare utilities quiet, then the
-            hot action labeled, with Close at the row's end — where the
+        {/* One row: the open chat's title, then the rare utilities quiet, then
+            the hot action labeled, with Close at the row's end — where the
             platform's own X sits. A duplicate on Chrome, the only way out on
             Brave (which draws no header at all): that trade is spelled out on
             the button. No brand mark: the browser's own side-panel header
             already sits directly above with our icon and name, and a second
-            wordmark is duplicate chrome. Row 2: who answers and with what, as
-            quiet chips — the header is read a hundred times per change. */}
+            wordmark is duplicate chrome. Provider/model/effort are NOT here —
+            the engine picker lives in the composer footer, where the task is
+            typed (the harness convention), not in a header row read a hundred
+            times per change. */}
         <div className="flex items-center gap-1 pb-1">
           {renaming && activeId && !historyOpen ? (
             <TitleInput
@@ -170,15 +167,6 @@ export default function App() {
           )}
           <ClosePanelButton />
         </div>
-        {/* The task controls belong to the chat — history browsing hides them.
-            The driven tab lives on the live run band, not here: it is run
-            context, and four variable-width items never fit this row. */}
-        {!needsProvider && !historyOpen && (
-          <div className="flex items-center gap-1 overflow-hidden pb-1.5">
-            <ProviderSelect />
-            <ModelControls />
-          </div>
-        )}
       </header>
       {needsProvider ? (
         <Onboarding />

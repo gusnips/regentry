@@ -247,7 +247,7 @@ skips the favicon heartbeat rather than firing a doomed `executeScript` every 70
 ### `providers/` — config and sign-in
 
 OpenAI/Anthropic/Responses adapters, presets, storage, config UI (add/edit dialog, list,
-per-task header picker, first-run onboarding). Adding a provider is a data change in
+the composer's engine picker, first-run onboarding). Adding a provider is a data change in
 `presets.ts` — never a code change elsewhere. (A new WIRE SHAPE is the exception: adapter
 
 - factory case + `ProviderShape` union.) Preset ORDER is the picker's order and its first

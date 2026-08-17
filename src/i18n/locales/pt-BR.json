@@ -239,9 +239,13 @@
       "max": "Máximo"
     }
   },
+  "enginePicker": {
+    "triggerTitle": "{{label}} — provedor, modelo e esforço para a próxima tarefa",
+    "current": "atual",
+    "useProviderTitle": "Mudar para este provedor — o modelo e o esforço salvos vêm junto",
+    "loadingModels": "Carregando modelos…"
+  },
   "usage": {
-    "triggerAria": "Uso da assinatura",
-    "triggerTitle": "Uso da assinatura — janelas de 5 horas e semanal",
     "title": "Uso da assinatura",
     "window5h": "Janela de 5 horas",
     "windowWeekly": "Semanal",
@@ -590,10 +594,11 @@
     "widget": "Toda marca do TabRunner na página é clicável — clique em uma para trazer o painel de volta.",
     "board": "Uma tarefa rodando em outra conversa aparece na faixa Tarefas no topo — vá até a aba ou pare por lá.",
     "memory": "O TabRunner lembra fatos úteis das suas tarefas — revise ou apague em Configurações → O que o TabRunner lembra.",
-    "usage": "Num provedor por assinatura, o ícone de medidor ao lado do seletor de modelo mostra seu uso de 5 horas e semanal — clique para ver quando reinicia.",
+    "usage": "Num provedor por assinatura, abra o chip de modelo no campo de texto — seu uso de 5 horas e semanal fica no rodapé.",
     "slashCommands": "Digite / no campo de texto para ver comandos — troque provedor, modelo ou esforço no chat.",
     "compact": "Conversa longa enchendo? /compact troca as mensagens antigas por um resumo — o histórico continua aí.",
     "schedule": "Peça trabalho com hora marcada — “todo dia útil às 9h, veja meu e-mail”. Gerencie em Configurações.",
+    "enginePicker": "O chip ao lado de enviar escolhe provedor, modelo e esforço — /model também funciona.",
     "help": "Pressione ? com o campo vazio para ver atalhos e comandos — /help também funciona."
   },
   "notify": {

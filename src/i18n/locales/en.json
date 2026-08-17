@@ -239,9 +239,13 @@
       "max": "Max"
     }
   },
+  "enginePicker": {
+    "triggerTitle": "{{label}} — provider, model, and effort for the next task",
+    "current": "current",
+    "useProviderTitle": "Switch to this provider — its saved model and effort come with it",
+    "loadingModels": "Loading models…"
+  },
   "usage": {
-    "triggerAria": "Subscription usage",
-    "triggerTitle": "Subscription usage — 5-hour and weekly windows",
     "title": "Subscription usage",
     "window5h": "5-hour window",
     "windowWeekly": "Weekly",
@@ -590,10 +594,11 @@
     "widget": "Every TabRunner mark on a page is clickable — click one to bring the panel back.",
     "board": "A task running in another chat shows in the Tasks band at the top — jump to its tab or stop it there.",
     "memory": "TabRunner remembers useful facts from your tasks — review or prune them under Settings → What TabRunner remembers.",
-    "usage": "On a subscription provider, the gauge icon next to the model picker shows your 5-hour and weekly usage — click it for the reset times.",
+    "usage": "On a subscription provider, open the model chip in the composer — your 5-hour and weekly usage sit at the bottom.",
     "slashCommands": "Type / in the composer for commands — switch provider, model, or effort mid-chat.",
     "compact": "Long chat filling up? /compact swaps the older messages for a summary — you keep the scrollback.",
     "schedule": "Ask for work on a timer — “every weekday at 9am, check my inbox”. Manage them in Settings.",
+    "enginePicker": "The chip by Send picks provider, model, and effort for the next task — /model works too.",
     "help": "Press ? on an empty composer for every shortcut and command — /help works too."
   },
   "notify": {

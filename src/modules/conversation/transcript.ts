@@ -1,5 +1,6 @@
 import type { Event } from "@/shared/protocol";
 import type { Message } from "./types";
+import type { ReasoningEffort } from "@/modules/providers/types";
 import { appendMessageTo, recordRunSummary, replaceMessageTo } from "./conversations";
 import { buildProgressNote } from "./progress-note";
 import type { ProgressStep } from "./progress-note";
@@ -71,6 +72,8 @@ export class TranscriptWriter {
   private lastInput = 0;
   /** done after an error is the same end unwinding — stamp the summary once. */
   private summaryRecorded = false;
+  /** What answered — the run's resolved engine, from its one early event. */
+  private engine: { model: string; effort?: ReasoningEffort } | null = null;
 
   constructor(private readonly conversationId: string) {}
 
@@ -101,6 +104,8 @@ export class TranscriptWriter {
       input: this.usage.input,
       output: this.usage.output,
       ...(this.lastInput > 0 ? { lastInput: this.lastInput } : {}),
+      ...(this.engine ? { model: this.engine.model } : {}),
+      ...(this.engine?.effort ? { effort: this.engine.effort } : {}),
       ok,
       ...(stopped ? { stopped } : {}),
     }).catch((e) => {
@@ -155,6 +160,10 @@ export class TranscriptWriter {
   /** Process one run event, persisting whatever transcript entry it implies. Synchronous: state mutations never await. */
   apply(event: Event): void {
     switch (event.type) {
+      case "engine":
+        this.engine = { model: event.model, ...(event.effort ? { effort: event.effort } : {}) };
+        break;
+
       case "token":
         this.flushReasoning();
         this.streamingText += event.text;

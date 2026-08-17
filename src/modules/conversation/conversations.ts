@@ -3,6 +3,7 @@ import { truncateTo } from "@/lib/format";
 import { cancelQueued, listQueue } from "@/modules/agent/run-queue";
 import { deleteSchedule, disarmSchedule, schedulesForConversation } from "@/modules/schedule";
 import type { Message } from "./types";
+import type { ReasoningEffort } from "@/modules/providers/types";
 
 /** A tab the conversation's runs drove — lets the next run spot a tab change. */
 export interface LastTab {
@@ -28,6 +29,10 @@ export interface RunSummary {
    * so a reopened panel still knows, instead of blanking until the next run.
    */
   lastInput?: number;
+  /** The resolved engine — what answered, so the settled band can say so.
+   *  Absent on summaries from before the engine event existed. */
+  model?: string;
+  effort?: ReasoningEffort;
   /** False when the run ended on an error — the band names it, never "done". */
   ok?: boolean;
   /** True when the user halted it — the band says "Stopped", not "Done". */

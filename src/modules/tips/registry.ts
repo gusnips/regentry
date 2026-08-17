@@ -23,6 +23,7 @@ export const TIPS = [
   { id: "schedule", cooldownOpens: 8 },
   { id: "usage", cooldownOpens: 8 },
   { id: "compact", cooldownOpens: 8 },
+  { id: "enginePicker", cooldownOpens: 6 },
 ] as const;
 
 export type TipId = (typeof TIPS)[number]["id"];

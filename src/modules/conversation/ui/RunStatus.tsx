@@ -10,6 +10,7 @@ import { TipLine } from "@/modules/tips/ui";
 import { Button } from "@/components/Button";
 import { ChevronRightIcon } from "@/components/Icon";
 import type { BridgeActive } from "@/shared/protocol";
+import { EFFORT_LABEL_KEYS } from "@/modules/providers/types";
 import { formatDuration, formatTokens } from "@/lib/format";
 
 export function RunStatus() {
@@ -144,6 +145,10 @@ export function RunStatus() {
             output: lastRun?.output ?? usage.output,
             ok: status !== "error",
             stopped: runStopped,
+            // The engine rides the writer's stamp, which lands a tick after the
+            // settle — same fill-in pattern as the token totals above.
+            model: lastRun?.model,
+            effort: lastRun?.effort,
           }
         : lastRun;
     if (!finished) return null;
@@ -163,6 +168,9 @@ export function RunStatus() {
                   ? t("run.stopped")
                   : t("run.finished")}
           </span>
+          {/* What answered — identity, not measurement, so it stays out of the
+              gold telemetry AND off this crowded first row: it rides the gauge's
+              row below, where a wire id has room to truncate. */}
           <span className="telemetry">
             {formatDuration(finished.endedAt - finished.startedAt)}
             {finishedNote}
@@ -172,11 +180,29 @@ export function RunStatus() {
             band wears, so the run's target doesn't vanish the moment it ends. */}
         <DrivenTabChip tab={lastTab} />
         {plan?.steps && <PlanPeek steps={plan.steps} current={plan.current ?? 0} />}
-        {/* Bottom right, under the plan: the gauge is what you read LAST — after
-            the outcome and the checklist, when the only question left is whether
-            the next message still fits. The band outlives the run, so it is
-            still there when you go to type it. */}
-        <ContextGauge />
+        {/* Bottom row: what answered on the left (the wire id, honest over a
+            marketing name, effort appended when set), the gauge on the right —
+            the number is what you read LAST, after the outcome and the
+            checklist, when the only question left is whether the next message
+            still fits. The band outlives the run, so both are still there when
+            you go to type it. The gauge's own wrapper right-aligns, so the
+            model's flex-1 just has to yield it. */}
+        <div className="flex items-center gap-2">
+          {finished.model && (
+            <span
+              className="min-w-0 flex-1 truncate"
+              title={
+                finished.effort
+                  ? `${finished.model} · ${t(EFFORT_LABEL_KEYS[finished.effort])}`
+                  : finished.model
+              }
+            >
+              {finished.model}
+              {finished.effort ? ` · ${t(EFFORT_LABEL_KEYS[finished.effort])}` : ""}
+            </span>
+          )}
+          <ContextGauge />
+        </div>
       </div>
     );
   }

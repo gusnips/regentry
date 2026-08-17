@@ -107,6 +107,14 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     try {
       resolvedProvider = await resolveProviderModel(await ensureProviderCredential(providerConfig));
       provider = createProvider(resolvedProvider);
+      // Name the engine before anything else can end the run: the writer stamps
+      // it on the run's summary, so the settled band (and a reopened panel) can
+      // say what answered — a tab or provider failure from here on still carries it.
+      emit({
+        type: "engine",
+        model: resolvedProvider.model,
+        ...(resolvedProvider.reasoningEffort ? { effort: resolvedProvider.reasoningEffort } : {}),
+      });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       log.error("provider setup failed:", message);

@@ -14,6 +14,7 @@ import { openHelp } from "./help-open";
 import { COMMANDS, executeSlash, runSlash, slashItems } from "./slash-commands";
 import type { SlashItem } from "./slash-commands";
 import { TipLine } from "@/modules/tips/ui";
+import { EnginePicker } from "@/modules/providers/ui";
 import { TextArea } from "@/components/TextArea";
 import { Button } from "@/components/Button";
 import { Icon, XIcon } from "@/components/Icon";
@@ -568,8 +569,9 @@ export function ChatInput() {
         attachments.length === 0 &&
         !pastedTexts.some((p) => text.includes(p.token)) && <TipLine />}
       {/* One card, two tenants: the bare input on top, a footer row below with
-          the run target on the left and the morph button on the right — so the
-          textarea never shares its width with a button column. */}
+          the run target and the engine picker on the left and the morph button
+          on the right — so the textarea never shares its width with a button
+          column. */}
       <div className="relative rounded-xl border border-neutral-300 transition-colors focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500 dark:border-neutral-600">
         {slashOpen && slash && (
           <SlashMenu
@@ -607,6 +609,7 @@ export function ChatInput() {
         />
         <div className="flex items-center gap-1 px-1.5 pb-1.5">
           <RunTargetToggle />
+          <EnginePicker />
           {pastedTexts.some((p) => text.includes(p.token)) && (
             <p
               className="min-w-0 flex-1 truncate text-right text-[11px] italic text-neutral-500 dark:text-neutral-400"
