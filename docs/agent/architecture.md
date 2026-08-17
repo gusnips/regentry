@@ -229,7 +229,13 @@ per-tab ring buffers fed by the Network/Runtime domains enabled at debugger atta
 the failing request is already in the log when the model thinks to look. Requests carry
 no bodies by design (bodies are where tokens live; evaluate can re-fetch a GET). All
 page-side injection goes through `inject.ts`'s `runInPage`, the one home of the
-transient-vs-restricted error mapping.
+transient-vs-restricted error mapping. The attach itself is lazy — the first tool that
+needs it, not the run's start — and the session is released (`detachAll`) when the run
+slot frees: done, error, stop, or parked on a question, and a direct session's `end()`
+likewise. Chrome's "started debugging this browser" infobar leaves only with the
+session, so a kept attach would pin the banner on a page nothing is driving — the
+session even outlives the MV3 worker. The next run's first action re-attaches, and the
+banner's return while the agent is actually working is honest signal.
 
 **Three ambient signals, and only one of them is guaranteed.** The indicator and the pill
 are both `chrome.scripting.executeScript`, which a restricted page, a PDF viewer, a

@@ -5,6 +5,7 @@ import { maybeAutoTitle } from "@/modules/conversation/title";
 import {
   clearAgentWait,
   createDriver,
+  detachAll,
   hideAgentIndicator,
   isRestrictedUrl,
   showAgentIndicator,
@@ -391,6 +392,11 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       emit({ type: "error", message, unexpected: true });
     } finally {
       chrome.tabs.onRemoved.removeListener(onTabGone);
+      // The debugger leaves with the run: its session is what keeps Chrome's
+      // "debugging this browser" infobar up, and held past the run's end it
+      // would pin the banner on a page nothing is driving — it even outlives
+      // the worker. Awaited so the slot never frees with a detach in flight.
+      await detachAll();
       if (endedOnQuestion) void waitAgentIndicator(drivenTabId);
       else void hideAgentIndicator(drivenTabId);
       // The thread's strip: the one this run minted, or the seed it was told to

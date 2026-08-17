@@ -79,6 +79,29 @@ export async function ensureAttached(tabId: TabId): Promise<void> {
   await attach(tabId);
 }
 
+/**
+ * Let go of every tab this session attached. Chrome's "is debugging this
+ * browser" infobar leaves only with the session, so a run that kept its attach
+ * would pin the banner on the page long after the work ended — the session
+ * even outlives the MV3 worker. Called when the run slot is released, which
+ * the single-slot invariant makes safe: nothing else can be mid-flight. The
+ * next run's first action re-attaches — cheap, and the banner's return while
+ * the agent is actually working is honest signal. Best-effort per tab: one
+ * that died or was cancelled away must not stop the sweep or fail the unwind.
+ */
+export async function detachAll(): Promise<void> {
+  const tabs = [...attachedTabs];
+  attachedTabs.clear();
+  activeTab = null;
+  await Promise.all(
+    tabs.map((tabId) =>
+      chrome.debugger.detach({ tabId }).catch(() => {
+        // Already closed or cancelled — the infobar is down either way.
+      }),
+    ),
+  );
+}
+
 /** Click at coordinates via trusted CDP mouse events. */
 export async function clickAt(x: number, y: number): Promise<void> {
   await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 });

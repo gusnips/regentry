@@ -5,6 +5,7 @@ import { executeTool, formatDetail, formatSuccessSummary } from "@/modules/agent
 import type { ToolResult } from "@/modules/agent/tools";
 import {
   createDriver,
+  detachAll,
   hideAgentIndicator,
   isRestrictedUrl,
   showAgentIndicator,
@@ -149,6 +150,9 @@ export class DirectSession {
     this.tabId = null;
     log.info("direct session closed");
     if (tabId !== null) await hideAgentIndicator(tabId);
+    // Same rule as an agent run: the debugger leaves with the session, or its
+    // "debugging this browser" infobar would outstay the work it came for.
+    await detachAll();
     this.onClose?.();
   }
 
