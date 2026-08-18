@@ -82,3 +82,21 @@ export function DotIcon({ size, className, filled }: IconProps & { filled?: bool
     </Icon>
   );
 }
+
+/** Edit a stored row — conversations, skills. */
+export function PencilIcon({ size, className }: IconProps) {
+  return (
+    <Icon size={size} className={className}>
+      <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    </Icon>
+  );
+}
+
+/** Delete a stored row — always behind a confirm. */
+export function TrashIcon({ size, className }: IconProps) {
+  return (
+    <Icon size={size} className={className}>
+      <path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14" />
+    </Icon>
+  );
+}

@@ -161,8 +161,13 @@ const MAX_CATALOG_CHARS = 4_000;
  * skill tool itself is withheld when no enabled skill exists at all.
  */
 function skillsSection(skills: Skill[]): string {
+  // The catalog is line-oriented; a description holding newlines (the form's a
+  // textarea, imports are third-party text) must not fake extra rows.
   let rows = skills
-    .map((s) => `- ${s.name}: ${truncateTo(s.description, MAX_CATALOG_DESC_CHARS)}`)
+    .map(
+      (s) =>
+        `- ${s.name}: ${truncateTo(s.description.replace(/\s+/g, " "), MAX_CATALOG_DESC_CHARS)}`,
+    )
     .join("\n");
   if (rows.length > MAX_CATALOG_CHARS) rows = skills.map((s) => `- ${s.name}`).join("\n");
   return `# Skills

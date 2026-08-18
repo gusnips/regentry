@@ -16,14 +16,11 @@ type Stage =
   | { kind: "review"; parsed: ParsedSkillMd; sourceUrl?: string };
 
 /**
- * Import a skill from a URL, a GitHub `owner/repo` shorthand, or pasted
- * markdown. The review stage is the consent gate: an imported body is
- * untrusted prose that will ride the system prompt on matching runs, so the
- * whole of it sits in an editable form before anything is stored. The fetch
- * runs right here in the page (the `/usage` precedent) — user-initiated, one
- * URL, never from the worker.
+ * The dialog's inside, mounted only while it is open (DraftBody's rule) —
+ * mounting IS the reset, so closing mid-fetch can't leak that fetch's result
+ * into the next open as a review stage nobody asked for.
  */
-export function ImportSkillDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ImportBody({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: "input" });
   const [pasting, setPasting] = useState(false);
@@ -31,20 +28,14 @@ export function ImportSkillDialog({ open, onClose }: { open: boolean; onClose: (
   const [pasted, setPasted] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const close = () => {
-    setStage({ kind: "input" });
-    setPasting(false);
-    setInput("");
-    setPasted("");
-    setError(null);
-    onClose();
-  };
-
   const fetchIt = async () => {
+    if (stage.kind !== "input") return; // Enter while a fetch is in flight
     setError(null);
     const source = resolveSkillSource(input);
     if (!source.ok) {
-      setError(t(source.reason === "http" ? "skills.import.errorHttp" : "skills.import.errorUnparseable"));
+      setError(
+        t(source.reason === "http" ? "skills.import.errorHttp" : "skills.import.errorUnparseable"),
+      );
       return;
     }
     setStage({ kind: "fetching" });
@@ -66,19 +57,96 @@ export function ImportSkillDialog({ open, onClose }: { open: boolean; onClose: (
     setStage({ kind: "review", parsed: parseSkillMd(pasted) });
   };
 
-  const seed: SkillSeed | undefined =
-    stage.kind === "review"
-      ? {
-          ...(stage.parsed.name ? { name: stage.parsed.name } : {}),
-          ...(stage.parsed.description ? { description: stage.parsed.description } : {}),
-          sites: stage.parsed.sites,
-          body: stage.parsed.body,
-          ...(stage.sourceUrl ? { source: { url: stage.sourceUrl } } : {}),
-        }
-      : undefined;
+  if (stage.kind === "review") {
+    const seed: SkillSeed = {
+      ...(stage.parsed.name ? { name: stage.parsed.name } : {}),
+      ...(stage.parsed.description ? { description: stage.parsed.description } : {}),
+      sites: stage.parsed.sites,
+      body: stage.parsed.body,
+      ...(stage.sourceUrl ? { source: { url: stage.sourceUrl } } : {}),
+    };
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="attention rounded-lg px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300">
+          {t("skills.import.review")}
+        </p>
+        {stage.parsed.ignoredKeys.length > 0 && (
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            {t("skills.import.ignored", { list: stage.parsed.ignoredKeys.join(", ") })}
+          </p>
+        )}
+        {stage.parsed.droppedSites.length > 0 && (
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            {t("skills.import.droppedSites", { list: stage.parsed.droppedSites.join(", ") })}
+          </p>
+        )}
+        <SkillForm
+          seed={seed}
+          replaceOnCollision
+          onSaved={onDone}
+          onCancel={() => setStage({ kind: "input" })}
+        />
+      </div>
+    );
+  }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(next) => !next && close()}>
+    <div className="flex flex-col gap-3">
+      {pasting ? (
+        <TextArea
+          rows={8}
+          value={pasted}
+          placeholder={t("skills.import.pastePlaceholder")}
+          onChange={(e) => setPasted(e.target.value)}
+        />
+      ) : (
+        <TextField
+          label={t("skills.import.url")}
+          hint={t("skills.import.urlHint")}
+          value={input}
+          placeholder="https://… or owner/repo"
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void fetchIt();
+          }}
+        />
+      )}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          className="cursor-pointer text-xs text-neutral-500 underline-offset-2 hover:underline dark:text-neutral-400"
+          onClick={() => {
+            setPasting((v) => !v);
+            setError(null);
+          }}
+        >
+          {t(pasting ? "skills.import.modeUrl" : "skills.import.modePaste")}
+        </button>
+        {pasting ? (
+          <Button onClick={previewPaste}>{t("skills.import.preview")}</Button>
+        ) : (
+          <Button disabled={stage.kind === "fetching"} onClick={() => void fetchIt()}>
+            {t(stage.kind === "fetching" ? "skills.import.fetching" : "skills.import.fetch")}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Import a skill from a URL, a GitHub `owner/repo` shorthand, or pasted
+ * markdown. The review stage is the consent gate: an imported body is
+ * untrusted prose that will ride the system prompt on matching runs, so the
+ * whole of it sits in an editable form before anything is stored. The fetch
+ * runs right here in the page (the `/usage` precedent) — user-initiated, one
+ * URL, never from the worker.
+ */
+export function ImportSkillDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Dialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
       <Dialog.Portal>
         <Dialog.Backdrop className={scrim} />
         <Dialog.Popup
@@ -100,74 +168,7 @@ export function ImportSkillDialog({ open, onClose }: { open: boolean; onClose: (
               <XIcon />
             </Dialog.Close>
           </div>
-
-          {stage.kind !== "review" && (
-            <div className="mt-3 flex flex-col gap-3">
-              {pasting ? (
-                <TextArea
-                  rows={8}
-                  value={pasted}
-                  placeholder={t("skills.import.pastePlaceholder")}
-                  onChange={(e) => setPasted(e.target.value)}
-                />
-              ) : (
-                <TextField
-                  label={t("skills.import.url")}
-                  hint={t("skills.import.urlHint")}
-                  value={input}
-                  placeholder="https://… or owner/repo"
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void fetchIt();
-                  }}
-                />
-              )}
-              {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  className="cursor-pointer text-xs text-neutral-500 underline-offset-2 hover:underline dark:text-neutral-400"
-                  onClick={() => {
-                    setPasting((v) => !v);
-                    setError(null);
-                  }}
-                >
-                  {t(pasting ? "skills.import.modeUrl" : "skills.import.modePaste")}
-                </button>
-                {pasting ? (
-                  <Button onClick={previewPaste}>{t("skills.import.preview")}</Button>
-                ) : (
-                  <Button disabled={stage.kind === "fetching"} onClick={() => void fetchIt()}>
-                    {t(stage.kind === "fetching" ? "skills.import.fetching" : "skills.import.fetch")}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {stage.kind === "review" && (
-            <div className="mt-3 flex flex-col gap-3">
-              <p className="attention rounded-lg px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300">
-                {t("skills.import.review")}
-              </p>
-              {stage.parsed.ignoredKeys.length > 0 && (
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t("skills.import.ignored", { list: stage.parsed.ignoredKeys.join(", ") })}
-                </p>
-              )}
-              {stage.parsed.droppedSites.length > 0 && (
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t("skills.import.droppedSites", { list: stage.parsed.droppedSites.join(", ") })}
-                </p>
-              )}
-              <SkillForm
-                seed={seed}
-                replaceOnCollision
-                onSaved={close}
-                onCancel={() => setStage({ kind: "input" })}
-              />
-            </div>
-          )}
+          <div className="mt-3">{open && <ImportBody onDone={onClose} />}</div>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

@@ -6,7 +6,7 @@ import { describeRecurrence, type Schedule } from "@/modules/schedule";
 import { useSchedules } from "@/modules/schedule/ui";
 import { Button } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Icon } from "@/components/Icon";
+import { Icon, PencilIcon, TrashIcon } from "@/components/Icon";
 import { TitleInput } from "./TitleInput";
 
 function BackIcon() {
@@ -21,22 +21,6 @@ function PlusIcon() {
   return (
     <Icon>
       <path d="M12 5v14M5 12h14" />
-    </Icon>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <Icon>
-      <path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14" />
-    </Icon>
-  );
-}
-
-function PencilIcon() {
-  return (
-    <Icon>
-      <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
     </Icon>
   );
 }

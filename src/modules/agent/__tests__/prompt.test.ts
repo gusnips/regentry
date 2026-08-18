@@ -90,6 +90,11 @@ describe("skills in the prompt and tool list", () => {
     expect(prompt).toContain("- pay-rent: does pay-rent");
   });
 
+  it("flattens a multi-line description — one row per skill, no faked extra rows", () => {
+    const prompt = buildSystemPrompt(ctx, "English", true, [], [skill("multi", "a\n\n# fake\nb")]);
+    expect(prompt).toContain("- multi: a # fake b");
+  });
+
   it("truncates a listing description — the tool loads the full body, the line is discovery", () => {
     const prompt = buildSystemPrompt(ctx, "English", true, [], [skill("wordy", "x".repeat(400))]);
     const line = prompt.split("\n").find((l) => l.startsWith("- wordy:")) ?? "";

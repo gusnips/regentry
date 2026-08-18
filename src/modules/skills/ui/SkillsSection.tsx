@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
 import { Switch } from "@/components/Switch";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { CheckIcon, Icon, PencilIcon, TrashIcon } from "@/components/Icon";
 import type { Skill } from "../types";
 import { deleteSkill, setSkillEnabled } from "../store";
 import { serializeSkillMd } from "../skill-md";
@@ -10,39 +11,13 @@ import { useSkillsList } from "./hooks";
 import { SkillEditorDialog } from "./SkillEditorDialog";
 import { ImportSkillDialog } from "./ImportSkillDialog";
 
-/** Inline stroke glyphs — the project ships no icon library. */
-function PencilIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-    </svg>
-  );
-}
-
+/** Used only here — stays local, per Icon.tsx's rule. */
 function CopyIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <Icon>
       <rect width="14" height="14" x="8" y="8" rx="2" />
       <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 6h18" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    </svg>
+    </Icon>
   );
 }
 
@@ -149,7 +124,12 @@ export function SkillsSection() {
                 </Button>
                 <ConfirmDialog
                   trigger={
-                    <Button variant="ghost-danger" size="sm" aria-label={t("skills.delete")} title={t("skills.delete")}>
+                    <Button
+                      variant="ghost-danger"
+                      size="sm"
+                      aria-label={t("skills.delete")}
+                      title={t("skills.delete")}
+                    >
                       <TrashIcon />
                     </Button>
                   }
