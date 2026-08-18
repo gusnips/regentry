@@ -5,9 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <title>TabRunner</title>
+    <!-- First-paint theme + boot mark, inline so it applies before any bundle
+         loads. Backgrounds mirror the app shell (bg-white / dark:bg-neutral-950);
+         the OS scheme decides pre-JS, the `dark` class (initTheme, pre-render)
+         takes over the instant it lands. A stored theme forced against the OS
+         shows the OS shade for those few ms — the app repaints over it.
+         The mark waits 150ms before fading in, so a warm load never flashes it,
+         and breathes while it's up so a slow one reads as starting, not hung.
+         It lives inside #root: React clears the container on first render, so
+         teardown costs no code. -->
+    <style>
+      html {
+        background: #fff;
+      }
+      @media (prefers-color-scheme: dark) {
+        html {
+          background: #0a0a0a;
+        }
+      }
+      html.dark {
+        background: #0a0a0a;
+      }
+      #boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+      #boot img {
+        width: 40px;
+        height: 40px;
+        opacity: 0;
+        animation: boot-breathe 1.6s ease-in-out 0.15s infinite alternate;
+      }
+      @keyframes boot-breathe {
+        from {
+          opacity: 0.35;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot"><img src="/icon.svg" alt="" /></div>
+    </div>
     <script type="module" src="./main.tsx"></script>
   </body>
 </html>

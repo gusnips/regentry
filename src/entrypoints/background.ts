@@ -68,6 +68,11 @@ let widgetState: WidgetState | null = null;
 
 export default defineBackground(() => {
   void initI18n();
+  // The toolbar click opens the panel from the browser process — never from a
+  // listener here. An action.onClicked handler would park the click behind a
+  // cold worker start (this whole bundle evaluated before the event even
+  // dispatches), which read as "the panel takes seconds to open".
+  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   // A worker killed mid-extraction leaves its keepalive alarm firing forever —
   // a permanent wake loop. Alarms outlive the worker, so clear a stale one here.
   void chrome.alarms.clear(MEMORY_KEEPALIVE_ALARM);
@@ -406,13 +411,6 @@ export default defineBackground(() => {
     if (target) void setActiveConversation(target);
     const windowId = sender.tab?.windowId;
     if (windowId !== undefined) void chrome.sidePanel.open({ windowId });
-  });
-
-  // Open side panel on action click
-  chrome.action.onClicked.addListener(async (tab) => {
-    if (tab.windowId !== undefined) {
-      await chrome.sidePanel.open({ windowId: tab.windowId });
-    }
   });
 
   // A load wipes the badge, the favicon dot, and the status widget. The
