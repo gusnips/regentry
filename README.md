@@ -45,7 +45,8 @@ vendor lock-in, no relay, no account with us. Your API key — or the subscripti
   endpoint lists, showing you which one that is; pin a model and effort per task from the panel
   header.
 - **Remembers across runs** — your standing instructions (`AGENTS.md`) and the agent's own notes
-  (`MEMORY.md`) load into every run. Editable on the options page, off with one toggle.
+  (`MEMORY.md`) load into every run; a `## site:` section loads only when a task starts on that
+  site. Editable on the options page, off with one toggle.
 - **Runs on a timer** — "every weekday at 9am, summarize my inbox", "at 3pm, check the delivery".
   Ask for it in the panel and approving the plan is the consent; the run fires later in a tab of
   its own and notifies you when it lands. The agent can pace itself the same way — schedule a

@@ -47,7 +47,7 @@ export const DURABLE_FACT_RULES = `A durable fact is still true months from now,
 - A stable fact about the user — an account they use, an address, how they prefer something done.
 - A site quirk you could only learn the hard way — the login that actually works, a step a form silently requires, a page whose structure misleads.
 
-A fact about one site belongs to that site — scope it to the site's domain. Only facts about the user themselves, true on every site, are global.
+A fact about one site belongs to that site — scope it to its registrable domain ("acme.com", so every subdomain loads it), naming a subdomain only when the fact holds nowhere else. Only facts about the user themselves, true on every site, are global.
 
 Never save a reading. Counts, metrics, prices, balances, statuses, dates, search results, message text — anything a page displayed today answers this task and belongs in your summary, not in memory, because it will be wrong the next time anyone looks. Save what the page taught, not what it showed: not "the dashboard showed 1,018 visitors in 7 days", but "this dashboard opens on a 7-day window".
 
@@ -99,11 +99,30 @@ function isFactLine(line: string): boolean {
 }
 
 /**
+ * The normalized host a `## site:` heading names — null for any other line.
+ * Null also covers a `site:` heading whose host cannot be normalized: both
+ * walks below then treat it as an ordinary heading, so a junk host fails open
+ * to global — visible on every run and fixable, never silently vanished.
+ */
+function siteHeadingHost(line: string): string | null {
+  const heading = SITE_HEADING.exec(line);
+  return heading?.[1] ? normalizeHost(heading[1]) : null;
+}
+
+/** The section for `host`, created on first use — the parser and `remember` share it. */
+function sectionFor(sections: SiteSection[], host: string): SiteSection {
+  let section = sections.find((s) => s.host === host);
+  if (!section) {
+    section = { host, lines: [] };
+    sections.push(section);
+  }
+  return section;
+}
+
+/**
  * Split a doc into its global lines and `## site:` sections. Blank lines are
- * noise and dropped. A `site:` heading whose host cannot be normalized fails
- * open to global — it stays visible on every run instead of silently vanishing
- * from all of them — and any other heading closes an open section, so a user's
- * own `## headings` never get captured by a site above them.
+ * noise and dropped. Any heading that names no site closes an open section, so
+ * a user's own `## headings` never get captured by a site above them.
  */
 function parseScopes(doc: string): ScopedDoc {
   const global: string[] = [];
@@ -112,18 +131,10 @@ function parseScopes(doc: string): ScopedDoc {
   for (const raw of doc.split("\n")) {
     const line = raw.trimEnd();
     if (line.trim() === "") continue;
-    const site = SITE_HEADING.exec(line);
-    if (site?.[1]) {
-      const host = normalizeHost(site[1]);
-      if (host) {
-        let section = sections.find((s) => s.host === host);
-        if (!section) {
-          section = { host, lines: [] };
-          sections.push(section);
-        }
-        current = section.lines;
-        continue;
-      }
+    const host = siteHeadingHost(line);
+    if (host) {
+      current = sectionFor(sections, host).lines;
+      continue;
     }
     if (ANY_HEADING.test(line)) {
       current = global;
@@ -155,14 +166,13 @@ export function filterDocForHost(doc: string, host: string | null): string {
   const kept: string[] = [];
   let dropping = false;
   for (const line of doc.split("\n")) {
-    const site = SITE_HEADING.exec(line);
-    if (site?.[1]) {
-      const sectionHost = normalizeHost(site[1]);
-      // Fail open: an unreadable host loads everywhere, so it stays fixable.
-      dropping = sectionHost !== null && !(host !== null && hostMatches(sectionHost, host));
+    const sectionHost = siteHeadingHost(line);
+    if (sectionHost) {
+      dropping = host === null || !hostMatches(sectionHost, host);
       if (!dropping) kept.push(line);
       continue;
     }
+    // Any other heading — the user's own, or a junk `site:` one — ends the drop.
     if (ANY_HEADING.test(line)) dropping = false;
     if (!dropping) kept.push(line);
   }
@@ -197,18 +207,7 @@ export async function remember(fact: string, site?: string): Promise<string | nu
   const scope = site ? normalizeHost(site) : null;
   const item = docItem("MEMORY.md");
   const scoped = parseScopes(await item.get());
-
-  let lines: string[];
-  if (scope) {
-    let section = scoped.sections.find((s) => s.host === scope);
-    if (!section) {
-      section = { host: scope, lines: [] };
-      scoped.sections.push(section);
-    }
-    lines = section.lines;
-  } else {
-    lines = scoped.global;
-  }
+  const lines = scope ? sectionFor(scoped.sections, scope).lines : scoped.global;
 
   // Dedupe within the scope only — the same lesson can legitimately hold both
   // globally and on one site, and cross-scope "which copy wins" isn't worth it.
@@ -230,22 +229,27 @@ export async function remember(fact: string, site?: string): Promise<string | nu
   return entry;
 }
 
-/** One stored fact; `site` absent means global — loaded on every run. */
+/** One fact with its scope; `site` absent means global — loaded on every run. */
 export interface ScopedFact {
   text: string;
   site?: string;
 }
 
-/** MEMORY.md as displayable facts — global first, then each site's, in doc order. */
-export function listMemory(doc: string): ScopedFact[] {
+/** One displayable group of facts; `site` absent is the global group. */
+export interface MemoryGroup {
+  site?: string;
+  facts: string[];
+}
+
+/** MEMORY.md as displayable fact groups — the global facts first, then each site's, in doc order. */
+export function listMemory(doc: string): MemoryGroup[] {
   const { global, sections } = parseScopes(doc);
-  const facts: ScopedFact[] = global
-    .filter(isFactLine)
-    .map((line) => ({ text: stripMarker(line) }));
+  const groups: MemoryGroup[] = [];
+  const globalFacts = global.filter(isFactLine).map(stripMarker);
+  if (globalFacts.length > 0) groups.push({ facts: globalFacts });
   for (const s of sections)
-    for (const line of s.lines)
-      if (isFactLine(line)) facts.push({ text: stripMarker(line), site: s.host });
-  return facts.filter((f) => f.text !== "");
+    if (s.lines.length > 0) groups.push({ site: s.host, facts: s.lines.map(stripMarker) });
+  return groups;
 }
 
 /**

@@ -95,16 +95,16 @@ describe("remember with a site", () => {
 
 describe("listMemory", () => {
   it("returns stored facts with the bullet marker stripped, skipping blank lines", () => {
-    expect(listMemory("- one\n\n- two\n")).toEqual([{ text: "one" }, { text: "two" }]);
+    expect(listMemory("- one\n\n- two\n")).toEqual([{ facts: ["one", "two"] }]);
     expect(listMemory("")).toEqual([]);
   });
 
-  it("attributes each section's facts to its site — a flat legacy doc is all global", () => {
+  it("groups each section's facts under its site — a flat legacy doc is one global group", () => {
     expect(listMemory("- global\n## site: acme.com\n- scoped\n")).toEqual([
-      { text: "global" },
-      { text: "scoped", site: "acme.com" },
+      { facts: ["global"] },
+      { site: "acme.com", facts: ["scoped"] },
     ]);
-    expect(listMemory("- one\n- two\n")).toEqual([{ text: "one" }, { text: "two" }]);
+    expect(listMemory("- one\n- two\n")).toEqual([{ facts: ["one", "two"] }]);
   });
 });
 

@@ -9,32 +9,21 @@ import {
   memoryEnabled,
   removeMemory,
   watchDoc,
-  type ScopedFact,
+  type MemoryGroup,
 } from "../documents";
 
-/** The stored facts as displayable rows, kept live across background writes. */
-function useMemoryList(): ScopedFact[] {
-  const [facts, setFacts] = useState<ScopedFact[]>([]);
+/** The stored facts as displayable groups, kept live across background writes. */
+function useMemoryGroups(): MemoryGroup[] {
+  const [groups, setGroups] = useState<MemoryGroup[]>([]);
   useEffect(() => {
     let live = true;
-    void getDoc("MEMORY.md").then((v) => live && setFacts(listMemory(v)));
-    const unwatch = watchDoc("MEMORY.md", (v) => setFacts(listMemory(v)));
+    void getDoc("MEMORY.md").then((v) => live && setGroups(listMemory(v)));
+    const unwatch = watchDoc("MEMORY.md", (v) => setGroups(listMemory(v)));
     return () => {
       live = false;
       unwatch();
     };
   }, []);
-  return facts;
-}
-
-/** Doc-order groups: global facts first, then one group per site. */
-function groupBySite(facts: ScopedFact[]): { site?: string; facts: ScopedFact[] }[] {
-  const groups: { site?: string; facts: ScopedFact[] }[] = [];
-  for (const fact of facts) {
-    const group = groups.find((g) => g.site === fact.site);
-    if (group) group.facts.push(fact);
-    else groups.push({ ...(fact.site ? { site: fact.site } : {}), facts: [fact] });
-  }
   return groups;
 }
 
@@ -68,8 +57,7 @@ function TrashIcon() {
 export function MemorySection() {
   const { t } = useTranslation();
   const enabled = useStoredItem(memoryEnabled);
-  const facts = useMemoryList();
-  const groups = groupBySite(facts);
+  const groups = useMemoryGroups();
   const labeled = groups.some((g) => g.site);
 
   return (
@@ -100,7 +88,7 @@ export function MemorySection() {
       {/* Off + empty: the notice above is the whole state — an empty card
           promising future memories contradicts the toggle that just stopped
           them. */}
-      {enabled && facts.length === 0 ? (
+      {enabled && groups.length === 0 ? (
         <p className="mt-3 rounded-lg bg-neutral-50 px-3 py-3 text-xs text-neutral-500 dark:bg-neutral-900/50 dark:text-neutral-400">
           {t("memory.empty")}
         </p>
@@ -116,18 +104,18 @@ export function MemorySection() {
               <ul className="space-y-1.5">
                 {group.facts.map((fact) => (
                   <li
-                    key={`${fact.site ?? ""}|${fact.text}`}
+                    key={fact}
                     className="flex items-start justify-between gap-3 rounded-lg bg-neutral-50 px-3 py-2 dark:bg-neutral-900/50"
                   >
                     <span className="min-w-0 flex-1 text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
-                      {fact.text}
+                      {fact}
                     </span>
                     <Button
                       variant="ghost-danger"
                       size="sm"
                       className="shrink-0"
                       aria-label={t("memory.deleteMemory")}
-                      onClick={() => void removeMemory(fact.text, fact.site)}
+                      onClick={() => void removeMemory(fact, group.site)}
                     >
                       <TrashIcon />
                     </Button>

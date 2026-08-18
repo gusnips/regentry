@@ -60,8 +60,9 @@ button "Submit"`); `sanitize.ts` caps tool output and keeps passwords, one-time 
   numbers from leaving the page.
 - Trusted input, network/console rings, page-side `fill`/`evaluate` (CSP-exempt) — all over the
   debugger channel, attach-scoped to the tab being worked.
-- Memory: the user's `AGENTS.md` and the agent's `MEMORY.md` load into every run; the `remember`
-  tool and post-run distillation maintain them; one toggle stops both halves.
+- Memory: the user's `AGENTS.md` and the agent's `MEMORY.md` load into every run — a `## site:`
+  section only when the run starts on that site; the `remember` tool and post-run distillation
+  maintain them; one toggle stops both halves.
 - Scheduled tasks: one-shot, daily, or every-N-minutes (with an optional weekday filter and
   active-hours window), fired by `chrome.alarms` into the same run queue. Created by asking in the
   panel — the plan gate is the consent — and reviewed in Settings → Schedules. The agent holds

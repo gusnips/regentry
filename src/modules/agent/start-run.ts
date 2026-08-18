@@ -372,16 +372,19 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         void chrome.alarms.create(MEMORY_KEEPALIVE_ALARM, { periodInMinutes: 0.5 });
         // Where the run ended is where its lessons belong — the extraction gets
         // the driven tab's final URL as its site hint. Tab-died tolerance
-        // mirrors persistDrivenTabFor.
-        const finalUrl = await chrome.tabs
+        // mirrors persistDrivenTabFor; the lookup rides the chain so the
+        // teardown below never waits on it.
+        const extractionProvider = resolvedProvider;
+        void chrome.tabs
           .get(drivenTabId)
           .then((t) => t.url)
-          .catch(() => undefined);
-        void extractAndRemember(resolvedProvider, wire, run.controller.signal, finalUrl).finally(
-          () => {
+          .catch(() => undefined)
+          .then((finalUrl) =>
+            extractAndRemember(extractionProvider, wire, run.controller.signal, finalUrl),
+          )
+          .finally(() => {
             void chrome.alarms.clear(MEMORY_KEEPALIVE_ALARM);
-          },
-        );
+          });
         // The first task's one-line title may be a fragment ("hey" off a
         // two-line message) — one cheap call names it for real. Same keepalive
         // umbrella as memory: it rides this run's hold on the worker, and a
