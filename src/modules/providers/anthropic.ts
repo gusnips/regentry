@@ -109,7 +109,6 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
   };
 }
 
-const MAX_OUTPUT_TOKENS = 4096;
 const MAX_THINKING_OUTPUT_TOKENS = 65536;
 
 /** Request body for POST /v1/messages. Exported for tests. */
@@ -126,11 +125,11 @@ export function buildAnthropicBody(
 
   const body: Record<string, unknown> = {
     model: config.model,
-    // Thinking tokens count against max_tokens. With adaptive thinking on, the
-    // cap must exceed the budget the provider assigns (coding-plan gateways
-    // reject the request otherwise — seen: 32768) and still leave room for the
-    // answer; without thinking it's answer-only headroom.
-    max_tokens: config.reasoningEffort ? MAX_THINKING_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS,
+    // Thinking tokens count against max_tokens, and thinking is always on here
+    // now, so the cap is unconditional: it must exceed the budget the provider
+    // assigns (coding-plan gateways reject the request otherwise — seen: 32768)
+    // and still leave room for the answer.
+    max_tokens: MAX_THINKING_OUTPUT_TOKENS,
     stream: true,
     // tool_results and an injected mid-run message both serialize as user
     // messages, and can land back to back — merge them, Anthropic rejects
@@ -157,13 +156,19 @@ export function buildAnthropicBody(
     }));
   }
 
-  if (config.reasoningEffort) {
-    body.thinking = { type: "adaptive" };
-    // "none" has no Anthropic equivalent — adaptive thinking alone lets Claude
-    // decide to skip reasoning; the other levels pin output_config.effort.
-    if (config.reasoningEffort !== "none") {
-      body.output_config = { effort: config.reasoningEffort };
-    }
+  // Adaptive thinking is this shape's floor, not an opt-in. Sending no thinking
+  // field at all — what an unpinned effort used to do — is the one shape where
+  // "default" meant reasoning *off*: the OpenAI and Responses shapes leave the
+  // model to its own default, which for a current reasoning model is not off.
+  // Adaptive costs nothing on a step that doesn't need it, since Claude decides
+  // per turn, and it can't 400 a model that doesn't reason.
+  body.thinking = { type: "adaptive" };
+  // "none" has no Anthropic equivalent — there is no off switch, so it lands on
+  // the same adaptive floor as an unpinned effort, and only the other levels pin
+  // output_config.effort. That makes "none" and "default" one request on this
+  // shape; telling them apart needs an API answer we don't have, not a code change.
+  if (config.reasoningEffort && config.reasoningEffort !== "none") {
+    body.output_config = { effort: config.reasoningEffort };
   }
 
   return body;

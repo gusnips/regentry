@@ -100,16 +100,25 @@ describe("buildAnthropicBody", () => {
     expect(body.messages).toEqual([{ role: "user", content: "Do the thing." }]);
   });
 
-  it("omits thinking config by default", () => {
+  it("thinks adaptively by default, with no effort pinned", () => {
+    // Unpinned used to send no thinking field at all, which on this shape reads
+    // as reasoning off — quieter than the other two shapes' idea of "default".
     const body = buildAnthropicBody(anthropicBase, messages, []);
-    expect(body).not.toHaveProperty("thinking");
+    expect(body.thinking).toEqual({ type: "adaptive" });
     expect(body).not.toHaveProperty("output_config");
-    expect(body.max_tokens).toBe(4096);
   });
 
-  it("raises max_tokens above the thinking budget when thinking is on", () => {
-    const body = buildAnthropicBody({ ...anthropicBase, reasoningEffort: "high" }, messages, []);
-    expect(body.max_tokens).toBeGreaterThan(32768);
+  it("keeps max_tokens above the thinking budget on every request", () => {
+    // The gateways reject a cap that doesn't clear the budget they assign, and
+    // thinking is now always on — so this can't be conditional on effort.
+    for (const effort of [undefined, "none", "high"] as const) {
+      const body = buildAnthropicBody(
+        { ...anthropicBase, ...(effort ? { reasoningEffort: effort } : {}) },
+        messages,
+        [],
+      );
+      expect(body.max_tokens).toBeGreaterThan(32768);
+    }
   });
 
   it("maps effort to adaptive thinking + output_config", () => {
@@ -118,10 +127,13 @@ describe("buildAnthropicBody", () => {
     expect(body.output_config).toEqual({ effort: "high" });
   });
 
-  it("maps 'none' to adaptive thinking with no effort pin", () => {
-    const body = buildAnthropicBody({ ...anthropicBase, reasoningEffort: "none" }, messages, []);
-    expect(body.thinking).toEqual({ type: "adaptive" });
-    expect(body).not.toHaveProperty("output_config");
+  it("lands 'none' on the same adaptive floor as default — no off switch exists", () => {
+    const none = buildAnthropicBody({ ...anthropicBase, reasoningEffort: "none" }, messages, []);
+    expect(none.thinking).toEqual({ type: "adaptive" });
+    expect(none).not.toHaveProperty("output_config");
+    // Deliberate, and the reason the picker shows two rows that agree on the
+    // wire: if a way to disable thinking appears, this is the test to split.
+    expect(none).toEqual(buildAnthropicBody(anthropicBase, messages, []));
   });
 
   it("merges back-to-back user messages (tool_results + injected mid-run note)", () => {
