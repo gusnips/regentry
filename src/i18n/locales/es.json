@@ -410,6 +410,7 @@
     "queueNoImages": "Las imágenes no pueden unirse a una tarea en curso — encola el texto ahora y pega la imagen con la próxima tarea.",
     "pasteToken": "{{count}} líneas pegadas",
     "pasteHint": "El texto largo pegado se pliega en una nota para mantener la entrada ordenada — el texto completo se envía igualmente. Retroceso lo elimina.",
+    "restrictedPageHint": "Chrome bloquea las extensiones en esta página — tu tarea se ejecutará en una pestaña propia.",
     "askUserHint": "Elige una opción o escribe la tuya",
     "askUserOpenHint": "Escribe tu respuesta abajo",
     "answerPlaceholder": "Escribe tu respuesta…",

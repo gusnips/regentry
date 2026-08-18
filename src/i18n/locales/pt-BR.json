@@ -410,6 +410,7 @@
     "queueNoImages": "Imagens não podem entrar numa tarefa em andamento — enfileire o texto agora e cole a imagem na próxima tarefa.",
     "pasteToken": "{{count}} linhas coladas",
     "pasteHint": "Texto longo colado vira uma nota para manter o campo organizado — o texto completo ainda é enviado. Backspace apaga.",
+    "restrictedPageHint": "O Chrome bloqueia extensões nesta página — sua tarefa vai rodar em uma aba própria.",
     "askUserHint": "Escolha uma opção ou escreva a sua",
     "askUserOpenHint": "Escreva a sua resposta abaixo",
     "answerPlaceholder": "Escreva a sua resposta…",

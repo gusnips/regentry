@@ -17,7 +17,9 @@ import en from "@/i18n/locales/en.json";
 if (typeof globalThis.chrome === "undefined") {
   const noop = { addListener: () => {}, removeListener: () => {} };
   (globalThis as Record<string, unknown>).chrome = {
-    tabs: { onRemoved: noop, onUpdated: noop },
+    // The panel asks which tab is active (and watches for it changing) as soon
+    // as the composer mounts — no tabs in the stub, so every answer is "none".
+    tabs: { onRemoved: noop, onUpdated: noop, onActivated: noop, query: () => Promise.resolve([]) },
     debugger: { onDetach: noop, onEvent: noop },
     // Rendering a panel surface can reach for the version (a bug report carries it).
     runtime: { getManifest: () => ({ version: "0.0.0-test" }) },

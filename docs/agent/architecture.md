@@ -77,13 +77,25 @@ it, and a strip that already exists (a rejected mid-run replan) just collapses. 
 tab itself is never closed.
 
 The run still gets a tab of its own when there is no page to work: a blank/new-tab page,
-a restricted page (chrome://, the Web Store — those error out of `resolveRunTab` before a
-run exists, so the model never has to be told about a page it never saw), an MCP client
-(no current tab at all — its sessions start on the neutral default), or a run the client
-pointed at an explicit URL. Those forks open on `defaultStartUrl` (then google), inactive,
-and are never brought forward — only background runs take this path, and background
-means the user's screen never moves; the badge and widget say the work exists. Their
-strip appears at the first action like any other run's.
+a restricted page (chrome://, the Web Store — Chrome forbids extensions there, so there
+is nothing to adopt and the model never has to be told about a page it never saw), an MCP
+client (no current tab at all — its sessions start on the neutral default), or a run the
+client pointed at an explicit URL. Those forks open on `defaultStartUrl` (then google),
+inactive, and are never brought forward — only background runs take this path, and
+background means the user's screen never moves; the badge and widget say the work exists.
+Their strip appears at the first action like any other run's.
+
+"This page" is the one mode that could have died on such a page, because its target is
+named rather than inferred. It doesn't: the task is runnable, only the target is
+impossible, so the send degrades instead of failing. The composer watches the active tab
+(`useRestrictedPage`) and carries a footnote saying the task will run in a tab of its own
+— before a word is typed, not after the message is already in the transcript — and
+`sendTask` drops the `thisPage` flag for that send so the run takes the fork above. The
+user's mode is untouched: `lastRun.thisPage` reads the toggle rather than the wire flag,
+so a panel that chose to watch still stays open through the plan. `resolveRunTab`'s
+`errors.restrictedPage` stays as the backstop for a tab that turns restricted between the
+panel's query and the worker's, and for MCP direct control, where nobody is looking at a
+composer to read a footnote.
 
 An unanswered question is the one case the run goes back to a tab it had before: it
 returns to the **very tab** the question was asked on when that tab is still alive and

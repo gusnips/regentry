@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useConversationStore } from "./store";
+import { isRestrictedUrl } from "@/modules/browser";
 
 /**
  * Is a queue holding the footer busy? Queued steering lines, a queued run
@@ -72,4 +73,40 @@ export function useWalkAway(): { live: boolean; ready: boolean } {
   if (awaitingApproval || boardRun?.awaiting === true) return { live: true, ready: false };
   const ready = localLive ? planApproved : plan !== undefined && plan.timestamp >= liveStartedAt;
   return { live: true, ready };
+}
+
+/**
+ * Is the window's active tab one Chrome forbids extensions from touching
+ * (chrome://, the Web Store, devtools)? "This page" has no page to drive there,
+ * so the composer says so before the send instead of letting the task die on
+ * errors.restrictedPage with the user's message already in the transcript —
+ * the send still works, it just opens a tab of its own.
+ *
+ * Re-asked on every tab switch and every committed navigation: the answer is a
+ * property of what the user is looking at right now, not of this panel.
+ */
+export function useRestrictedPage(): boolean {
+  const [restricted, setRestricted] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const check = async () => {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (alive) setRestricted(isRestrictedUrl(tab?.url));
+    };
+    const onActivated = () => void check();
+    // Only a url commit can flip the verdict — loading ticks and title changes
+    // on the same page would just re-query for nothing.
+    const onUpdated = (_id: number, info: chrome.tabs.OnUpdatedInfo) => {
+      if (info.url !== undefined) void check();
+    };
+    void check();
+    chrome.tabs.onActivated.addListener(onActivated);
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    return () => {
+      alive = false;
+      chrome.tabs.onActivated.removeListener(onActivated);
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+    };
+  }, []);
+  return restricted;
 }

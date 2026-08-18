@@ -410,6 +410,7 @@
     "queueNoImages": "Images can't join a running task — queue the text now and paste the image with the next task.",
     "pasteToken": "Pasted {{count}} lines",
     "pasteHint": "Long pasted text is folded into a note to keep things tidy — the full text is still sent. Backspace deletes it.",
+    "restrictedPageHint": "Chrome blocks extensions on this page — your task will run in a tab of its own.",
     "askUserHint": "Pick one, or write your own",
     "askUserOpenHint": "Type your answer below",
     "answerPlaceholder": "Write your answer…",

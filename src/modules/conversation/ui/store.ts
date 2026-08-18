@@ -21,6 +21,7 @@ import {
 import { closingSummary } from "../transcript";
 import { toolVerbKey } from "./tool-labels";
 import type { PastedText } from "./paste-collapse";
+import { isRestrictedUrl } from "@/modules/browser";
 import { runTargetPref } from "@/lib/prefs";
 import type { RunTarget } from "@/lib/prefs";
 
@@ -428,7 +429,16 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       runEndedAt: null,
       runStopped: false,
       replanning: false,
-      lastRun: { task, ...(images?.length ? { images } : {}), ...(thisPage ? { thisPage } : {}) },
+      // Watching or walking away is the user's mode, not the run's target — so
+      // it reads the toggle, not the flag on the wire. A "this page" send from
+      // a page Chrome blocks still drives a tab of its own (see sendTask), and
+      // that fallback must not also opt the user into the panel closing on
+      // approval: they never asked to walk away.
+      lastRun: {
+        task,
+        ...(images?.length ? { images } : {}),
+        ...(get().runTarget === "thisPage" ? { thisPage: true } : {}),
+      },
       pendingStepId: null,
       // A new run draws its own card — never revives the last run's checklist.
       planMsgId: null,
@@ -467,7 +477,13 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       pushMsg(makeMsg("error", i18n.t("chat.reloaded")));
       return;
     }
-    const thisPage = get().runTarget === "thisPage";
+    // Where the run drives — not always what the toggle says. Chrome forbids
+    // extensions on chrome:// and Web Store pages, so "this page" has no page
+    // to drive there: the run opens a tab of its own instead of dying on
+    // errors.restrictedPage with the user's message already in the transcript.
+    // The composer's notice says so before the send; this covers the tab
+    // switched in between, and the panel still stays open (see startRun).
+    let thisPage = get().runTarget === "thisPage";
     // The message is anchored to the tab it was sent from. The panel queries
     // its own window here — the send-time fact — while the background's own
     // query stays the authority on what the run drives.
@@ -475,7 +491,8 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     if (thisPage) {
       try {
         const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (active?.url) {
+        if (isRestrictedUrl(active?.url)) thisPage = false;
+        else if (active?.url) {
           tab = {
             title: active.title ?? "",
             url: active.url,

@@ -6,7 +6,7 @@ import { pendingAskId } from "./ask-gate";
 import { toAttachment } from "./image";
 import { recallStep, sentMessages } from "./history-recall";
 import { caretVisualLine } from "./caret-line";
-import { useQueueBusy } from "./hooks";
+import { useQueueBusy, useRestrictedPage } from "./hooks";
 import { expandText, insertToken, linesOf, nextToken, shouldCollapse } from "./paste-collapse";
 import { RunTargetToggle } from "./RunTargetToggle";
 import { SlashMenu } from "./SlashMenu";
@@ -110,6 +110,12 @@ export function ChatInput() {
   const revisePlan = useConversationStore((s) => s.revisePlan);
   const queued = useConversationStore((s) => s.queued);
   const queueBusy = useQueueBusy();
+  // Chrome forbids extensions on chrome:// and Web Store pages, so "this page"
+  // has nothing to drive there — the send still works (it opens a tab of its
+  // own), and the footnote says so before a word is typed rather than after.
+  const restrictedPage = useRestrictedPage();
+  const runTarget = useConversationStore((s) => s.runTarget);
+  const pageBlocked = restrictedPage && runTarget === "thisPage";
   const sendTask = useConversationStore((s) => s.sendTask);
   const queueMessage = useConversationStore((s) => s.queueMessage);
   const unqueueMessage = useConversationStore((s) => s.unqueueMessage);
@@ -560,14 +566,22 @@ export function ChatInput() {
           {attachError}
         </p>
       )}
-      {/* The tip is this zone's lowest-priority tenant: it renders only while
-          idle with a pristine composer — a queue card, an attachment or a paste
-          hint already makes the footer tall, and the run band carries the tip
-          while working (under the same eviction rule). */}
+      {/* One footnote slot, by priority: what this send is about to do outranks
+          a tip. The tip is the zone's lowest-priority tenant — it renders only
+          while idle with a pristine composer, since a queue card, an attachment
+          or a paste hint already makes the footer tall, and the run band carries
+          the tip while working (under the same eviction rule). Both concern a
+          run about to start, so both go quiet once one is live. */}
       {!(running || (boardRunHere && !bridgeActive)) &&
-        !queueBusy &&
-        attachments.length === 0 &&
-        !pastedTexts.some((p) => text.includes(p.token)) && <TipLine />}
+        (pageBlocked ? (
+          <p className="line-clamp-2 text-[11px] text-neutral-500 dark:text-neutral-400">
+            {t("chat.restrictedPageHint")}
+          </p>
+        ) : (
+          !queueBusy &&
+          attachments.length === 0 &&
+          !pastedTexts.some((p) => text.includes(p.token)) && <TipLine />
+        ))}
       {/* One card, two tenants: the bare input on top, a footer row below with
           the run target and the engine picker on the left and the morph button
           on the right — so the textarea never shares its width with a button
