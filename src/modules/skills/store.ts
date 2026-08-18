@@ -1,23 +1,14 @@
-import { defineItem } from "@/lib/storage";
+import { createWriteQueue, defineItem } from "@/lib/storage";
 import { i18n } from "@/i18n";
-import { hostMatches, scopeHostOf } from "@/lib/host";
+import { hostMatches, normalizeHostList, scopeHostOf } from "@/lib/host";
 import type { Skill } from "./types";
 import { isValidSkillName, MAX_BODY_CHARS, MAX_DESCRIPTION_CHARS, MAX_SKILLS } from "./types";
 
 /** One flat array, read-modify-written whole — see the ponytail note in types.ts. */
-const skillsItem = defineItem<Skill[]>("skills", []);
+export const skillsItem = defineItem<Skill[]>("skills", []);
 
-/**
- * Every write is read-modify-write, and the options page, the import dialog
- * and the draft dialog can all save — serialize them on one chain, exactly as
- * the schedule store and the conversation index do.
- */
-let writes: Promise<unknown> = Promise.resolve();
-function serialized<T>(op: () => Promise<T>): Promise<T> {
-  const next = writes.then(op, op);
-  writes = next.catch(() => {});
-  return next;
-}
+// The options page, the import dialog and the draft dialog can all save.
+const serialized = createWriteQueue();
 
 export function listSkills(): Promise<Skill[]> {
   return skillsItem.get();
@@ -67,8 +58,13 @@ export function saveSkill(input: SkillInput): Promise<SaveSkillResult> {
     if (!current && list.length >= MAX_SKILLS) {
       return { ok: false, error: i18n.t("skills.errors.tooMany", { max: MAX_SKILLS }) };
     }
+    // Sites are stored normalized or not at all — hostMatches assumes it, and
+    // callers that want to report unusable entries check before saving.
+    const { sites: rawSites, ...rest } = input;
+    const sites = normalizeHostList(rawSites ?? []).hosts;
     const skill: Skill = {
-      ...input,
+      ...rest,
+      ...(sites.length > 0 ? { sites } : {}),
       createdAt: current?.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };

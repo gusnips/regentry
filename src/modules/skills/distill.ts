@@ -1,9 +1,10 @@
 import type { Message } from "@/modules/conversation/types";
-import { renderTranscriptMessage } from "@/modules/conversation";
+import { capTranscriptTail, renderTranscriptMessage } from "@/modules/conversation";
 import type { ResolvedProviderConfig } from "@/modules/providers/types";
 import { createProvider } from "@/modules/providers";
 import { i18n } from "@/i18n";
 import { parseSkillMd, type ParsedSkillMd } from "./skill-md";
+import { MAX_CATALOG_DESC_CHARS } from "./types";
 
 /**
  * Conversation → skill draft. The fourth transcript distillation next to
@@ -14,22 +15,16 @@ import { parseSkillMd, type ParsedSkillMd } from "./skill-md";
  * not a silent shrug.
  */
 
-/**
- * What the distiller reads — same ceiling and same tail-wins rationale as
- * compaction: the newest turns hold the corrections, which are the lesson.
- */
-const MAX_DISTILL_INPUT_CHARS = 60_000;
-
 /** The draft call must not outlive the panel's patience — same bound as extraction. */
 const DISTILL_TIMEOUT_MS = 90_000;
 
-export const SKILL_DISTILL_SYSTEM = `Below is the transcript of a browser-automation conversation. Distill the reusable procedure in it into a skill — a recipe a future agent run follows to do this kind of task again without re-discovering everything this one had to work out.
+const SKILL_DISTILL_SYSTEM = `Below is the transcript of a browser-automation conversation. Distill the reusable procedure in it into a skill — a recipe a future agent run follows to do this kind of task again without re-discovering everything this one had to work out.
 
 Reply with a complete SKILL.md file and nothing else, in exactly this shape:
 
 ---
 name: <kebab-case-name>
-description: <one sentence, under 250 characters — what the skill does and when to use it>
+description: <one sentence, under ${MAX_CATALOG_DESC_CHARS} characters — what the skill does and when to use it>
 sites: [<domain the steps happen on>]
 ---
 
@@ -43,11 +38,9 @@ Rules:
 - Keep simple skills simple: a task that took three steps gets three steps.
 - Write the instruction body in the language the user wrote in.`;
 
-/** The rendered transcript the call sees, tail-capped. Exported for tests. */
+/** The rendered transcript the call sees, tail-capped like compaction's. Exported for tests. */
 export function buildSkillDistillBody(transcript: Message[]): string {
-  const body = transcript.map(renderTranscriptMessage).filter(Boolean).join("\n\n");
-  if (body.length <= MAX_DISTILL_INPUT_CHARS) return body;
-  return `[earlier turns omitted]\n\n${body.slice(-MAX_DISTILL_INPUT_CHARS)}`;
+  return capTranscriptTail(transcript.map(renderTranscriptMessage).filter(Boolean).join("\n\n"));
 }
 
 /** Models fence markdown replies no matter what the prompt says — unwrap before parsing. */

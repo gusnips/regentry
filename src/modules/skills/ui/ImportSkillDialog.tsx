@@ -1,14 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Dialog } from "@base-ui-components/react";
-import { XIcon } from "@/components/Icon";
-import { overlayCard, scrim } from "@/components/chrome";
+import { TitledDialog } from "@/components/TitledDialog";
 import { Button } from "@/components/Button";
 import { TextField } from "@/components/TextField";
 import { TextArea } from "@/components/TextArea";
 import { parseSkillMd, type ParsedSkillMd } from "../skill-md";
 import { fetchSkillMarkdown, resolveSkillSource } from "../import-url";
-import { SkillForm, type SkillSeed } from "./SkillForm";
+import { seedFromParsed, SkillForm } from "./SkillForm";
 
 type Stage =
   | { kind: "input" }
@@ -18,7 +16,8 @@ type Stage =
 /**
  * The dialog's inside, mounted only while it is open (DraftBody's rule) —
  * mounting IS the reset, so closing mid-fetch can't leak that fetch's result
- * into the next open as a review stage nobody asked for.
+ * into the next open as a review stage nobody asked for. Unmount also aborts
+ * the transfer itself.
  */
 function ImportBody({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
@@ -27,6 +26,9 @@ function ImportBody({ onDone }: { onDone: () => void }) {
   const [input, setInput] = useState("");
   const [pasted, setPasted] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const fetchIt = async () => {
     if (stage.kind !== "input") return; // Enter while a fetch is in flight
@@ -39,8 +41,10 @@ function ImportBody({ onDone }: { onDone: () => void }) {
       return;
     }
     setStage({ kind: "fetching" });
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const text = await fetchSkillMarkdown(source.url);
+      const text = await fetchSkillMarkdown(source.url, controller.signal);
       setStage({ kind: "review", parsed: parseSkillMd(text), sourceUrl: source.url });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -58,13 +62,6 @@ function ImportBody({ onDone }: { onDone: () => void }) {
   };
 
   if (stage.kind === "review") {
-    const seed: SkillSeed = {
-      ...(stage.parsed.name ? { name: stage.parsed.name } : {}),
-      ...(stage.parsed.description ? { description: stage.parsed.description } : {}),
-      sites: stage.parsed.sites,
-      body: stage.parsed.body,
-      ...(stage.sourceUrl ? { source: { url: stage.sourceUrl } } : {}),
-    };
     return (
       <div className="flex flex-col gap-3">
         <p className="attention rounded-lg px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300">
@@ -81,7 +78,7 @@ function ImportBody({ onDone }: { onDone: () => void }) {
           </p>
         )}
         <SkillForm
-          seed={seed}
+          seed={seedFromParsed(stage.parsed, stage.sourceUrl)}
           replaceOnCollision
           onSaved={onDone}
           onCancel={() => setStage({ kind: "input" })}
@@ -146,31 +143,14 @@ function ImportBody({ onDone }: { onDone: () => void }) {
 export function ImportSkillDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
   return (
-    <Dialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
-      <Dialog.Portal>
-        <Dialog.Backdrop className={scrim} />
-        <Dialog.Popup
-          className={`fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-4 ${overlayCard}`}
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <Dialog.Title className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                {t("skills.import.title")}
-              </Dialog.Title>
-              <Dialog.Description className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                {t("skills.import.description")}
-              </Dialog.Description>
-            </div>
-            <Dialog.Close
-              aria-label={t("common.close")}
-              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-            >
-              <XIcon />
-            </Dialog.Close>
-          </div>
-          <div className="mt-3">{open && <ImportBody onDone={onClose} />}</div>
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <TitledDialog
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title={t("skills.import.title")}
+      description={t("skills.import.description")}
+      widthClass="w-[min(30rem,calc(100vw-2rem))]"
+    >
+      {open && <ImportBody onDone={onClose} />}
+    </TitledDialog>
   );
 }

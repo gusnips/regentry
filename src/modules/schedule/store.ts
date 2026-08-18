@@ -1,4 +1,4 @@
-import { defineItem } from "@/lib/storage";
+import { createWriteQueue, defineItem } from "@/lib/storage";
 import { i18n } from "@/i18n";
 import { nextFireAt } from "./recurrence";
 import type { Schedule } from "./types";
@@ -21,17 +21,8 @@ export const MAX_SCHEDULES = 20;
 /** Consecutive self-reschedules before a self-paced loop has to stop and ask. */
 export const MAX_CHAIN = 20;
 
-/**
- * Every write is read-modify-write and fires can land while the settings page
- * is editing — serialize them on one chain, exactly as the conversation index
- * and the tip stats do.
- */
-let writes: Promise<unknown> = Promise.resolve();
-function serialized<T>(op: () => Promise<T>): Promise<T> {
-  const next = writes.then(op, op);
-  writes = next.catch(() => {});
-  return next;
-}
+// Fires can land while the settings page is editing — one write queue.
+const serialized = createWriteQueue();
 
 export function listSchedules(): Promise<Schedule[]> {
   return schedulesItem.get();

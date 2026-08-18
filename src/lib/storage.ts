@@ -24,3 +24,18 @@ export function defineItem<T>(key: string, fallback: T): StorageItem<T> {
     watch: (cb: (newVal: T) => void) => item.watch(cb),
   };
 }
+
+/**
+ * Serializes read-modify-write cycles on a `defineItem` record whose writers
+ * race (panel, worker, dialogs) — each store makes one queue and funnels every
+ * write through it. The chain survives a failed write: the failure is
+ * swallowed here, the caller still sees their own rejection.
+ */
+export function createWriteQueue(): <T>(op: () => Promise<T>) => Promise<T> {
+  let chain: Promise<unknown> = Promise.resolve();
+  return (op) => {
+    const next = chain.then(op, op);
+    chain = next.catch(() => {});
+    return next;
+  };
+}

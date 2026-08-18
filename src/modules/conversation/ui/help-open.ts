@@ -1,30 +1,21 @@
 import { useSyncExternalStore } from "react";
+import { createOpenFlag } from "@/lib/open-flag";
 
 /**
  * The help sheet's open state, shared module-level so its three doors — the
  * /help command (slash-commands.ts is not a component), the composer's "?"
  * gesture, and the settings-menu item — all drive the one HelpDialog the
- * entrypoint renders. Same minimal pattern as the tip line's store.
+ * entrypoint renders.
  */
-let open = false;
-const listeners = new Set<() => void>();
+const flag = createOpenFlag();
 
-export function setHelpOpen(next: boolean): void {
-  if (open === next) return;
-  open = next;
-  for (const l of listeners) l();
-}
+export const setHelpOpen = flag.set;
 
 /** Every door but the dialog's own close goes through here. */
 export function openHelp(): void {
-  setHelpOpen(true);
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+  flag.set(true);
 }
 
 export function useHelpOpen(): boolean {
-  return useSyncExternalStore(subscribe, () => open);
+  return useSyncExternalStore(flag.subscribe, flag.get);
 }

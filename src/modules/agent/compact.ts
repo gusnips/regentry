@@ -1,6 +1,11 @@
 import type { ChatMessage, ChatProvider } from "@/modules/providers/types";
 import type { Message } from "@/modules/conversation/types";
-import { appendMessageTo, getMessages, renderTranscriptMessage } from "@/modules/conversation";
+import {
+  appendMessageTo,
+  capTranscriptTail,
+  getMessages,
+  renderTranscriptMessage,
+} from "@/modules/conversation";
 import { createLogger, truncate } from "@/lib/logger";
 import { i18n } from "@/i18n";
 
@@ -43,23 +48,6 @@ Rules:
 - Omit reasoning about page structure, element ids, and scrolling — the agent re-reads the page.
 - Plain text under the numbered headings. No preamble, no sign-off.`;
 
-/**
- * What the summarizer itself is allowed to read. Compaction runs precisely when
- * the conversation no longer fits, so handing it the whole thing is how a
- * compaction fails for the very reason it was called — and the run dies with
- * the one thing that could have saved it. ~15k tokens fits inside any window
- * worth supporting, including the smallest local models.
- *
- * The tail wins the trim: the oldest turns are the ones a summary can afford to
- * lose, and the caller has already put the task itself above this text.
- */
-const MAX_SUMMARY_INPUT_CHARS = 60_000;
-
-function capBody(body: string): string {
-  if (body.length <= MAX_SUMMARY_INPUT_CHARS) return body;
-  return `[earlier turns omitted]\n\n${body.slice(-MAX_SUMMARY_INPUT_CHARS)}`;
-}
-
 /** One provider call, no tools, text collected. */
 async function summarize(
   provider: ChatProvider,
@@ -68,7 +56,7 @@ async function summarize(
 ): Promise<string> {
   const messages: ChatMessage[] = [
     { role: "system", content: COMPACT_SYSTEM },
-    { role: "user", content: capBody(body) },
+    { role: "user", content: capTranscriptTail(body) },
   ];
   let text = "";
   for await (const delta of provider.stream(messages, [], signal)) {

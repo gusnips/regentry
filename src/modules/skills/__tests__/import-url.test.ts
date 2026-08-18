@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { resolveSkillSource } from "../import-url";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { fetchSkillMarkdown, resolveSkillSource } from "../import-url";
 
 function urlOf(input: string): string {
   const source = resolveSkillSource(input);
@@ -43,5 +43,27 @@ describe("resolveSkillSource", () => {
     });
     expect(resolveSkillSource("not a url at all")).toEqual({ ok: false, reason: "unparseable" });
     expect(resolveSkillSource("")).toEqual({ ok: false, reason: "unparseable" });
+  });
+});
+
+describe("fetchSkillMarkdown", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("returns a body within the cap", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("---\nname: a\n---\nsteps")));
+    await expect(fetchSkillMarkdown("https://example.com/SKILL.md")).resolves.toContain("steps");
+  });
+
+  it("caps the streamed body — a server that lies about size can't fill memory", async () => {
+    // No content-length header, so only the capped read can catch it.
+    const big = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(new Uint8Array(200_000));
+        c.enqueue(new Uint8Array(200_000));
+        c.close();
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(big)));
+    await expect(fetchSkillMarkdown("https://example.com/SKILL.md")).rejects.toThrow();
   });
 });

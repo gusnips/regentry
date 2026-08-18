@@ -42,6 +42,13 @@ describe("saveSkill", () => {
     expect((await saveSkill(input("a", { body: "" }))).ok).toBe(false);
   });
 
+  it("normalizes sites itself — hostMatches assumes stored hosts", async () => {
+    const saved = await saveSkill(
+      input("normed", { sites: [" WWW.Acme.com ", "acme.com", "not a host"] }),
+    );
+    expect(saved.ok && saved.skill.sites).toEqual(["acme.com"]);
+  });
+
   it("caps the library at MAX_SKILLS for new records, edits still allowed", async () => {
     await seed(...Array.from({ length: MAX_SKILLS }, (_, i) => input(`s${i}`)));
     expect((await saveSkill(input("one-more"))).ok).toBe(false);

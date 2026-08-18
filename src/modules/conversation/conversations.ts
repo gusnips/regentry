@@ -1,4 +1,4 @@
-import { defineItem } from "@/lib/storage";
+import { createWriteQueue, defineItem } from "@/lib/storage";
 import { truncateTo } from "@/lib/format";
 import { cancelQueued, listQueue } from "@/modules/agent/run-queue";
 import { deleteSchedule, disarmSchedule, schedulesForConversation } from "@/modules/schedule";
@@ -356,14 +356,7 @@ function stripTransientImages(msg: Message): Message {
  * that the worker's own append (the panel-closed breadcrumb) races the panel's;
  * it only happens as the panel dies, which is the moment it stops writing.
  */
-let writes: Promise<unknown> = Promise.resolve();
-
-function serialized<T>(op: () => Promise<T>): Promise<T> {
-  const next = writes.then(op, op);
-  // The chain must survive a failed write — swallow here, callers still see it.
-  writes = next.catch(() => {});
-  return next;
-}
+const serialized = createWriteQueue();
 
 /**
  * Resolves once every write issued so far has committed. A run's board entry must

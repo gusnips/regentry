@@ -9,9 +9,7 @@ import { i18n } from "@/i18n";
  *
  * Pure string logic; the fetch itself is `fetchSkillMarkdown` below.
  */
-export type SkillSource =
-  | { ok: true; url: string }
-  | { ok: false; reason: "http" | "unparseable" };
+export type SkillSource = { ok: true; url: string } | { ok: false; reason: "http" | "unparseable" };
 
 const RAW_HOST = "https://raw.githubusercontent.com";
 /** `owner/repo` or `owner/repo/path/to/skill` — no scheme, no spaces. */
@@ -39,7 +37,10 @@ export function resolveSkillSource(input: string): SkillSource {
     const [owner, repo, kind, ref, ...rest] = url.pathname.split("/").filter(Boolean);
     if (!owner || !repo) return { ok: false, reason: "unparseable" };
     if ((kind === "blob" || kind === "tree") && ref) {
-      return { ok: true, url: `${RAW_HOST}/${owner}/${repo}/${ref}/${withSkillFile(rest.join("/"))}` };
+      return {
+        ok: true,
+        url: `${RAW_HOST}/${owner}/${repo}/${ref}/${withSkillFile(rest.join("/"))}`,
+      };
     }
     if (!kind) return { ok: true, url: `${RAW_HOST}/${owner}/${repo}/HEAD/SKILL.md` };
     return { ok: false, reason: "unparseable" };
@@ -54,32 +55,53 @@ export function resolveSkillSource(input: string): SkillSource {
 }
 
 /** A skill is prose — anything bigger than this is not a skill file. */
-export const MAX_SKILL_FETCH_BYTES = 262_144;
+const MAX_SKILL_FETCH_BYTES = 262_144;
+
+/** Read the body no further than the cap — a chunked or lying server must not fill memory. */
+async function readCapped(body: ReadableStream<Uint8Array>): Promise<string> {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > MAX_SKILL_FETCH_BYTES) {
+      void reader.cancel();
+      throw new Error(i18n.t("skills.import.errorTooLarge"));
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
 
 /**
  * Fetch the resolved URL, bounded in time and size. Runs from the dialog's own
  * page context (the `/usage` precedent) — user-initiated, one URL the user
- * typed, never from the worker. Throws i18n'd messages the dialog shows as-is.
+ * typed, never from the worker. Throws i18n'd messages the dialog shows as-is;
+ * the caller's own abort (dialog closed) passes through untouched.
  */
-export async function fetchSkillMarkdown(url: string): Promise<string> {
+export async function fetchSkillMarkdown(url: string, signal?: AbortSignal): Promise<string> {
+  const timeout = AbortSignal.timeout(10_000);
   let res: Response;
   try {
-    res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    res = await fetch(url, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
   } catch (e) {
     throw new Error(
-      i18n.t(
-        e instanceof DOMException && e.name === "TimeoutError"
-          ? "skills.import.errorTimeout"
-          : "skills.import.errorNetwork",
-      ),
+      i18n.t(timeout.aborted ? "skills.import.errorTimeout" : "skills.import.errorNetwork"),
       { cause: e },
     );
   }
   if (!res.ok) throw new Error(i18n.t("skills.import.errorStatus", { status: res.status }));
   const length = Number(res.headers.get("content-length") ?? 0);
   if (length > MAX_SKILL_FETCH_BYTES) throw new Error(i18n.t("skills.import.errorTooLarge"));
-  const text = await res.text();
-  if (text.length > MAX_SKILL_FETCH_BYTES) throw new Error(i18n.t("skills.import.errorTooLarge"));
+  const text = res.body ? await readCapped(res.body) : "";
   if (!text.trim()) throw new Error(i18n.t("skills.import.errorEmpty"));
   return text;
 }

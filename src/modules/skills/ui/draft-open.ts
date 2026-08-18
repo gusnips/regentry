@@ -1,28 +1,19 @@
 import { useSyncExternalStore } from "react";
+import { createOpenFlag } from "@/lib/open-flag";
 
 /**
  * The draft dialog's open state, shared module-level so `/skill new`
  * (slash-commands.ts is not a component) can open the one SkillDraftDialog the
  * side panel renders — the help sheet's exact pattern.
  */
-let open = false;
-const listeners = new Set<() => void>();
+const flag = createOpenFlag();
 
-export function setSkillDraftOpen(next: boolean): void {
-  if (open === next) return;
-  open = next;
-  for (const l of listeners) l();
-}
+export const setSkillDraftOpen = flag.set;
 
 export function openSkillDraft(): void {
-  setSkillDraftOpen(true);
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+  flag.set(true);
 }
 
 export function useSkillDraftOpen(): boolean {
-  return useSyncExternalStore(subscribe, () => open);
+  return useSyncExternalStore(flag.subscribe, flag.get);
 }

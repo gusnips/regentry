@@ -4,11 +4,12 @@ import { Button } from "@/components/Button";
 import { TextField } from "@/components/TextField";
 import { TextArea } from "@/components/TextArea";
 import { FieldShell } from "@/components/FieldShell";
-import { normalizeHost } from "@/lib/host";
+import { useStoredItem } from "@/components/useStoredItem";
+import { normalizeHostList } from "@/lib/host";
 import { truncateTo } from "@/lib/format";
 import { MAX_BODY_CHARS, MAX_DESCRIPTION_CHARS, normalizeSkillName } from "../types";
-import { saveSkill } from "../store";
-import { useSkillsList } from "./hooks";
+import { saveSkill, skillsItem } from "../store";
+import type { ParsedSkillMd } from "../skill-md";
 
 /** Prefill for the form — a full skill (edit), a parsed import, or a distilled draft. */
 export interface SkillSeed {
@@ -19,6 +20,17 @@ export interface SkillSeed {
   sites?: string[];
   body?: string;
   source?: { url: string };
+}
+
+/** A parsed SKILL.md as a form prefill — the import preview and the /skill new draft seed alike. */
+export function seedFromParsed(parsed: ParsedSkillMd, sourceUrl?: string): SkillSeed {
+  return {
+    ...(parsed.name ? { name: parsed.name } : {}),
+    ...(parsed.description ? { description: parsed.description } : {}),
+    sites: parsed.sites,
+    body: parsed.body,
+    ...(sourceUrl ? { source: { url: sourceUrl } } : {}),
+  };
 }
 
 /**
@@ -39,7 +51,7 @@ export function SkillForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const skills = useSkillsList();
+  const skills = useStoredItem(skillsItem);
   const [nameText, setNameText] = useState(seed?.name ?? "");
   const [description, setDescription] = useState(seed?.description ?? "");
   const [sitesText, setSitesText] = useState(seed?.sites?.join(", ") ?? "");
@@ -53,21 +65,15 @@ export function SkillForm({
     : undefined;
 
   const save = async () => {
-    const name = normalizeSkillName(nameText);
-    if (!name) {
+    // liveName is derived from the same state — the save path provably agrees
+    // with the collision warning.
+    if (!liveName) {
       setError(t("skills.errors.badName"));
       return;
     }
-    const entries = sitesText.split(/[,\s]+/).filter(Boolean);
-    const sites: string[] = [];
-    const bad: string[] = [];
-    for (const entry of entries) {
-      const host = normalizeHost(entry);
-      if (!host) bad.push(entry);
-      else if (!sites.includes(host)) sites.push(host);
-    }
-    if (bad.length > 0) {
-      setError(t("skills.form.sitesInvalid", { list: bad.join(", ") }));
+    const { hosts: sites, dropped } = normalizeHostList(sitesText.split(/[,\s]+/).filter(Boolean));
+    if (dropped.length > 0) {
+      setError(t("skills.form.sitesInvalid", { list: dropped.join(", ") }));
       return;
     }
     // Editing keeps its record; a sanctioned collision (re-import) takes over
@@ -78,7 +84,7 @@ export function SkillForm({
     const source = seed?.source ?? base?.source;
     const result = await saveSkill({
       id: base?.id ?? crypto.randomUUID(),
-      name,
+      name: liveName,
       description: description.trim(),
       ...(sites.length > 0 ? { sites } : {}),
       body: body.trim(),

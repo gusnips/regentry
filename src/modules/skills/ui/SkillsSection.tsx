@@ -4,10 +4,10 @@ import { Button } from "@/components/Button";
 import { Switch } from "@/components/Switch";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CheckIcon, Icon, PencilIcon, TrashIcon } from "@/components/Icon";
+import { useStoredItem } from "@/components/useStoredItem";
 import type { Skill } from "../types";
-import { deleteSkill, setSkillEnabled } from "../store";
+import { deleteSkill, setSkillEnabled, skillsItem } from "../store";
 import { serializeSkillMd } from "../skill-md";
-import { useSkillsList } from "./hooks";
 import { SkillEditorDialog } from "./SkillEditorDialog";
 import { ImportSkillDialog } from "./ImportSkillDialog";
 
@@ -29,7 +29,7 @@ function CopyIcon() {
  */
 export function SkillsSection() {
   const { t } = useTranslation();
-  const skills = useSkillsList();
+  const skills = useStoredItem(skillsItem);
   const [editor, setEditor] = useState<{ open: boolean; skill?: Skill }>({ open: false });
   const [importing, setImporting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);

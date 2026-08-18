@@ -65,3 +65,19 @@ export function hostMatches(sectionHost: string, tabHost: string): boolean {
   if (isIpLiteral(sectionHost) || isIpLiteral(tabHost)) return false;
   return tabHost.endsWith(`.${sectionHost}`);
 }
+
+/**
+ * Raw user- or file-supplied entries → normalized unique hosts, plus the ones
+ * that didn't parse — so every inbound site list (form field, SKILL.md, store)
+ * becomes a host list by the one rule.
+ */
+export function normalizeHostList(entries: string[]): { hosts: string[]; dropped: string[] } {
+  const hosts: string[] = [];
+  const dropped: string[] = [];
+  for (const raw of entries) {
+    const host = normalizeHost(raw);
+    if (!host) dropped.push(raw);
+    else if (!hosts.includes(host)) hosts.push(host);
+  }
+  return { hosts, dropped };
+}

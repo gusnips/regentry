@@ -301,14 +301,10 @@ export const COMMANDS: readonly SlashCommand[] = [
         return;
       }
       const q = arg.toLowerCase();
-      const matches = (p: (typeof providers)[number], test: (s: string) => boolean) =>
-        test(p.id.toLowerCase()) || test(providerDisplayName(p).toLowerCase());
-      const pick =
-        providers.find((p) => matches(p, (s) => s === q)) ??
-        (() => {
-          const prefix = providers.filter((p) => matches(p, (s) => s.startsWith(q)));
-          return prefix.length === 1 ? prefix[0] : undefined;
-        })();
+      const pick = uniquePick(providers, q, (p) => [
+        p.id.toLowerCase(),
+        providerDisplayName(p).toLowerCase(),
+      ]);
       if (!pick) {
         note(
           i18n.t("commands.provider.unknown", {
@@ -391,12 +387,12 @@ export const COMMANDS: readonly SlashCommand[] = [
     ],
     run: (arg) => {
       const skills = loadedSkills();
+      const enabledNames = skills.filter((s) => s.enabled).map((s) => s.name);
       if (!arg) {
         // Reachable only past a dismissed menu (Esc, then Enter) — the report form.
-        const enabled = skills.filter((s) => s.enabled).map((s) => s.name);
         note(
-          enabled.length > 0
-            ? i18n.t("commands.skill.list", { list: enabled.join(", ") })
+          enabledNames.length > 0
+            ? i18n.t("commands.skill.list", { list: enabledNames.join(", ") })
             : i18n.t("commands.skill.none"),
         );
         return;
@@ -413,19 +409,14 @@ export const COMMANDS: readonly SlashCommand[] = [
         openSkillDraft();
         return;
       }
-      // Same resolution policy as resolveSlashArg: exact, then unique prefix —
-      // needed again here because a name with trailing args passes through raw.
-      const pick =
-        skills.find((s) => s.name === query) ??
-        (() => {
-          const prefix = skills.filter((s) => s.name.startsWith(query));
-          return prefix.length === 1 ? prefix[0] : undefined;
-        })();
+      // Resolved here, not by resolveSlashArg — a name with trailing args
+      // passes through raw, and this lookup runs against all skills so a
+      // disabled one gets its own answer instead of "unknown".
+      const pick = uniquePick(skills, query, (s) => [s.name]);
       if (!pick) {
-        const enabled = skills.filter((s) => s.enabled).map((s) => s.name);
         note(
-          enabled.length > 0
-            ? i18n.t("commands.skill.unknown", { name: token, list: enabled.join(", ") })
+          enabledNames.length > 0
+            ? i18n.t("commands.skill.unknown", { name: token, list: enabledNames.join(", ") })
             : i18n.t("commands.skill.none"),
         );
         return;
@@ -527,6 +518,18 @@ export function slashItems(text: string): SlashMenuState | null {
 }
 
 /**
+ * Exact match, else unique prefix, against any of an item's keys — the one
+ * resolution policy, shared by the dispatcher (resolveSlashArg) and the
+ * commands that split or re-scope their arg themselves (/provider, /skill).
+ */
+function uniquePick<T>(items: T[], q: string, keys: (item: T) => string[]): T | undefined {
+  const exact = items.find((item) => keys(item).includes(q));
+  if (exact) return exact;
+  const prefix = items.filter((item) => keys(item).some((k) => k.startsWith(q)));
+  return prefix.length === 1 ? prefix[0] : undefined;
+}
+
+/**
  * The typed arg → what the command receives. Empty stays empty (the report
  * form); a candidate wins on an exact or unique-prefix match against either
  * its value or its label; anything else passes through raw so the command's
@@ -540,12 +543,8 @@ export function resolveSlashArg(
   const candidates = command.candidates?.() ?? [];
   if (candidates.length === 0) return raw;
   const q = raw.toLowerCase();
-  const exact = candidates.find((c) => c.value.toLowerCase() === q || c.label.toLowerCase() === q);
-  if (exact) return exact.value;
-  const prefix = candidates.filter(
-    (c) => c.value.toLowerCase().startsWith(q) || c.label.toLowerCase().startsWith(q),
-  );
-  return prefix.length === 1 && prefix[0] ? prefix[0].value : raw;
+  const pick = uniquePick(candidates, q, (c) => [c.value.toLowerCase(), c.label.toLowerCase()]);
+  return pick?.value ?? raw;
 }
 
 /**

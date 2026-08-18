@@ -1,8 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Dialog } from "@base-ui-components/react";
-import { XIcon } from "@/components/Icon";
-import { overlayCard, scrim } from "@/components/chrome";
+import { TitledDialog } from "@/components/TitledDialog";
 import { Button } from "@/components/Button";
 import { getMessages } from "@/modules/conversation";
 import {
@@ -12,13 +10,11 @@ import {
 } from "@/modules/providers";
 import { i18n } from "@/i18n";
 import { distillSkillDraft } from "../distill";
-import { SkillForm, type SkillSeed } from "./SkillForm";
+import { seedFromParsed, SkillForm, type SkillSeed } from "./SkillForm";
 import { setSkillDraftOpen, useSkillDraftOpen } from "./draft-open";
 
 type Stage =
-  | { kind: "working" }
-  | { kind: "review"; seed: SkillSeed }
-  | { kind: "error"; message: string };
+  { kind: "working" } | { kind: "review"; seed: SkillSeed } | { kind: "error"; message: string };
 
 /** The whole pipeline, component-free: transcript → provider → SKILL.md draft → form seed. */
 async function distillFor(conversationId: string | null, signal: AbortSignal): Promise<SkillSeed> {
@@ -29,29 +25,22 @@ async function distillFor(conversationId: string | null, signal: AbortSignal): P
   // provider exists — but a raw crash is worse than a guard.
   if (!config) throw new Error(i18n.t("skills.draft.errorNothing"));
   const resolved = await resolveProviderModel(await ensureProviderCredential(config));
-  const parsed = await distillSkillDraft(resolved, transcript, signal);
-  return {
-    ...(parsed.name ? { name: parsed.name } : {}),
-    ...(parsed.description ? { description: parsed.description } : {}),
-    sites: parsed.sites,
-    body: parsed.body,
-  };
+  return seedFromParsed(await distillSkillDraft(resolved, transcript, signal));
 }
 
 /**
  * The dialog's inside, mounted only while it is open — mounting IS the reset,
  * so a reopen never shows the last attempt's leftovers, and unmount aborts a
- * distillation nobody is waiting for.
+ * distillation nobody is waiting for. Retry bumps `attempt` to re-run the one
+ * effect; its cleanup is what cancels the superseded call.
  */
 function DraftBody({ conversationId }: { conversationId: string | null }) {
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: "working" });
-  const controllerRef = useRef<AbortController | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
-  const distill = useCallback(() => {
-    controllerRef.current?.abort();
+  useEffect(() => {
     const controller = new AbortController();
-    controllerRef.current = controller;
     distillFor(conversationId, controller.signal).then(
       (seed) => {
         if (!controller.signal.aborted) setStage({ kind: "review", seed });
@@ -61,12 +50,8 @@ function DraftBody({ conversationId }: { conversationId: string | null }) {
           setStage({ kind: "error", message: e instanceof Error ? e.message : String(e) });
       },
     );
-  }, [conversationId]);
-
-  useEffect(() => {
-    distill();
-    return () => controllerRef.current?.abort();
-  }, [distill]);
+    return () => controller.abort();
+  }, [conversationId, attempt]);
 
   if (stage.kind === "working") {
     return (
@@ -88,7 +73,7 @@ function DraftBody({ conversationId }: { conversationId: string | null }) {
           <Button
             onClick={() => {
               setStage({ kind: "working" });
-              void distill();
+              setAttempt((a) => a + 1);
             }}
           >
             {t("skills.draft.retry")}
@@ -119,31 +104,13 @@ export function SkillDraftDialog({ conversationId }: { conversationId: string | 
   const open = useSkillDraftOpen();
 
   return (
-    <Dialog.Root open={open} onOpenChange={setSkillDraftOpen}>
-      <Dialog.Portal>
-        <Dialog.Backdrop className={scrim} />
-        <Dialog.Popup
-          className={`fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-4 ${overlayCard}`}
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <Dialog.Title className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                {t("skills.draft.title")}
-              </Dialog.Title>
-              <Dialog.Description className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                {t("skills.draft.description")}
-              </Dialog.Description>
-            </div>
-            <Dialog.Close
-              aria-label={t("common.close")}
-              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-            >
-              <XIcon />
-            </Dialog.Close>
-          </div>
-          <div className="mt-3">{open && <DraftBody conversationId={conversationId} />}</div>
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <TitledDialog
+      open={open}
+      onOpenChange={setSkillDraftOpen}
+      title={t("skills.draft.title")}
+      description={t("skills.draft.description")}
+    >
+      {open && <DraftBody conversationId={conversationId} />}
+    </TitledDialog>
   );
 }

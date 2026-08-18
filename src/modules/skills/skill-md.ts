@@ -1,4 +1,4 @@
-import { normalizeHost } from "@/lib/host";
+import { normalizeHostList } from "@/lib/host";
 import type { Skill } from "./types";
 import { normalizeSkillName } from "./types";
 
@@ -94,26 +94,20 @@ export function parseSkillMd(text: string): ParsedSkillMd {
     }
   }
 
-  const sites: string[] = [];
-  const droppedSites: string[] = [];
-  for (const key of ["site", "sites"]) {
+  const rawSites = ["site", "sites"].flatMap((key) => {
     const value = front.get(key);
-    if (value === undefined) continue;
-    for (const raw of asList(value)) {
-      const host = normalizeHost(raw);
-      if (!host) droppedSites.push(raw);
-      else if (!sites.includes(host)) sites.push(host);
-    }
-  }
+    return value === undefined ? [] : asList(value);
+  });
+  const { hosts: sites, dropped: droppedSites } = normalizeHostList(rawSites);
 
   const description =
-    (front.has("description") ? asScalar(front.get("description") ?? "") : "") ||
+    asScalar(front.get("description") ?? "") ||
     // when_to_use serves the same catalog line — a fallback, never an override.
-    (front.has("when_to_use") ? asScalar(front.get("when_to_use") ?? "") : "");
+    asScalar(front.get("when_to_use") ?? "");
 
   // The directory name is the identity in Claude Code; a lone file has only its
   // frontmatter — and failing that, its H1 is the closest thing to a title.
-  const rawName = front.has("name") ? asScalar(front.get("name") ?? "") : "";
+  const rawName = asScalar(front.get("name") ?? "");
   const h1 = /^#\s+(.+)$/m.exec(body)?.[1] ?? "";
   const name = normalizeSkillName(rawName) ?? normalizeSkillName(h1) ?? undefined;
 

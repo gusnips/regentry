@@ -2,7 +2,7 @@ import type { JSONSchemaProperty, ToolDef } from "@/modules/providers/types";
 import { i18n } from "@/i18n";
 import { DURABLE_FACT_RULES, type AgentContext } from "@/modules/memory";
 import { describeRecurrence, MIN_INTERVAL_MINUTES, type Schedule } from "@/modules/schedule";
-import type { Skill } from "@/modules/skills";
+import { MAX_CATALOG_DESC_CHARS, type Skill } from "@/modules/skills";
 import { MAX_PAGE_TEXT, SUPPORTED_KEYS, SUPPORTED_MODIFIERS } from "@/modules/browser";
 import { truncateTo } from "@/lib/format";
 
@@ -143,8 +143,6 @@ Tasks the user has set to run on their own, without anyone watching. Use these i
 ${rows}`;
 }
 
-/** A listing entry is for discovery — the tool loads the full body on demand. */
-const MAX_CATALOG_DESC_CHARS = 250;
 /**
  * ponytail: one flat char budget on the whole catalog; past it, the listing
  * degrades to bare names rather than eating the run's context. Ceiling: with

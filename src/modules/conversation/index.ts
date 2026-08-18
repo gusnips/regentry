@@ -6,4 +6,4 @@ export {
   openAgentConversation,
   recordDrivenTabFor,
 } from "./conversations";
-export { renderTranscriptMessage } from "./render";
+export { capTranscriptTail, renderTranscriptMessage } from "./render";

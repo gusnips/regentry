@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
 import { Switch } from "@/components/Switch";
+import { Icon, TrashIcon } from "@/components/Icon";
 import { useStoredItem } from "@/components/useStoredItem";
 import { runBoardItem } from "@/modules/agent/run-queue";
 import { setActiveConversation } from "@/modules/conversation/conversations";
@@ -36,25 +37,6 @@ function formatWhen(ms: number, lang: string): string {
     nearby
       ? { weekday: "short", hour: "2-digit", minute: "2-digit" }
       : { dateStyle: "medium", timeStyle: "short" },
-  );
-}
-
-/** Small inline glyphs — the project ships no icon library. */
-function Icon({ children }: { children: React.ReactNode }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {children}
-    </svg>
   );
 }
 
@@ -257,11 +239,7 @@ export function SchedulesSection() {
                     title={t(running ? "schedule.ui.deleteRunning" : "schedule.ui.delete")}
                     onClick={() => void remove(s, running)}
                   >
-                    <Icon>
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </Icon>
+                    <TrashIcon />
                   </Button>
                 </div>
               </li>

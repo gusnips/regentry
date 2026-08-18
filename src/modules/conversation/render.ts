@@ -26,3 +26,17 @@ export function renderTranscriptMessage(m: Message): string {
       return "";
   }
 }
+
+/**
+ * Tail-cap a rendered transcript for a distillation call — the newest turns
+ * hold the corrections and the outcome, so the tail wins; the oldest are the
+ * ones a summary can afford to lose. One budget for every distiller
+ * (compaction, skill drafts): 60k chars ≈ 15k tokens, which fits inside any
+ * window worth supporting — compaction especially runs precisely because the
+ * conversation no longer fits, so handing it the whole thing would fail it
+ * for the very reason it was called.
+ */
+export function capTranscriptTail(body: string, max = 60_000): string {
+  if (body.length <= max) return body;
+  return `[earlier turns omitted]\n\n${body.slice(-max)}`;
+}

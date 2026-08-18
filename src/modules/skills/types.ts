@@ -12,7 +12,7 @@ export interface Skill {
   name: string;
   /** What it does and when to use it — a skill with no description is invisible to the model. */
   description: string;
-  /** Normalized hosts (memory/scope rules). Absent or empty = offered on every site. */
+  /** Normalized hosts (lib/host rules). Absent or empty = offered on every site. */
   sites?: string[];
   /** The instructions themselves, markdown prose. Never executed, only read by the model. */
   body: string;
@@ -34,13 +34,19 @@ export const MAX_SKILLS = 50;
 export const MAX_BODY_CHARS = 20_000;
 export const MAX_DESCRIPTION_CHARS = 500;
 
-/** `/skill new` is the create subcommand — a skill named "new" could never be invoked. */
-export const RESERVED_SKILL_NAMES = ["new"] as const;
+/**
+ * What a description is once it reaches the run: a single catalog line. The
+ * prompt truncates listings at this, and the distiller is told to write under
+ * it — one number so the two can't drift.
+ */
+export const MAX_CATALOG_DESC_CHARS = 250;
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 export function isValidSkillName(name: string): boolean {
-  return NAME_RE.test(name) && !(RESERVED_SKILL_NAMES as readonly string[]).includes(name);
+  // "new" is reserved: /skill new is the create subcommand, so a skill named
+  // "new" could never be invoked.
+  return NAME_RE.test(name) && name !== "new";
 }
 
 /**
