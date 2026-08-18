@@ -79,18 +79,19 @@
   },
   "instructions": {
     "title": "Instrucciones",
-    "help": "Cosas que TabRunner debería hacer siempre — o nunca hacer — en cada chat. Escríbelas como frases sencillas.",
-    "placeholder": "Confírmame siempre antes de enviar un correo o hacer un pago.\nMi correo de trabajo es yo@acme.com.",
+    "help": "Cosas que TabRunner debería hacer siempre — o nunca hacer — en cada chat. Escríbelas como frases sencillas. Empieza una línea con \"## site: acme.com\" para que todo lo de abajo aplique solo en ese sitio.",
+    "placeholder": "Confírmame siempre antes de enviar un correo o hacer un pago.\nMi correo de trabajo es yo@acme.com.\n\n## site: github.com\nTrabaja siempre en la organización acme-corp.",
     "autosave": "Los cambios se guardan automáticamente y se aplican a cada chat."
   },
   "memory": {
     "title": "Lo que TabRunner recuerda",
-    "help": "Datos que TabRunner ha aprendido de tus tareas, para no tener que preguntar dos veces. Borra lo que esté mal.",
+    "help": "Datos que TabRunner ha aprendido de tus tareas, para no tener que preguntar dos veces. Los datos ligados a un sitio solo se cargan cuando una tarea empieza ahí. Borra lo que esté mal.",
     "enable": "Recordar lo que aprende",
     "empty": "Todavía nada. Cuando una tarea le enseñe a TabRunner algo sobre ti o un sitio que usas, aparecerá aquí.",
     "off": "La memoria está desactivada: TabRunner no está guardando lo que aprende. Actívala arriba para retomarlo.",
     "saved": "Guardado",
-    "deleteMemory": "Eliminar este dato"
+    "deleteMemory": "Eliminar este dato",
+    "everySite": "Todos los sitios"
   },
   "schedule": {
     "agentLabel": "Programado",
@@ -601,6 +602,7 @@
     "slashCommands": "Escribe / en el campo de texto para ver comandos — cambia proveedor, modelo o esfuerzo.",
     "compact": "¿Chat largo llenándose? /compact cambia los mensajes viejos por un resumen — conservas el historial.",
     "schedule": "Pide trabajo con temporizador — “cada día laborable a las 9, mira mi correo”. Gestiónalas en Ajustes.",
+    "siteInstructions": "En Instrucciones, una línea “## site: acme.com” limita todo lo que sigue a ese sitio.",
     "enginePicker": "El chip junto a Enviar elige proveedor, modelo y esfuerzo — /model también sirve.",
     "help": "Pulsa ? con el campo vacío para ver atajos y comandos — /help también sirve."
   },

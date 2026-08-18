@@ -63,6 +63,15 @@ describe("buildExtractionSystemPrompt", () => {
   it("marks an empty memory", () => {
     expect(buildExtractionSystemPrompt("")).toContain("(empty)");
   });
+
+  it("teaches the site tag, and names the run's site only when one is known", () => {
+    const untargeted = buildExtractionSystemPrompt("");
+    expect(untargeted).toContain("[acme.com]");
+    expect(untargeted).not.toContain("worked mainly on");
+
+    const targeted = buildExtractionSystemPrompt("", "mail.google.com");
+    expect(targeted).toContain("This run worked mainly on mail.google.com");
+  });
 });
 
 describe("buildExtractionMessages", () => {
@@ -183,11 +192,27 @@ describe("buildExtractionMessages", () => {
 
 describe("parseExtractedFacts", () => {
   it("collects list lines, stripping the marker", () => {
-    expect(parseExtractedFacts("- one\n- two\n- three")).toEqual(["one", "two", "three"]);
+    expect(parseExtractedFacts("- one\n- two\n- three")).toEqual([
+      { text: "one" },
+      { text: "two" },
+      { text: "three" },
+    ]);
   });
 
   it("accepts * markers and leading whitespace", () => {
-    expect(parseExtractedFacts("  * fact")).toEqual(["fact"]);
+    expect(parseExtractedFacts("  * fact")).toEqual([{ text: "fact" }]);
+  });
+
+  it("reads a bracket tag as the fact's site, normalized", () => {
+    expect(parseExtractedFacts("- [WWW.Acme.COM] Login is the email link.")).toEqual([
+      { text: "Login is the email link.", site: "acme.com" },
+    ]);
+  });
+
+  it("strips a junk tag and keeps the fact global — junk must not become fact text", () => {
+    expect(parseExtractedFacts("- [not a host!] Login is the email link.")).toEqual([
+      { text: "Login is the email link." },
+    ]);
   });
 
   it("returns nothing for a bare 'none', whatever the casing or punctuation", () => {
@@ -198,12 +223,16 @@ describe("parseExtractedFacts", () => {
 
   it("ignores prose — a fact must be a list line to count", () => {
     expect(parseExtractedFacts("The run taught nothing durable.\n- but this one counts")).toEqual([
-      "but this one counts",
+      { text: "but this one counts" },
     ]);
   });
 
   it("caps at the per-run ceiling", () => {
-    expect(parseExtractedFacts("- a\n- b\n- c\n- d\n- e")).toEqual(["a", "b", "c"]);
+    expect(parseExtractedFacts("- a\n- b\n- c\n- d\n- e")).toEqual([
+      { text: "a" },
+      { text: "b" },
+      { text: "c" },
+    ]);
   });
 });
 
@@ -251,6 +280,33 @@ describe("extractAndRemember", () => {
     mockStreamReply("- A known fact.\n- A fresh one.");
     await extractAndRemember(makeConfig(), [], new AbortController().signal);
     expect(await getDoc("MEMORY.md")).toBe("- A known fact.\n- A fresh one.\n");
+  });
+
+  it("files a tagged fact under its site's section", async () => {
+    mockStreamReply("- [mail.google.com] Archive is the box icon, not the trash.");
+    await extractAndRemember(makeConfig(), [], new AbortController().signal);
+    expect(await getDoc("MEMORY.md")).toBe(
+      "## site: mail.google.com\n- Archive is the box icon, not the trash.\n",
+    );
+  });
+
+  it("shows the model only the memory slice the run's site would load", async () => {
+    await setDoc(
+      "MEMORY.md",
+      "- A global fact.\n## site: google.com\n- A Google fact.\n## site: jira.acme.com\n- A Jira fact.\n",
+    );
+    mockStreamReply("none");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    await extractAndRemember(
+      makeConfig(),
+      [],
+      new AbortController().signal,
+      "https://mail.google.com/mail/u/0/",
+    );
+    const body = String(fetchSpy.mock.calls[0]?.[1]?.body ?? "");
+    expect(body).toContain("A global fact.");
+    expect(body).toContain("A Google fact.");
+    expect(body).not.toContain("A Jira fact.");
   });
 
   it("extracts from a run that ended on done — the terminal call never got a result", async () => {

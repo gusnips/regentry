@@ -1,6 +1,6 @@
 import type { BrowserDriver } from "@/modules/browser";
 import type { ToolCall } from "@/modules/providers/types";
-import { remember } from "@/modules/memory";
+import { normalizeHost, remember } from "@/modules/memory";
 import { cancelSchedule, scheduleTask } from "@/modules/schedule/agent-tools";
 import { i18n } from "@/i18n";
 import { truncate } from "@/lib/logger";
@@ -200,9 +200,11 @@ export async function executeTool(
       case "remember": {
         // Reachable only when memory is on — buildToolDefs withholds the tool
         // otherwise, so there is no second enabled check to drift out of sync.
-        const stored = await remember(String(call.args.fact ?? ""));
+        const rawSite = typeof call.args.site === "string" ? call.args.site : undefined;
+        const stored = await remember(String(call.args.fact ?? ""), rawSite);
         if (!stored) return { ok: false, error: i18n.t("errors.memoryEmpty") };
-        return { ok: true, data: { fact: stored } };
+        const site = rawSite ? normalizeHost(rawSite) : null;
+        return { ok: true, data: { fact: stored, ...(site ? { site } : {}) } };
       }
 
       case "schedule_task":
@@ -370,8 +372,10 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
   }
   if (tool === "remember" && data && typeof data === "object") {
     // The fact itself is the summary — "Saved to memory" tells the user nothing
-    // about what TabRunner now knows, which is the only interesting part.
-    return (data as { fact: string }).fact;
+    // about what TabRunner now knows, which is the only interesting part. The
+    // bracket tag names the site it is scoped to, language-neutrally.
+    const { fact, site } = data as { fact: string; site?: string };
+    return site ? `[${site}] ${fact}` : fact;
   }
   if (tool === "ask_user" && data && typeof data === "object") {
     // The question is the summary — the card renders it as the headline.

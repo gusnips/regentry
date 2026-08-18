@@ -39,19 +39,72 @@ describe("remember", () => {
   });
 
   it("evicts oldest entries past the cap but always keeps the newest", async () => {
-    await setDoc("MEMORY.md", `- ${"x".repeat(7_990)}\n- an older fact\n`);
+    await setDoc("MEMORY.md", `- ${"x".repeat(3_990)}\n- an older fact\n`);
     await remember("the newest fact");
     const doc = await getDoc("MEMORY.md");
     expect(doc).toContain("- the newest fact");
     expect(doc).not.toContain("xxx");
-    expect(doc.length).toBeLessThanOrEqual(8_000);
+    expect(doc.length).toBeLessThanOrEqual(4_001);
+  });
+});
+
+describe("remember with a site", () => {
+  it("files the fact under its site's section, created on first use", async () => {
+    await remember("The user's handle is gus.");
+    await remember("Archive is the box icon, not the trash.", "mail.google.com");
+    await remember("Login is the email link.", "acme.com");
+    expect(await getDoc("MEMORY.md")).toBe(
+      "- The user's handle is gus.\n" +
+        "## site: mail.google.com\n- Archive is the box icon, not the trash.\n" +
+        "## site: acme.com\n- Login is the email link.\n",
+    );
+  });
+
+  it("normalizes the site on write — www, case, even a full URL", async () => {
+    await remember("Login is the email link.", "https://WWW.Acme.COM/billing");
+    expect(await getDoc("MEMORY.md")).toBe("## site: acme.com\n- Login is the email link.\n");
+  });
+
+  it("falls back to global rather than losing a fact to an unusable site", async () => {
+    await remember("A fact worth keeping.", "not a host!");
+    expect(await getDoc("MEMORY.md")).toBe("- A fact worth keeping.\n");
+  });
+
+  it("dedupes within the scope only — the same lesson may hold globally and on one site", async () => {
+    await remember("Prefer the email login.");
+    await remember("Prefer the email login.", "acme.com");
+    await remember("prefer the EMAIL login.", "acme.com");
+    expect(await getDoc("MEMORY.md")).toBe(
+      "- Prefer the email login.\n## site: acme.com\n- Prefer the email login.\n",
+    );
+  });
+
+  it("evicts only within the overfull scope — other scopes keep their facts", async () => {
+    await setDoc(
+      "MEMORY.md",
+      `- a global fact\n## site: acme.com\n- ${"x".repeat(3_990)}\n## site: other.com\n- an untouched fact\n`,
+    );
+    await remember("the newest acme fact", "acme.com");
+    const doc = await getDoc("MEMORY.md");
+    expect(doc).toContain("- a global fact");
+    expect(doc).toContain("- an untouched fact");
+    expect(doc).toContain("- the newest acme fact");
+    expect(doc).not.toContain("xxx");
   });
 });
 
 describe("listMemory", () => {
   it("returns stored facts with the bullet marker stripped, skipping blank lines", () => {
-    expect(listMemory("- one\n\n- two\n")).toEqual(["one", "two"]);
+    expect(listMemory("- one\n\n- two\n")).toEqual([{ text: "one" }, { text: "two" }]);
     expect(listMemory("")).toEqual([]);
+  });
+
+  it("attributes each section's facts to its site — a flat legacy doc is all global", () => {
+    expect(listMemory("- global\n## site: acme.com\n- scoped\n")).toEqual([
+      { text: "global" },
+      { text: "scoped", site: "acme.com" },
+    ]);
+    expect(listMemory("- one\n- two\n")).toEqual([{ text: "one" }, { text: "two" }]);
   });
 });
 
@@ -72,6 +125,18 @@ describe("removeMemory", () => {
     await setDoc("MEMORY.md", "- one\n");
     await removeMemory("missing");
     expect(await getDoc("MEMORY.md")).toBe("- one\n");
+  });
+
+  it("removes only within the given scope — the twin in the other scope survives", async () => {
+    await setDoc("MEMORY.md", "- shared\n## site: acme.com\n- shared\n");
+    await removeMemory("shared", "acme.com");
+    expect(await getDoc("MEMORY.md")).toBe("- shared\n");
+  });
+
+  it("drops a section's heading with its last fact", async () => {
+    await setDoc("MEMORY.md", "- global\n## site: acme.com\n- only one\n");
+    await removeMemory("only one", "acme.com");
+    expect(await getDoc("MEMORY.md")).toBe("- global\n");
   });
 });
 
@@ -112,5 +177,45 @@ describe("loadAgentContext", () => {
   it("names the user's language for the plan steps and the done summary", async () => {
     const prompt = buildSystemPrompt(await loadAgentContext(), "Português (Brasil)");
     expect(prompt).toContain("Português (Brasil)");
+  });
+
+  it("loads the starting site's sections — heading included — and drops the rest", async () => {
+    await setDoc(
+      "AGENTS.md",
+      "Always confirm before paying.\n## site: google.com\nUse the work account.\n## site: jira.acme.com\nLog under PROJ-1.\n",
+    );
+    await setDoc(
+      "MEMORY.md",
+      "- A global fact.\n## site: google.com\n- Archive is the box icon.\n## site: jira.acme.com\n- Sprint board opens filtered.\n",
+    );
+
+    const ctx = await loadAgentContext("https://mail.google.com/mail/u/0/");
+    expect(ctx.instructions).toContain("Always confirm before paying.");
+    expect(ctx.instructions).toContain("## site: google.com");
+    expect(ctx.instructions).toContain("Use the work account.");
+    expect(ctx.instructions).not.toContain("jira");
+    expect(ctx.memory).toContain("- A global fact.");
+    expect(ctx.memory).toContain("- Archive is the box icon.");
+    expect(ctx.memory).not.toContain("Sprint board");
+  });
+
+  it("keeps the user's own headings global — only site: headings scope", async () => {
+    await setDoc(
+      "AGENTS.md",
+      "## site: acme.com\nUse SSO.\n## My other notes\nAlways reply politely.\n",
+    );
+    const ctx = await loadAgentContext("https://unrelated.example.com/");
+    expect(ctx.instructions).not.toContain("Use SSO.");
+    expect(ctx.instructions).toContain("## My other notes");
+    expect(ctx.instructions).toContain("Always reply politely.");
+  });
+
+  it("loads global content only when the run has no site — chrome://, or no URL at all", async () => {
+    await setDoc("MEMORY.md", "- A global fact.\n## site: acme.com\n- A scoped fact.\n");
+    for (const url of ["chrome://extensions", undefined]) {
+      const ctx = await loadAgentContext(url);
+      expect(ctx.memory).toContain("A global fact.");
+      expect(ctx.memory).not.toContain("A scoped fact.");
+    }
   });
 });

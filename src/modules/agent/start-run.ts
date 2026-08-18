@@ -269,6 +269,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
           background: opts.thisPage !== true,
           ...(onUsersTab ? { adopted: true } : {}),
         },
+        ...(tab.url ? { startUrl: tab.url } : {}),
         drainInjected: () => run.injectedQueue.splice(0, run.injectedQueue.length),
         signal: run.controller.signal,
         callbacks: {
@@ -369,9 +370,18 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       // until the call settles; background.ts clears a stale one at boot.
       if (!run.controller.signal.aborted && resolvedProvider) {
         void chrome.alarms.create(MEMORY_KEEPALIVE_ALARM, { periodInMinutes: 0.5 });
-        void extractAndRemember(resolvedProvider, wire, run.controller.signal).finally(() => {
-          void chrome.alarms.clear(MEMORY_KEEPALIVE_ALARM);
-        });
+        // Where the run ended is where its lessons belong — the extraction gets
+        // the driven tab's final URL as its site hint. Tab-died tolerance
+        // mirrors persistDrivenTabFor.
+        const finalUrl = await chrome.tabs
+          .get(drivenTabId)
+          .then((t) => t.url)
+          .catch(() => undefined);
+        void extractAndRemember(resolvedProvider, wire, run.controller.signal, finalUrl).finally(
+          () => {
+            void chrome.alarms.clear(MEMORY_KEEPALIVE_ALARM);
+          },
+        );
         // The first task's one-line title may be a fragment ("hey" off a
         // two-line message) — one cheap call names it for real. Same keepalive
         // umbrella as memory: it rides this run's hold on the worker, and a

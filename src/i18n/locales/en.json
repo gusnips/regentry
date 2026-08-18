@@ -79,18 +79,19 @@
   },
   "instructions": {
     "title": "Instructions",
-    "help": "Things TabRunner should always do — or never do — in every chat. Write them like plain sentences.",
-    "placeholder": "Always ask me before sending an email or making a payment.\nMy work email is me@acme.com.",
+    "help": "Things TabRunner should always do — or never do — in every chat. Write them like plain sentences. Start a line with \"## site: acme.com\" to make everything under it apply only on that site.",
+    "placeholder": "Always ask me before sending an email or making a payment.\nMy work email is me@acme.com.\n\n## site: github.com\nAlways work in the acme-corp organization.",
     "autosave": "Changes save automatically and apply to every chat."
   },
   "memory": {
     "title": "What TabRunner remembers",
-    "help": "Facts TabRunner has picked up from your tasks, so it doesn't have to ask twice. Delete anything that's wrong.",
+    "help": "Facts TabRunner has picked up from your tasks, so it doesn't have to ask twice. Facts tied to one site load only when a task starts there. Delete anything that's wrong.",
     "enable": "Remember what it learns",
     "empty": "Nothing yet. When a task teaches TabRunner something about you or a site you use, it will show up here.",
     "off": "Memory is off — TabRunner isn't saving what it learns. Turn it on above to resume.",
     "saved": "Saved",
-    "deleteMemory": "Delete this fact"
+    "deleteMemory": "Delete this fact",
+    "everySite": "All sites"
   },
   "schedule": {
     "agentLabel": "Scheduled",
@@ -601,6 +602,7 @@
     "slashCommands": "Type / in the composer for commands — switch provider, model, or effort mid-chat.",
     "compact": "Long chat filling up? /compact swaps the older messages for a summary — you keep the scrollback.",
     "schedule": "Ask for work on a timer — “every weekday at 9am, check my inbox”. Manage them in Settings.",
+    "siteInstructions": "In Instructions, a “## site: acme.com” line scopes everything under it to that site.",
     "enginePicker": "The chip by Send picks provider, model, and effort for the next task — /model works too.",
     "help": "Press ? on an empty composer for every shortcut and command — /help works too."
   },

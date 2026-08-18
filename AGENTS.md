@@ -108,11 +108,15 @@ never reach the service-worker bundle.
   of deleting anything: replay starts at it, scrollback keeps every message.
 - `memory/` — the two storage-backed markdown docs every run loads, mirroring the AGENTS.md /
   MEMORY.md convention: `AGENTS.md` is the user's standing instructions, `MEMORY.md` is the
-  agent's, written by the `remember` tool. On by default (`memoryEnabled`); off stops both halves
-  and the tool is not offered to the model at all. After a run, `extractAndRemember` distills
-  durable facts from the transcript — capped at 3, and "none" is the expected answer, since a run
-  that only read a page teaches nothing. Edited on the options page (no filesystem in an
-  extension — the filenames are the mental model, not a path).
+  agent's, written by the `remember` tool. Both share one scope axis (`scope.ts`): a
+  `## site: <host>` section loads only when the run starts on that site — suffix match,
+  www-stripped, no paths — and everything else is global, including the user's own `##` headings.
+  The model picks a fact's scope (the `site` param on `remember`); eviction caps each scope
+  separately, so one chatty site can't evict another's facts. On by default (`memoryEnabled`);
+  off stops both halves and the tool is not offered to the model at all. After a run,
+  `extractAndRemember` distills durable facts from the transcript — capped at 3, "none" is the
+  expected answer, and facts are tagged with the site they belong to. Edited on the options page
+  (no filesystem in an extension — the filenames are the mental model, not a path).
 - `schedule/` — unattended runs on a timer: one-shot, daily, or every-N-minutes with an optional
   weekday filter and active-hours window. Wall-clock rules recomputed after every fire (never
   `periodInMinutes` — it can't hold 9am across a DST shift), one `chrome.alarms` one-shot per

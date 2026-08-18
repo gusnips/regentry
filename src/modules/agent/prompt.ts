@@ -72,7 +72,7 @@ When the user asks how to do something in TabRunner, or what something on their 
 function instructionsSection(instructions: string): string {
   return `# AGENTS.md
 
-Standing instructions written by the user. They apply to every task and take precedence over your own defaults.
+Standing instructions written by the user. They apply to every task and take precedence over your own defaults. Any section headed \`## site: <host>\` is here because this run started on that site.
 
 ${instructions}`;
 }
@@ -97,7 +97,7 @@ function languageSection(language: string): string {
 function memorySection(memory: string): string {
   return `# MEMORY.md
 
-What you have learned about this user and the sites they use, carried over from earlier runs.
+What you have learned about this user and the sites they use, carried over from earlier runs. Only the global facts and the sections for this run's starting site (headed \`## site: <host>\`) are shown — memory for other sites exists but is not loaded here.
 
 ${memory || "(empty — nothing remembered yet)"}
 
@@ -702,7 +702,7 @@ Only schedule what the user asked to be scheduled. Needs an approved plan, like 
 /** Offered only while memory is on — a tool whose result is discarded is worse than no tool. */
 const REMEMBER_TOOL: ToolDef = {
   name: "remember",
-  description: `Save one durable fact to memory so future runs start knowing it — one fact per call, and only when this run taught you something that outlives it.
+  description: `Save one durable fact to memory so future runs start knowing it — one fact per call, and only when this run taught you something that outlives it. A fact saved with a site is loaded only by runs that start on that site; a fact without one is loaded by every run.
 
 ${DURABLE_FACT_RULES}`,
   params: {
@@ -711,7 +711,12 @@ ${DURABLE_FACT_RULES}`,
       fact: {
         type: "string",
         description:
-          "The fact, e.g. 'On invoice.acme.com the working login is the \"Sign in with email\" link, not the SSO button.'",
+          "The fact, e.g. 'The working login is the \"Sign in with email\" link, not the SSO button.'",
+      },
+      site: {
+        type: "string",
+        description:
+          "The site this fact is about, as a bare domain — the registrable domain by default ('acme.com', never 'www.acme.com', a URL, or a path), so the fact loads on every subdomain; name a subdomain ('mail.google.com') only when the fact holds nowhere else. Omit it for facts about the user that hold on every site.",
       },
     },
     required: ["fact"],

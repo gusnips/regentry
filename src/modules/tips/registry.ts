@@ -20,6 +20,7 @@ export const TIPS = [
   { id: "widget", cooldownOpens: 6 },
   { id: "board", cooldownOpens: 6 },
   { id: "memory", cooldownOpens: 8 },
+  { id: "siteInstructions", cooldownOpens: 8 },
   { id: "schedule", cooldownOpens: 8 },
   { id: "usage", cooldownOpens: 8 },
   { id: "compact", cooldownOpens: 8 },

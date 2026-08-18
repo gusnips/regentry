@@ -61,14 +61,17 @@ it that**: `memory/AGENTS.md` is a general, always-loaded skill.
 | Tier                        | What                                                                                                       | State                                  |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | 1. **General**              | Always-on standing instructions                                                                            | ✅ `memory/AGENTS.md`                  |
-| 2. **Domain-scoped**        | Loads only when the run's tab matches a URL pattern — _"on Gmail, archive is the box icon, not the trash"_ | ⬜ next rung                           |
+| 2. **Domain-scoped**        | Loads only when the run's tab matches a URL pattern — _"on Gmail, archive is the box icon, not the trash"_ | ✅ `## site:` sections, both docs      |
 | 3. **Commands ("plugins")** | `/expenses` invokes a named recipe, with args                                                              | ⬜ host exists (`slash-commands.ts`)   |
 | 4. **Learned**              | After a run that took real figuring-out, the agent offers to save what it worked out                       | ⬜ shape exists (`extractAndRemember`) |
 | 5. **Waypoints**            | A skill stores _anchors_, not just prose — so run #2 doesn't re-snapshot its way to the same button        | ⬜ the differentiated one              |
 
-**Tier 2 is the cheapest real step** and doesn't need a new storage model: a `url:` matcher on
-sections of the existing docs, filtered by `loadAgentContext()` at run start. Ship that, see if
-anyone's instructions file gets unwieldy, and let that decide whether tiers 3–5 are real.
+**Tier 2 shipped as the cheapest real step**, with no new storage model: `## site: <host>`
+sections on the existing docs, host-suffix matched (no paths, no public-suffix list —
+`memory/scope.ts`), filtered by `loadAgentContext(url)` at run start. The model scopes writes
+(`remember`'s `site` param, and the post-run extraction tags facts), and eviction caps each scope
+separately. Now see if anyone's instructions file gets unwieldy, and let that decide whether
+tiers 3–5 are real.
 
 **"Site memory" is this same change, seen from the other side — not a third store.** The two
 directions are already two documents:
@@ -80,10 +83,10 @@ So both are one scope axis on the docs we already ship, and the same `url:` matc
 Building site memory as its own subsystem would give us two mechanisms for one idea, and a user
 with no way to tell which document their fact landed in.
 
-It also fixes something already broken: `MEMORY.md` is global and capped, so facts about twenty
-sites compete for one budget and **every run loads all of them.** Scoping means a run on Gmail
+It also fixed something that was broken: `MEMORY.md` was global and capped, so facts about twenty
+sites competed for one budget and **every run loaded all of them.** Scoping means a run on Gmail
 carries Gmail's facts and not Jira's — better behaviour and a smaller prompt, from the same edit.
-That makes tier 2 worth doing on the memory side even before the skills side proves out.
+That made tier 2 worth doing on the memory side even before the skills side proves out.
 
 **Tier 5 is the one nothing else can build.** A sandboxed agent starts cold on every task, so
 site-specific waypoints have nowhere to accumulate. We come back to the same logged-in page every

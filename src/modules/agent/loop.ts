@@ -181,6 +181,11 @@ export interface LoopOptions {
   /** Where this run works and what it was kept from — see RunMode. */
   mode?: RunMode;
   /**
+   * URL of the tab the run starts on — scopes AGENTS.md/MEMORY.md to its site's
+   * `## site:` sections. Absent (tests, unknown tab) = global content only.
+   */
+  startUrl?: string;
+  /**
    * The stored conversation as alternating user/assistant turns, replayed
    * between the system prompt and the fresh task so a continuation lands on a
    * model that has read the same exchange. The adapters serialize it with the
@@ -293,6 +298,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     supportsImages: supportsImagesOpt,
     previousTabs,
     mode,
+    startUrl,
     history,
     contextWindow = DEFAULT_CONTEXT_WINDOW,
     drainInjected,
@@ -319,7 +325,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
   // — a list the model is shown, so "what do I have scheduled?" costs no call.
   // The snapshot is independent of all of it — they run concurrently.
   const [context, schedules, initial] = await Promise.all([
-    loadAgentContext(),
+    loadAgentContext(startUrl),
     listSchedules(),
     driver.snapshot(),
   ]);
