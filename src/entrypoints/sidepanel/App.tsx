@@ -12,6 +12,7 @@ import {
   useConversationStore,
 } from "@/modules/conversation/ui";
 import { Onboarding, useProvidersStore } from "@/modules/providers/ui";
+import { initSkillsCatalog, SkillDraftDialog } from "@/modules/skills/ui";
 import { SettingsMenu } from "./SettingsMenu";
 import { notePanelOpen, refreshTip } from "@/modules/tips/ui";
 import { Button } from "@/components/Button";
@@ -102,6 +103,11 @@ export default function App() {
     void load(); // idempotent — the store dedupes concurrent mounts
   }, [load]);
 
+  // The slash menu's skill picker reads synchronously — warm its mirror once.
+  useEffect(() => {
+    initSkillsCatalog();
+  }, []);
+
   // Tip rotation boundaries — Claude Code re-picks per turn; our run is the
   // turn: once per panel open, then again each time a run ends. A conversation
   // switch re-fires the runEndedAt effect too, which is fine — the composer is
@@ -183,6 +189,9 @@ export default function App() {
       {/* One instance for all three doors (/help, "?", the settings item) —
           portaled, so its tree position carries no layout weight. */}
       <HelpDialog />
+      {/* /skill new's one dialog — the id rides a prop so skills/ui never
+          imports conversation/ui back (slash-commands already points the other way). */}
+      <SkillDraftDialog conversationId={activeId} />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from "@/modules/providers/ui";
 import { InstructionsSection, MemorySection } from "@/modules/memory/ui";
 import { SchedulesSection } from "@/modules/schedule/ui";
+import { SkillsSection } from "@/modules/skills/ui";
 import { Button } from "@/components/Button";
 import { BrandMark } from "@/components/BrandMark";
 import { Icon } from "@/components/Icon";
@@ -23,7 +24,15 @@ import { newIssueUrl } from "@/lib/report";
 import { StatusStrip } from "./StatusStrip";
 import { McpPane } from "./McpPane";
 
-const PAGES = ["general", "behavior", "schedules", "knowledge", "providers", "mcp"] as const;
+const PAGES = [
+  "general",
+  "behavior",
+  "schedules",
+  "knowledge",
+  "skills",
+  "providers",
+  "mcp",
+] as const;
 type PageId = (typeof PAGES)[number];
 
 /** The hash is the page's deep link — a reload or a copied URL lands back here. */
@@ -368,6 +377,15 @@ export default function App() {
             <path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z" />
           </NavItem>
           <NavItem
+            active={visiblePage === "skills"}
+            label={t("settings.nav.skills")}
+            onClick={() => go("skills")}
+          >
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+            <path d="M20 3v4" />
+            <path d="M22 5h-4" />
+          </NavItem>
+          <NavItem
             active={visiblePage === "providers"}
             label={t("settings.nav.providers")}
             onClick={() => go("providers")}
@@ -397,6 +415,11 @@ export default function App() {
             <div className="[&>section:first-child]:mt-0">
               <InstructionsSection />
               <MemorySection />
+            </div>
+          )}
+          {visiblePage === "skills" && (
+            <div className="[&>section:first-child]:mt-0">
+              <SkillsSection />
             </div>
           )}
           {visiblePage === "providers" && <ProvidersPane />}

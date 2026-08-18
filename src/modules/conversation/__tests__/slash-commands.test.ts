@@ -240,3 +240,82 @@ describe("/stop", () => {
     expect(lastNote()).toContain("no task to stop");
   });
 });
+
+// ---------------------------------------------------------------------------
+// /skill — the catalog mirror and the draft dialog are skills/ui's; both are
+// mocked so this file stays about the command's own resolution and routing.
+const skillsUi = vi.hoisted(() => {
+  const skills: {
+    id: string;
+    name: string;
+    description: string;
+    body: string;
+    enabled: boolean;
+    createdAt: number;
+    updatedAt: number;
+  }[] = [];
+  return { skills, openSkillDraft: vi.fn() };
+});
+vi.mock("@/modules/skills/ui", () => ({
+  loadedSkills: () => skillsUi.skills,
+  openSkillDraft: skillsUi.openSkillDraft,
+}));
+
+describe("/skill", () => {
+  const skill = (name: string, enabled = true) => ({
+    id: name,
+    name,
+    description: `does ${name}`,
+    body: "steps",
+    enabled,
+    createdAt: 0,
+    updatedAt: 0,
+  });
+  let sent: string[];
+
+  beforeEach(() => {
+    skillsUi.skills.length = 0;
+    skillsUi.openSkillDraft.mockClear();
+    sent = [];
+    useConversationStore.setState({
+      sendTask: (task: string) => {
+        sent.push(task);
+      },
+    });
+  });
+
+  it("offers 'new' first, then only the enabled skills", () => {
+    skillsUi.skills.push(skill("pay-rent"), skill("paused", false));
+    const menu = slashItems("/skill");
+    expect(menu?.kind).toBe("candidates");
+    expect(menu?.items.map((i) => i.key)).toEqual(["new", "pay-rent"]);
+  });
+
+  it("resolves exact and unique-prefix names, passing the rest through as the task's args", () => {
+    skillsUi.skills.push(skill("pay-rent"));
+    executeSlash("/skill pay for August");
+    expect(sent).toEqual(['Use the "pay-rent" skill for this task: for August']);
+    executeSlash("/skill pay-rent");
+    expect(sent[1]).toBe('Use the "pay-rent" skill.');
+  });
+
+  it("answers an unknown name with the available list, and a disabled one with its fix", () => {
+    skillsUi.skills.push(skill("pay-rent"), skill("paused", false));
+    executeSlash("/skill nope");
+    expect(lastNote()).toContain("pay-rent");
+    executeSlash("/skill paused");
+    expect(lastNote()).toContain('"paused"');
+    expect(sent).toEqual([]);
+  });
+
+  it("'new' opens the draft dialog only once there is a conversation to distill", () => {
+    executeSlash("/skill new");
+    expect(skillsUi.openSkillDraft).not.toHaveBeenCalled();
+    useConversationStore.setState({
+      activeId: "c1",
+      messages: [{ id: "m1", role: "user", content: "pay my rent", timestamp: 0 }],
+    });
+    executeSlash("/skill new");
+    expect(skillsUi.openSkillDraft).toHaveBeenCalledTimes(1);
+  });
+});

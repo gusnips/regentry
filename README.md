@@ -47,6 +47,10 @@ vendor lock-in, no relay, no account with us. Your API key — or the subscripti
 - **Remembers across runs** — your standing instructions (`AGENTS.md`) and the agent's own notes
   (`MEMORY.md`) load into every run; a `## site:` section loads only when a task starts on that
   site. Editable on the options page, off with one toggle.
+- **Skills — teach it your way once, reuse it forever** — named recipes the agent loads when a
+  task matches: `/skill new` distills a conversation you just steered into one, `/skill <name>`
+  runs one on demand, and skills tied to a site surface only there. Import one from a URL,
+  GitHub `owner/repo`, or pasted markdown (SKILL.md-compatible); export as markdown to share.
 - **Runs on a timer** — "every weekday at 9am, summarize my inbox", "at 3pm, check the delivery".
   Ask for it in the panel and approving the plan is the consent; the run fires later in a tab of
   its own and notifies you when it lands. The agent can pace itself the same way — schedule a
@@ -117,8 +121,8 @@ and conventions.
 
 ## Roadmap
 
-Next up: **domain policy** (tell it where it may never go), **skills** (site-specific know-how that
-accumulates), and **file upload**. A **Firefox version** stays blocked — `chrome.debugger` has no
+Next up: **domain policy** (tell it where it may never go), **skill waypoints** (a skill that
+remembers the page's anchors, not just prose), and **file upload**. A **Firefox version** stays blocked — `chrome.debugger` has no
 equivalent there, so it's a rewrite of the driver rather than a port.
 
 Full reasoning, open questions and what we've ruled out: [docs/roadmap.md](docs/roadmap.md).

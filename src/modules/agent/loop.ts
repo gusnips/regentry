@@ -13,6 +13,7 @@ import { createLogger, truncate } from "@/lib/logger";
 import { i18n, currentLanguageName } from "@/i18n";
 import { loadAgentContext } from "@/modules/memory";
 import { listSchedules } from "@/modules/schedule";
+import { loadSkillsForRun } from "@/modules/skills";
 import type { ToolDef } from "@/modules/providers/types";
 import { executeTool, formatDetail, formatSuccessSummary } from "./tools";
 import type { RunGroup } from "./tools";
@@ -323,19 +324,28 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
   // with, so editing a doc mid-run never rewrites the instructions under the model.
   // The standing schedules ride along for the same reason and in the same shape
   // — a list the model is shown, so "what do I have scheduled?" costs no call.
-  // The snapshot is independent of all of it — they run concurrently.
-  const [context, schedules, initial] = await Promise.all([
+  // Skills follow both rules at once: the catalog scopes to the start site the
+  // way the docs do, and the tool resolves against this snapshot for the whole
+  // run. The snapshot is independent of all of it — they run concurrently.
+  const [context, schedules, runSkills, initial] = await Promise.all([
     loadAgentContext(startUrl),
     listSchedules(),
+    loadSkillsForRun(startUrl),
     driver.snapshot(),
   ]);
-  const tools = buildToolDefs(context.memoryOn, supportsImages);
+  const tools = buildToolDefs(context.memoryOn, supportsImages, runSkills.all.length > 0);
 
   // Auto-snapshot merged into the task message — Anthropic rejects consecutive user messages
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content: buildSystemPrompt(context, currentLanguageName(), supportsImages, schedules),
+      content: buildSystemPrompt(
+        context,
+        currentLanguageName(),
+        supportsImages,
+        schedules,
+        runSkills.applicable,
+      ),
     },
     ...(history ?? []),
     {
@@ -574,6 +584,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
         runGroup,
         owner,
         scheduleId,
+        skills: runSkills.all,
       });
       // The strip appears when the work does: landing a gated action files the
       // driven tab into the run's group. Reads never group — a tab the user was

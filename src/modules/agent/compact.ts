@@ -1,6 +1,6 @@
 import type { ChatMessage, ChatProvider } from "@/modules/providers/types";
 import type { Message } from "@/modules/conversation/types";
-import { appendMessageTo, getMessages } from "@/modules/conversation";
+import { appendMessageTo, getMessages, renderTranscriptMessage } from "@/modules/conversation";
 import { createLogger, truncate } from "@/lib/logger";
 import { i18n } from "@/i18n";
 
@@ -147,29 +147,6 @@ export async function compactRunMessages(
   return removed;
 }
 
-/** A stored transcript message as plain text — the panel's own view of the run. */
-function renderMessage(m: Message): string {
-  switch (m.role) {
-    case "user":
-      return `USER: ${m.content}`;
-    case "assistant":
-    case "summary":
-      return `AGENT: ${m.content}`;
-    case "step":
-      return m.tool
-        ? `ACTION ${m.tool}${m.ok === false ? " (failed)" : ""}: ${m.content}`
-        : `NOTE: ${m.content}`;
-    case "error":
-      return `ERROR: ${m.content}`;
-    case "plan":
-      return m.steps?.length ? `PLAN: ${m.steps.join(" | ")}` : "";
-    // Reasoning is the one thing never worth carrying: it argues about a page
-    // that has since been navigated away from.
-    case "reasoning":
-      return "";
-  }
-}
-
 /**
  * Summarize a stretch of transcript. The caller decides what to do with it —
  * the transcript writer appends it as a `summary` message, which is what makes
@@ -181,7 +158,7 @@ export async function summarizeTranscript(
   messages: Message[],
   signal: AbortSignal,
 ): Promise<string> {
-  const body = messages.map(renderMessage).filter(Boolean).join("\n\n");
+  const body = messages.map(renderTranscriptMessage).filter(Boolean).join("\n\n");
   if (!body.trim()) throw new Error(i18n.t("errors.compactEmpty"));
   return summarize(provider, body, signal);
 }
@@ -256,5 +233,5 @@ export function estimateTokens(text: string): number {
 
 /** What a transcript would cost to replay, for the compaction receipt's before/after. */
 export function transcriptTokens(messages: Message[]): number {
-  return estimateTokens(messages.map(renderMessage).filter(Boolean).join("\n\n"));
+  return estimateTokens(messages.map(renderTranscriptMessage).filter(Boolean).join("\n\n"));
 }

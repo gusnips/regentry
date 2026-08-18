@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildSystemPrompt, buildToolDefs } from "../prompt";
 import { DURABLE_FACT_RULES, type AgentContext } from "@/modules/memory";
+import type { Skill } from "@/modules/skills";
 
 // i18n comes from src/test-setup.ts (vitest setupFiles).
 
@@ -68,5 +69,44 @@ describe("buildSystemPrompt", () => {
     const prompt = buildSystemPrompt(ctx, "Portuguese");
     expect(prompt).toMatch(/language the user's message is written in/i);
     expect(prompt).toContain("takes Portuguese");
+  });
+});
+
+describe("skills in the prompt and tool list", () => {
+  const skill = (name: string, description = `does ${name}`): Skill => ({
+    id: name,
+    name,
+    description,
+    body: "steps",
+    enabled: true,
+    createdAt: 0,
+    updatedAt: 0,
+  });
+
+  it("emits the catalog only when something applies, one name: description line each", () => {
+    expect(buildSystemPrompt(ctx, "English")).not.toContain("# Skills");
+    const prompt = buildSystemPrompt(ctx, "English", true, [], [skill("pay-rent")]);
+    expect(prompt).toContain("# Skills");
+    expect(prompt).toContain("- pay-rent: does pay-rent");
+  });
+
+  it("truncates a listing description — the tool loads the full body, the line is discovery", () => {
+    const prompt = buildSystemPrompt(ctx, "English", true, [], [skill("wordy", "x".repeat(400))]);
+    const line = prompt.split("\n").find((l) => l.startsWith("- wordy:")) ?? "";
+    expect(line.length).toBeLessThanOrEqual("- wordy: ".length + 250);
+    expect(line.endsWith("…")).toBe(true);
+  });
+
+  it("degrades to names-only past the catalog budget instead of eating the context", () => {
+    const many = Array.from({ length: 20 }, (_, i) => skill(`s${i}`, "d".repeat(250)));
+    const prompt = buildSystemPrompt(ctx, "English", true, [], many);
+    expect(prompt).toContain("- s0\n");
+    expect(prompt).not.toContain("- s0: ");
+  });
+
+  it("offers the skill tool only when enabled skills exist — REMEMBER_TOOL's rule", () => {
+    expect(buildToolDefs(false, true, true).map((t) => t.name)).toContain("skill");
+    expect(buildToolDefs(false, true, false).map((t) => t.name)).not.toContain("skill");
+    expect(buildToolDefs(false, true).map((t) => t.name)).not.toContain("skill");
   });
 });

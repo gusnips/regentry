@@ -28,6 +28,8 @@ namespaced `local:tabrunner:*`):
   are kept.
 - **Memory documents** — the optional `AGENTS.md` (your standing instructions) and `MEMORY.md`
   (what TabRunner has learned) files shown in the Settings → Memory panel.
+- **Skills** — the optional recipes shown in Settings → Skills (name, description, sites,
+  instructions), whether written by hand, distilled from a conversation, or imported.
 - **Preferences** — theme and language choices.
 
 ## 2. What TabRunner processes, and where it goes
@@ -57,6 +59,9 @@ inside a task whose plan you approved.
    `127.0.0.1`. Nothing off your machine can reach it, and the daemon stores nothing: it relays
    tasks in and run progress out. It only exists while you run it, and TabRunner connects to
    nothing when you don't. See [docs/mcp.md](docs/mcp.md).
+4. **A skill URL, only when you import one** — Settings → Skills → Import fetches the single
+   https address you typed (one GET; nothing of yours is attached beyond the request itself),
+   at the moment you ask. TabRunner never fetches or updates skills on its own.
 
 No other party — no relay, no proxy, no analytics, no developer-owned server — ever receives your
 data.
@@ -80,6 +85,8 @@ data.
   future runs.
 - **Remove a provider** — Settings → Providers → Remove. Deletes the stored API key; you can add it
   again any time.
+- **Delete a skill** — Settings → Skills. The switch pauses one without deleting it; delete
+  removes it from every future run.
 - **Stop anytime** — Esc or the Stop button in the panel, the stop in the Run Board's task list,
   or closing the tab a task is driving stops its run. Closing the panel does NOT stop a run:
   a task adopts your current tab (or opens its own when there's no page to work) and keeps

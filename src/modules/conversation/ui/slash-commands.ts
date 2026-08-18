@@ -6,6 +6,8 @@ import { EFFORT_LABEL_KEYS, isEffort, REASONING_EFFORTS } from "@/modules/provid
 import { fetchProviderUsage, supportsUsage } from "@/modules/providers/usage";
 import type { UsageWindow } from "@/modules/providers/usage";
 import { useProvidersStore, activeProviderOf } from "@/modules/providers/ui";
+import { loadedSkills, openSkillDraft } from "@/modules/skills/ui";
+import { truncateTo } from "@/lib/format";
 import { openHelp } from "./help-open";
 import { runsHere, useConversationStore } from "./store";
 
@@ -56,6 +58,7 @@ type CommandDescriptionKey =
   | "commands.provider.description"
   | "commands.rename.description"
   | "commands.usage.description"
+  | "commands.skill.description"
   | "commands.compact.description"
   | "commands.new.description"
   | "commands.help.description";
@@ -368,6 +371,80 @@ export const COMMANDS: readonly SlashCommand[] = [
         // arrive worded as the sign-in fix.
         (e: unknown) => note(e instanceof Error ? e.message : String(e)),
       );
+    },
+  },
+  {
+    name: "skill",
+    descriptionKey: "commands.skill.description",
+    takesArg: true,
+    // Both forms leave the panel-local class — running a skill sends a task,
+    // and "new" costs a model call — so runSlash parks them, the /compact rule.
+    deferWhileBusy: true,
+    candidates: () => [
+      // First row = what Enter on a bare "/skill" does; the menu shows exactly
+      // that, and the draft dialog it opens is reviewable and cancellable —
+      // unlike the alternative default of starting some skill's run.
+      { value: "new", label: i18n.t("commands.skill.newLabel") },
+      ...loadedSkills()
+        .filter((s) => s.enabled)
+        .map((s) => ({ value: s.name, label: s.name, secondary: truncateTo(s.description, 60) })),
+    ],
+    run: (arg) => {
+      const skills = loadedSkills();
+      if (!arg) {
+        // Reachable only past a dismissed menu (Esc, then Enter) — the report form.
+        const enabled = skills.filter((s) => s.enabled).map((s) => s.name);
+        note(
+          enabled.length > 0
+            ? i18n.t("commands.skill.list", { list: enabled.join(", ") })
+            : i18n.t("commands.skill.none"),
+        );
+        return;
+      }
+      const [token = "", ...restParts] = arg.split(/\s+/);
+      const rest = restParts.join(" ");
+      const query = token.toLowerCase();
+      if (query === "new") {
+        const store = useConversationStore.getState();
+        if (!store.activeId || store.messages.length === 0) {
+          note(i18n.t("commands.skill.emptyConversation"));
+          return;
+        }
+        openSkillDraft();
+        return;
+      }
+      // Same resolution policy as resolveSlashArg: exact, then unique prefix —
+      // needed again here because a name with trailing args passes through raw.
+      const pick =
+        skills.find((s) => s.name === query) ??
+        (() => {
+          const prefix = skills.filter((s) => s.name.startsWith(query));
+          return prefix.length === 1 ? prefix[0] : undefined;
+        })();
+      if (!pick) {
+        const enabled = skills.filter((s) => s.enabled).map((s) => s.name);
+        note(
+          enabled.length > 0
+            ? i18n.t("commands.skill.unknown", { name: token, list: enabled.join(", ") })
+            : i18n.t("commands.skill.none"),
+        );
+        return;
+      }
+      if (!pick.enabled) {
+        note(i18n.t("commands.skill.disabled", { name: pick.name }));
+        return;
+      }
+      // Localized on purpose: the model mirrors the message's language, and an
+      // English template would flip a pt-BR user's whole run into English. The
+      // model loads the body through the skill tool — one loading path, and the
+      // transcript stays an honest record of what was sent.
+      useConversationStore
+        .getState()
+        .sendTask(
+          rest
+            ? i18n.t("commands.skill.taskWithArgs", { name: pick.name, args: rest })
+            : i18n.t("commands.skill.task", { name: pick.name }),
+        );
     },
   },
   {

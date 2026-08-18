@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { compactConversation, compactRunMessages } from "../compact";
 import type { ChatMessage, ChatProvider, Delta } from "@/modules/providers/types";
 import type { Message } from "@/modules/conversation/types";
+import type * as conversation from "@/modules/conversation";
 
 /**
  * The transcript store is mocked: compactConversation's contract is WHAT gets
@@ -9,7 +10,9 @@ import type { Message } from "@/modules/conversation/types";
  */
 let stored: Message[];
 let appended: Message | null;
-vi.mock("@/modules/conversation", () => ({
+vi.mock("@/modules/conversation", async (importOriginal) => ({
+  // The real module rides along for the pure parts (renderTranscriptMessage).
+  ...(await importOriginal<typeof conversation>()),
   getMessages: vi.fn(async () => stored),
   appendMessageTo: vi.fn(async (_id: string, msg: Message) => {
     appended = msg;

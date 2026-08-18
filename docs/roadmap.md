@@ -58,13 +58,13 @@ wait for evidence that anyone wants it.
 The one that actually serves the bet. Five tiers, and **we already shipped tier 1 without calling
 it that**: `memory/AGENTS.md` is a general, always-loaded skill.
 
-| Tier                        | What                                                                                                       | State                                  |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| 1. **General**              | Always-on standing instructions                                                                            | ✅ `memory/AGENTS.md`                  |
-| 2. **Domain-scoped**        | Loads only when the run's tab matches a URL pattern — _"on Gmail, archive is the box icon, not the trash"_ | ✅ `## site:` sections, both docs      |
-| 3. **Commands ("plugins")** | `/expenses` invokes a named recipe, with args                                                              | ⬜ host exists (`slash-commands.ts`)   |
-| 4. **Learned**              | After a run that took real figuring-out, the agent offers to save what it worked out                       | ⬜ shape exists (`extractAndRemember`) |
-| 5. **Waypoints**            | A skill stores _anchors_, not just prose — so run #2 doesn't re-snapshot its way to the same button        | ⬜ the differentiated one              |
+| Tier                        | What                                                                                                       | State                                               |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 1. **General**              | Always-on standing instructions                                                                            | ✅ `memory/AGENTS.md`                               |
+| 2. **Domain-scoped**        | Loads only when the run's tab matches a URL pattern — _"on Gmail, archive is the box icon, not the trash"_ | ✅ `## site:` sections, both docs                   |
+| 3. **Commands ("plugins")** | `/expenses` invokes a named recipe, with args                                                              | ✅ `skills/` + `/skill <name>`                      |
+| 4. **Learned**              | After a run that took real figuring-out, the agent offers to save what it worked out                       | ⬜ the offer; `/skill new` ships the on-demand half |
+| 5. **Waypoints**            | A skill stores _anchors_, not just prose — so run #2 doesn't re-snapshot its way to the same button        | ⬜ the differentiated one                           |
 
 **Tier 2 shipped as the cheapest real step**, with no new storage model: `## site: <host>`
 sections on the existing docs, host-suffix matched (no paths, no public-suffix list —
@@ -93,8 +93,23 @@ site-specific waypoints have nowhere to accumulate. We come back to the same log
 day — that's a memory only this architecture can hold. Speculative, and named here so it isn't
 forgotten.
 
-**Open:** shareable skills (a skill is one markdown file; export/import by paste or URL) is the
-"recipes" bet. It's a distribution play, not a capability, and it needs users first.
+**Tier 3 shipped as its own store — and the "third store" objection above is why it has the
+shape it has.** A skill is what a `## site:` section can't be: named, listed by description,
+loaded on demand, invocable with args, portable. So the record is structured (`skills/store.ts`,
+one capped array, the schedule store's shape) and SKILL.md markdown is only the interchange form
+(`skill-md.ts` parses imports, pastes and drafts; serializes exports) — the cron ruling applied
+again. Activation is progressive disclosure, not injection: the system prompt lists applicable
+skills one line each (site-scoped by the same `memory/scope.ts` matcher; unsited skills always),
+and the read-only `skill` tool returns a body when the model wants it — auto-injecting bodies
+would recreate the very unwieldy-instructions problem this tier exists to solve. `/skill <name>`
+sends a localized task naming the skill, and the tool resolves any enabled skill by name, so an
+explicit ask beats the ambient scope. `/skill new` distills the open conversation into a
+reviewed, editable draft — tier 4's on-demand half; the unprompted post-run offer stays open.
+
+**Shareable skills shipped with it**, because the interchange form made distribution nearly
+free: import by URL, GitHub `owner/repo` shorthand, or paste — full-body preview before saving
+is the consent gate for prose that will ride the system prompt — and copy-as-markdown export.
+Still open there: a named registry, if users ever trade skills enough to want one.
 
 ---
 
@@ -167,8 +182,6 @@ them to arbitrary files is most of the work.
 **Firefox** — the only survivor of the old roadmap, and still blocked: `chrome.debugger` has no
 Firefox or Safari equivalent, and it's the whole driver. Not a port, a rewrite of the trusted-input
 layer. Revisit only if a real user asks.
-
-**Shareable skills** — see tier 5 above. Needs users first.
 
 **Per-tool policy** — see domain policy. Needs evidence first.
 

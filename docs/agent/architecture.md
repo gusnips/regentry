@@ -299,6 +299,51 @@ the ambient records — the board's running entry (`startedAt`, `awaiting`) whil
 live, the stored `lastRun` once it ends — so the band and its plan peek survive the close,
 until the next user message retires the record.
 
+### `skills/` — named recipes
+
+Skills are the roadmap's tier 3: a `## site:` section that grew a name. The record is
+structured — `Skill { id, name, description, sites?, body, enabled, source? }` in one capped
+array (`store.ts`, the schedule store's shape and write chain) — and SKILL.md markdown is only
+the interchange form: `skill-md.ts` is the one parser every inbound path shares (URL import,
+paste, the distillation reply) and the serializer export uses, a hand-rolled frontmatter subset
+that splits on the first colon so prose colons survive, and reports unknown keys instead of
+rejecting them — a Claude Code SKILL.md must import cleanly. Name grammar is kebab, unique,
+`"new"` reserved (it's the create subcommand); every save rule lives in `saveSkill`, nowhere
+else.
+
+**Activation is progressive disclosure, resolved once at run start.** `loadSkillsForRun(url)`
+joins the same `Promise.all` as `loadAgentContext` and snapshots two lists: `applicable`
+(unsited skills plus those whose `sites` match the start host via `memory/scope.ts` — the one
+matcher, no fork) feeds a `# Skills` catalog section, one `- name: description` line each
+(descriptions capped at 250 chars; past a 4k budget the listing degrades to bare names); `all`
+(every enabled skill) is the `skill` tool's lookup table, so a skill the task names outright
+loads from any site — scoping is discovery, not a boundary — and mid-run edits never rewrite a
+live run. Bodies are never auto-injected: that would rebuild the unwieldy-AGENTS.md problem
+skills exist to solve. The tool is read-only (never plan-gated), offered only when enabled
+skills exist (REMEMBER_TOOL's rule), and its transcript row leads with the loaded name while
+the drawer shows the instructions as text.
+
+**`/skill` is the user door.** `/skill <name> [args]` resolves exact-then-unique-prefix against
+the panel's synchronous catalog mirror (`ui/catalog.ts`) and sends a _localized_ task naming
+the skill — the model mirrors the message's language, and the body still arrives through the
+tool, so the transcript stays an honest record of what was sent. `/skill new` opens the draft
+dialog: the full stored transcript (display caps don't apply) is rendered by the same
+`renderTranscriptMessage` compaction uses, distilled by a one-shot call shaped like the other
+three (fresh provider, no reasoning effort, text-only, 90s bound) — except this one **throws**,
+because a user-initiated draft owes a message and a Retry, not a silent shrug. The draft lands
+in the shared `SkillForm` for review; nothing persists until Save. Both forms are
+`deferWhileBusy`. The dialog takes the conversation id as a prop from the sidepanel App so
+skills/ui never imports conversation/ui back.
+
+**Import is the product's one non-provider fetch, and the preview is the consent gate.**
+`resolveSkillSource` (pure) accepts a raw https URL, a GitHub blob/tree URL (rewritten to
+raw.githubusercontent.com), or `owner/repo[/path]` shorthand; the fetch runs in the options
+page context (the `/usage` precedent — never the worker), https-only, 10s timeout, 256KB cap.
+The parsed result is shown _in full, editable_, before anything is stored — an imported body is
+untrusted prose that will ride the system prompt on matching runs, and a skill instructing
+badly is user-approved content by construction. Nothing in a body is ever executed or fetched.
+Export is copy-as-markdown, which round-trips through the same parser.
+
 ### `tips/` — rotating tips
 
 The rotating "Tip: …" line (Claude Code's spinner-tip pattern, reduced): a dim hint under

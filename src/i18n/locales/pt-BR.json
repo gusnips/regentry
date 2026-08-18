@@ -47,6 +47,7 @@
       "behavior": "Comportamento",
       "schedules": "Agendamentos",
       "knowledge": "Conhecimento",
+      "skills": "Habilidades",
       "providers": "Provedores",
       "mcp": "MCP"
     },
@@ -92,6 +93,80 @@
     "saved": "Salvo",
     "deleteMemory": "Excluir este fato",
     "everySite": "Todos os sites"
+  },
+  "skills": {
+    "title": "Habilidades",
+    "help": "Receitas salvas que o TabRunner oferece ao modelo quando a tarefa combina — o seu jeito de fazer algo, guardado. Uma habilidade presa a sites só é oferecida quando a tarefa começa neles.",
+    "newButton": "Nova habilidade",
+    "importButton": "Importar",
+    "empty": "Habilidades ensinam ao TabRunner o seu jeito de fazer uma tarefa — os passos, as manhas, o site. Crie uma a partir de uma conversa com /skill new no painel, escreva uma aqui em Nova habilidade, ou traga uma com Importar.",
+    "everySite": "Todos os sites",
+    "enable": "Ativada",
+    "edit": "Editar habilidade",
+    "export": "Copiar como Markdown",
+    "copied": "Copiado",
+    "delete": "Excluir habilidade",
+    "deleteTitle": "Excluir \"{{name}}\"?",
+    "deleteDescription": "As próximas execuções não vão mais vê-la. Isso não pode ser desfeito.",
+    "editTitle": "Editar \"{{name}}\"",
+    "newTitle": "Nova habilidade",
+    "form": {
+      "name": "Nome",
+      "nameHint": "Letras minúsculas, dígitos e hífens — é como o /skill e o modelo a chamam.",
+      "description": "Descrição",
+      "descriptionHint": "O que ela faz e quando usar — é assim que o modelo decide carregá-la.",
+      "descriptionPlaceholder": "Baixa o PDF da fatura mais recente na página de cobrança do fornecedor",
+      "sites": "Sites",
+      "sitesHint": "Domínios separados por vírgula, como acme.com. Nesses sites ela é oferecida automaticamente; vazio oferece em todos.",
+      "sitesInvalid": "Não é um domínio: {{list}}",
+      "body": "Instruções",
+      "bodyPlaceholder": "Os passos, em ordem — páginas, botões, campos e as manhas que valem saber.",
+      "source": "Importada de {{url}}",
+      "replaces": "Salvar substitui a sua \"{{name}}\" existente.",
+      "save": "Salvar habilidade"
+    },
+    "import": {
+      "title": "Importar uma habilidade",
+      "description": "Busque um SKILL.md por URL ou atalho do GitHub, ou cole um. Nada é salvo antes de você revisar.",
+      "url": "URL ou owner/repo",
+      "urlHint": "Uma URL de .md bruto, uma página de arquivo do GitHub ou o atalho owner/repo.",
+      "modePaste": "Colar markdown",
+      "modeUrl": "Buscar por URL",
+      "pastePlaceholder": "---\nname: minha-habilidade\ndescription: …\n---\nAs instruções…",
+      "fetch": "Buscar",
+      "fetching": "Buscando…",
+      "preview": "Pré-visualizar",
+      "review": "Revise antes de salvar — em execuções que combinarem, estas instruções são entregues ao modelo como se você as tivesse escrito.",
+      "ignored": "Campos que as habilidades do TabRunner não usam foram ignorados: {{list}}",
+      "droppedSites": "Entradas de site que não são domínios foram ignoradas: {{list}}",
+      "errorHttp": "Só URLs https podem ser importadas — uma origem http pode ser adulterada no caminho. Encontre um link https e tente de novo.",
+      "errorUnparseable": "Isso não parece uma URL https nem um atalho owner/repo. Confira e tente de novo.",
+      "errorTimeout": "O servidor não respondeu em 10 segundos — pode estar lento ou fora do ar. Tente de novo em instantes.",
+      "errorNetwork": "A busca falhou — o endereço pode estar errado ou o servidor inacessível. Confira a URL e tente de novo.",
+      "errorStatus": "O servidor respondeu {{status}} — o arquivo pode ter mudado de lugar ou ser privado. Confira a URL e tente de novo.",
+      "errorTooLarge": "Esse arquivo passa de 256 KB — grande demais para uma habilidade. Aponte para o SKILL.md em si, não um arquivo compactado.",
+      "errorEmpty": "O servidor respondeu com um arquivo vazio — confira se a URL aponta para o SKILL.md.",
+      "errorNothingPasted": "Cole antes o markdown da habilidade — frontmatter e instruções."
+    },
+    "draft": {
+      "title": "Nova habilidade desta conversa",
+      "description": "O TabRunner destila o que esta conversa descobriu em uma receita reutilizável — revise e edite antes de salvar.",
+      "working": "Destilando esta conversa…",
+      "retry": "Tentar de novo",
+      "manual": "Escrever à mão",
+      "errorNothing": "Esta conversa ainda não tem o que destilar — execute uma tarefa primeiro e salve o que ela descobriu.",
+      "errorTimeout": "O modelo não respondeu em 90 segundos — pode estar sobrecarregado. Tente de novo.",
+      "errorEmpty": "O modelo respondeu sem nada para salvar. Tente de novo, ou escreva a habilidade à mão."
+    },
+    "errors": {
+      "badName": "O nome usa letras minúsculas, dígitos e hífens (como \"baixar-fatura\") — e \"new\" é reservado.",
+      "noDescription": "A descrição é obrigatória — sem ela o modelo nunca vê a habilidade.",
+      "noBody": "As instruções são obrigatórias — uma habilidade vazia não ensina nada.",
+      "descriptionTooLong": "A descrição passa de {{max}} caracteres — enxugue; é uma linha de catálogo, não as instruções.",
+      "bodyTooLong": "As instruções passam de {{max}} caracteres — encurte os passos ou divida em duas habilidades.",
+      "nameTaken": "Já existe uma habilidade chamada \"{{name}}\" — escolha outro nome ou edite aquela.",
+      "tooMany": "Você tem {{max}} habilidades — o limite. Exclua uma que não usa mais antes de adicionar outra."
+    }
   },
   "schedule": {
     "agentLabel": "Agendado",
@@ -420,6 +495,17 @@
       "description": "Mostra as janelas de uso da assinatura ativa",
       "unsupported": "{{provider}} usa uma chave de API — janelas de uso só existem nos provedores por assinatura (Claude, ChatGPT, Kimi)."
     },
+    "skill": {
+      "description": "Executa uma habilidade salva — /skill new transforma esta conversa em uma",
+      "newLabel": "Nova habilidade desta conversa…",
+      "none": "Nenhuma habilidade ainda — /skill new transforma esta conversa em uma, ou importe em Configurações → Habilidades.",
+      "list": "Habilidades: {{list}}. \"/skill <nome>\" executa uma.",
+      "unknown": "Nenhuma habilidade chamada \"{{name}}\". Você tem: {{list}}",
+      "disabled": "\"{{name}}\" está desativada — ative em Configurações → Habilidades.",
+      "emptyConversation": "Nada aqui para virar habilidade ainda — execute uma tarefa primeiro.",
+      "task": "Use a habilidade \"{{name}}\".",
+      "taskWithArgs": "Use a habilidade \"{{name}}\" para esta tarefa: {{args}}"
+    },
     "compact": {
       "description": "Resume esta conversa até aqui, para liberar contexto",
       "running": "Compactando a conversa…",
@@ -500,6 +586,7 @@
       "read_network_requests": "Lendo requisições de rede",
       "read_console_messages": "Lendo o console",
       "remember": "Guardando na memória",
+      "skill": "Carregando habilidade",
       "ask_user": "Perguntando a você",
       "done": "Finalizando",
       "retry": "Tentando de novo",
@@ -602,6 +689,7 @@
     "slashCommands": "Digite / no campo de texto para ver comandos — troque provedor, modelo ou esforço no chat.",
     "compact": "Conversa longa enchendo? /compact troca as mensagens antigas por um resumo — o histórico continua aí.",
     "schedule": "Peça trabalho com hora marcada — “todo dia útil às 9h, veja meu e-mail”. Gerencie em Configurações.",
+    "skills": "Ensinou algo nesta conversa? /skill new salva a receita para a próxima.",
     "siteInstructions": "Em Instruções, uma linha “## site: acme.com” limita tudo abaixo dela àquele site.",
     "enginePicker": "O chip ao lado de enviar escolhe provedor, modelo e esforço — /model também funciona.",
     "help": "Pressione ? com o campo vazio para ver atalhos e comandos — /help também funciona."
@@ -714,6 +802,8 @@
     "planGate": "Bloqueado — o plano precisa da sua aprovação primeiro",
     "planGateModel": "Blocked: no plan is approved yet. Call the plan tool with your intended steps first; the user must approve the plan before any page action runs.",
     "memoryEmpty": "Nada para guardar — envie o fato como uma frase.",
+    "skillLoaded": "Habilidade \"{{name}}\" carregada",
+    "skillNotFound": "Nenhuma habilidade chamada \"{{name}}\". Disponíveis: {{list}}",
     "usageUnreadable": "A resposta de uso do provedor veio num formato que o TabRunner não reconheceu — tente Atualizar."
   }
 }

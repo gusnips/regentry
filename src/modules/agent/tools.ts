@@ -1,5 +1,6 @@
 import type { BrowserDriver } from "@/modules/browser";
 import type { ToolCall } from "@/modules/providers/types";
+import type { Skill } from "@/modules/skills";
 import { normalizeHost, remember } from "@/modules/memory";
 import { cancelSchedule, scheduleTask } from "@/modules/schedule/agent-tools";
 import { i18n } from "@/i18n";
@@ -45,6 +46,9 @@ export interface ToolContext {
   owner?: RunOwner;
   /** The schedule this run fired from — the only record it may re-time. */
   scheduleId?: string;
+  /** Enabled skills snapshotted at run start — the skill tool's lookup table.
+   *  Absent under direct control, which loads none. */
+  skills?: Skill[];
 }
 
 /** Execute a single tool call against the browser driver. */
@@ -207,6 +211,25 @@ export async function executeTool(
         return { ok: true, data: { fact: stored, ...(site ? { site } : {}) } };
       }
 
+      case "skill": {
+        // Reachable only when enabled skills exist — buildToolDefs withholds the
+        // tool otherwise, so there is no second check to drift out of sync.
+        const name = String(call.args.name ?? "")
+          .trim()
+          .toLowerCase();
+        const found = ctx.skills?.find((s) => s.name === name);
+        if (!found) {
+          return {
+            ok: false,
+            error: i18n.t("errors.skillNotFound", {
+              name,
+              list: (ctx.skills ?? []).map((s) => s.name).join(", "),
+            }),
+          };
+        }
+        return { ok: true, data: { name: found.name, instructions: found.body } };
+      }
+
       case "schedule_task":
         // Gated on an approved plan (see GATED_TOOLS): committing the browser to
         // unattended future work needs the same yes an action on the page does.
@@ -272,6 +295,11 @@ export function formatDetail(
     // The log is already formatted text — showing it as escaped JSON would be unreadable.
     const window = result.data as { log?: string } | undefined;
     return window?.log ? truncate(window.log, MAX_DETAIL) : undefined;
+  }
+  if (tool === "skill") {
+    // The instructions ARE the result — markdown, not an escaped JSON envelope.
+    const skill = result.data as { instructions?: string } | undefined;
+    return skill?.instructions ? truncate(skill.instructions, MAX_DETAIL) : undefined;
   }
   if (result.data === undefined) return undefined;
   const json = JSON.stringify(result.data, null, 2);
@@ -369,6 +397,9 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
   if (tool === "read_history" && data && typeof data === "object") {
     const window = data as { from: number; to: number };
     return i18n.t("errors.historyRead", { count: window.to - window.from });
+  }
+  if (tool === "skill" && data && typeof data === "object") {
+    return i18n.t("errors.skillLoaded", { name: (data as { name?: string }).name ?? "" });
   }
   if (tool === "remember" && data && typeof data === "object") {
     // The fact itself is the summary — "Saved to memory" tells the user nothing

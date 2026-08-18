@@ -1,0 +1,174 @@
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/Button";
+import { Switch } from "@/components/Switch";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import type { Skill } from "../types";
+import { deleteSkill, setSkillEnabled } from "../store";
+import { serializeSkillMd } from "../skill-md";
+import { useSkillsList } from "./hooks";
+import { SkillEditorDialog } from "./SkillEditorDialog";
+import { ImportSkillDialog } from "./ImportSkillDialog";
+
+/** Inline stroke glyphs — the project ships no icon library. */
+function PencilIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect width="14" height="14" x="8" y="8" rx="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
+/**
+ * Settings → Skills: the saved recipes, each a row with its scope and switch;
+ * creating, editing, importing and exporting all happen here. The chat-side
+ * doors (`/skill`, `/skill new`) are the fast path — this page is the place
+ * the whole library is reviewed, like Knowledge is for memory.
+ */
+export function SkillsSection() {
+  const { t } = useTranslation();
+  const skills = useSkillsList();
+  const [editor, setEditor] = useState<{ open: boolean; skill?: Skill }>({ open: false });
+  const [importing, setImporting] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copyTimer = useRef(0);
+
+  const exportSkill = (skill: Skill) => {
+    void navigator.clipboard.writeText(serializeSkillMd(skill)).then(() => {
+      setCopiedId(skill.id);
+      window.clearTimeout(copyTimer.current);
+      copyTimer.current = window.setTimeout(() => setCopiedId(null), 1_600);
+    });
+  };
+
+  return (
+    <section className="mt-8">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+            {t("skills.title")}
+          </h2>
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t("skills.help")}</p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
+            {t("skills.importButton")}
+          </Button>
+          <Button size="sm" onClick={() => setEditor({ open: true })}>
+            {t("skills.newButton")}
+          </Button>
+        </div>
+      </div>
+
+      {skills.length === 0 ? (
+        <p className="mt-3 rounded-lg bg-neutral-50 px-3 py-3 text-xs text-neutral-500 dark:bg-neutral-900/50 dark:text-neutral-400">
+          {t("skills.empty")}
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-1.5">
+          {skills.map((skill) => (
+            <li
+              key={skill.id}
+              className="flex items-start justify-between gap-3 rounded-lg bg-neutral-50 px-3 py-2 dark:bg-neutral-900/50"
+            >
+              <div className={`min-w-0 flex-1 ${skill.enabled ? "" : "opacity-50"}`}>
+                <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                  {skill.name}
+                </p>
+                <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
+                  {skill.description}
+                </p>
+                <p className="mt-1 flex flex-wrap gap-1">
+                  {skill.sites?.length ? (
+                    skill.sites.map((site) => (
+                      <span
+                        key={site}
+                        className="rounded bg-neutral-200/70 px-1.5 py-0.5 text-[11px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+                      >
+                        {site}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                      {t("skills.everySite")}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1 pt-0.5">
+                <Switch
+                  checked={skill.enabled}
+                  onChange={(v) => void setSkillEnabled(skill.id, v)}
+                  ariaLabel={t("skills.enable")}
+                  title={t("skills.enable")}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t("skills.edit")}
+                  title={t("skills.edit")}
+                  onClick={() => setEditor({ open: true, skill })}
+                >
+                  <PencilIcon />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t("skills.export")}
+                  title={copiedId === skill.id ? t("skills.copied") : t("skills.export")}
+                  onClick={() => exportSkill(skill)}
+                >
+                  {copiedId === skill.id ? <CheckIcon /> : <CopyIcon />}
+                </Button>
+                <ConfirmDialog
+                  trigger={
+                    <Button variant="ghost-danger" size="sm" aria-label={t("skills.delete")} title={t("skills.delete")}>
+                      <TrashIcon />
+                    </Button>
+                  }
+                  title={t("skills.deleteTitle", { name: skill.name })}
+                  description={t("skills.deleteDescription")}
+                  onConfirm={() => void deleteSkill(skill.id)}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <SkillEditorDialog
+        open={editor.open}
+        {...(editor.skill ? { skill: editor.skill } : {})}
+        onClose={() => setEditor({ open: false })}
+      />
+      <ImportSkillDialog open={importing} onClose={() => setImporting(false)} />
+    </section>
+  );
+}

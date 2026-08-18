@@ -28,6 +28,7 @@ const TOOL_VERB_KEYS = {
   read_network_requests: "run.tool.read_network_requests",
   read_console_messages: "run.tool.read_console_messages",
   remember: "run.tool.remember",
+  skill: "run.tool.skill",
   ask_user: "run.tool.ask_user",
   done: "run.tool.done",
   retry: "run.tool.retry",
@@ -109,6 +110,9 @@ export function toolHint(
       return text(args.url_filter);
     case "read_history":
       return text(args.query);
+    case "skill":
+      // The name IS the action — "Loading skill · invoice-download".
+      return text(args.name);
     case "press_key": {
       // A chord reads as the chord: "Mod+a", not just "a".
       const mods = Array.isArray(args.modifiers)

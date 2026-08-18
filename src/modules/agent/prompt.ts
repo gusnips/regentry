@@ -2,7 +2,9 @@ import type { JSONSchemaProperty, ToolDef } from "@/modules/providers/types";
 import { i18n } from "@/i18n";
 import { DURABLE_FACT_RULES, type AgentContext } from "@/modules/memory";
 import { describeRecurrence, MIN_INTERVAL_MINUTES, type Schedule } from "@/modules/schedule";
+import type { Skill } from "@/modules/skills";
 import { MAX_PAGE_TEXT, SUPPORTED_KEYS, SUPPORTED_MODIFIERS } from "@/modules/browser";
+import { truncateTo } from "@/lib/format";
 
 const BASE_PROMPT = `You are TabRunner, a browser automation agent. You control the user's real browser via tools.
 
@@ -59,10 +61,10 @@ You see the page as an accessibility tree — a text representation of the page'
 
 When the user asks how to do something in TabRunner, or what something on their screen is, answer from this map and name the exact control. You cannot click your own UI — guide, don't offer to do it.
 
-- **The side panel** is where this conversation lives. Header: provider and model chips (tap to switch), history, new chat, and the settings menu (theme, language, the status-widget toggle, "Add provider", "All settings"). The composer at the bottom takes the task, image/file attachments, and has the run-target toggle: "This page" (you drive the tab they're looking at, with the panel open) or background (you drive the same tab, but the panel closes after they approve the plan). Typing / as the first character of the composer opens local slash commands — /provider, /model, /effort, /background, /usage, /new, /help — they change those settings directly and never reach you as messages.
+- **The side panel** is where this conversation lives. Header: provider and model chips (tap to switch), history, new chat, and the settings menu (theme, language, the status-widget toggle, "Add provider", "All settings"). The composer at the bottom takes the task, image/file attachments, and has the run-target toggle: "This page" (you drive the tab they're looking at, with the panel open) or background (you drive the same tab, but the panel closes after they approve the plan). Typing / as the first character of the composer opens local slash commands — /provider, /model, /effort, /background, /usage, /skill, /new, /help — most change those settings directly and never reach you as messages; /skill is the exception: it starts a task naming one of the user's saved skills (and /skill new opens the save-this-conversation-as-a-skill dialog).
 - **A run in the panel:** your plan appears as a card they can approve, adjust, or reject — nothing acts before approval. While you work they see the run band (a shimmering verb, elapsed time, token spend) and each tool call as a row in the transcript. Stop button or Esc halts you; anything they type mid-run queues as your next task.
 - **On the page:** the driven tab carries a "TabRunner is controlling this tab" badge top-right (dark pill, amber dot) and a pulsing amber dot on its favicon; when you end on ask_user the badge lifts and the favicon settles into a still "?" — that means "waiting for you". Every tab you act on joins a green tab group named after the task — the strip appears at your first action, not when the message arrives, one per conversation, retitled ✓, ? or ✗ when the run ends; tabs you only read stay out of it unless you file them with group_tab. Their other tabs get a floating status widget bottom-right (the task, queued count, Open to jump to the panel, Hide to collapse it to a dot — click the dot to bring it back; hide for good in Settings).
-- **Settings** (the gear menu → "All settings", or chrome://extensions → TabRunner → options): General (appearance, language), Behavior (widget, background start page, tips), Schedules (the tasks set to run on their own — each one's cadence, when it next runs, and how the last run went, with Run now, its conversation, and Delete), Knowledge (standing instructions that apply to every chat, and your remembered facts — they can review or delete both), Providers (subscription sign-in for Anthropic/OpenAI/Kimi, or an API key across 15 presets plus any OpenAI/Anthropic-compatible endpoint), MCP (the bridge that lets external clients drive you — port and connection status).
+- **Settings** (the gear menu → "All settings", or chrome://extensions → TabRunner → options): General (appearance, language), Behavior (widget, background start page, tips), Schedules (the tasks set to run on their own — each one's cadence, when it next runs, and how the last run went, with Run now, its conversation, and Delete), Knowledge (standing instructions that apply to every chat, and your remembered facts — they can review or delete both), Skills (the saved recipes you load with the "skill" tool — created from a conversation with /skill new, imported from a URL or pasted markdown, exported, edited, disabled, or deleted there), Providers (subscription sign-in for Anthropic/OpenAI/Kimi, or an API key across 15 presets plus any OpenAI/Anthropic-compatible endpoint), MCP (the bridge that lets external clients drive you — port and connection status).
 - The marketing site (tagline, screenshots, install guide) is tabrunner.app.`;
 
 /**
@@ -141,11 +143,41 @@ Tasks the user has set to run on their own, without anyone watching. Use these i
 ${rows}`;
 }
 
+/** A listing entry is for discovery — the tool loads the full body on demand. */
+const MAX_CATALOG_DESC_CHARS = 250;
+/**
+ * ponytail: one flat char budget on the whole catalog; past it, the listing
+ * degrades to bare names rather than eating the run's context. Ceiling: with
+ * many long-named skills even names-only grows — the upgrade is ranking
+ * entries by relevance to the task before listing.
+ */
+const MAX_CATALOG_CHARS = 4_000;
+
+/**
+ * The catalog, not the content: one line per applicable skill, bodies left in
+ * storage until the model asks — auto-injecting them would recreate the very
+ * "standing instructions too big to always load" problem skills exist to
+ * solve. Emitted only when something applies (schedulesSection's rule); the
+ * skill tool itself is withheld when no enabled skill exists at all.
+ */
+function skillsSection(skills: Skill[]): string {
+  let rows = skills
+    .map((s) => `- ${s.name}: ${truncateTo(s.description, MAX_CATALOG_DESC_CHARS)}`)
+    .join("\n");
+  if (rows.length > MAX_CATALOG_CHARS) rows = skills.map((s) => `- ${s.name}`).join("\n");
+  return `# Skills
+
+Recipes the user saved for tasks like this — each is a named set of instructions. When one matches the task, or the task names one, call the "skill" tool with its name and follow what it returns BEFORE planning or acting on that part of the task. Never claim to have used a skill without loading it, and a skill already loaded this run needs no second load.
+
+${rows}`;
+}
+
 export function buildSystemPrompt(
   ctx: AgentContext,
   language: string,
   supportsImages = true,
   schedules: Schedule[] = [],
+  skills: Skill[] = [],
 ): string {
   const sections = [BASE_PROMPT];
   if (!supportsImages) sections.push(TEXT_ONLY_NOTE);
@@ -153,6 +185,7 @@ export function buildSystemPrompt(
   if (ctx.instructions) sections.push(instructionsSection(ctx.instructions));
   if (ctx.memoryOn) sections.push(memorySection(ctx.memory));
   if (schedules.length > 0) sections.push(schedulesSection(schedules));
+  if (skills.length > 0) sections.push(skillsSection(skills));
   return sections.join("\n\n");
 }
 
@@ -723,11 +756,33 @@ ${DURABLE_FACT_RULES}`,
   },
 };
 
+/** Offered only when the user has enabled skills — REMEMBER_TOOL's rule, same reason. */
+const SKILL_TOOL: ToolDef = {
+  name: "skill",
+  description:
+    'Load a skill — one of the user\'s saved recipes, listed under "# Skills". Returns its full instructions; follow them for the matching part of the task. When a listed skill matches the task, load it before planning or acting on that part, and never mention a skill without having loaded it. A skill the task names that is not listed (saved for another site) also loads by name.',
+  params: {
+    type: "object",
+    properties: {
+      name: {
+        type: "string",
+        description: 'The skill\'s name exactly as listed, e.g. "invoice-download".',
+      },
+    },
+    required: ["name"],
+  },
+};
+
 /**
  * The screenshot tool is withheld from text-only models — its output is an image
  * the wire would reject, so offering it would make the model waste turns.
  */
-export function buildToolDefs(memoryOn: boolean, supportsImages = true): ToolDef[] {
+export function buildToolDefs(
+  memoryOn: boolean,
+  supportsImages = true,
+  skillsOn = false,
+): ToolDef[] {
   const defs = supportsImages ? TOOL_DEFS : TOOL_DEFS.filter((t) => t.name !== "screenshot");
-  return memoryOn ? [...defs, REMEMBER_TOOL] : defs;
+  const withMemory = memoryOn ? [...defs, REMEMBER_TOOL] : defs;
+  return skillsOn ? [...withMemory, SKILL_TOOL] : withMemory;
 }

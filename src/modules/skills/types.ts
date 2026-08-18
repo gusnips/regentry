@@ -1,0 +1,60 @@
+/**
+ * A skill is a named, reusable instruction recipe — what a `## site:` section
+ * of AGENTS.md can't be: listed by description, loaded on demand, invoked by
+ * name (`/skill <name>`), imported and exported as SKILL.md markdown. Storage
+ * is this structured record; the markdown is only the interchange form
+ * (`skill-md.ts`), the same split the schedule module uses for cron-like text.
+ */
+export interface Skill {
+  /** Stable identity for store ops and React keys — `name` is the model-facing one. */
+  id: string;
+  /** Kebab-case identity, unique across the store: what the catalog lists and the tool loads. */
+  name: string;
+  /** What it does and when to use it — a skill with no description is invisible to the model. */
+  description: string;
+  /** Normalized hosts (memory/scope rules). Absent or empty = offered on every site. */
+  sites?: string[];
+  /** The instructions themselves, markdown prose. Never executed, only read by the model. */
+  body: string;
+  /** Off = kept but never offered, listed, or loadable. */
+  enabled: boolean;
+  /** Where an imported skill came from — provenance shown in the editor. */
+  source?: { url: string };
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * ponytail: fixed caps, one flat array read-modify-written whole (store.ts) —
+ * tens of small records, not thousands. Ceilings: 50 skills, 20k-char bodies,
+ * 500-char descriptions; a bigger library means one key per skill plus an
+ * index, exactly the conversations upgrade path.
+ */
+export const MAX_SKILLS = 50;
+export const MAX_BODY_CHARS = 20_000;
+export const MAX_DESCRIPTION_CHARS = 500;
+
+/** `/skill new` is the create subcommand — a skill named "new" could never be invoked. */
+export const RESERVED_SKILL_NAMES = ["new"] as const;
+
+const NAME_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+export function isValidSkillName(name: string): boolean {
+  return NAME_RE.test(name) && !(RESERVED_SKILL_NAMES as readonly string[]).includes(name);
+}
+
+/**
+ * Best-effort kebab form of whatever a file, a model, or a user typed as a
+ * name. Null when nothing usable survives — the caller's cue to ask for one.
+ */
+export function normalizeSkillName(raw: string): string | null {
+  const name = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+  return isValidSkillName(name) ? name : null;
+}

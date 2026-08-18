@@ -126,6 +126,19 @@ never reach the service-worker bundle.
   conversation per schedule, so a recurring run can read what it did last time. `recurrence.ts` is
   pure and holds the whole calendar; `scheduler.ts` is the only file that reaches into the agent,
   which is why the barrel stops short of it. Background-only except `ui/`.
+- `skills/` — named instruction recipes, importable and site-scoped: the storage is structured
+  records (`store.ts`, one capped array, the schedule store's shape); SKILL.md markdown is only
+  the interchange form (`skill-md.ts` — imports, pastes, drafts and exports all pass the one
+  parser, unknown frontmatter keys reported, never fatal). A run snapshots them once at start
+  (`loadSkillsForRun`): the system prompt lists applicable skills one line each (scoped via
+  `memory/scope.ts`; unsited = everywhere), and the read-only `skill` tool returns a body on
+  demand — bodies are never auto-injected, and the tool is offered only when enabled skills
+  exist, resolving any of them by name so an explicit `/skill <name>` works cross-site.
+  `/skill new` distills the open conversation into an editable draft (`distill.ts`, the fourth
+  transcript distillation, panel-context). Import takes a URL, GitHub `owner/repo` shorthand, or
+  pasted markdown — fetched from the page context, https-only, size-capped, always previewed in
+  full before saving (untrusted prose headed for the system prompt). Managed in Settings →
+  Skills. Background-only except `ui/`.
 - `bridge/` — the MCP bridge's extension half. Background-only.
 - `tips/` — the rotating "Tip: …" line; i18n data + cooldown scheduler (panel opens,
   least-recently-shown wins, re-picked on panel open / run end). Shows in the running run

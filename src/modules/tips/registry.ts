@@ -22,6 +22,7 @@ export const TIPS = [
   { id: "memory", cooldownOpens: 8 },
   { id: "siteInstructions", cooldownOpens: 8 },
   { id: "schedule", cooldownOpens: 8 },
+  { id: "skills", cooldownOpens: 8 },
   { id: "usage", cooldownOpens: 8 },
   { id: "compact", cooldownOpens: 8 },
   { id: "enginePicker", cooldownOpens: 6 },
