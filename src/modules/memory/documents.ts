@@ -1,5 +1,5 @@
 import { defineItem } from "@/lib/storage";
-import { hostMatches, normalizeHost, scopeHostOf } from "./scope";
+import { hostMatches, normalizeHost, scopeHostOf } from "@/lib/host";
 
 /**
  * The two markdown documents TabRunner loads into every run, mirroring the
@@ -190,11 +190,13 @@ function normalize(line: string): string {
 /**
  * Appends one fact to MEMORY.md — into the site's section when `site` names
  * one, the global list otherwise (an unusable site falls back to global rather
- * than losing the fact). Returns the stored entry, or null if the model sent
- * something empty. Re-remembering a known fact is a no-op rather than an
- * error — models restate what they already know all the time.
+ * than losing the fact). Returns the stored fact with the scope it actually
+ * landed in — the one place that decision is made, so callers never re-derive
+ * it — or null if the model sent something empty. Re-remembering a known fact
+ * is a no-op rather than an error — models restate what they already know all
+ * the time.
  */
-export async function remember(fact: string, site?: string): Promise<string | null> {
+export async function remember(fact: string, site?: string): Promise<ScopedFact | null> {
   // Collapse first, then trim, then drop a list marker the model added itself —
   // stripping before the trim misses "  - fact", which is what they actually send.
   const entry = fact
@@ -208,11 +210,11 @@ export async function remember(fact: string, site?: string): Promise<string | nu
   const item = docItem("MEMORY.md");
   const scoped = parseScopes(await item.get());
   const lines = scope ? sectionFor(scoped.sections, scope).lines : scoped.global;
+  const saved: ScopedFact = { text: entry, ...(scope ? { site: scope } : {}) };
 
   // Dedupe within the scope only — the same lesson can legitimately hold both
   // globally and on one site, and cross-scope "which copy wins" isn't worth it.
-  if (lines.some((line) => isFactLine(line) && normalize(line) === normalize(entry)))
-    return entry;
+  if (lines.some((line) => isFactLine(line) && normalize(line) === normalize(entry))) return saved;
 
   const stored = `- ${entry}`;
   lines.push(stored);
@@ -226,7 +228,7 @@ export async function remember(fact: string, site?: string): Promise<string | nu
   }
 
   await item.set(serializeScopes(scoped));
-  return entry;
+  return saved;
 }
 
 /** One fact with its scope; `site` absent means global — loaded on every run. */

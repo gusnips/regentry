@@ -82,7 +82,7 @@
     "title": "Instruções",
     "help": "Coisas que o TabRunner deve sempre fazer — ou nunca fazer — em todas as conversas. Escreva como frases simples. Comece uma linha com \"## site: acme.com\" para que tudo abaixo dela valha só nesse site.",
     "placeholder": "Sempre me pergunte antes de enviar um e-mail ou fazer um pagamento.\nMeu e-mail de trabalho é eu@acme.com.\n\n## site: github.com\nSempre trabalhe na organização acme-corp.",
-    "autosave": "As mudanças são salvas automaticamente e valem para todas as conversas."
+    "autosave": "As mudanças são salvas automaticamente e valem a partir da próxima tarefa."
   },
   "memory": {
     "title": "O que o TabRunner lembra",

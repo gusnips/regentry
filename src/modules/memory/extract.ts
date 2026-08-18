@@ -9,7 +9,7 @@ import {
   remember,
   type ScopedFact,
 } from "./documents";
-import { normalizeHost, scopeHostOf } from "./scope";
+import { normalizeHost, scopeHostOf } from "@/lib/host";
 
 const log = createLogger("memory");
 
@@ -175,7 +175,7 @@ export async function extractAndRemember(
     for (const fact of parseExtractedFacts(reply)) {
       const stored = await remember(fact.text, fact.site);
       if (stored)
-        log.info("remembered:", fact.site ? `[${fact.site}]` : "", truncate(stored, 100));
+        log.info("remembered:", stored.site ? `[${stored.site}]` : "", truncate(stored.text, 100));
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

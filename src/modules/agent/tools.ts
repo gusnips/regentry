@@ -1,7 +1,7 @@
 import type { BrowserDriver } from "@/modules/browser";
 import type { ToolCall } from "@/modules/providers/types";
 import type { Skill } from "@/modules/skills";
-import { normalizeHost, remember } from "@/modules/memory";
+import { remember } from "@/modules/memory";
 import { cancelSchedule, scheduleTask } from "@/modules/schedule/agent-tools";
 import { i18n } from "@/i18n";
 import { truncate } from "@/lib/logger";
@@ -207,8 +207,10 @@ export async function executeTool(
         const rawSite = typeof call.args.site === "string" ? call.args.site : undefined;
         const stored = await remember(String(call.args.fact ?? ""), rawSite);
         if (!stored) return { ok: false, error: i18n.t("errors.memoryEmpty") };
-        const site = rawSite ? normalizeHost(rawSite) : null;
-        return { ok: true, data: { fact: stored, ...(site ? { site } : {}) } };
+        return {
+          ok: true,
+          data: { fact: stored.text, ...(stored.site ? { site: stored.site } : {}) },
+        };
       }
 
       case "skill": {

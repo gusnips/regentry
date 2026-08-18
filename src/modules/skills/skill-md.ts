@@ -1,4 +1,4 @@
-import { normalizeHost } from "@/modules/memory";
+import { normalizeHost } from "@/lib/host";
 import type { Skill } from "./types";
 import { normalizeSkillName } from "./types";
 

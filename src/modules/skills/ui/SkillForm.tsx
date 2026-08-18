@@ -4,7 +4,7 @@ import { Button } from "@/components/Button";
 import { TextField } from "@/components/TextField";
 import { TextArea } from "@/components/TextArea";
 import { FieldShell } from "@/components/FieldShell";
-import { normalizeHost } from "@/modules/memory";
+import { normalizeHost } from "@/lib/host";
 import { truncateTo } from "@/lib/format";
 import { MAX_BODY_CHARS, MAX_DESCRIPTION_CHARS, normalizeSkillName } from "../types";
 import { saveSkill } from "../store";

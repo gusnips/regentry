@@ -1,10 +1,12 @@
 /**
- * Host scoping for the memory docs: a `## site: <host>` section loads only when
- * the run starts on that site. Pure string logic, no storage.
+ * Host scoping: which site a thing belongs to, and whether a run's start URL
+ * falls under it. One matcher for everything site-scoped — memory's
+ * `## site: <host>` sections and a skill's `sites` list alike. Pure string
+ * logic, no storage.
  *
- * Deliberately not `lib/format.ts#hostnameOf` — that helper's junk-in/junk-out
+ * Deliberately not `format.ts#hostnameOf` — that helper's junk-in/junk-out
  * contract is right for display labels and wrong here, where an unparseable
- * host must become null (= global) instead of a section nothing ever matches.
+ * host must become null (= global) instead of a scope nothing ever matches.
  */
 
 /** A bare IP literal — suffix matching across its "labels" would be meaningless. */

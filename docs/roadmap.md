@@ -68,7 +68,7 @@ it that**: `memory/AGENTS.md` is a general, always-loaded skill.
 
 **Tier 2 shipped as the cheapest real step**, with no new storage model: `## site: <host>`
 sections on the existing docs, host-suffix matched (no paths, no public-suffix list —
-`memory/scope.ts`), filtered by `loadAgentContext(url)` at run start. The model scopes writes
+`lib/host.ts`), filtered by `loadAgentContext(url)` at run start. The model scopes writes
 (`remember`'s `site` param, and the post-run extraction tags facts), and eviction caps each scope
 separately. Now see if anyone's instructions file gets unwieldy, and let that decide whether
 tiers 3–5 are real.
@@ -99,7 +99,7 @@ loaded on demand, invocable with args, portable. So the record is structured (`s
 one capped array, the schedule store's shape) and SKILL.md markdown is only the interchange form
 (`skill-md.ts` parses imports, pastes and drafts; serializes exports) — the cron ruling applied
 again. Activation is progressive disclosure, not injection: the system prompt lists applicable
-skills one line each (site-scoped by the same `memory/scope.ts` matcher; unsited skills always),
+skills one line each (site-scoped by the same `lib/host.ts` matcher; unsited skills always),
 and the read-only `skill` tool returns a body when the model wants it — auto-injecting bodies
 would recreate the very unwieldy-instructions problem this tier exists to solve. `/skill <name>`
 sends a localized task naming the skill, and the tool resolves any enabled skill by name, so an

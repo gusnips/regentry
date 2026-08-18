@@ -313,7 +313,7 @@ else.
 
 **Activation is progressive disclosure, resolved once at run start.** `loadSkillsForRun(url)`
 joins the same `Promise.all` as `loadAgentContext` and snapshots two lists: `applicable`
-(unsited skills plus those whose `sites` match the start host via `memory/scope.ts` — the one
+(unsited skills plus those whose `sites` match the start host via `lib/host.ts` — the one
 matcher, no fork) feeds a `# Skills` catalog section, one `- name: description` line each
 (descriptions capped at 250 chars; past a 4k budget the listing degrades to bare names); `all`
 (every enabled skill) is the `skill` tool's lookup table, so a skill the task names outright

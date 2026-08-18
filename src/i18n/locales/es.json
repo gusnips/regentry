@@ -82,7 +82,7 @@
     "title": "Instrucciones",
     "help": "Cosas que TabRunner debería hacer siempre — o nunca hacer — en cada chat. Escríbelas como frases sencillas. Empieza una línea con \"## site: acme.com\" para que todo lo de abajo aplique solo en ese sitio.",
     "placeholder": "Confírmame siempre antes de enviar un correo o hacer un pago.\nMi correo de trabajo es yo@acme.com.\n\n## site: github.com\nTrabaja siempre en la organización acme-corp.",
-    "autosave": "Los cambios se guardan automáticamente y se aplican a cada chat."
+    "autosave": "Los cambios se guardan automáticamente y se aplican a partir de la siguiente tarea."
   },
   "memory": {
     "title": "Lo que TabRunner recuerda",

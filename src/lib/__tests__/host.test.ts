@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hostMatches, normalizeHost, scopeHostOf } from "../scope";
+import { hostMatches, normalizeHost, scopeHostOf } from "../host";
 
 describe("normalizeHost", () => {
   it("canonicalizes case, www, ports, and trailing dots", () => {

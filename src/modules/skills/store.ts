@@ -1,6 +1,6 @@
 import { defineItem } from "@/lib/storage";
 import { i18n } from "@/i18n";
-import { hostMatches, scopeHostOf } from "@/modules/memory";
+import { hostMatches, scopeHostOf } from "@/lib/host";
 import type { Skill } from "./types";
 import { isValidSkillName, MAX_BODY_CHARS, MAX_DESCRIPTION_CHARS, MAX_SKILLS } from "./types";
 

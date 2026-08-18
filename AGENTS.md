@@ -108,7 +108,7 @@ never reach the service-worker bundle.
   of deleting anything: replay starts at it, scrollback keeps every message.
 - `memory/` — the two storage-backed markdown docs every run loads, mirroring the AGENTS.md /
   MEMORY.md convention: `AGENTS.md` is the user's standing instructions, `MEMORY.md` is the
-  agent's, written by the `remember` tool. Both share one scope axis (`scope.ts`): a
+  agent's, written by the `remember` tool. Both share one scope axis (`lib/host.ts`): a
   `## site: <host>` section loads only when the run starts on that site — suffix match,
   www-stripped, no paths — and everything else is global, including the user's own `##` headings.
   The model picks a fact's scope (the `site` param on `remember`); eviction caps each scope
@@ -131,7 +131,7 @@ never reach the service-worker bundle.
   the interchange form (`skill-md.ts` — imports, pastes, drafts and exports all pass the one
   parser, unknown frontmatter keys reported, never fatal). A run snapshots them once at start
   (`loadSkillsForRun`): the system prompt lists applicable skills one line each (scoped via
-  `memory/scope.ts`; unsited = everywhere), and the read-only `skill` tool returns a body on
+  `lib/host.ts`; unsited = everywhere), and the read-only `skill` tool returns a body on
   demand — bodies are never auto-injected, and the tool is offered only when enabled skills
   exist, resolving any of them by name so an explicit `/skill <name>` works cross-site.
   `/skill new` distills the open conversation into an editable draft (`distill.ts`, the fourth
