@@ -16,6 +16,9 @@ the matching block here first.
 > - **`LINKS.store` flips from plain text to an _Add to Chrome_ button** on the site, and the
 >   install instructions that said "until the store listing is approved" stop being true —
 >   [`docs/website-brief.md`](website-brief.md) is the contract to update in the same sitting.
+> - **2026-08-18 — memory, schedules and skills landed after approval.** §2 (all three locales)
+>   and §4 (single purpose, storage, alarms, notifications, host permissions) are updated below —
+>   paste them into the dashboard. Listing edit only: no package, no review.
 
 ---
 
@@ -98,6 +101,18 @@ genuine trusted events, not synthetic dispatches sites can ignore.
 See the work — a live plan, current action, token spend and elapsed time while the agent runs.
 Every step is logged in the conversation.
 
+It remembers how you work — your standing instructions and the facts it learns along the way load
+into every run, per site or globally. Review, edit or delete all of it in Settings, or turn memory
+off entirely.
+
+Skills are saved recipes — turn a finished conversation into a reusable skill, write one by hand,
+or import one as markdown from a URL. A skill tied to a site is offered automatically when a task
+starts there, and every skill is yours to edit, export, disable or delete in Settings.
+
+Set it on a schedule — a task can run once at a time you pick, daily, or every few minutes within
+the hours you allow. Each schedule keeps its own conversation, so a recurring run can see what it
+did last time.
+
 HOW IT WORKS
 
 1. Describe a task in the side panel — e.g. "pull the invoice from my inbox into the expense
@@ -163,6 +178,19 @@ confiáveis de verdade, não disparos sintéticos que os sites podem ignorar.
 
 Veja o trabalho acontecer — plano ao vivo, ação atual, tokens gastos e tempo decorrido enquanto o
 agente trabalha. Cada passo fica registrado na conversa.
+
+Ele lembra como você trabalha — suas instruções fixas e os fatos que ele aprende pelo caminho
+entram em cada execução, por site ou globais. Revise, edite ou apague tudo nas Configurações, ou
+desligue a memória por completo.
+
+Habilidades são receitas salvas — transforme uma conversa concluída em uma habilidade
+reutilizável, escreva uma à mão, ou importe uma em markdown a partir de uma URL. Uma habilidade
+ligada a um site é oferecida automaticamente quando uma tarefa começa nele, e cada uma pode ser
+editada, exportada, desativada ou excluída nas Configurações.
+
+Agende — uma tarefa pode rodar uma única vez no horário que você escolher, todo dia, ou a cada
+poucos minutos dentro das horas que você permitir. Cada agendamento mantém a própria conversa,
+então uma execução recorrente vê o que fez da última vez.
 
 COMO FUNCIONA
 
@@ -231,6 +259,19 @@ eventos confiables de verdad, no disparos sintéticos que los sitios pueden igno
 
 Mira el trabajo — plan en vivo, acción actual, tokens gastados y tiempo transcurrido mientras el
 agente trabaja. Cada paso queda registrado en la conversación.
+
+Recuerda cómo trabajas — tus instrucciones fijas y los datos que aprende por el camino entran en
+cada ejecución, por sitio o globales. Revisa, edita o borra todo en la Configuración, o apaga la
+memoria por completo.
+
+Las habilidades son recetas guardadas — convierte una conversación terminada en una habilidad
+reutilizable, escribe una a mano, o importa una en markdown desde una URL. Una habilidad ligada a
+un sitio se ofrece automáticamente cuando una tarea empieza allí, y cada una se puede editar,
+exportar, desactivar o eliminar en la Configuración.
+
+Prográmalo — una tarea puede ejecutarse una sola vez a la hora que elijas, cada día, o cada pocos
+minutos dentro de las horas que permitas. Cada programación conserva su propia conversación, así
+que una ejecución recurrente ve lo que hizo la última vez.
 
 CÓMO FUNCIONA
 
@@ -303,8 +344,9 @@ policy URL.
 TabRunner lets an AI model the user chooses carry out tasks in their own browser: reading a page,
 clicking, typing and filling forms on the sites they are already signed in to, until the task they
 described is done. Data goes to exactly two places — the site being worked on, and the AI provider
-the user configured with their own credentials. There is no TabRunner server, no account, no
-analytics, and no third-party network activity.
+the user configured with their own credentials. There is no TabRunner server, no account, and no
+analytics; the only other request the extension ever makes is fetching the single https URL the
+user types when importing a skill recipe — user-initiated, once, with nothing of theirs attached.
 ```
 
 ### Privacy policy URL
@@ -376,27 +418,31 @@ agent is working in and close it in one action.
 **`storage`**
 
 ```
-Stores the user's AI provider settings and their conversation history locally, in chrome.storage on
-their own device. Nothing is uploaded — there is no TabRunner server.
+Stores what the user creates, locally in chrome.storage on their own device: AI provider settings,
+conversation history, standing instructions, remembered facts, scheduled tasks and skill recipes.
+Nothing is uploaded — there is no TabRunner server.
 ```
 
 **`notifications`**
 
 ```
 A task adopts the user's current tab, or opens its own when there's no page to work, and keeps
-working after the side panel closes. A notification reports when a task finishes or fails, and
-when it pauses to ask the user a question (for example, before sending something on their behalf).
-Fired only while the panel
-is closed — never for runs the user stopped themselves.
+working after the side panel closes. A notification reports when a task — including one the user
+scheduled to run on its own — finishes or fails, and when it pauses to ask the user a question
+(for example, before sending something on their behalf). Fired only while the panel is closed —
+never for runs the user stopped themselves.
 ```
 
 **`alarms`**
 
 ```
-TabRunner can optionally accept tasks from a local AI assistant on the user's own machine. Chrome
+Two uses. Scheduled tasks: the user can set a task to run on its own — once at a chosen time,
+daily, or on an interval — and each schedule arms one alarm that fires it. The local bridge:
+TabRunner can optionally accept tasks from a local AI assistant on the user's own machine; Chrome
 suspends the extension's service worker when idle, so a periodic alarm wakes it to re-establish
 that local connection, and to keep the worker alive through a long task while the side panel is
-closed. Alarms are only scheduled while the bridge feature is enabled or a task is in flight.
+closed. Alarms exist only for the user's own schedules, while the bridge feature is enabled, or
+while a task is in flight.
 ```
 
 **`declarativeNetRequestWithHostAccess`**
@@ -416,8 +462,9 @@ only request headers on those hosts. It blocks nothing, redirects nothing, and r
 ```
 The user decides which site the agent works on by typing a task in the side panel, so the set of
 sites cannot be known in advance — it is whatever the user asks for, on the sites they are already
-logged in to. The extension acts on a site only while a task is running on it. The only other
-network destination is the AI provider the user configured.
+logged in to. The extension acts on a site only while a task is running on it. Beyond that, the
+extension's own requests go to the AI provider the user configured — plus, only when the user
+imports a skill recipe, one GET of the single https URL they typed.
 ```
 
 ---
