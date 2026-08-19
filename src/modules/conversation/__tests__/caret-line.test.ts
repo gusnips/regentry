@@ -2,17 +2,36 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { caretVisualLine } from "../ui/caret-line";
 
 /**
- * jsdom has no layout, so the mirror's geometry is faked: LINE_H per line of
- * textContent, the marker span sitting at its line's top. What is under test
- * is the arithmetic contract — the composer HAS vertical padding (py-2), the
- * mirror does NOT, and the measurements must not subtract what was never
- * added. (The shipped subtraction made a one-line draft report 0 lines, and
- * ↑ recall died with it.)
+ * jsdom has no layout, so the mirror gets a fake one: a monospace grid of COLS
+ * visible columns that hard-wraps, where "\n" ends a row and the zero-width
+ * space takes no column. Wrapping has to be in the fake — the bug it guards
+ * lived entirely there: with a marker that held nothing, the caret at the first
+ * character of a WRAPPED second row measured as row 0, so ↑ recalled a sent
+ * message instead of moving the caret up a row. (Hard newlines always
+ * measured right, which is why it shipped.) The arithmetic contract rides
+ * along: the composer HAS vertical padding (py-2), the mirror does NOT, and the
+ * measurements must not subtract what was never added.
  */
 const LINE_H = 20;
+const COLS = 10;
 
-function lineCount(text: string): number {
-  return text.split("\n").length;
+/** Row of every character in the mirror's content, and how many rows in all. */
+function layout(text: string): { rowOf: number[]; rows: number } {
+  const rowOf: number[] = [];
+  let row = 0;
+  let col = 0;
+  for (const ch of text) {
+    if (ch !== "\n" && ch !== "​" && col === COLS) {
+      row++;
+      col = 0;
+    }
+    rowOf.push(row);
+    if (ch === "\n") {
+      row++;
+      col = 0;
+    } else if (ch !== "​") col++;
+  }
+  return { rowOf, rows: row + 1 };
 }
 
 function fakeTextarea(value: string, caret: number): HTMLTextAreaElement {
@@ -21,26 +40,34 @@ function fakeTextarea(value: string, caret: number): HTMLTextAreaElement {
 }
 
 function stubLayout(computedLineHeight = `${LINE_H}px`): void {
-  let mirror = { textContent: "" };
+  // The mirror as the DOM has it: a text node plus the appended marker span.
+  // Setting textContent replaces the children, marker included.
+  let mirror = { text: "", marker: null as { textContent: string } | null };
+  const content = () => mirror.text + (mirror.marker?.textContent ?? "");
   vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
     if (tag === "div") {
       const div = {
         style: {} as Record<string, string>,
-        textContent: "",
-        appendChild: () => {},
+        set textContent(v: string) {
+          mirror.text = v;
+          mirror.marker = null;
+        },
+        appendChild(node: { textContent: string }) {
+          mirror.marker = node;
+        },
         remove: () => {},
         get clientHeight() {
-          return LINE_H * lineCount(this.textContent);
+          return LINE_H * layout(content()).rows;
         },
       };
-      mirror = div;
+      mirror = { text: "", marker: null };
       return div as unknown as HTMLElement;
     }
-    // The caret marker: its top is the top of the mirror's last line.
+    // The caret marker: its top is the row its first character lands on.
     const span = {
       textContent: "",
       get offsetTop() {
-        return (lineCount(mirror.textContent) - 1) * LINE_H;
+        return (layout(content()).rowOf[mirror.text.length] ?? 0) * LINE_H;
       },
     };
     return span as unknown as HTMLElement;
@@ -76,5 +103,18 @@ describe("caretVisualLine", () => {
   it("measures the line-height when the computed style says 'normal'", () => {
     stubLayout("normal");
     expect(caretVisualLine(fakeTextarea("a\nbb", 4))).toEqual({ line: 1, lines: 2 });
+  });
+
+  it("puts the caret on the wrapped row it starts, not the row above it", () => {
+    stubLayout();
+    // COLS visible characters fill row 0, so the caret at COLS opens row 1 —
+    // ↑ there must move the caret up, never recall.
+    expect(caretVisualLine(fakeTextarea("0123456789abc", 10))).toEqual({ line: 1, lines: 2 });
+    expect(caretVisualLine(fakeTextarea("0123456789abc", 9))).toEqual({ line: 0, lines: 2 });
+  });
+
+  it("still reaches the last row of a wrapped draft, so ↓ can recall", () => {
+    stubLayout();
+    expect(caretVisualLine(fakeTextarea("0123456789abc", 13))).toEqual({ line: 1, lines: 2 });
   });
 });

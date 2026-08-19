@@ -4,8 +4,9 @@
  * in the narrow composer, and ↑ on a wrapped row must move the caret up one
  * row, not recall a sent message. Logical lines (\n) can't see wraps, so we
  * measure instead: a mirror div with the same typography and content width
- * holds the text up to the caret plus a marker, and the marker's offset names
- * the line. One attach, a few layout reads, straight back out.
+ * holds the text up to the caret, then a marker span holding everything after
+ * it, and the marker's offset names the line. One attach, a few layout reads,
+ * straight back out.
  */
 const COPY_PROPS = [
   "fontFamily",
@@ -44,15 +45,19 @@ export function caretVisualLine(el: HTMLTextAreaElement): { line: number; lines:
       lineH = mirror.clientHeight - one;
     }
 
-    // The zero-width marker keeps an empty wrapped/trailing line alive.
+    // The marker carries the text AFTER the caret, so it starts on the row the
+    // caret sits on. A marker holding nothing would instead sit at the end of
+    // the row it fills — at a soft wrap the caret then read as row 0, and ↑
+    // from the first character of a wrapped second row recalled history
+    // instead of moving up. Its trailing zero-width space keeps an empty
+    // wrapped/trailing line alive, and leaves the mirror holding the whole
+    // value, so one layout gives both the row and the row count.
     const caret = el.selectionStart;
     mirror.textContent = el.value.slice(0, caret);
     const marker = document.createElement("span");
-    marker.textContent = "\u200B";
+    marker.textContent = `${el.value.slice(caret)}\u200B`;
     mirror.appendChild(marker);
     const line = Math.round(marker.offsetTop / lineH);
-
-    mirror.textContent = `${el.value}\u200B`;
     const lines = Math.round(mirror.clientHeight / lineH);
     return { line: Math.min(line, lines - 1), lines };
   } finally {
