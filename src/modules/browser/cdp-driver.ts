@@ -436,8 +436,10 @@ export async function settleIfLoading(tabId: TabId, watchMs = SETTLE_WATCH_MS): 
     };
     chrome.tabs.onUpdated.addListener(listener);
     // The action's own promise may settle after the load is already in flight.
+    // A tab that died under the batch answers `undefined` here — nothing to wait
+    // for, and the call behind this one is where that gets reported properly.
     chrome.tabs.get(tabId, (tab) => {
-      if (tab.status === "loading") finish(true);
+      if (tab?.status === "loading") finish(true);
     });
   });
   if (!started) return false;
