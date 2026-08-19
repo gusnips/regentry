@@ -634,8 +634,20 @@ function AssistantBubble({ content, cursor }: { content: string; cursor?: boolea
   );
 }
 
-const CARET =
-  "[&>*:last-child]:after:ml-0.5 [&>*:last-child]:after:animate-pulse [&>*:last-child]:after:motion-reduce:animate-none [&>*:last-child]:after:content-['▊']";
+/**
+ * Drawn, not typed. `content: '▊'` was a block-element glyph no UI sans carries,
+ * so every platform fell back to whatever font had it and rendered a full-cell
+ * brick — a blinking square, not a caret. A 2px box in `currentColor` is
+ * font-independent and scales with the text.
+ */
+const CARET = [
+  "[&>*:last-child]:after:content-['']",
+  "[&>*:last-child]:after:ml-0.5 [&>*:last-child]:after:inline-block",
+  "[&>*:last-child]:after:h-[1em] [&>*:last-child]:after:w-[2px]",
+  "[&>*:last-child]:after:translate-y-[0.15em] [&>*:last-child]:after:rounded-full",
+  "[&>*:last-child]:after:bg-current",
+  "[&>*:last-child]:after:animate-pulse [&>*:last-child]:after:motion-reduce:animate-none",
+].join(" ");
 
 /** Ghost-button override for actions inside the red error bubble. */
 const ERROR_ACTION_CLASSES =
