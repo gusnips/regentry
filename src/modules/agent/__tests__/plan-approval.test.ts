@@ -12,6 +12,7 @@ const snapshot = async (): Promise<SnapshotResult> => ({
   viewport: { width: 800, height: 600 },
   url: "https://example.com",
   title: "Example",
+  newRefs: 0,
 });
 
 /** Driver stand-in — every method resolves a benign success; actions record their use. */

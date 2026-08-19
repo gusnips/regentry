@@ -105,6 +105,38 @@ const GATED_TOOLS = new Set([...ACTION_TOOLS, "schedule_task"]);
 const SETTLE_TOOLS = new Set(["click", "type", "fill", "press_key", "evaluate"]);
 
 /**
+ * Actions whose target the page can move out from under them: a ref names an
+ * element in one snapshot's registry, and typing and key presses land wherever
+ * focus is. evaluate is absent — it carries its own code and looks nothing up.
+ * Scrolling is absent too: it moves the viewport, not the page.
+ */
+const PAGE_STATE_TOOLS = new Set(["click", "type", "fill", "press_key"]);
+
+/**
+ * Actions that definitively land on another document, so every ref from before
+ * them is describing a page that is no longer there — no census needed to know it.
+ * switch_tab is here despite acting on nothing: after a re-target, refs resolve
+ * against a different tab's registry, where the same id means something else.
+ */
+const NEW_PAGE_TOOLS = new Set(["navigate", "go_back", "open_tab", "switch_tab"]);
+
+/**
+ * Whether the page is holding interactive elements no ref covers yet — a menu
+ * that opened, a validation error, an autocomplete list. Deliberately the same
+ * no-arguments walk the snapshot tool makes, because mint counts only compare
+ * between identical walks; a narrower one would "find" elements the model's
+ * own snapshot never registered and report every page as changed.
+ */
+async function pageGrew(driver: BrowserDriver): Promise<boolean> {
+  try {
+    return (await driver.snapshot()).newRefs > 0;
+  } catch {
+    // A census that cannot run is its own answer: the page is mid-something.
+    return true;
+  }
+}
+
+/**
  * A turn's tool calls with `plan` first. Models routinely batch the plan with
  * the first action of that plan in one turn; executed in wire order the action
  * hits the gate and is rejected, even though its approval was one call away.
@@ -126,6 +158,8 @@ function planFirst(calls: ToolCall[]): ToolCall[] {
  */
 const cancelledAfterFailure = (name: string) =>
   `Earlier action \`${name}\` in this turn failed — its error is in that call's result. This call did not run. Re-observe the page before retrying.`;
+const CANCELLED_PAGE_CHANGED =
+  "The page moved after an earlier action this turn, so the refs you wrote this call with may no longer mean what they did. This call and the rest of the turn did not run. Call snapshot for fresh refs and continue from there.";
 const CANCELLED_RUN_ENDED = "The run ended earlier this turn (`done`) — this call did not run.";
 const CANCELLED_RUN_PAUSED =
   "The run paused earlier this turn on `ask_user` — this call did not run.";
@@ -582,6 +616,11 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     const ordered = planFirst(turn.toolCalls);
     // Set once, by whatever ended the batch; every call behind it drains unrun.
     let cancelled: string | null = null;
+    // The page is known to have moved — no census can tell us anything new.
+    let pageChanged = false;
+    // Whether an action has already landed this turn. The turn's first one is
+    // acting on the page the model actually saw, so it needs no census.
+    let acted = false;
     for (let i = 0; i < ordered.length; i++) {
       const call = ordered[i]!;
       if (signal.aborted) {
@@ -620,6 +659,19 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
         continue;
       }
 
+      // The model wrote this whole turn against one page state. If an earlier
+      // call in it moved the page, the ref in this one is describing something
+      // that may no longer be there — so hand the turn back instead of acting
+      // blind. Reads are never held back: looking at a page that just changed
+      // is exactly the right next move, and it is what the model is being
+      // asked to do here.
+      if (PAGE_STATE_TOOLS.has(call.name) && (pageChanged || (acted && (await pageGrew(driver))))) {
+        log.info(`${call.name} cancelled — the page moved earlier this turn`);
+        cancelled = CANCELLED_PAGE_CHANGED;
+        results.push({ id: call.id, content: JSON.stringify({ cancelled }) });
+        continue;
+      }
+
       // The plan is bookkeeping, not an action on the page: it replaces a card
       // rather than adding a row, so it gets no spinner and no step of its own.
       const bookkeeping = call.name === "plan";
@@ -643,13 +695,18 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // The strip appears when the work does: landing a gated action files the
       // driven tab into the run's group. Reads never group — a tab the user was
       // merely passing through stays exactly as they filed it.
-      if (result.ok && ACTION_TOOLS.has(call.name)) await runGroup?.touch();
+      if (result.ok && ACTION_TOOLS.has(call.name)) {
+        await runGroup?.touch();
+        acted = true;
+      }
+      // Landing on another document needs no census to know the refs are gone.
+      if (result.ok && NEW_PAGE_TOOLS.has(call.name)) pageChanged = true;
       // Mid-batch only. A turn's calls run back-to-back with no model latency
       // between them, so a click that navigates would hand the call behind it a
       // page still assembling. The last call of a turn needs none of this — the
       // round trip after it is settle enough.
       if (result.ok && SETTLE_TOOLS.has(call.name) && i < ordered.length - 1) {
-        await driver.settle();
+        if (await driver.settle()) pageChanged = true;
       }
       if (!result.ok) {
         log.warn(`tool ${call.name} failed:`, result.error);

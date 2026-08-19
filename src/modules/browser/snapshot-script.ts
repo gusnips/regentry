@@ -21,6 +21,14 @@ export interface SnapshotResult {
   viewport: { width: number; height: number };
   url: string;
   title: string;
+  /**
+   * Refs this walk had to mint — interactive elements the registry had never
+   * seen. Zero means the page holds nothing new, which is how the agent loop
+   * tells a page that moved under a batch from one that stayed put. Only
+   * comparable between identical walks, so the loop uses the same
+   * no-arguments call the snapshot tool makes.
+   */
+  newRefs: number;
 }
 
 /**
@@ -217,6 +225,10 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
     __tabrunnerReverse?: WeakMap<HTMLElement, string>;
     __tabrunnerCounter?: number;
   };
+  // Interactive elements this walk had never seen before. A page that stayed
+  // put mints nothing, so the count doubles as the change signal the agent
+  // loop reads between a turn's actions.
+  let newRefs = 0;
   function getOrCreateRef(el: HTMLElement): string {
     if (!w.__tabrunnerRefs) {
       w.__tabrunnerRefs = new Map();
@@ -228,6 +240,7 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
       const r = w.__tabrunnerRefs!.get(existing);
       if (r && r.deref() === el) return existing;
     }
+    newRefs++;
     const ref = `e${++w.__tabrunnerCounter!}`;
     w.__tabrunnerRefs!.set(ref, new WeakRef(el));
     w.__tabrunnerReverse!.set(el, ref);
@@ -334,5 +347,6 @@ export function generateSnapshot(opts: SnapshotOptions): SnapshotResult {
     viewport: { width: window.innerWidth, height: window.innerHeight },
     url: location.href,
     title: document.title,
+    newRefs,
   };
 }

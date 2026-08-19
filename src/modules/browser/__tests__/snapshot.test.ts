@@ -179,4 +179,34 @@ describe("generateSnapshot", () => {
     expect(result.pageContent).not.toContain("color: red");
     expect(result.pageContent).toContain("Real");
   });
+
+  // newRefs is what the agent loop reads between a turn's actions to tell a page
+  // that moved from one that stayed put — so it has to count only what is new.
+  describe("newRefs", () => {
+    it("counts every ref on a page it has never walked", () => {
+      setupDOM(`<button>One</button><a href="/x">Two</a>`);
+      expect(generateSnapshot({} as SnapshotOptions).newRefs).toBe(2);
+    });
+
+    it("counts nothing on a second walk of the same page", () => {
+      setupDOM(`<button>One</button><a href="/x">Two</a>`);
+      generateSnapshot({} as SnapshotOptions);
+      expect(generateSnapshot({} as SnapshotOptions).newRefs).toBe(0);
+    });
+
+    it("counts only what appeared since the last walk", () => {
+      setupDOM(`<button>One</button>`);
+      generateSnapshot({} as SnapshotOptions);
+      // What an opened menu or a validation error looks like from here.
+      document.body.insertAdjacentHTML("beforeend", `<button>Two</button>`);
+      expect(generateSnapshot({} as SnapshotOptions).newRefs).toBe(1);
+    });
+
+    it("counts nothing when text changes but no element does", () => {
+      setupDOM(`<button>One</button>`);
+      generateSnapshot({} as SnapshotOptions);
+      document.querySelector("button")!.textContent = "Renamed";
+      expect(generateSnapshot({} as SnapshotOptions).newRefs).toBe(0);
+    });
+  });
 });

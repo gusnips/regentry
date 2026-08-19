@@ -16,6 +16,8 @@ interface DriverOpts {
   failing?: string[];
   /** What `settle` reports — a load started after the action, or the page stayed put. */
   navigated?: boolean;
+  /** Refs each walk mints — how a stand-in page says something new appeared. */
+  newRefs?: number;
 }
 
 /** Driver stand-in — records every attempt in `calls`, including `settle`. */
@@ -32,6 +34,7 @@ function makeDriver(calls: string[] = [], opts: DriverOpts = {}): BrowserDriver 
         viewport: { width: 800, height: 600 },
         url: "https://example.com",
         title: "Example",
+        newRefs: opts.newRefs ?? 0,
       }),
     find: async (query: string) =>
       attempt("find", { query, url: "https://example.com", matches: [], total: 0 }),
@@ -204,8 +207,10 @@ describe("a turn's calls are a batch", () => {
   });
 });
 
-/** The run's opening snapshot is not part of any batch. */
+/** Just the driver's actions — the opening snapshot and the censuses are noise here. */
 const acted = (calls: string[]) => calls.filter((c) => c !== "snapshot");
+/** Walks beyond the run's opening one: every census the loop ran. */
+const censuses = (calls: string[]) => calls.filter((c) => c === "snapshot").length - 1;
 
 describe("settling between a turn's calls", () => {
   it("settles between calls, and not after the last one", async () => {
@@ -247,5 +252,89 @@ describe("settling between a turn's calls", () => {
     );
 
     expect(acted(calls)).not.toContain("settle");
+  });
+});
+
+describe("acting again on a page that moved mid-turn", () => {
+  it("stops the batch when new elements appeared under it", async () => {
+    const calls: string[] = [];
+    const second = call("click", { ref: "e2" });
+    // A menu opened, a validation error rendered, an autocomplete list appeared —
+    // whatever e2 named in the model's snapshot may not be there any more.
+    const wire = await run(
+      scriptedProvider([[plan(["Click both"])], [call("click", { ref: "e1" }), second]]),
+      makeDriver(calls, { newRefs: 3 }),
+    );
+
+    expect(acted(calls)).toEqual(["click", "settle"]);
+    expect(allResults(wire).find((r) => r.id === second.id)?.content).toContain("snapshot");
+  });
+
+  it("lets the batch through when the page stayed put", async () => {
+    const calls: string[] = [];
+    await run(
+      scriptedProvider([
+        [plan(["Fill and submit"])],
+        [call("fill", { ref: "e1", text: "a" }), call("click", { ref: "e2" })],
+      ]),
+      makeDriver(calls, { newRefs: 0 }),
+    );
+
+    expect(acted(calls)).toEqual(["fill", "settle", "click"]);
+    expect(censuses(calls)).toBe(1); // one, before the click — none before the fill
+  });
+
+  it("never censuses before a turn's first action", async () => {
+    const calls: string[] = [];
+    // It is acting on the page the model actually looked at.
+    await run(
+      scriptedProvider([[plan(["Click it"])], [call("click", { ref: "e1" })]]),
+      makeDriver(calls, { newRefs: 9 }),
+    );
+
+    expect(acted(calls)).toEqual(["click"]);
+    expect(censuses(calls)).toBe(0);
+  });
+
+  it("needs no census after a navigation — the refs are gone by definition", async () => {
+    const calls: string[] = [];
+    const click = call("click", { ref: "e1" });
+    const wire = await run(
+      scriptedProvider([
+        [plan(["Go and click"])],
+        [call("navigate", { url: "https://example.com/next" }), click],
+      ]),
+      makeDriver(calls, { newRefs: 0 }), // a census here would report no change
+    );
+
+    expect(acted(calls)).toEqual(["navigate"]);
+    expect(censuses(calls)).toBe(0);
+    expect(allResults(wire).find((r) => r.id === click.id)?.content).toContain("snapshot");
+  });
+
+  it("stops the batch when the settle saw the page go somewhere", async () => {
+    const calls: string[] = [];
+    await run(
+      scriptedProvider([
+        [plan(["Click both"])],
+        [call("click", { ref: "e1" }), call("click", { ref: "e2" })],
+      ]),
+      makeDriver(calls, { navigated: true, newRefs: 0 }),
+    );
+
+    expect(acted(calls)).toEqual(["click", "settle"]);
+    expect(censuses(calls)).toBe(0); // settle already answered the question
+  });
+
+  it("never holds back a read — looking at what just changed is the right move", async () => {
+    const calls: string[] = [];
+    const look = call("snapshot");
+    // The whole point of "click submit, then snapshot": one round trip, not two.
+    const wire = await run(
+      scriptedProvider([[plan(["Submit and check"])], [call("click", { ref: "e1" }), look]]),
+      makeDriver(calls, { newRefs: 4 }),
+    );
+
+    expect(allResults(wire).find((r) => r.id === look.id)?.content).toContain("Page with a button");
   });
 });

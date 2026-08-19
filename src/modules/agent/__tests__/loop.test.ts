@@ -14,6 +14,7 @@ const driver = {
     viewport: { width: 800, height: 600 },
     url: "https://example.com",
     title: "Example",
+    newRefs: 0,
   }),
 } as unknown as BrowserDriver;
 
@@ -200,6 +201,7 @@ describe("runAgentLoop context growth", () => {
         viewport: { width: 800, height: 600 },
         url: "https://example.com",
         title: "Example",
+        newRefs: 0,
       }),
     } as unknown as BrowserDriver;
 
