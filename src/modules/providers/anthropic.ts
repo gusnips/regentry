@@ -145,6 +145,13 @@ export function buildAnthropicBody(
   const systemMsg = messages.find((m) => m.role === "system");
   const conversation = messages.filter((m) => m.role !== "system");
 
+  // A cache marker only pays when the same prefix comes back, and the agent
+  // loop is the one caller that sends a second turn. It is also the only one
+  // that declares tools — compact, memory extraction, title and skill distill
+  // all pass none and answer in a single shot, so a marker on those would bill
+  // a 1.25x write against a cache nothing will ever read.
+  const cacheable = tools.length > 0;
+
   const body: Record<string, unknown> = {
     model: config.model,
     // Thinking tokens count against max_tokens, and thinking is always on here
@@ -156,7 +163,10 @@ export function buildAnthropicBody(
     // tool_results and an injected mid-run message both serialize as user
     // messages, and can land back to back — merge them, Anthropic rejects
     // consecutive same-role messages.
-    messages: mergeConsecutiveUsers(conversation.map((m) => toAnthropicMessage(m, isOAuth))),
+    messages: markRollingBreakpoint(
+      mergeConsecutiveUsers(conversation.map((m) => toAnthropicMessage(m, isOAuth))),
+      cacheable,
+    ),
   };
 
   const system: SystemBlock[] = [
@@ -164,24 +174,24 @@ export function buildAnthropicBody(
     ...(systemMsg ? [{ type: "text" as const, text: systemMsg.content }] : []),
   ];
   if (system.length > 0) {
-    // One cache breakpoint, on the last system block. Anthropic builds the
-    // cache prefix in the order tools → system → messages, so a marker here
-    // covers the tool definitions sitting above it too: one of the four
-    // allowed breakpoints spent, the entire stable prefix cached.
+    // The first cache breakpoint, on the last system block. Anthropic builds
+    // its cache prefix in the order tools → system → messages, so a marker here
+    // takes the tool definitions above it along: one of the four allowed
+    // breakpoints spent, the whole fixed prefix of the run cached.
     //
-    // It IS stable — buildToolDefs and buildSystemPrompt are called once at run
+    // It IS fixed — buildToolDefs and buildSystemPrompt are called once at run
     // start and the array is never rebuilt (loop.ts), and the prompt carries no
-    // clock, URL, or tab list (the date rides in the first user message). So
-    // this prefix is byte-identical on turn 1 and turn 50, which is the whole
-    // premise: a write bills 1.25x and a read 0.1x, so it pays back after ~1.3
-    // turns and every turn after that is nearly free.
+    // clock, URL, or tab list (the date rides in the first user message). So it
+    // is byte-identical on turn 1 and turn 50, which is the whole premise: a
+    // write bills 1.25x and a read 0.1x, so it pays back after ~1.3 turns and
+    // every turn after that is close to free.
     //
     // Sent to every anthropic-shape provider, coding-plan proxies included —
     // cache_control has been GA on this API for a year and array-form `system`
     // is its ordinary shape, so a proxy that refuses either is one that would
     // fail the compatibility it advertises. If one does, it surfaces as a
     // normal classified provider error in chat, not a silent wrong answer.
-    system[system.length - 1]!.cache_control = { type: "ephemeral" };
+    if (cacheable) system[system.length - 1]!.cache_control = { type: "ephemeral" };
     body.system = system;
   }
 
@@ -269,6 +279,33 @@ function asBlocks(
   content: string | Array<Record<string, unknown>>,
 ): Array<Record<string, unknown>> {
   return typeof content === "string" ? [{ type: "text", text: content }] : content;
+}
+
+/**
+ * The second breakpoint, on the tail of the newest message, moved forward every
+ * turn. The system marker caches the run's fixed prefix; this one caches the
+ * conversation, which by turn ten is the larger half of the bill.
+ *
+ * It works because Anthropic looks back a little way from an explicit
+ * breakpoint for a shorter prefix it already holds: last turn's marker sits a
+ * handful of blocks behind this one, so the read hits there and only this
+ * turn's new blocks bill fresh. A turn adds two messages, and even a five-call
+ * batch adds around eleven blocks — inside that lookback. A batch large enough
+ * to overshoot it would silently stop reading back, which is the first thing
+ * the cache telemetry would show.
+ *
+ * Safe to mutate: every block here was built by toAnthropicMessage during this
+ * call, so nothing is shared with the loop's own message array.
+ */
+function markRollingBreakpoint(messages: AnthropicMessage[], cacheable: boolean) {
+  const last = messages[messages.length - 1];
+  if (!cacheable || !last) return messages;
+  const blocks = asBlocks(last.content);
+  const tail = blocks[blocks.length - 1];
+  if (!tail) return messages;
+  tail.cache_control = { type: "ephemeral" };
+  last.content = blocks;
+  return messages;
 }
 
 /** See buildAnthropicBody for why the merge exists. */

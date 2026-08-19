@@ -96,9 +96,7 @@ describe("buildAnthropicBody", () => {
 
   it("splits system out of the conversation", () => {
     const body = buildAnthropicBody(anthropicBase, messages, []);
-    expect(body.system).toEqual([
-      { type: "text", text: "You are an agent.", cache_control: { type: "ephemeral" } },
-    ]);
+    expect(body.system).toEqual([{ type: "text", text: "You are an agent." }]);
     expect(body.messages).toEqual([{ role: "user", content: "Do the thing." }]);
   });
 
@@ -183,11 +181,7 @@ describe("buildAnthropicBody", () => {
       const body = buildAnthropicBody(oauth, messages, []);
       expect(body.system).toEqual([
         { type: "text", text: "You are a Claude agent, built on Anthropic's Claude Agent SDK." },
-        {
-          type: "text",
-          text: "You are an agent.",
-          cache_control: { type: "ephemeral" },
-        },
+        { type: "text", text: "You are an agent." },
       ]);
     });
 
@@ -215,30 +209,52 @@ describe("buildAnthropicBody", () => {
         params: { type: "object" as const, properties: {} },
       },
     ];
+    const oauth: ResolvedProviderConfig = {
+      ...anthropicBase,
+      auth: { accessToken: "at", refreshToken: "rt", expiresAt: 0 },
+    };
 
-    it("marks exactly one breakpoint, on the last system block", () => {
-      // Anthropic caps a request at 4 and 400s past it. One marker at the end
-      // of `system` covers the tools above it by the tools → system → messages
-      // hierarchy, so spending a second on the tools array would buy nothing.
-      const oauth: ResolvedProviderConfig = {
-        ...anthropicBase,
-        auth: { accessToken: "at", refreshToken: "rt", expiresAt: 0 },
-      };
+    /** Every cache_control in the body, wherever it was placed. */
+    const markers = (body: Record<string, unknown>) =>
+      JSON.stringify(body).match(/"cache_control"/g) ?? [];
+
+    it("anchors the fixed prefix on the last system block, not on the tools", () => {
+      // Anthropic builds its prefix tools → system → messages, so one marker at
+      // the end of `system` already covers the tool definitions above it —
+      // spending a second on the tools array would buy nothing and the API caps
+      // a request at four.
       for (const config of [anthropicBase, oauth]) {
         const body = buildAnthropicBody(config, messages, tools);
         const blocks = body.system as { cache_control?: unknown }[];
-        expect(blocks.filter((b) => b.cache_control)).toHaveLength(1);
         expect(blocks[blocks.length - 1]?.cache_control).toEqual({ type: "ephemeral" });
+        expect(blocks.filter((b) => b.cache_control)).toHaveLength(1);
         expect(JSON.stringify(body.tools)).not.toContain("cache_control");
       }
     });
 
-    it("marks nothing when there is no system prompt to anchor to", () => {
-      // A one-shot call (distill, compact) has no stable prefix to reuse, and a
-      // marker with nothing before it would bill a write that is never read.
-      const body = buildAnthropicBody(anthropicBase, [{ role: "user", content: "hi" }], tools);
-      expect(body).not.toHaveProperty("system");
-      expect(JSON.stringify(body)).not.toContain("cache_control");
+    it("rolls a second breakpoint onto the newest message", () => {
+      const body = buildAnthropicBody(anthropicBase, messages, tools);
+      const msgs = body.messages as { content: { cache_control?: unknown }[] }[];
+      const tail = msgs[msgs.length - 1]?.content;
+      expect(tail?.[tail.length - 1]?.cache_control).toEqual({ type: "ephemeral" });
+    });
+
+    it("stays under the four-breakpoint cap the API enforces", () => {
+      const long: ChatMessage[] = [
+        ...messages,
+        { role: "assistant", content: "", toolCalls: [{ id: "c1", name: "snapshot", args: {} }] },
+        { role: "tool_results", content: "", toolResults: [{ id: "c1", content: "{}" }] },
+        { role: "user", content: "and now the footer" },
+      ];
+      expect(markers(buildAnthropicBody(oauth, long, tools)).length).toBeLessThanOrEqual(4);
+    });
+
+    it("marks nothing on a call that declares no tools", () => {
+      // The four one-shot distillations — compact, memory extract, title, skill
+      // — answer in a single turn and pass no tools. A marker there would bill
+      // a 1.25x write against a cache that gets no second request to read it.
+      const body = buildAnthropicBody(anthropicBase, messages, []);
+      expect(markers(body)).toHaveLength(0);
     });
   });
 });
