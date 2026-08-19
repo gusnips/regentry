@@ -96,6 +96,15 @@ const ACTION_TOOLS = new Set([
 const GATED_TOOLS = new Set([...ACTION_TOOLS, "schedule_task"]);
 
 /**
+ * Actions that can start a navigation without waiting for one, so a call
+ * batched behind them would meet a page mid-assembly. navigate, go_back and
+ * open_tab are absent because the driver already waits inside them; scrolling
+ * is absent because it cannot navigate, and watching after it is pure loss.
+ * evaluate is here: `location.href = …` is a real pattern.
+ */
+const SETTLE_TOOLS = new Set(["click", "type", "fill", "press_key", "evaluate"]);
+
+/**
  * A turn's tool calls with `plan` first. Models routinely batch the plan with
  * the first action of that plan in one turn; executed in wire order the action
  * hits the gate and is rejected, even though its approval was one call away.
@@ -635,6 +644,13 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // driven tab into the run's group. Reads never group — a tab the user was
       // merely passing through stays exactly as they filed it.
       if (result.ok && ACTION_TOOLS.has(call.name)) await runGroup?.touch();
+      // Mid-batch only. A turn's calls run back-to-back with no model latency
+      // between them, so a click that navigates would hand the call behind it a
+      // page still assembling. The last call of a turn needs none of this — the
+      // round trip after it is settle enough.
+      if (result.ok && SETTLE_TOOLS.has(call.name) && i < ordered.length - 1) {
+        await driver.settle();
+      }
       if (!result.ok) {
         log.warn(`tool ${call.name} failed:`, result.error);
         // A failed action ends the batch — the calls behind it were written for

@@ -11,11 +11,18 @@ import type { ChatMessage, ChatProvider, ToolCall } from "@/modules/providers/ty
 // state, so the loop stops the batch at whatever invalidates the rest of it.
 // These cover what stops it, what doesn't, and that no call ever goes unanswered.
 
-/** Driver stand-in — records attempts, and fails the tools named in `failing`. */
-function makeDriver(calls: string[] = [], failing: string[] = []): BrowserDriver {
+interface DriverOpts {
+  /** Tools whose driver call throws. */
+  failing?: string[];
+  /** What `settle` reports — a load started after the action, or the page stayed put. */
+  navigated?: boolean;
+}
+
+/** Driver stand-in — records every attempt in `calls`, including `settle`. */
+function makeDriver(calls: string[] = [], opts: DriverOpts = {}): BrowserDriver {
   const attempt = <T>(name: string, value: T) => {
     calls.push(name);
-    if (failing.includes(name)) throw new Error(`${name} boom`);
+    if (opts.failing?.includes(name)) throw new Error(`${name} boom`);
     return value;
   };
   return {
@@ -32,6 +39,7 @@ function makeDriver(calls: string[] = [], failing: string[] = []): BrowserDriver
     fill: async () => attempt("fill", undefined),
     navigate: async () => attempt("navigate", undefined),
     listTabs: async () => attempt("list_tabs", []),
+    settle: async () => attempt("settle", opts.navigated === true),
   } as unknown as BrowserDriver;
 }
 
@@ -79,7 +87,7 @@ describe("a turn's calls are a batch", () => {
     const third = call("snapshot");
     const wire = await run(
       scriptedProvider([[plan(["Click both"])], [first, second, third]]),
-      makeDriver(calls, ["click"]),
+      makeDriver(calls, { failing: ["click"] }),
     );
 
     // One attempt, not three: the calls behind the failure were written for the
@@ -105,7 +113,7 @@ describe("a turn's calls are a batch", () => {
         [plan(["Click it"])],
         [call("find", { query: "x" }), call("click", { ref: "e1" })],
       ]),
-      makeDriver(calls, ["find"]),
+      makeDriver(calls, { failing: ["find"] }),
     );
 
     expect(calls).toContain("click");
@@ -178,7 +186,7 @@ describe("a turn's calls are a batch", () => {
         [plan(["Click both"])],
         [call("click", { ref: "e1" }), call("click", { ref: "e2" })],
       ]),
-      makeDriver([], ["click"]),
+      makeDriver([], { failing: ["click"] }),
       {
         callbacks: {
           onPlanApproval: async () => ({ approved: true }),
@@ -193,5 +201,51 @@ describe("a turn's calls are a batch", () => {
     expect(started.filter((t) => t === "click")).toHaveLength(1);
     expect(steps.filter((s) => s.tool === "click")).toHaveLength(1);
     expect(steps.find((s) => s.tool === "click")?.ok).toBe(false);
+  });
+});
+
+/** The run's opening snapshot is not part of any batch. */
+const acted = (calls: string[]) => calls.filter((c) => c !== "snapshot");
+
+describe("settling between a turn's calls", () => {
+  it("settles between calls, and not after the last one", async () => {
+    const calls: string[] = [];
+    await run(
+      scriptedProvider([
+        [plan(["Fill the form"])],
+        [
+          call("fill", { ref: "e1", text: "a" }),
+          call("fill", { ref: "e2", text: "b" }),
+          call("click", { ref: "e3" }),
+        ],
+      ]),
+      makeDriver(calls),
+    );
+
+    // The submit ends the turn, and the model round trip after it is settle enough.
+    expect(acted(calls)).toEqual(["fill", "settle", "fill", "settle", "click"]);
+  });
+
+  it("never settles on a single-call turn", async () => {
+    const calls: string[] = [];
+    await run(
+      scriptedProvider([[plan(["Click it"])], [call("click", { ref: "e1" })]]),
+      makeDriver(calls),
+    );
+
+    expect(acted(calls)).toEqual(["click"]);
+  });
+
+  it("does not settle after a scroll — scrolling cannot navigate", async () => {
+    const calls: string[] = [];
+    await run(
+      scriptedProvider([
+        [plan(["Look further down"])],
+        [call("scroll_down"), call("click", { ref: "e1" })],
+      ]),
+      makeDriver(calls),
+    );
+
+    expect(acted(calls)).not.toContain("settle");
   });
 });

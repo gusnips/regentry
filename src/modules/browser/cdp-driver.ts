@@ -402,6 +402,51 @@ export async function goBack(tabId: TabId): Promise<void> {
   await refreshAgentIndicator(tabId);
 }
 
+/**
+ * How long to watch for a load starting after an action. Long enough that a
+ * click's navigation has committed, short enough to stay cheap on the clicks
+ * that navigate nowhere — which is most of them.
+ */
+const SETTLE_WATCH_MS = 400;
+
+/**
+ * Watch briefly for a load starting after an action, and ride it out if one
+ * does. Reports whether the page went anywhere.
+ *
+ * Only worth calling between a turn's tool calls: those run back-to-back with
+ * no model latency between them, so a click that navigates hands the call
+ * behind it a page still assembling. A turn's last call needs none of this —
+ * the round trip is settle enough.
+ *
+ * ponytail: a fixed watch window, not network-idle or a DOM-settle heuristic.
+ * The ceiling is a load that starts after the window looks like no load at all;
+ * the ref census in the loop is what catches those. Upgrade path is CDP's
+ * Page.frameStartedLoading, which would cost the attach this deliberately avoids.
+ */
+export async function settleIfLoading(tabId: TabId, watchMs = SETTLE_WATCH_MS): Promise<boolean> {
+  const started = await new Promise<boolean>((resolve) => {
+    const listener = (id: number, info: chrome.tabs.OnUpdatedInfo) => {
+      if (id === tabId && info.status === "loading") finish(true);
+    };
+    const timer = setTimeout(() => finish(false), watchMs);
+    const finish = (loading: boolean) => {
+      clearTimeout(timer);
+      chrome.tabs.onUpdated.removeListener(listener);
+      resolve(loading);
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+    // The action's own promise may settle after the load is already in flight.
+    chrome.tabs.get(tabId, (tab) => {
+      if (tab.status === "loading") finish(true);
+    });
+  });
+  if (!started) return false;
+  // A load that never finishes is not this call's to report — the action landed,
+  // and the ref lookup behind it is what fails loudly.
+  await waitForLoad(tabId).catch(() => {});
+  return true;
+}
+
 export function waitForLoad(tabId: TabId, timeoutMs = 30_000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {

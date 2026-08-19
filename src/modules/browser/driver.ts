@@ -17,6 +17,7 @@ import {
   navigateToUrl,
   goBack as goBackInTab,
   waitForLoad,
+  settleIfLoading,
   ensureAttached,
 } from "./cdp-driver";
 import { focusTab } from "./focus-tab";
@@ -101,6 +102,12 @@ export interface BrowserDriver {
    * windows would rip it out of the user's screen setup, which is theirs to do.
    */
   groupTab(tabId: TabId, groupId: number): Promise<TabInfo>;
+  /**
+   * Brief post-action watch for a page load, riding one out if it starts.
+   * Reports whether the page went anywhere. The loop calls it between a turn's
+   * calls, where there is no model latency to absorb a navigation.
+   */
+  settle(): Promise<boolean>;
 }
 
 export interface DriverOptions {
@@ -312,6 +319,8 @@ export function createDriver(initialTabId: TabId, opts: DriverOptions = {}): Bro
       await chrome.tabs.remove(tabId);
       return info;
     },
+
+    settle: () => settleIfLoading(current),
   };
 
   return driver;
