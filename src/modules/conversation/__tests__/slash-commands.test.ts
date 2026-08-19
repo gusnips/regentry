@@ -261,6 +261,42 @@ vi.mock("@/modules/skills/ui", () => ({
   openSkillDraft: skillsUi.openSkillDraft,
 }));
 
+describe("/document", () => {
+  let sent: string[];
+
+  beforeEach(() => {
+    sent = [];
+    useConversationStore.setState({
+      sendTask: (task: string) => {
+        sent.push(task);
+      },
+    });
+  });
+
+  it("wraps the task in an ask the model's document tool actually triggers on", () => {
+    executeSlash("/document export the Q3 report");
+    expect(sent).toHaveLength(1);
+    // The contract with the tool description (agent/prompt.ts): the wrapper has
+    // to contain the word the model is told to watch for, and it must keep the
+    // user's own task intact.
+    expect(sent[0]).toContain("export the Q3 report");
+    expect(sent[0]?.toLowerCase()).toContain("document");
+  });
+
+  it("completes to a template instead of firing, so the task can be typed after it", () => {
+    // Bare "/doc" must land the cursor after "/document ", never send an empty
+    // documented run.
+    expect(executeSlash("/doc")).toEqual({ complete: "/document " });
+    expect(sent).toEqual([]);
+  });
+
+  it("teaches the phrase rather than dead-ending when run with no task", () => {
+    executeSlash("/document ");
+    expect(sent).toEqual([]);
+    expect(lastNote()).toContain("document it");
+  });
+});
+
 describe("/skill", () => {
   const skill = (name: string, enabled = true) => ({
     id: name,

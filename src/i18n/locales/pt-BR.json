@@ -501,7 +501,8 @@
       "remember_other": "{{count}} notas",
       "action_one": "{{count}} outra ação",
       "action_other": "{{count}} outras ações"
-    }
+    },
+    "emptyExampleDoc": "Acrescente “e documente isso” a qualquer tarefa e você recebe um guia para compartilhar."
   },
   "commands": {
     "menuAria": "Comandos",
@@ -557,6 +558,11 @@
     "usage": {
       "description": "Mostra as janelas de uso da assinatura ativa",
       "unsupported": "{{provider}} usa uma chave de API — janelas de uso só existem nos provedores por assinatura (Claude, ChatGPT, Kimi)."
+    },
+    "document": {
+      "description": "Executa uma tarefa e gera um passo a passo compartilhável",
+      "task": "{{task}}\n\nDocumente este processo como um passo a passo que eu possa compartilhar.",
+      "hint": "Escreva a tarefa depois de /document — ou acrescente “e documente isso” a qualquer tarefa."
     },
     "skill": {
       "description": "Executa uma habilidade salva — /skill new transforma esta conversa em uma",

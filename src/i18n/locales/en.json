@@ -501,7 +501,8 @@
       "remember_other": "{{count}} notes",
       "action_one": "{{count}} other action",
       "action_other": "{{count}} other actions"
-    }
+    },
+    "emptyExampleDoc": "Add “and document it” to any task and you get a guide you can share."
   },
   "commands": {
     "menuAria": "Commands",
@@ -557,6 +558,11 @@
     "usage": {
       "description": "Show the active subscription's usage windows",
       "unsupported": "{{provider}} runs on an API key — usage windows only exist for subscription sign-ins (Claude, ChatGPT, Kimi)."
+    },
+    "document": {
+      "description": "Run a task and get a shareable step-by-step walkthrough",
+      "task": "{{task}}\n\nDocument this process as a step-by-step walkthrough I can share.",
+      "hint": "Type the task after /document — or add “and document it” to any task."
     },
     "skill": {
       "description": "Run a saved skill — /skill new turns this conversation into one",

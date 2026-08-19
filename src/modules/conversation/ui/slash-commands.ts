@@ -58,6 +58,7 @@ type CommandDescriptionKey =
   | "commands.provider.description"
   | "commands.rename.description"
   | "commands.usage.description"
+  | "commands.document.description"
   | "commands.skill.description"
   | "commands.compact.description"
   | "commands.new.description"
@@ -367,6 +368,37 @@ export const COMMANDS: readonly SlashCommand[] = [
         // arrive worded as the sign-in fix.
         (e: unknown) => note(e instanceof Error ? e.message : String(e)),
       );
+    },
+  },
+  {
+    name: "document",
+    descriptionKey: "commands.document.description",
+    // The discovery surface for documented runs. The feature is armed by the
+    // model when the user asks for it in prose, which works and is the thing we
+    // want people to learn — but a phrase nobody has been told about is a
+    // feature nobody finds. Typing "/doc" and pressing Enter completes to
+    // "/document " (the takesArg path) and leaves the cursor where the task
+    // goes, so the command is a template, not a second mechanism.
+    //
+    // ponytail: the model still decides whether to call the tool, so a model
+    // that ignores the ask produces an undocumented run. The ceiling is one
+    // wasted run; the upgrade path (roadmap) is a deterministic flag on the run
+    // command that arms the recorder at start, which is only worth its state
+    // once field evidence says models actually miss this.
+    takesArg: true,
+    // It produces a task, so it parks behind a live run like /skill does.
+    deferWhileBusy: true,
+    run: (arg) => {
+      if (!arg) {
+        // Reachable only past a dismissed menu — and the best place to teach
+        // the phrase, since knowing it makes the command unnecessary.
+        note(i18n.t("commands.document.hint"));
+        return;
+      }
+      // Localized, for the reason /skill's template is: the model mirrors the
+      // message's language, and an English wrapper would flip a pt-BR user's
+      // whole run into English.
+      useConversationStore.getState().sendTask(i18n.t("commands.document.task", { task: arg }));
     },
   },
   {

@@ -919,6 +919,11 @@ export function MessageList() {
         <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
           {t("chat.emptyExample")}
         </p>
+        {/* The one feature whose trigger is a phrase rather than a control —
+            without a line here it is only findable by accident. */}
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          {t("chat.emptyExampleDoc")}
+        </p>
       </div>
     );
   }

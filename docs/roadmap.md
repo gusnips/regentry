@@ -238,6 +238,65 @@ them to arbitrary files is most of the work.
 
 ---
 
+### 7. Documented-run follow-ups
+
+`walkthrough/` shipped in v0.5.2: the agent performs a process and hands back a self-contained HTML
+guide. These are the pieces deliberately left out of that first cut, roughly in the order they earn
+their keep. Watch-and-repeat (#3) is the destination all of this is walking toward.
+
+**Skill emission** — the bridge to #3, and the shortest path to it. A documented run already holds
+everything `skills/distill.ts` needs, so "also save this as a Skill?" on the artifact card is
+mostly wiring: a `skillOfferPref` of `ask` / `always` / `never`, defaulting to `ask`, with the
+first-time offer inline on the card. `always` skips the ask, never the editable review — an
+AI-written recipe goes through `SkillForm` like every other one (the `ImportSkillDialog` rule).
+Panelless runs never auto-emit; the offer waits on the card.
+
+**Somewhere to find them.** The artifact card is the only home a walkthrough has, and
+`MAX_MESSAGES` is 100 — so on a long-running conversation the card eventually falls off the front
+of the transcript while its blobs sit in IndexedDB, reachable by nothing. That is a slow leak with
+a UI hole in front of it. Settings → Walkthroughs (the `SkillsSection` shape: list, open, export,
+delete, a storage-used line) closes both.
+
+**Deterministic arming.** Today the model arms documenting when the user asks in prose, and
+`/document` is a template that teaches the phrase. If field evidence shows models skipping the
+tool, the fix is a flag on the run command that arms the recorder at run start — deterministic, and
+it captures from action #1 instead of wherever the model got around to it. Deliberately not built
+yet: it is state the user cannot see, and a "did that take?" footgun is worse than a phrase that
+works. Wait for the evidence.
+
+**Model-polished captions, and the language they are written in.** Deterministic captions (imperative
+i18n templates poured from the model's `intent` args) are what ship, and they must stay the floor:
+they cost no tokens and work with no provider configured. Polish is an explicit "Refine with AI"
+button whose output lands in editable fields, generated on first export and stored once — never
+unattended spend on a scheduled run nobody is watching. Tied to it: an **export-language picker**.
+The whole point of the artifact is handing it to a colleague, who may not read the locale the app
+happens to be in.
+
+**Video export (`.webm`).** The frames are already there; this is the encoder. It has to be an
+offscreen document — `MediaRecorder` is `[Exposed=Window]`, `OffscreenCanvas` has no
+`captureStream()`, and `VideoEncoder` is not exposed to a service worker, so the SW cannot do it and
+delegating still needs the offscreen host. Reason `BLOBS`, canvas + `captureStream(0)` +
+`requestFrame()`, vp9→vp8 behind `isTypeSupported`, and a vendored duration fix (~150 lines) because
+MediaRecorder writes no duration and the file is otherwise unseekable (crbug 642012). Two things not
+to forget: the canvas needs a **letterbox policy** (a window resized mid-run yields mixed frame
+sizes), and the step chip is **composited at encode time, never injected into the live page** — it
+is retroactive, it cannot swallow a click, and it can never contaminate the doc's own screenshots.
+Say plainly in the UI that it is a paced slideshow, not a replay: encode wall-time equals output
+duration, and per-action frames are what a hidden tab can actually produce.
+
+**MCP handoff.** A data URL is useless to an MCP client. Blobs are already keyed by recording id, so
+the eventual shape is a bridge verb that streams one to the daemon, which writes a real file and
+hands back a path. Nothing in the current design precludes it; nothing yet asks for it either.
+
+**Smaller, named so they are not re-derived:** markdown export with an asset folder (needs a zip
+dependency — the single-file HTML exists precisely to avoid one); ≤1fps tick frames between actions,
+which is the only credible route to a video that is not a slideshow; a per-schedule "document every
+fire"; and pinning an artifact so it survives its conversation being evicted — deliberately not
+done, since "export it if you want to keep it" is the honest contract once Settings makes them
+findable.
+
+---
+
 ## Later
 
 **Firefox** — the only survivor of the old roadmap, and still blocked: `chrome.debugger` has no
