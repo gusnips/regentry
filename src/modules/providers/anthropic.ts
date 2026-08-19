@@ -126,6 +126,13 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
 
 const MAX_THINKING_OUTPUT_TOKENS = 65536;
 
+/** A `system` entry. Anthropic takes a bare string too, but only the block form carries a marker. */
+interface SystemBlock {
+  type: "text";
+  text: string;
+  cache_control?: { type: "ephemeral" };
+}
+
 /** Request body for POST /v1/messages. Exported for tests. */
 export function buildAnthropicBody(
   config: ResolvedProviderConfig,
@@ -152,15 +159,30 @@ export function buildAnthropicBody(
     messages: mergeConsecutiveUsers(conversation.map((m) => toAnthropicMessage(m, isOAuth))),
   };
 
-  if (systemMsg) {
-    body.system = isOAuth
-      ? [
-          { type: "text", text: CLAUDE_IDENTITY },
-          { type: "text", text: systemMsg.content },
-        ]
-      : systemMsg.content;
-  } else if (isOAuth) {
-    body.system = [{ type: "text", text: CLAUDE_IDENTITY }];
+  const system: SystemBlock[] = [
+    ...(isOAuth ? [{ type: "text" as const, text: CLAUDE_IDENTITY }] : []),
+    ...(systemMsg ? [{ type: "text" as const, text: systemMsg.content }] : []),
+  ];
+  if (system.length > 0) {
+    // One cache breakpoint, on the last system block. Anthropic builds the
+    // cache prefix in the order tools → system → messages, so a marker here
+    // covers the tool definitions sitting above it too: one of the four
+    // allowed breakpoints spent, the entire stable prefix cached.
+    //
+    // It IS stable — buildToolDefs and buildSystemPrompt are called once at run
+    // start and the array is never rebuilt (loop.ts), and the prompt carries no
+    // clock, URL, or tab list (the date rides in the first user message). So
+    // this prefix is byte-identical on turn 1 and turn 50, which is the whole
+    // premise: a write bills 1.25x and a read 0.1x, so it pays back after ~1.3
+    // turns and every turn after that is nearly free.
+    //
+    // Sent to every anthropic-shape provider, coding-plan proxies included —
+    // cache_control has been GA on this API for a year and array-form `system`
+    // is its ordinary shape, so a proxy that refuses either is one that would
+    // fail the compatibility it advertises. If one does, it surfaces as a
+    // normal classified provider error in chat, not a silent wrong answer.
+    system[system.length - 1]!.cache_control = { type: "ephemeral" };
+    body.system = system;
   }
 
   if (tools.length > 0) {

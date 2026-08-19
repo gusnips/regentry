@@ -96,7 +96,9 @@ describe("buildAnthropicBody", () => {
 
   it("splits system out of the conversation", () => {
     const body = buildAnthropicBody(anthropicBase, messages, []);
-    expect(body.system).toBe("You are an agent.");
+    expect(body.system).toEqual([
+      { type: "text", text: "You are an agent.", cache_control: { type: "ephemeral" } },
+    ]);
     expect(body.messages).toEqual([{ role: "user", content: "Do the thing." }]);
   });
 
@@ -181,7 +183,11 @@ describe("buildAnthropicBody", () => {
       const body = buildAnthropicBody(oauth, messages, []);
       expect(body.system).toEqual([
         { type: "text", text: "You are a Claude agent, built on Anthropic's Claude Agent SDK." },
-        { type: "text", text: "You are an agent." },
+        {
+          type: "text",
+          text: "You are an agent.",
+          cache_control: { type: "ephemeral" },
+        },
       ]);
     });
 
@@ -195,10 +201,44 @@ describe("buildAnthropicBody", () => {
       expect((body.tools as { name: string }[])[0]?.name).toBe("custom_snapshot");
     });
 
-    it("leaves key-based bodies untouched", () => {
+    it("leaves key-based tool names unprefixed", () => {
       const body = buildAnthropicBody(anthropicBase, messages, tools);
       expect((body.tools as { name: string }[])[0]?.name).toBe("snapshot");
-      expect(body.system).toBe("You are an agent.");
+    });
+  });
+
+  describe("prompt caching", () => {
+    const tools = [
+      {
+        name: "snapshot",
+        description: "Snapshot the page",
+        params: { type: "object" as const, properties: {} },
+      },
+    ];
+
+    it("marks exactly one breakpoint, on the last system block", () => {
+      // Anthropic caps a request at 4 and 400s past it. One marker at the end
+      // of `system` covers the tools above it by the tools → system → messages
+      // hierarchy, so spending a second on the tools array would buy nothing.
+      const oauth: ResolvedProviderConfig = {
+        ...anthropicBase,
+        auth: { accessToken: "at", refreshToken: "rt", expiresAt: 0 },
+      };
+      for (const config of [anthropicBase, oauth]) {
+        const body = buildAnthropicBody(config, messages, tools);
+        const blocks = body.system as { cache_control?: unknown }[];
+        expect(blocks.filter((b) => b.cache_control)).toHaveLength(1);
+        expect(blocks[blocks.length - 1]?.cache_control).toEqual({ type: "ephemeral" });
+        expect(JSON.stringify(body.tools)).not.toContain("cache_control");
+      }
+    });
+
+    it("marks nothing when there is no system prompt to anchor to", () => {
+      // A one-shot call (distill, compact) has no stable prefix to reuse, and a
+      // marker with nothing before it would bill a write that is never read.
+      const body = buildAnthropicBody(anthropicBase, [{ role: "user", content: "hi" }], tools);
+      expect(body).not.toHaveProperty("system");
+      expect(JSON.stringify(body)).not.toContain("cache_control");
     });
   });
 });
