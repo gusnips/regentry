@@ -170,6 +170,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * How much of this turn's prompt the provider served from cache — the only way
+ * to answer "is caching actually working", which no amount of reading the
+ * request body can tell you.
+ *
+ * `total` is every input token the turn billed for, however it billed. The two
+ * shapes disagree about what they hand back: Anthropic reports reads and writes
+ * as fields of their own, *excluding* both from `input_tokens`; the OpenAI
+ * shapes report `cached_tokens` as a subset already inside the input count and
+ * never disclose writes. Passing the reconciled total keeps `fresh` honest on
+ * both.
+ *
+ * Silent when nothing was cached — a miss on a short prompt is normal (every
+ * shape has a minimum prefix worth caching) and a line per turn saying so is
+ * noise.
+ */
+export function logCacheUsage(total: number, read: number, written = 0): void {
+  if (read === 0 && written === 0) return;
+  log.debug("prompt cache", {
+    hit: `${Math.round((read / Math.max(total, 1)) * 100)}%`,
+    read,
+    written,
+    fresh: Math.max(total - read - written, 0),
+  });
+}
+
+/**
  * Most models write non-ASCII inside tool-call JSON as `\uXXXX` — legal, and
  * JSON.parse turns it back into the character. Some escape it twice: they emit
  * `\\u00e7`, so even a correct parse leaves the six literal characters standing

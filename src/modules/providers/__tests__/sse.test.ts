@@ -202,6 +202,66 @@ describe("Anthropic provider SSE parsing", () => {
     vi.restoreAllMocks();
   });
 
+  it("counts cached input beside fresh input", async () => {
+    // Anthropic's input_tokens is what was NOT cached — reads and writes are
+    // reported separately. Take it at face value and the panel's token counter
+    // collapses to a fraction of the truth the moment a cache starts hitting.
+    const config = makeConfig("anthropic", "https://api.anthropic.com");
+    const provider = createAnthropicProvider(config);
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        sseStream([
+          `data: ${JSON.stringify({
+            type: "message_start",
+            message: {
+              usage: {
+                input_tokens: 300,
+                cache_read_input_tokens: 9000,
+                cache_creation_input_tokens: 700,
+              },
+            },
+          })}`,
+          `data: ${JSON.stringify({ type: "message_delta", usage: { output_tokens: 42 } })}`,
+          `data: ${JSON.stringify({ type: "message_stop" })}`,
+        ]),
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      ),
+    );
+
+    const deltas = [];
+    for await (const d of provider.stream([], [], new AbortController().signal)) {
+      deltas.push(d);
+    }
+
+    expect(deltas).toContainEqual({ type: "usage", input: 10000, output: 42 });
+    vi.restoreAllMocks();
+  });
+
+  it("reports input verbatim when nothing was cached", async () => {
+    const config = makeConfig("anthropic", "https://api.anthropic.com");
+    const provider = createAnthropicProvider(config);
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        sseStream([
+          `data: ${JSON.stringify({ type: "message_start", message: { usage: { input_tokens: 1234 } } })}`,
+          `data: ${JSON.stringify({ type: "message_delta", usage: { output_tokens: 7 } })}`,
+          `data: ${JSON.stringify({ type: "message_stop" })}`,
+        ]),
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      ),
+    );
+
+    const deltas = [];
+    for await (const d of provider.stream([], [], new AbortController().signal)) {
+      deltas.push(d);
+    }
+
+    expect(deltas).toContainEqual({ type: "usage", input: 1234, output: 7 });
+    vi.restoreAllMocks();
+  });
+
   it("parses tool use across content block lifecycle", async () => {
     const config = makeConfig("anthropic", "https://api.anthropic.com");
     const provider = createAnthropicProvider(config);

@@ -1,5 +1,5 @@
 import type { ChatProvider, ChatMessage, ToolDef, Delta, ResolvedProviderConfig } from "./types";
-import { apiUrl, parseToolArgs, streamSse } from "./http";
+import { apiUrl, logCacheUsage, parseToolArgs, streamSse } from "./http";
 
 /**
  * OpenAI-shape adapter — works with any OpenAI-compatible endpoint.
@@ -48,9 +48,14 @@ export function createOpenAIProvider(config: ResolvedProviderConfig): ChatProvid
 
         // Final usage chunk (stream_options.include_usage) — choices is empty
         if (chunk.usage) {
+          const input = chunk.usage.prompt_tokens ?? 0;
+          // This shape caches automatically off a stable prefix — nothing is
+          // asked for and nothing is echoed back but this count, so it is the
+          // only evidence the prefix is holding.
+          logCacheUsage(input, chunk.usage.prompt_tokens_details?.cached_tokens ?? 0);
           yield {
             type: "usage",
-            input: chunk.usage.prompt_tokens ?? 0,
+            input,
             output: chunk.usage.completion_tokens ?? 0,
           };
           continue;
@@ -138,6 +143,7 @@ interface OpenAIChunk {
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
+    prompt_tokens_details?: { cached_tokens?: number };
   };
 }
 

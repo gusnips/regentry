@@ -7,7 +7,7 @@ import type {
   ToolResult,
 } from "./types";
 import { ProviderError } from "./types";
-import { apiUrl, parseToolArgs, streamSse } from "./http";
+import { apiUrl, logCacheUsage, parseToolArgs, streamSse } from "./http";
 
 /**
  * Responses-shape adapter — the only consumer is the ChatGPT subscription
@@ -142,13 +142,7 @@ export function createResponsesProvider(config: ResolvedProviderConfig): ChatPro
             // flush it so the loop still runs the tool it decided to call.
             for (const d of flushPending()) yield d;
             const usage = isRec(frame.response) ? frame.response.usage : undefined;
-            if (isRec(usage)) {
-              yield {
-                type: "usage",
-                input: num(usage.input_tokens) ?? 0,
-                output: num(usage.output_tokens) ?? 0,
-              };
-            }
+            if (isRec(usage)) yield usageDelta(usage);
             yield { type: "finish", reason: sawToolUse ? "tool_use" : "stop" };
             yield { type: "done" };
             return;
@@ -162,13 +156,7 @@ export function createResponsesProvider(config: ResolvedProviderConfig): ChatPro
               : undefined;
             const reason = details?.reason === "max_output_tokens" ? "length" : "unknown";
             const usage = response?.usage;
-            if (isRec(usage)) {
-              yield {
-                type: "usage",
-                input: num(usage.input_tokens) ?? 0,
-                output: num(usage.output_tokens) ?? 0,
-              };
-            }
+            if (isRec(usage)) yield usageDelta(usage);
             yield { type: "finish", reason };
             yield { type: "done" };
             return;
@@ -322,3 +310,19 @@ const str = (v: unknown): string | undefined =>
 
 const num = (v: unknown): number | undefined =>
   typeof v === "number" && Number.isFinite(v) ? v : undefined;
+
+/**
+ * `response.completed` and `response.incomplete` both close a stream and both
+ * carry usage in the same shape — a turn that ran out of output tokens still
+ * billed for its input.
+ *
+ * `input_tokens` already includes whatever was served from cache here, so it
+ * needs no reconciling; `cached_tokens` is the subset, and the only signal that
+ * this shape's automatic prefix caching is working.
+ */
+function usageDelta(usage: Record<string, unknown>): Delta {
+  const input = num(usage.input_tokens) ?? 0;
+  const details = isRec(usage.input_tokens_details) ? usage.input_tokens_details : undefined;
+  logCacheUsage(input, num(details?.cached_tokens) ?? 0);
+  return { type: "usage", input, output: num(usage.output_tokens) ?? 0 };
+}

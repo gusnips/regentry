@@ -1,5 +1,12 @@
 import type { ChatProvider, ChatMessage, Delta, ResolvedProviderConfig, ToolDef } from "./types";
-import { anthropicHeaders, anthropicOAuthHeaders, apiUrl, parseToolArgs, streamSse } from "./http";
+import {
+  anthropicHeaders,
+  anthropicOAuthHeaders,
+  apiUrl,
+  logCacheUsage,
+  parseToolArgs,
+  streamSse,
+} from "./http";
 
 /**
  * Claude Code identities the subscription token as theirs, so OAuth traffic
@@ -45,7 +52,15 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
 
         switch (event.type) {
           case "message_start": {
-            inputTokens = event.message?.usage?.input_tokens ?? 0;
+            // `input_tokens` counts only what was NOT cached — Anthropic bills
+            // reads and writes separately and reports them separately. Summing
+            // is what keeps the panel's counter meaning "what this turn sent"
+            // instead of collapsing the moment a cache starts hitting.
+            const usage = event.message?.usage;
+            const read = usage?.cache_read_input_tokens ?? 0;
+            const written = usage?.cache_creation_input_tokens ?? 0;
+            inputTokens = (usage?.input_tokens ?? 0) + read + written;
+            logCacheUsage(inputTokens, read, written);
             break;
           }
           case "message_delta": {
@@ -177,7 +192,13 @@ export function buildAnthropicBody(
 interface AnthropicSSE {
   type: string;
   content_block?: { type: string; id?: string; name?: string };
-  message?: { usage?: { input_tokens?: number } };
+  message?: {
+    usage?: {
+      input_tokens?: number;
+      cache_read_input_tokens?: number;
+      cache_creation_input_tokens?: number;
+    };
+  };
   usage?: { output_tokens?: number };
   delta?: {
     type: string;
