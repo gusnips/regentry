@@ -149,14 +149,54 @@ export function anthropicOAuthHeaders(accessToken: string): Record<string, strin
  * complete": the answer was there, in the fragments, and got thrown away. On a
  * parse failure, salvage any string fields — the ones that closed before the
  * cut, and the one left open by it, whose content up to the cut is the answer.
+ *
+ * Both paths end in healUnicodeEscapes: a clean parse is not enough when the
+ * model escaped its own accents twice.
  */
 export function parseToolArgs(raw: string): Record<string, unknown> {
   if (!raw) return {};
+  let parsed: unknown;
   try {
-    return JSON.parse(raw);
+    parsed = JSON.parse(raw);
   } catch {
-    return salvageStringArgs(raw);
+    return healArgs(salvageStringArgs(raw));
   }
+  // A non-object args payload is a protocol violation, not a value to pass on.
+  return healArgs(isRecord(parsed) ? parsed : {});
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Most models write non-ASCII inside tool-call JSON as `\uXXXX` — legal, and
+ * JSON.parse turns it back into the character. Some escape it twice: they emit
+ * `\\u00e7`, so even a correct parse leaves the six literal characters standing
+ * and a Portuguese answer reaches the user as `aten\u00e7\u00e3o`. Decode
+ * whatever survived the parse.
+ *
+ * `\uXXXX` only. An answer that legitimately spells that sequence is vanishingly
+ * rare; one that mentions `\n` while talking about code is not.
+ */
+const UNICODE_ESCAPE = /\\u([0-9a-fA-F]{4})/g;
+
+function healUnicodeEscapes(s: string): string {
+  return s.replace(UNICODE_ESCAPE, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+/** healUnicodeEscapes across every string in an args object, nested included. */
+function healArgs(args: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(args)) out[key] = healValue(value);
+  return out;
+}
+
+function healValue(value: unknown): unknown {
+  if (typeof value === "string") return healUnicodeEscapes(value);
+  if (Array.isArray(value)) return value.map(healValue);
+  if (isRecord(value)) return healArgs(value);
+  return value;
 }
 
 /**
@@ -170,12 +210,15 @@ export function parseToolArgs(raw: string): Record<string, unknown> {
  */
 function salvageStringArgs(raw: string): Record<string, unknown> {
   const out: Record<string, unknown> = {};
+  // The cut can land inside an escape (`…aten\u00`, or a lone `\`). That fragment
+  // is not text, and a trailing backslash also stops the field patterns matching.
+  const text = raw.replace(DANGLING_ESCAPE, "");
   // A completed `"key": "value",` or `"key": "value"}` pair. Escaped quotes
   // inside the value are handled by the string pattern.
   const STRING_FIELD = /"((?:[^"\\]|\\.)*)"\s*:\s*"((?:[^"\\]|\\.)*)"\s*[,}]/gs;
   let m: RegExpExecArray | null;
   let lastCompleteEnd = 0;
-  while ((m = STRING_FIELD.exec(raw)) !== null) {
+  while ((m = STRING_FIELD.exec(text)) !== null) {
     out[unescapeJson(m[1]!)] = unescapeJson(m[2]!);
     lastCompleteEnd = STRING_FIELD.lastIndex;
   }
@@ -184,21 +227,39 @@ function salvageStringArgs(raw: string): Record<string, unknown> {
   // that never closed (the `done` summary cut mid-value), keep its content up
   // to the cut. A half-said answer beats a thrown-away one.
   const LONE_FIELD = /"((?:[^"\\]|\\.)*)"\s*:\s*"((?:[^"\\]|\\.)*)$/s;
-  const lone = LONE_FIELD.exec(raw.slice(lastCompleteEnd));
+  const lone = LONE_FIELD.exec(text.slice(lastCompleteEnd));
   if (lone && lone[2]) {
     out[unescapeJson(lone[1]!)] = unescapeJson(lone[2]!);
   }
   return out;
 }
 
-/** Reverse the JSON string escapes a streamed value carries (\", \\, \n…). */
+/** Every escape JSON defines, matched whole so the pass can't re-read its output. */
+const JSON_ESCAPE = /\\(u[0-9a-fA-F]{4}|["\\/bfnrt])/g;
+const SIMPLE_ESCAPES: Record<string, string> = {
+  '"': '"',
+  "\\": "\\",
+  "/": "/",
+  b: "\b",
+  f: "\f",
+  n: "\n",
+  r: "\r",
+  t: "\t",
+};
+/** What a cut leaves behind mid-escape: `\u00`, or a lone trailing `\`. */
+const DANGLING_ESCAPE = /(?<!\\)\\(?:u[0-9a-fA-F]{0,3})?$/;
+
+/**
+ * Reverse the JSON string escapes a streamed value carries (\", \\, \n, \uXXXX).
+ * One left-to-right pass, not a chain of replaces: chained, `\\` became `\` before
+ * the `\n` and `\uXXXX` rules ran, so a literal `\\n` turned into a newline.
+ */
 function unescapeJson(s: string): string {
-  return s
-    .replace(/\\(["\\/])/g, "$1")
-    .replace(/\\n/g, "\n")
-    .replace(/\\t/g, "\t")
-    .replace(/\\r/g, "\r")
-    .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  return s.replace(JSON_ESCAPE, (_, esc: string) =>
+    esc.startsWith("u")
+      ? String.fromCharCode(parseInt(esc.slice(1), 16))
+      : (SIMPLE_ESCAPES[esc] ?? esc),
+  );
 }
 
 /**

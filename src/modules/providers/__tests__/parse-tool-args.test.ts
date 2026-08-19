@@ -36,4 +36,39 @@ describe("parseToolArgs", () => {
   it("returns {} for truncated JSON with no string field at all", () => {
     expect(parseToolArgs('{"steps": ["a", "b')).toEqual({});
   });
+
+  it("decodes the \\uXXXX escapes models write for non-ASCII", () => {
+    expect(parseToolArgs('{"summary": "aten\\u00e7\\u00e3o"}').summary).toBe("atenção");
+  });
+
+  it("heals a model that escaped its accents twice", () => {
+    // The wire carried `\\u00e7`, so a correct parse still leaves the literal
+    // escape in the string — the answer would reach the user as `aten\u00e7\u00e3o`.
+    expect(parseToolArgs('{"summary": "aten\\\\u00e7\\\\u00e3o"}').summary).toBe("atenção");
+  });
+
+  it("heals double escapes nested in arrays and objects", () => {
+    expect(parseToolArgs('{"steps": ["a\\\\u00e7", {"b": "\\\\u00e3o"}]}')).toEqual({
+      steps: ["aç", { b: "ão" }],
+    });
+  });
+
+  it("drops the escape fragment a cut landed inside", () => {
+    expect(parseToolArgs('{"summary": "aten\\u00').summary).toBe("aten");
+    expect(parseToolArgs('{"summary": "fim\\').summary).toBe("fim");
+  });
+
+  it("does not decode past an escaped backslash", () => {
+    // `\\` then `n` is a literal path, not a newline — the chained replaces used
+    // to unescape the backslash first and then read `\n` out of what was left.
+    expect(parseToolArgs('{"summary": "C:\\\\novo').summary).toBe("C:\\novo");
+  });
+
+  it("salvages the escapes the old chain missed", () => {
+    expect(parseToolArgs('{"summary": "a\\fb\\bc').summary).toBe("a\fb\bc");
+  });
+
+  it("returns {} when the args payload is not an object", () => {
+    expect(parseToolArgs("[1,2]")).toEqual({});
+  });
 });
