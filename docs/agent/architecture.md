@@ -165,10 +165,10 @@ a snapshot batched behind a premature click still runs.
 
 Two guards are what make dependent chains safe enough to sanction in the prompt. Between
 calls — never after a turn's last, where the model round trip is settle enough — an action
-that can navigate (`SETTLE_TOOLS`) gets `driver.settle()`: a 400ms watch for a load
-starting, then `waitForLoad` if one did. Nothing waited after a click before this, so a
-batched second call met a page still assembling. Then, before a turn's second-and-later
-ref actions (`PAGE_STATE_TOOLS`), a census asks whether the page grew — `generateSnapshot`
+that works the page in place (`PAGE_WORK_TOOLS`) gets `driver.settle()`: a 400ms watch for
+a load starting, then `waitForLoad` if one did. Nothing waited after a click before this,
+so a batched second call met a page still assembling. Then, before a turn's
+second-and-later ref actions (`PAGE_STATE_TOOLS`), a census asks whether the page grew — `generateSnapshot`
 mints a ref exactly for an interactive element its registry has never seen, so `newRefs > 0`
 IS the change signal, and there is no second DOM walker to keep in sync with the first.
 The census is deliberately the same no-arguments `driver.snapshot()` the snapshot tool
@@ -176,7 +176,10 @@ makes: mint counts only compare between identical walks, and a narrower one woul
 elements the model's own snapshot never registered and so report every page as changed.
 A navigation (`NEW_PAGE_TOOLS` — `switch_tab` included, since after a re-target the same
 id means something else) and a settle that saw the page move both skip the census, having
-already answered it. The failure direction is conservative: an autocomplete opening
+already answered it. Scrolling arms neither guard: it cannot navigate, and the elements a
+lazy-loading page streams in as you scroll are expected — counting them as the page moving
+would cancel every "scroll down, then click what I already saw" batch over a ref that is
+still good. The failure direction elsewhere is conservative: an autocomplete opening
 mid-form-fill costs one extra round trip, never a wrong click.
 
 The first `plan` call of a run parks the loop on `onPlanApproval`; the panel renders the

@@ -41,6 +41,7 @@ function makeDriver(calls: string[] = [], opts: DriverOpts = {}): BrowserDriver 
     click: async () => attempt("click", { x: 1, y: 2 }),
     fill: async () => attempt("fill", undefined),
     navigate: async () => attempt("navigate", undefined),
+    scrollDown: async () => attempt("scroll_down", undefined),
     listTabs: async () => attempt("list_tabs", []),
     settle: async () => attempt("settle", opts.navigated === true),
   } as unknown as BrowserDriver;
@@ -324,6 +325,23 @@ describe("acting again on a page that moved mid-turn", () => {
 
     expect(acted(calls)).toEqual(["click", "settle"]);
     expect(censuses(calls)).toBe(0); // settle already answered the question
+  });
+
+  it("does not treat a scroll as the page moving", async () => {
+    const calls: string[] = [];
+    // A lazy-loading page streams elements in as you scroll, and the ref the
+    // model already saw is still perfectly good — censusing here would cancel
+    // "scroll down, then click what I already saw" on every such page.
+    await run(
+      scriptedProvider([
+        [plan(["Scroll and click"])],
+        [call("scroll_down"), call("click", { ref: "e1" })],
+      ]),
+      makeDriver(calls, { newRefs: 12 }),
+    );
+
+    expect(acted(calls)).toEqual(["scroll_down", "click"]);
+    expect(censuses(calls)).toBe(0);
   });
 
   it("never holds back a read — looking at what just changed is the right move", async () => {

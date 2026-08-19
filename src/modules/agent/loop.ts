@@ -96,13 +96,19 @@ const ACTION_TOOLS = new Set([
 const GATED_TOOLS = new Set([...ACTION_TOOLS, "schedule_task"]);
 
 /**
- * Actions that can start a navigation without waiting for one, so a call
- * batched behind them would meet a page mid-assembly. navigate, go_back and
- * open_tab are absent because the driver already waits inside them; scrolling
- * is absent because it cannot navigate, and watching after it is pure loss.
- * evaluate is here: `location.href = …` is a real pattern.
+ * Actions that work the page in place, which makes them the two things a batch
+ * has to watch for: they can start a load without waiting for one, and they can
+ * change the DOM under a ref another call in the same turn is holding.
+ *
+ * navigate, go_back and open_tab are absent because the driver already waits
+ * inside them, and because landing on another document is the stronger signal
+ * below. Scrolling is absent on both counts: it cannot navigate, and the
+ * elements a lazy-loading page streams in as you scroll are expected — treating
+ * them as the page moving would cancel every "scroll down, then click what I
+ * already saw" batch, for a ref that is still perfectly good. evaluate is here:
+ * `location.href = …` is a real pattern.
  */
-const SETTLE_TOOLS = new Set(["click", "type", "fill", "press_key", "evaluate"]);
+const PAGE_WORK_TOOLS = new Set(["click", "type", "fill", "press_key", "evaluate"]);
 
 /**
  * Actions whose target the page can move out from under them: a ref names an
@@ -618,8 +624,9 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     let cancelled: string | null = null;
     // The page is known to have moved — no census can tell us anything new.
     let pageChanged = false;
-    // Whether an action has already landed this turn. The turn's first one is
-    // acting on the page the model actually saw, so it needs no census.
+    // Whether an action that works the page has already landed this turn. The
+    // turn's first one is acting on the page the model actually saw and needs
+    // no census; only what follows one can be looking at a page that moved.
     let acted = false;
     for (let i = 0; i < ordered.length; i++) {
       const call = ordered[i]!;
@@ -695,17 +702,15 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // The strip appears when the work does: landing a gated action files the
       // driven tab into the run's group. Reads never group — a tab the user was
       // merely passing through stays exactly as they filed it.
-      if (result.ok && ACTION_TOOLS.has(call.name)) {
-        await runGroup?.touch();
-        acted = true;
-      }
+      if (result.ok && ACTION_TOOLS.has(call.name)) await runGroup?.touch();
+      if (result.ok && PAGE_WORK_TOOLS.has(call.name)) acted = true;
       // Landing on another document needs no census to know the refs are gone.
       if (result.ok && NEW_PAGE_TOOLS.has(call.name)) pageChanged = true;
       // Mid-batch only. A turn's calls run back-to-back with no model latency
       // between them, so a click that navigates would hand the call behind it a
       // page still assembling. The last call of a turn needs none of this — the
       // round trip after it is settle enough.
-      if (result.ok && SETTLE_TOOLS.has(call.name) && i < ordered.length - 1) {
+      if (result.ok && PAGE_WORK_TOOLS.has(call.name) && i < ordered.length - 1) {
         if (await driver.settle()) pageChanged = true;
       }
       if (!result.ok) {
