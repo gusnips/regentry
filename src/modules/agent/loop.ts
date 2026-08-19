@@ -106,6 +106,21 @@ function planFirst(calls: ToolCall[]): ToolCall[] {
   return [...calls].sort((a, b) => Number(b.name === "plan") - Number(a.name === "plan"));
 }
 
+/**
+ * A turn's calls are a batch, and a batch stops at the first thing that
+ * invalidates what follows: the model wrote them all against one page state, so
+ * running the rest blind is how a click lands on the wrong element. Every
+ * unrun call still gets a result — the wire wants one per id, and the text is
+ * what tells the model apart "this failed" from "this never ran".
+ *
+ * Model-facing English, inline like the turn nudges: no user ever reads these.
+ */
+const cancelledAfterFailure = (name: string) =>
+  `Earlier action \`${name}\` in this turn failed — its error is in that call's result. This call did not run. Re-observe the page before retrying.`;
+const CANCELLED_RUN_ENDED = "The run ended earlier this turn (`done`) — this call did not run.";
+const CANCELLED_RUN_PAUSED =
+  "The run paused earlier this turn on `ask_user` — this call did not run.";
+
 /** The user's answer to a parked plan. */
 export interface PlanApprovalOutcome {
   /** false ends the run — unless `feedback` rides along. */
@@ -555,10 +570,18 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     let taskDone = false;
     const results: ProviderToolResult[] = [];
 
-    for (const call of planFirst(turn.toolCalls)) {
+    const ordered = planFirst(turn.toolCalls);
+    // Set once, by whatever ended the batch; every call behind it drains unrun.
+    let cancelled: string | null = null;
+    for (let i = 0; i < ordered.length; i++) {
+      const call = ordered[i]!;
       if (signal.aborted) {
         callbacks.onDone?.();
         return messages;
+      }
+      if (cancelled) {
+        results.push({ id: call.id, content: JSON.stringify({ cancelled }) });
+        continue;
       }
       // The user's revision note for THIS plan call — rides back in its tool
       // result (a separate user message would butt against the tool_results
@@ -612,7 +635,13 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // driven tab into the run's group. Reads never group — a tab the user was
       // merely passing through stays exactly as they filed it.
       if (result.ok && ACTION_TOOLS.has(call.name)) await runGroup?.touch();
-      if (!result.ok) log.warn(`tool ${call.name} failed:`, result.error);
+      if (!result.ok) {
+        log.warn(`tool ${call.name} failed:`, result.error);
+        // A failed action ends the batch — the calls behind it were written for
+        // the page this one was supposed to produce. A failed read ends nothing:
+        // batched reads are independent by construction.
+        if (ACTION_TOOLS.has(call.name)) cancelled = cancelledAfterFailure(call.name);
+      }
 
       if (bookkeeping && result.ok) {
         const plan = result.data as PlanPayload;
@@ -706,6 +735,11 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
           taskDone = true;
           callbacks.onDone?.(i18n.t("errors.taskComplete"));
         }
+        // The run returns the moment this turn's calls drain, so anything
+        // batched behind a closing `done` would act on a run nobody is left
+        // watching. The truncated retry above is the exception it looks like:
+        // that one keeps the run alive, so its siblings still matter.
+        if (taskDone) cancelled = CANCELLED_RUN_ENDED;
       } else if (call.name === "ask_user") {
         // The question closes the run: the panel renders it as a card and the
         // answer arrives as the next message, with this run replayed as history.
@@ -714,6 +748,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
         // Coerced here, once, so no consumer has to re-validate model output.
         callbacks.onAskUser?.((call.args.question as string) ?? "", askChoices(call.args.choices));
         callbacks.onDone?.();
+        cancelled = CANCELLED_RUN_PAUSED;
       } else {
         results.push({
           id: call.id,
