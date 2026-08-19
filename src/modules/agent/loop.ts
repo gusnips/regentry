@@ -926,6 +926,14 @@ function handleDelta(delta: Delta, callbacks: LoopCallbacks, toolCalls: ToolCall
  * snapshot is the cheapest thing in the run to lose: it describes a page that
  * has since been clicked, typed into, and navigated away from.
  *
+ * Trimming happens in cliffs, not continuously, and that is what makes prompt
+ * caching possible at all. Shaving exactly enough to sit at the ceiling rewrote
+ * a message every single turn once the budget saturated — and because the
+ * boundary lives at the OLD end of the history, each rewrite invalidated the
+ * cached prefix from there forward, which is nearly the whole request. Tripping
+ * at MAX and cutting back to KEEP costs a little context we could technically
+ * still afford, and buys a prefix that holds still for several turns at a time.
+ *
  * ponytail: characters, not tokens, and no per-model ceiling — the same
  * simplification buildConversationHistory makes, and the budgets are siblings
  * (~30k tokens of results beside history's ~6k). The ceiling is a model that
@@ -933,9 +941,17 @@ function handleDelta(delta: Delta, callbacks: LoopCallbacks, toolCalls: ToolCall
  * trimming against the resolved model's real context window.
  */
 const MAX_RESULT_CHARS = 120_000;
+/** Where a trim lands. The gap up to MAX is how many turns the prefix holds. */
+const KEEP_RESULT_CHARS = 60_000;
 
 function pruneResultText(messages: ChatMessage[]): void {
-  let budget = MAX_RESULT_CHARS;
+  let total = 0;
+  for (const msg of messages) {
+    for (const result of msg.toolResults ?? []) total += result.content.length;
+  }
+  if (total <= MAX_RESULT_CHARS) return;
+
+  let budget = KEEP_RESULT_CHARS;
   for (let i = messages.length - 1; i >= 0; i--) {
     for (const result of messages[i]?.toolResults ?? []) {
       if (budget > 0) budget -= result.content.length;
@@ -951,6 +967,12 @@ const TRIMMED_RESULT = JSON.stringify({
 /**
  * Drop every screenshot but the newest few, oldest first. Only tool results are
  * pruned — a user's own attachment is what the task is about and always stays.
+ *
+ * No cliff here, unlike its text sibling, and the asymmetry is deliberate: this
+ * boundary sits at the third-newest screenshot, a couple of turns back, so a
+ * rewrite costs re-billing those couple of turns. The text boundary sits at the
+ * oldest results, where a rewrite costs re-billing the entire history. Same
+ * mechanism, two orders of magnitude apart in what it wastes.
  */
 function pruneImages(messages: ChatMessage[]): void {
   let budget = MAX_ATTACHED_IMAGES;
