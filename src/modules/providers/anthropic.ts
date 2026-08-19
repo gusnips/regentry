@@ -54,8 +54,12 @@ export function createAnthropicProvider(config: ResolvedProviderConfig): ChatPro
           case "message_start": {
             // `input_tokens` counts only what was NOT cached — Anthropic bills
             // reads and writes separately and reports them separately. Summing
-            // is what keeps the panel's counter meaning "what this turn sent"
-            // instead of collapsing the moment a cache starts hitting.
+            // is not cosmetic: this number is how the loop knows the run's
+            // context size (it feeds needsCompaction and the learned window
+            // ceiling), and a cached token occupies the window exactly like a
+            // fresh one. Report the unsummed figure and a well-cached run looks
+            // a tenth its real size, so auto-compaction never fires and the run
+            // dies on a context 400 it should have compacted its way past.
             const usage = event.message?.usage;
             const read = usage?.cache_read_input_tokens ?? 0;
             const written = usage?.cache_creation_input_tokens ?? 0;
@@ -290,9 +294,16 @@ function asBlocks(
  * breakpoint for a shorter prefix it already holds: last turn's marker sits a
  * handful of blocks behind this one, so the read hits there and only this
  * turn's new blocks bill fresh. A turn adds two messages, and even a five-call
- * batch adds around eleven blocks — inside that lookback. A batch large enough
- * to overshoot it would silently stop reading back, which is the first thing
- * the cache telemetry would show.
+ * batch adds around eleven blocks — inside that lookback.
+ *
+ * ponytail: one rolling marker, riding on that lookback rather than pinning
+ * both ends itself. The ceiling is a turn fat enough to overshoot it — a batch
+ * of ten-plus calls, which the batching prompt does make reachable on a long
+ * form; that turn silently reads nothing and bills its whole prefix fresh.
+ * Nothing breaks, and the cache telemetry is where it would show. The upgrade
+ * is a second rolling marker left on the PREVIOUS turn's tail, which pins the
+ * read target exactly instead of hoping it is in range — two of the four
+ * breakpoints spent on the conversation, still inside the cap.
  *
  * Safe to mutate: every block here was built by toAnthropicMessage during this
  * call, so nothing is shared with the loop's own message array.

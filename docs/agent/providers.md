@@ -13,9 +13,13 @@ The load-bearing details of talking to each provider shape. Read this when a tas
 - **Usage:** OpenAI via `stream_options: {include_usage: true}`; Anthropic via
   `message_start`/`message_delta`. Both adapters emit `{type:"usage"}` deltas. **Anthropic's
   `input_tokens` EXCLUDES cached tokens** — reads and writes come back as
-  `cache_read_input_tokens`/`cache_creation_input_tokens` and the adapter sums all three, or
-  the panel's counter would collapse on every cached turn. The OpenAI shapes count the other
-  way (`cached_tokens` is a subset already inside the input total) and need no reconciling.
+  `cache_read_input_tokens`/`cache_creation_input_tokens` and the adapter sums all three.
+  That sum is load-bearing, not cosmetic: the loop reads it as the run's context size
+  (`needsCompaction`, and the ceiling learned from a length rejection), and a cached token
+  fills the window exactly like a fresh one — unsummed, a well-cached run reports a tenth of
+  its real size, auto-compaction never fires, and the run dies on a context 400. The OpenAI
+  shapes count the other way (`cached_tokens` is a subset already inside the input total) and
+  need no reconciling.
   All three call `logCacheUsage` (`http.ts`) — one debug line per turn, silent on a miss, and
   the only evidence prompt caching is working at all.
 - **Prompt caching is explicit on Anthropic, automatic everywhere else.** Two `cache_control`
