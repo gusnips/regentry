@@ -11,7 +11,28 @@ The load-bearing details of talking to each provider shape. Read this when a tas
 - **Auth headers:** Anthropic reads `x-api-key`; coding-plan proxies (Kimi, Z.ai,
   QwenCloud) read `Authorization: Bearer`. The Anthropic adapter sends both.
 - **Usage:** OpenAI via `stream_options: {include_usage: true}`; Anthropic via
-  `message_start`/`message_delta`. Both adapters emit `{type:"usage"}` deltas.
+  `message_start`/`message_delta`. Both adapters emit `{type:"usage"}` deltas. **Anthropic's
+  `input_tokens` EXCLUDES cached tokens** — reads and writes come back as
+  `cache_read_input_tokens`/`cache_creation_input_tokens` and the adapter sums all three, or
+  the panel's counter would collapse on every cached turn. The OpenAI shapes count the other
+  way (`cached_tokens` is a subset already inside the input total) and need no reconciling.
+  All three call `logCacheUsage` (`http.ts`) — one debug line per turn, silent on a miss, and
+  the only evidence prompt caching is working at all.
+- **Prompt caching is explicit on Anthropic, automatic everywhere else.** Two `cache_control`
+  breakpoints of the four the API allows: one on the **last system block** (Anthropic builds
+  its prefix tools → system → messages, so it covers the tool defs above it — never mark the
+  tools array, it buys nothing and spends a breakpoint), one **rolling on the tail of the
+  newest message**. Both are gated on `tools.length > 0`: the agent loop is the only caller
+  that sends a second turn with the same prefix, and also the only one that declares tools —
+  compact, memory extract, title and skill distill answer in one shot, where a marker bills a
+  1.25x write nobody reads. `system` is block-form for key auth too; a bare string cannot
+  carry a marker, and that shape now reaches the coding-plan proxies. **What makes any of it
+  pay is prefix stability**, which is a whole-repo invariant, not a provider one:
+  `buildSystemPrompt`/`buildToolDefs` are called once at run start and carry no clock, URL or
+  tab list, and `pruneResultText` trims in cliffs precisely so it stops rewriting the old end
+  of the history every turn (loop.ts). Break either and caching silently turns into a 25%
+  surcharge. The OpenAI shapes take no markers — they cache automatically off the same stable
+  prefix above a ~1024-token minimum.
 - **No sampling params.** Never send temperature/topP — provider defaults always apply.
   The one knob we expose is `reasoningEffort` (`none|low|medium|high|max`, optional):
   verbatim `reasoning_effort` on OpenAI-shape; `thinking: {type:"adaptive"}` +
@@ -32,7 +53,12 @@ The load-bearing details of talking to each provider shape. Read this when a tas
   prevent. `pruneResultText` is `pruneImages`'s text sibling: newest results keep their
   payload, older ones keep their id (the wire needs one result per call) and a line
   telling the model to re-fetch. This is what makes a 500-step `MAX_STEPS` safe; the two
-  must move together.
+  must move together. It trims in **cliffs** — trips at `MAX_RESULT_CHARS`, cuts back to
+  `KEEP_RESULT_CHARS` — because shaving exactly enough to sit at the ceiling rewrote a
+  message every turn once saturated, and that boundary lives at the _old_ end of the history
+  where a rewrite invalidates the entire cached prefix behind it. `pruneImages` keeps
+  shaving on purpose: its boundary is a couple of turns back, so a rewrite there costs a
+  couple of turns, not the run.
 - **The ChatGPT subscription provider is a `responses` shape** (`responses.ts`), streaming
   the Codex backend's `POST {base}/responses` — it exposes no chat-completions surface.
   Auth is a Bearer access token PLUS the `ChatGPT-Account-Id` header (extracted from the

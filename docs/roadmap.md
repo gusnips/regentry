@@ -305,6 +305,21 @@ layer. Revisit only if a real user asks.
 
 **Per-tool policy** — see domain policy. Needs evidence first.
 
+**Staleness detection for virtualized lists** — the batch guard notices the page moving under a
+turn's refs by counting refs the snapshot walker had to mint (`newRefs`). React-window and its
+relatives defeat it by design: they recycle the same DOM nodes with new content, so the walker hands
+back the ref it already had and the count stays zero. Catching that needs a content hash per ref'd
+element — a real diff, on every guarded call, and a much bigger hammer than the guard it protects.
+The exposure is narrow (batching a click on a virtualized row inside one turn) and predates the
+guard. Revisit if a real run gets bitten.
+
+**`prompt_cache_key` on the responses shape** — codex-rs sends its thread id as a routing hint so a
+conversation keeps landing on the machine holding its cache. We have no conversation id at the
+adapter (`ChatProvider.stream` takes messages, tools, signal), so it would cost either an interface
+change across all three shapes or a hash of the system prompt standing in for one. Automatic prefix
+caching already works without it, the gain is affinity at the margin, and we have no way to A/B it —
+so: only if the cache telemetry shows ChatGPT-shape hit rates lagging the Anthropic ones.
+
 ---
 
 ## Deliberately not doing
