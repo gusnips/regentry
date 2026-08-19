@@ -21,21 +21,41 @@ interface TabStub {
   status: string;
 }
 type Listener = (id: number, info: { status?: string }, tab: TabStub) => void;
+type RemovedListener = (id: number) => void;
 
 const tab: TabStub = { id: 1, windowId: 10, url: "https://example.com", status: "complete" };
 const listeners = new Set<Listener>();
+const removedListeners = new Set<RemovedListener>();
+/** Set to close the tab out from under a caller, the way a page or the user can. */
+let closed = false;
+
+const runtime = { lastError: undefined as { message: string } | undefined };
 
 (globalThis as Record<string, unknown>).chrome = {
+  runtime,
   tabs: {
-    onRemoved: { addListener: () => {}, removeListener: () => {} },
+    onRemoved: {
+      addListener: (fn: RemovedListener) => removedListeners.add(fn),
+      removeListener: (fn: RemovedListener) => removedListeners.delete(fn),
+    },
     onUpdated: {
       addListener: (fn: Listener) => listeners.add(fn),
       removeListener: (fn: Listener) => listeners.delete(fn),
     },
-    // Both callers use the callback form Chrome offers alongside the promise one.
-    get: (_id: number, cb?: (t: TabStub) => void) => {
-      if (cb) queueMicrotask(() => cb(tab));
-      return Promise.resolve(tab);
+    // Both callers use the callback form Chrome offers alongside the promise
+    // one, including how it answers a dead id: undefined, plus lastError. The
+    // promise comes back ONLY when no callback is passed — returning a rejected
+    // one alongside a callback would surface as an unhandled rejection the real
+    // API never produces.
+    get: (_id: number, cb?: (t: TabStub | undefined) => void) => {
+      if (!cb)
+        return closed ? Promise.reject(new Error("No tab with id: 1.")) : Promise.resolve(tab);
+      queueMicrotask(() => {
+        runtime.lastError = closed ? { message: "No tab with id: 1." } : undefined;
+        cb(closed ? undefined : tab);
+        runtime.lastError = undefined;
+      });
+      return undefined;
     },
   },
   debugger: { onDetach: { addListener: () => {} }, onEvent: { addListener: () => {} } },
@@ -53,15 +73,27 @@ async function emit(status: string) {
   await flush();
 }
 
+/** What Chrome does when a tab goes away — including under a pending wait. */
+async function close() {
+  closed = true;
+  for (const fn of [...removedListeners]) fn(tab.id);
+  await flush();
+}
+
+/** Nothing left subscribed on either channel — no listener outlives its call. */
+const subscribed = () => listeners.size + removedListeners.size;
+
 describe("settleIfLoading", () => {
   beforeEach(() => {
     listeners.clear();
+    removedListeners.clear();
     tab.status = "complete";
+    closed = false;
   });
 
   it("reports no load when the window passes quietly — the common click", async () => {
     await expect(settleIfLoading(1, 20)).resolves.toBe(false);
-    expect(listeners.size).toBe(0);
+    expect(subscribed()).toBe(0);
   });
 
   it("rides out a load that starts inside the window", async () => {
@@ -75,7 +107,7 @@ describe("settleIfLoading", () => {
     await emit("complete");
     await settling;
     expect(settled).toBe(true);
-    expect(listeners.size).toBe(0);
+    expect(subscribed()).toBe(0);
   });
 
   it("catches a load already in flight when the action's promise settles", async () => {
@@ -90,6 +122,31 @@ describe("settleIfLoading", () => {
     await emit("complete");
     await settling;
     expect(settled).toBe(true);
-    expect(listeners.size).toBe(0);
+    expect(subscribed()).toBe(0);
+  });
+
+  it("gives up at once on a tab that is already gone", async () => {
+    closed = true;
+    // Not "waits out the window and then says no" — a closed tab has nothing to
+    // settle, and the call behind this one is what reports it.
+    const before = Date.now();
+    await expect(settleIfLoading(1, 5_000)).resolves.toBe(false);
+    expect(Date.now() - before).toBeLessThan(1_000);
+    expect(subscribed()).toBe(0);
+  });
+
+  it("does not hold the batch for the load timeout when the tab dies mid-load", async () => {
+    tab.status = "loading";
+    // The load is seen on entry, so waitForLoad takes over — and a tab that
+    // closes now never reaches "complete". Without onRemoved the only thing
+    // that ends this is waitForLoad's own 30s timeout, stalling the batch.
+    const settling = settleIfLoading(1, 20);
+    await flush();
+
+    const before = Date.now();
+    await close();
+    await expect(settling).resolves.toBe(true);
+    expect(Date.now() - before).toBeLessThan(1_000);
+    expect(subscribed()).toBe(0);
   });
 });

@@ -167,7 +167,10 @@ Two guards are what make dependent chains safe enough to sanction in the prompt.
 calls — never after a turn's last, where the model round trip is settle enough — an action
 that works the page in place (`PAGE_WORK_TOOLS`) gets `driver.settle()`: a 400ms watch for
 a load starting, then `waitForLoad` if one did. Nothing waited after a click before this,
-so a batched second call met a page still assembling. Then, before a turn's
+so a batched second call met a page still assembling. A tab that closes under either half
+ends the wait at once — a click can close its own tab, and `waitForLoad` watches
+`onRemoved` for exactly that, because a tab that is gone never reaches `complete` and the
+batch behind it would otherwise stall for the full 30s timeout. Then, before a turn's
 second-and-later ref actions (`PAGE_STATE_TOOLS`), a census asks whether the page grew — `generateSnapshot`
 mints a ref exactly for an interactive element its registry has never seen, so `newRefs > 0`
 IS the change signal, and there is no second DOM walker to keep in sync with the first.

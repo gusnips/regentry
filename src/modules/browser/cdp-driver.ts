@@ -436,10 +436,13 @@ export async function settleIfLoading(tabId: TabId, watchMs = SETTLE_WATCH_MS): 
     };
     chrome.tabs.onUpdated.addListener(listener);
     // The action's own promise may settle after the load is already in flight.
-    // A tab that died under the batch answers `undefined` here — nothing to wait
-    // for, and the call behind this one is where that gets reported properly.
+    // A tab that died under the batch answers `undefined` here, with lastError
+    // set — reading it is what keeps Chrome from logging it as unchecked, and
+    // there is nothing left to wait for either way. The call behind this one is
+    // where a dead tab gets reported properly.
     chrome.tabs.get(tabId, (tab) => {
-      if (tab?.status === "loading") finish(true);
+      if (chrome.runtime.lastError || !tab) finish(false);
+      else if (tab.status === "loading") finish(true);
     });
   });
   if (!started) return false;
@@ -449,35 +452,54 @@ export async function settleIfLoading(tabId: TabId, watchMs = SETTLE_WATCH_MS): 
   return true;
 }
 
+/**
+ * Resolves when the tab's page has finished loading, and rejects rather than
+ * holding on when it never will: a tab closed under the wait can no longer
+ * reach "complete", so without `onRemoved` the caller waits the full timeout on
+ * a page that stopped existing. The mid-batch settle is what made that ordinary
+ * — a click can close its own tab, and the batch behind it should hear about it
+ * in milliseconds, not in half a minute.
+ */
 export function waitForLoad(tabId: TabId, timeoutMs = 30_000): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(listener);
-      reject(
-        new Error(
-          `Page load timeout (${timeoutMs / 1000}s) — the page may be slow or unresponsive.`,
-        ),
-      );
-    }, timeoutMs);
-
     const check = (tab: chrome.tabs.Tab) =>
       tab.status === "complete" && !!tab.url && tab.url !== "about:blank";
 
-    const listener = (id: number, _info: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => {
-      if (id === tabId && check(tab)) {
-        clearTimeout(timer);
-        chrome.tabs.onUpdated.removeListener(listener);
-        resolve();
-      }
+    // One exit for all four endings — the listeners always come back off.
+    const done = (err?: Error) => {
+      clearTimeout(timer);
+      chrome.tabs.onUpdated.removeListener(listener);
+      chrome.tabs.onRemoved.removeListener(removed);
+      if (err) reject(err);
+      else resolve();
     };
 
+    const timer = setTimeout(
+      () =>
+        done(
+          new Error(
+            `Page load timeout (${timeoutMs / 1000}s) — the page may be slow or unresponsive.`,
+          ),
+        ),
+      timeoutMs,
+    );
+    const listener = (id: number, _info: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => {
+      if (id === tabId && check(tab)) done();
+    };
+    const removed = (id: number) => {
+      if (id === tabId) done(new Error(`Tab ${tabId} was closed while its page was loading.`));
+    };
+
+    // Listening before the lookup, so a load that completes between the two is
+    // not missed — `done` removes both listeners on every path anyway.
+    chrome.tabs.onUpdated.addListener(listener);
+    chrome.tabs.onRemoved.addListener(removed);
+    // A tab that is already gone answers `undefined` with lastError set, which
+    // the status check would throw on. Reading it names the failure and keeps
+    // Chrome from logging it as unchecked.
     chrome.tabs.get(tabId, (tab) => {
-      if (check(tab)) {
-        clearTimeout(timer);
-        resolve();
-      } else {
-        chrome.tabs.onUpdated.addListener(listener);
-      }
+      if (!tab) done(new Error(chrome.runtime.lastError?.message ?? `Tab ${tabId} is gone.`));
+      else if (check(tab)) done();
     });
   });
 }
