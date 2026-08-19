@@ -152,6 +152,33 @@ and in wire order that step would bounce off the gate its own approval was about
 A bounced call gets a step row with a `detail`, so the red ✗ opens like every other row
 instead of dead-ending on "Blocked".
 
+**A turn's calls are a batch, and the loop stops it at whatever invalidates the rest.**
+The model wrote them all against one page state, so the calls behind a failed action were
+written for a page that never arrived. A failed action, a closing `done`, an `ask_user`,
+or a page that moved sets one latch, and every call behind it drains with a synthetic
+`{cancelled}` result instead of running: the wire wants a result per tool_use id, and the
+text is what tells the model apart "this failed" from "this never ran". A cancelled call
+reaches nothing — no step row, no walkthrough frame, no group touch — because it never
+happened, and the failed call's red ✗ is the whole story. Failed _reads_ cancel nothing
+(batched reads are independent by construction), and neither does a plan-gate bounce, so
+a snapshot batched behind a premature click still runs.
+
+Two guards are what make dependent chains safe enough to sanction in the prompt. Between
+calls — never after a turn's last, where the model round trip is settle enough — an action
+that can navigate (`SETTLE_TOOLS`) gets `driver.settle()`: a 400ms watch for a load
+starting, then `waitForLoad` if one did. Nothing waited after a click before this, so a
+batched second call met a page still assembling. Then, before a turn's second-and-later
+ref actions (`PAGE_STATE_TOOLS`), a census asks whether the page grew — `generateSnapshot`
+mints a ref exactly for an interactive element its registry has never seen, so `newRefs > 0`
+IS the change signal, and there is no second DOM walker to keep in sync with the first.
+The census is deliberately the same no-arguments `driver.snapshot()` the snapshot tool
+makes: mint counts only compare between identical walks, and a narrower one would "find"
+elements the model's own snapshot never registered and so report every page as changed.
+A navigation (`NEW_PAGE_TOOLS` — `switch_tab` included, since after a re-target the same
+id means something else) and a settle that saw the page move both skip the census, having
+already answered it. The failure direction is conservative: an autocomplete opening
+mid-form-fill costs one extra round trip, never a wrong click.
+
 The first `plan` call of a run parks the loop on `onPlanApproval`; the panel renders the
 parked proposal as an approve/adjust/reject card (`plan_approval` event + command in
 `shared/protocol.ts`, resolver parked on the `ActiveRun` slot), and a stop answers "no"
