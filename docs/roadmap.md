@@ -113,9 +113,70 @@ Still open there: a named registry, if users ever trade skills enough to want on
 
 ---
 
+### 3. Watch and repeat — skills authored by demonstration
+
+**Why it ranks this high:** it is the bet, stated as a feature. Everything else on this list makes
+the agent better at figuring your site out; this one lets you _show_ it, once, and have it know.
+A sandboxed agent cannot be shown anything — it isn't in the room where you work. We are.
+
+The shape: you turn on watching, do the thing yourself, turn it off. TabRunner writes up what it
+saw, you correct it, and it becomes a Skill it can run for you from then on. "Watch me file this
+expense" is a sentence no competitor's architecture can accept.
+
+**What just shipped is half of it already.** `walkthrough/` (v0.5.2) captures a process as frames
+plus captions, stores them, and renders a document. Watch-and-repeat is one new _source_ into that
+store (the user's own actions instead of the agent's tool calls) and one new _sink_ out of it (a
+Skill draft instead of an HTML file). The store, the caption pipeline, the viewer and the export
+are already there.
+
+**The design call that decides whether this works: repeat means a Skill, not a macro.** The
+tempting version records selectors and replays them. It is the wrong product and we should not
+build it. A recorded click list breaks the first time the page moves a button, and _the whole
+reason skills are prose_ is that the model re-derives the actions against a fresh snapshot each
+run. So watching produces a recipe in words — "open the expense tool, pick the newest receipt,
+match it to the card charge" — and the agent re-solves the page every time. Brittleness is what
+macro recorders sell; resilience is what we sell.
+
+**What is genuinely hard about the watch half.** Documented runs key every frame off a tool call,
+which is what lets a caption say "Click Compose" instead of "click #btn-42". A watched user makes
+no tool calls, so that advantage has to be recovered a different way: our own snapshot already
+names elements readably, page-side (`browser/snapshot-script.ts`), so a click listener can resolve
+`event.target` through the same naming and keep the caption quality. That reuse is the difference
+between this and a DOM-diffing recorder.
+
+Two constraints to design against, both real:
+
+- **No debugger.** Watching must not attach CDP — the "debugging this browser" infobar would sit
+  over the user's own work for the entire session, and we are not dispatching input, only
+  observing. That means a content script plus `chrome.tabs.captureVisibleTab`, which is also the
+  no-attach path frame 0 already uses.
+- **`captureVisibleTab` is rate-limited** (~2/sec), while human actions arrive in bursts — a form
+  fill is six events in two seconds. So the watcher has to coalesce events into _steps_ before it
+  captures, rather than shooting per event. That coalescing is the interesting engineering, and it
+  is also what keeps the write-up readable.
+
+**Privacy is sharper here than anywhere else in the product.** This records the user's own
+keystrokes on their own sites — password fields, 2FA codes, whatever is on screen. Non-negotiables:
+the user starts and stops it explicitly (never a model tool), it is visible the entire time it
+runs, typed values are masked by default rather than on a heuristic, and nothing leaves the
+machine unless the user exports it.
+
+**The smaller half falls out free.** "Record me doing this so I can send it to a colleague" — no
+agent, no repeat, just the write-up — is the whole of what Scribe and Tango sell, and it is the
+watch half with the Skill sink switched off. Worth shipping first on its own: it is the cheap
+validation that our captions are good enough to hand to a stranger, and that question decides
+whether the repeat half is worth building at all.
+
+**Open questions.** Does coalescing produce steps a person recognizes, or a mush that needs the
+model anyway? Is a Skill draft enough for people who asked to "record a process", or do they
+expect literal replay and read resilience as unreliability? And does a watched session need its
+own retention rule, given it holds the user's actions rather than the agent's?
+
+---
+
 ## Soon
 
-### 3. Schedule follow-ups — ✅ shipped v0.4.3
+### 4. Schedule follow-ups — ✅ shipped v0.4.3
 
 **Pause / resume** — the record, the task and the thread survive; only the alarm goes. Resuming
 recomputes `nextFireAt` from _now_: the stored one sat still the whole time it was held, so arming
@@ -136,7 +197,7 @@ once the run _started_. The queued case was the only gap.)
 client scheduling browser work that fires long after the client is gone is a different trust story,
 and it needs the domain policy under it first.
 
-### 4. Deleting a scheduled conversation — ✅ fixed v0.4.3
+### 5. Deleting a scheduled conversation — ✅ fixed v0.4.3
 
 `deleteConversation` cancelled queued runs but **never looked at schedules**. The rule stayed armed
 over a `conversationId` pointing at a dead thread, and the next fire's
@@ -157,7 +218,7 @@ silence is how a recurring task quietly forgets everything it knew. Narrow but r
 re-heads the index on every message so an actively-firing schedule stays near the top, but a
 monthly one-shot three weeks out can still fall off the 50-conversation cap.
 
-### 5. File upload
+### 6. File upload
 
 "Attach the receipt to the expense form" is impossible today — 27 tools and none of them touches a
 file input.
