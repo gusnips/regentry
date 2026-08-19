@@ -1,7 +1,16 @@
 import type { ErrorKind } from "@/modules/providers/error-classify";
+import type { ArtifactPayload } from "@/shared/protocol";
 
 export type MessageRole =
-  "user" | "assistant" | "reasoning" | "step" | "error" | "plan" | "summary";
+  | "user"
+  | "assistant"
+  | "reasoning"
+  | "step"
+  | "error"
+  | "plan"
+  | "summary"
+  /** A finished walkthrough — the deliverable of a documented run, not chatter. */
+  | "artifact";
 
 export interface Message {
   id: string;
@@ -55,6 +64,12 @@ export interface Message {
   current?: number;
   /** For reasoning messages: how long the model thought, in ms */
   elapsed?: number;
+  /**
+   * For artifact messages: the walkthrough this run produced. Only the handle
+   * lives here — the frames are blobs in IndexedDB, so a transcript stays a
+   * transcript no matter how many megabytes the recording ran to.
+   */
+  artifact?: ArtifactPayload;
   /**
    * For summary messages: what this compaction stands in for. The messages
    * above it stay in storage and stay scrollable — only the model's replay

@@ -1,5 +1,6 @@
 import { initI18n, i18n } from "@/i18n";
 import { startAgentRun, MEMORY_KEEPALIVE_ALARM } from "@/modules/agent/start-run";
+import { recoverInterrupted } from "@/modules/walkthrough";
 import { getActiveRun, releaseRun, answerPlanApproval } from "@/modules/agent/active-runs";
 import {
   cancelQueued,
@@ -82,6 +83,10 @@ export default defineBackground(() => {
   // Strip Origin from our own provider calls, or a subscription OAuth token is
   // refused by Anthropic's CORS gate before any model code ever runs.
   initProviderOriginStrip();
+  // A walkthrough still marked "recording" outlived the worker that was
+  // writing it: its frames are all on disk, so it becomes an honest "partial"
+  // rather than a ghost the viewer would draw as still in progress.
+  void recoverInterrupted();
   // A restarted worker holds no runs — the ones the stored board names died
   // with the old worker. Reset it, sweep any orphaned widget pills and
   // indicator marks, and say in each waiting thread that its task died with
@@ -532,6 +537,7 @@ function paintActionBadge(board: RunBoard = currentBoard()): void {
     {
       awaiting: board.running?.awaiting === true || board.pendingQuestion != null,
       failed: unseenFailure,
+      recording: board.running?.recording === true,
     },
   );
 }

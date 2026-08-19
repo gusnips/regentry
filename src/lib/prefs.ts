@@ -41,3 +41,9 @@ export type RunTarget = "background" | "thisPage";
  *  is when re-flipping is most annoying). Lives here rather than in the panel
  *  store so the choice survives the panel closing itself. */
 export const runTargetPref = defineItem<RunTarget>("runTarget", "thisPage");
+
+/** Documented runs — the `document` tool is offered to the model only while this
+ *  is on. On by default: the tool costs nothing until the user asks for a
+ *  walkthrough in their own words, and off is the switch for anyone who never
+ *  wants screenshots of their browser written to disk. */
+export const walkthroughsEnabled = defineItem<boolean>("walkthroughsEnabled", true);

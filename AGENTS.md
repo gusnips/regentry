@@ -139,6 +139,22 @@ never reach the service-worker bundle.
   pasted markdown — fetched from the page context, https-only, size-capped, always previewed in
   full before saving (untrusted prose headed for the system prompt). Managed in Settings →
   Skills. Background-only except `ui/`.
+- `walkthrough/` — documented runs: "do X and document it" turns the run into a shareable
+  step-by-step guide. The model arms it with the `document` tool (offered only while
+  `walkthroughsEnabled`, the `buildToolDefs` gate); ungated bookkeeping, since capture changes
+  nothing on the page. Frames come from `Page.captureScreenshot` over the session the run already
+  holds — **never `startScreencast`**, which stalls on a hidden tab and so records nothing exactly
+  when TabRunner runs most; the recorder never attaches on its own, so the debugger infobar can't
+  precede plan approval (frame 0 falls back to `captureVisibleTab`). Capture is awaited on both
+  sides of the tool call: `onStepStart` is sync and a turn's calls run back-to-back, so a
+  fire-and-forget shot would land mid-click on the next action. Element actions get the frame
+  before, navigations the one after; `finalize()` runs in `start-run.ts`'s one `finally` **before**
+  `detachAll()`, so every ending — done, stop, error, closed tab — leaves an artifact. Frames are
+  Blobs in IndexedDB (`store.ts`, the codebase's only binary store, GC'd with their conversation);
+  they never enter `messages[]`, so a recording structurally cannot reach a provider. Everything
+  less than the whole truth is disclosed in the doc's own intro — partial, truncated, armed late,
+  frames missed. Background-safe except `ui/`; `recorder.ts` is deliberately out of the barrel
+  (it reaches into CDP, and the barrel is imported by pages and by background).
 - `bridge/` — the MCP bridge's extension half. Background-only.
 - `tips/` — the rotating "Tip: …" line; i18n data + cooldown scheduler (panel opens,
   least-recently-shown wins, re-picked on panel open / run end). Shows in the running run

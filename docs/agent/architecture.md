@@ -356,6 +356,66 @@ untrusted prose that will ride the system prompt on matching runs, and a skill i
 badly is user-approved content by construction. Nothing in a body is ever executed or fetched.
 Export is copy-as-markdown, which round-trips through the same parser.
 
+### `walkthrough/` — documented runs
+
+"Do X and document it": the run performs the process and leaves behind a shareable,
+step-by-step guide. The structural advantage over a Scribe-style recorder is that we know
+what each action _meant_ — tool, `intent`, result, click point — so a caption reads "Click
+Compose" where DOM diffing can only manage "click #btn-42". Nothing here infers.
+
+**Why per-action screenshots, not a screen recording.** `Page.startScreencast` is driven by
+the compositor, and a hidden tab stops compositing — no `IncrementCapturerCount` on that
+path — so it records nothing exactly when TabRunner runs most: an adopted tab the user
+switched away from, a minimized window, a 3am schedule. `Page.captureScreenshot` forces a
+frame out of a hidden tab (Chrome ≥131), which makes it the only background-safe recorder
+there is. Video, when it comes, is a paced slideshow built from these same frames.
+
+**The capture seam.** `loop.ts` brackets each tool call with `recorder.beforeAction` /
+`afterAction`, both awaited. `onStepStart` is synchronous and non-awaited, and a turn's tool
+calls execute back-to-back with no model latency between them — so a fire-and-forget capture
+would race the next action's input on the same CDP session and land mid-click. The recorder
+bounds itself with a 5s timeout, so an unresponsive tab costs one gap frame, never a stalled
+run; after three failures in a row it stops trying and says so, rather than adding minutes to
+a run and producing a document of placeholders.
+
+**Which frame.** Element actions (click/fill/type/press_key/evaluate) get the frame _before_
+— the reader needs the screen with the target still on it. Navigations get the frame _after_,
+because "Go to gmail.com" wants the inbox under it. Scrolls and agent machinery (snapshot,
+find, read_*) are not steps a reader performs and get no frame at all; the next action's frame
+already shows the scrolled page. A frame's verdict is filed after its action resolves, which
+is what drops failed attempts — and that is what collapses "clicked, missed, retried, worked"
+into the one step to perform.
+
+**Consent and visibility.** The `document` tool is offered only while `walkthroughsEnabled`
+(the `buildToolDefs` gate, same shape as memory and skills), and it is ungated bookkeeping —
+capture changes nothing on a page, and the consent that matters is the user asking in their own
+words. The recorder never attaches the debugger itself: frame 0 falls back to
+`captureVisibleTab`, so the "debugging this browser" infobar can never precede the plan gate's
+yes. REC shows in three places — the panel's run band, the driven tab's badge ("Documenting"
+instead of "Driving"), and the toolbar tooltip, which needs no injection and so survives a
+panelless scheduled run. Amber-gold, not red: recording is the run measuring itself, and red
+already means failed here.
+
+**Storage.** Frames are Blobs in IndexedDB (`store.ts`) — the codebase's only binary store, and
+the upgrade path `conversations.ts` has named twice. Three forces pick it: base64 in
+`storage.local` would blow the quota, Chrome keeps large Blobs as files rather than inline
+values, and it is the one store a future offscreen encoder can reach (an offscreen document gets
+`chrome.runtime` and nothing else of the extension APIs). Every frame is on disk before the next
+is taken, so a killed worker leaves a recording the boot sweep marks `partial` rather than a
+ghost. Recordings are GC'd with their conversation, on both the delete and LRU-eviction paths.
+
+**Honesty.** Frames live outside `messages[]`, so a recording structurally cannot reach a
+provider. Values typed into credential-shaped fields are masked in captions
+(`sanitize.ts`'s regex). And everything less than the whole truth is disclosed in the document's
+own intro — interrupted, truncated, started documenting late, screens that could not be
+captured. A walkthrough that silently skips a step it took is the failure this module refuses.
+
+`finalize()` runs inside `start-run.ts`'s one `finally`, **before** `detachAll()`: that is the
+seam every ending funnels through, so a run that was stopped, errored, or lost its tab still
+yields the document it had earned. `recorder.ts` stays out of the module barrel — it reaches
+into the CDP driver, and the barrel is imported by the panel, the viewer page, and the
+background entrypoint WXT evaluates at build time.
+
 ### `tips/` — rotating tips
 
 The rotating "Tip: …" line (Claude Code's spinner-tip pattern, reduced): a dim hint under

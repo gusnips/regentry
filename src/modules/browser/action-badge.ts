@@ -26,6 +26,8 @@
  * board itself, so nothing under `browser/` depends on `agent/`.
  */
 
+import { i18n } from "@/i18n";
+
 /** Amber = alive/working, the favicon dot's own colour; dark text for contrast. */
 const BADGE_BG = "#fbbf24";
 const BADGE_FG = "#451a03";
@@ -34,6 +36,12 @@ const FAIL_BG = "#dc2626";
 const FAIL_FG = "#ffffff";
 
 export interface BadgeState {
+  /**
+   * The running run is documenting itself. The badge's text slot is spoken for
+   * (count / "?" / "!"), so REC rides the tooltip instead — the injection-free
+   * floor still says it, which is what a panelless scheduled run needs.
+   */
+  recording?: boolean;
   /** Parked on the user's answer — the count becomes the wait language's "?". */
   awaiting?: boolean;
   /**
@@ -56,5 +64,19 @@ export async function syncActionBadge(count: number, state: BadgeState = {}): Pr
     }
   } catch {
     // No toolbar to paint — the tab group still names the work.
+  }
+  // Last, and in its own try: REC is the least of what this badge says, and a
+  // Chrome that refused the tooltip must not cost us the count. Restoring reads
+  // the manifest's own message rather than an empty string (which leaves a
+  // blank tooltip) or a copy of the words (which would drop the user's locale).
+  try {
+    await chrome.action.setTitle({
+      title:
+        state.recording === true
+          ? i18n.t("walkthrough.badgeTitle")
+          : chrome.i18n.getMessage("actionTitle"),
+    });
+  } catch {
+    // Same floor: the badge itself is already painted.
   }
 }

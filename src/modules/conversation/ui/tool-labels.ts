@@ -34,6 +34,7 @@ const TOOL_VERB_KEYS = {
   retry: "run.tool.retry",
   warn: "run.tool.warn",
   interrupted: "run.tool.interrupted",
+  document: "run.tool.document",
 } as const;
 
 /** Literal union, not `string` — the i18n catalog is typed and rejects widened keys. */
@@ -65,7 +66,15 @@ function host(value: unknown): string | undefined {
  * human cannot read. The phrase replaces the opaque locator only; a value the
  * call also carries is already readable and stays beside it.
  */
-const INTENT_TOOLS = new Set(["navigate", "go_back", "open_tab", "click", "fill", "evaluate"]);
+const INTENT_TOOLS = new Set([
+  "navigate",
+  "go_back",
+  "open_tab",
+  "click",
+  "type",
+  "fill",
+  "evaluate",
+]);
 
 /**
  * The distinguishing argument of a tool call, short enough for one row:
@@ -93,8 +102,11 @@ export function toolHint(
       return text(args.query);
     case "click":
       return intent ?? text(args.ref);
-    case "type":
-      return text(args.text);
+    case "type": {
+      // Same shape as fill now that typing names its field: where, then what.
+      const value = text(args.text);
+      return intent && value ? `${intent}: ${value}` : (intent ?? value);
+    }
     case "fill": {
       // Where and what both matter — "the ZIP code: 93619-…" says what went
       // where. Only the locator is opaque, so only the locator is replaced.

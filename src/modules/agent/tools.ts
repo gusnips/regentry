@@ -1,6 +1,7 @@
 import type { BrowserDriver } from "@/modules/browser";
 import type { ToolCall } from "@/modules/providers/types";
 import type { Skill } from "@/modules/skills";
+import type { RunRecorder } from "@/modules/walkthrough/recorder";
 import { remember } from "@/modules/memory";
 import { cancelSchedule, scheduleTask } from "@/modules/schedule/agent-tools";
 import { i18n } from "@/i18n";
@@ -49,6 +50,9 @@ export interface ToolContext {
   /** Enabled skills snapshotted at run start — the skill tool's lookup table.
    *  Absent under direct control, which loads none. */
   skills?: Skill[];
+  /** This run's walkthrough recorder — the `document` tool's target. Absent when
+   *  walkthroughs are off, or under direct control, which has no run to document. */
+  recorder?: RunRecorder;
 }
 
 /** Execute a single tool call against the browser driver. */
@@ -182,6 +186,16 @@ export async function executeTool(
         // what a vision model actually reads. Both are needed — a provider that
         // silently drops images still gets a coherent transcript.
         return { ok: true, data: { captured: true }, images: [image] };
+      }
+
+      case "document": {
+        if (!ctx.recorder) return { ok: false, error: i18n.t("errors.documentUnavailable") };
+        const title = typeof call.args.title === "string" ? call.args.title : undefined;
+        // Idempotent: a model that calls it twice gets the same yes, not an
+        // error — re-arming mid-run would restart the numbering under the user.
+        const already = ctx.recorder.armed;
+        await ctx.recorder.arm(title);
+        return { ok: true, data: { documenting: true, resumed: already } };
       }
 
       case "plan": {
@@ -395,6 +409,9 @@ export function formatSuccessSummary(tool: string, data: unknown): string {
   }
   if (tool === "screenshot") {
     return i18n.t("errors.screenshotCaptured");
+  }
+  if (tool === "document") {
+    return i18n.t("walkthrough.step.armed");
   }
   if (tool === "read_history" && data && typeof data === "object") {
     const window = data as { from: number; to: number };

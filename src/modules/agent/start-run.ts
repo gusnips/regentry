@@ -1,6 +1,7 @@
 import { i18n } from "@/i18n";
 import { buildConversationHistory, runAgentLoop } from ".";
 import { extractAndRemember } from "@/modules/memory";
+import { createRecorder } from "@/modules/walkthrough/recorder";
 import { maybeAutoTitle } from "@/modules/conversation/title";
 import {
   clearAgentWait,
@@ -8,6 +9,7 @@ import {
   detachAll,
   hideAgentIndicator,
   isRestrictedUrl,
+  setAgentDocumenting,
   showAgentIndicator,
   waitAgentIndicator,
   waitForLoad,
@@ -31,7 +33,7 @@ import {
   type ThreadTabs,
 } from "@/modules/conversation/conversations";
 import type { Message } from "@/modules/conversation/types";
-import { defaultStartUrl } from "@/lib/prefs";
+import { defaultStartUrl, walkthroughsEnabled } from "@/lib/prefs";
 import { createLogger, truncate } from "@/lib/logger";
 import type { Event } from "@/shared/protocol";
 import { acquireRun, releaseRun } from "./active-runs";
@@ -41,6 +43,7 @@ import {
   markPendingQuestion,
   clearPendingQuestion,
   markRunningAwaiting,
+  markRunningRecording,
   markRunningTab,
 } from "./run-queue";
 import type { RunGroup } from "./tools";
@@ -166,6 +169,9 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     });
 
     let endedOnQuestion = false;
+    // The run's closing word — a documented run reuses it as the walkthrough's
+    // "what this accomplishes" outro.
+    let doneSummary: string | undefined;
     // How the run's tab group is retitled when it lets go — ✓, ? or ✗.
     let runFailed = false;
     // A plain "no" to a plan: nothing ran, so the tab this run opened for the
@@ -251,6 +257,20 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
     // has read the same exchange, not on a stranger.
     const history = buildConversationHistory(transcript, contextWindow);
 
+    // Present whenever walkthroughs are on; the `document` tool is what arms
+    // it. An unarmed recorder captures nothing and costs a pair of no-op calls
+    // per action — which is what lets the model turn documenting on mid-run,
+    // the moment the user asks for it in prose.
+    const recorder = (await walkthroughsEnabled.get())
+      ? createRecorder(conversationId, task, () => {
+          emit({ type: "recording", on: true });
+          // Ambient, not just panel state: the driven tab's badge and the
+          // toolbar title have to say REC after the panel closes.
+          markRunningRecording(conversationId, true);
+          void setAgentDocumenting(true);
+        })
+      : undefined;
+
     try {
       const wire = await runAgentLoop({
         provider,
@@ -259,6 +279,7 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
         conversationId,
         runGroup,
         owner,
+        ...(recorder ? { recorder } : {}),
         ...(opts.scheduleId ? { scheduleId: opts.scheduleId } : {}),
         images,
         supportsImages: resolvedProvider?.supportsImages,
@@ -341,7 +362,8 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
             // own fix, so they stay off the report path.
             emit({ type: "error", message, kind, ...(kind ? {} : { unexpected: true }) });
           },
-          onDone: (summary) =>
+          onDone: (summary) => {
+            doneSummary = summary;
             emit({
               type: "done",
               summary,
@@ -349,7 +371,8 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
               // A user halt unwinds as a done — the aborted controller is the
               // only thing that tells it from a finish the model chose.
               ...(run.controller.signal.aborted ? { stopped: true } : {}),
-            }),
+            });
+          },
           onAskUser: (question, choices) => {
             endedOnQuestion = true;
             // The slot is about to free, but the answer is still owed — record
@@ -405,6 +428,33 @@ export async function startAgentRun(opts: StartRunOptions): Promise<StartRunResu
       emit({ type: "error", message, unexpected: true });
     } finally {
       chrome.tabs.onRemoved.removeListener(onTabGone);
+      // The walkthrough closes before the session does: its last frame is the
+      // result the reader is working toward, and `detachAll()` below takes the
+      // capture path with it. Every ending funnels through this one finally —
+      // done, error, stop, a closed tab, a crashed loop — so one seam covers
+      // them all, and a recording is never lost to the way a run happened to
+      // end. Best-effort: a failed finalize must not strand the teardown.
+      if (recorder?.armed) {
+        try {
+          const outcome = runFailed ? "error" : run.controller.signal.aborted ? "stopped" : "done";
+          const recording = await recorder.finalize(outcome, doneSummary);
+          if (recording && recording.frames > 0) {
+            emit({
+              type: "artifact",
+              recordingId: recording.id,
+              title: recording.title,
+              frames: recording.frames,
+              status: recording.status,
+              sites: recording.sites,
+            });
+          }
+        } catch (e) {
+          log.warn("walkthrough finalize failed:", e instanceof Error ? e.message : String(e));
+        }
+        emit({ type: "recording", on: false });
+        markRunningRecording(conversationId, false);
+        void setAgentDocumenting(false);
+      }
       // The debugger leaves with the run: its session is what keeps Chrome's
       // "debugging this browser" infobar up, and held past the run's end it
       // would pin the banner on a page nothing is driving — it even outlives

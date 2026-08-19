@@ -18,7 +18,7 @@ import { TextField } from "@/components/TextField";
 import { useStoredItem } from "@/components/useStoredItem";
 import { ThemeToggle } from "@/components/ThemeControl";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { defaultStartUrl, tipsEnabled, widgetHidden } from "@/lib/prefs";
+import { defaultStartUrl, tipsEnabled, walkthroughsEnabled, widgetHidden } from "@/lib/prefs";
 import { LINKS } from "@/lib/links";
 import { newIssueUrl } from "@/lib/report";
 import { StatusStrip } from "./StatusStrip";
@@ -174,6 +174,7 @@ function BehaviorPane() {
   // positive toggle.
   const hidden = useStoredItem(widgetHidden);
   const tips = useStoredItem(tipsEnabled);
+  const walkthroughs = useStoredItem(walkthroughsEnabled);
   const stored = useStoredItem(defaultStartUrl);
   // Edited locally, persisted on blur — a half-typed URL must never reach a run.
   const [startUrl, setStartUrl] = useState<string | null>(null);
@@ -236,6 +237,31 @@ function BehaviorPane() {
             inputMode="url"
             spellCheck={false}
             aria-invalid={urlError || undefined}
+          />
+        </div>
+      </section>
+
+      {/* What a run is allowed to keep. Its own section: this is the only
+          setting that decides whether pictures of the user's browser are
+          written to disk, and burying it under "background tasks" would hide
+          the one knob a privacy-minded user comes here for. */}
+      <section className="mt-8">
+        <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+          {t("settings.walkthroughs")}
+        </h2>
+        <div className="mt-3 flex items-start justify-between gap-4">
+          <div>
+            <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+              {t("settings.walkthroughs")}
+            </div>
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              {t("settings.walkthroughsHint")}
+            </p>
+          </div>
+          <Switch
+            checked={walkthroughs}
+            onChange={(v) => void walkthroughsEnabled.set(v)}
+            ariaLabel={t("settings.walkthroughs")}
           />
         </div>
       </section>

@@ -6,6 +6,7 @@
       "entry": [
         "src/entrypoints/background.ts",
         "src/entrypoints/*/main.tsx",
+        "src/entrypoints/*/main.ts",
         "src/entrypoints/*/index.html",
         "src/**/__tests__/**/*.test.ts"
       ],

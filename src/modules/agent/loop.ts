@@ -14,6 +14,7 @@ import { i18n, currentLanguageName } from "@/i18n";
 import { loadAgentContext } from "@/modules/memory";
 import { listSchedules } from "@/modules/schedule";
 import { loadSkillsForRun } from "@/modules/skills";
+import type { RunRecorder } from "@/modules/walkthrough/recorder";
 import type { ToolDef } from "@/modules/providers/types";
 import { executeTool, formatDetail, formatSuccessSummary } from "./tools";
 import type { RunGroup } from "./tools";
@@ -164,6 +165,12 @@ export interface LoopOptions {
   runGroup?: RunGroup;
   /** Which client started the run — `schedule_task` is bounded by it. Absent in tests. */
   owner?: RunOwner;
+  /**
+   * The run's walkthrough recorder. Present whenever walkthroughs are on; the
+   * `document` tool is what actually arms it, so an unarmed recorder costs a
+   * pair of no-op calls per action and nothing else.
+   */
+  recorder?: RunRecorder;
   /** The schedule this run fired from — the only record `schedule_task` may re-time. */
   scheduleId?: string;
   /** Data-URL images the user attached to the task, referenced in the text as "[Image #1]". */
@@ -295,6 +302,7 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     runGroup,
     owner,
     scheduleId,
+    recorder,
     images,
     supportsImages: supportsImagesOpt,
     previousTabs,
@@ -333,7 +341,12 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
     loadSkillsForRun(startUrl),
     driver.snapshot(),
   ]);
-  const tools = buildToolDefs(context.memoryOn, supportsImages, runSkills.all.length > 0);
+  const tools = buildToolDefs(
+    context.memoryOn,
+    supportsImages,
+    runSkills.all.length > 0,
+    recorder !== undefined,
+  );
 
   // Auto-snapshot merged into the task message — Anthropic rejects consecutive user messages
   const messages: ChatMessage[] = [
@@ -579,13 +592,22 @@ export async function runAgentLoop(opts: LoopOptions): Promise<ChatMessage[]> {
       // rather than adding a row, so it gets no spinner and no step of its own.
       const bookkeeping = call.name === "plan";
       if (!bookkeeping) callbacks.onStepStart?.(call.name, call.args);
+      // Documenting brackets the action, and both halves are awaited. The
+      // capture shares this run's one CDP session, and a turn's tool calls
+      // execute back-to-back with no model latency between them — a
+      // fire-and-forget screenshot would land mid-click on the step after it.
+      // The recorder bounds its own capture with a timeout, so the cost of an
+      // unresponsive tab is one gap frame, never a stalled run.
+      await recorder?.beforeAction(call);
       const result = await executeTool(call, driver, {
         conversationId,
         runGroup,
         owner,
         scheduleId,
         skills: runSkills.all,
+        ...(recorder ? { recorder } : {}),
       });
+      await recorder?.afterAction(call, result.ok, result.data);
       // The strip appears when the work does: landing a gated action files the
       // driven tab into the run's group. Reads never group — a tab the user was
       // merely passing through stays exactly as they filed it.

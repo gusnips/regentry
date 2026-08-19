@@ -17,6 +17,16 @@ const BLOCKED = "[blocked]";
 
 const SENSITIVE_KEY =
   /pass(word|wd)|token|secret|api[_-]?key|auth|credential|private[_-]?key|access[_-]?key|bearer|oauth|session|cookie|csrf|jwt/i;
+/**
+ * Does this label name something credential-shaped? The same test the value
+ * sanitizer runs on object keys, exposed for callers that hold a field's label
+ * rather than a key — a walkthrough deciding whether to print what was typed
+ * into it.
+ */
+export function isSensitiveLabel(label: string): boolean {
+  return SENSITIVE_KEY.test(label);
+}
+
 const JWT = /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{2,}/;
 const BEARER = /\bbearer\s+[A-Za-z0-9._~+/=-]{8,}/i;
 /** `name=value; name=value` — a cookie or header string, never page prose. */

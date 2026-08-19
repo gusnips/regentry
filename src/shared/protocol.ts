@@ -6,6 +6,7 @@
 import type { TabId } from "./types";
 import type { ErrorKind } from "@/modules/providers/error-classify";
 import type { ReasoningEffort } from "@/modules/providers/types";
+import type { RecordingStatus } from "@/modules/walkthrough/types";
 
 // ── Commands (side panel → background) ──────────────────────────────
 
@@ -111,6 +112,20 @@ export interface BridgeActive {
   client: string;
 }
 
+/**
+ * The walkthrough a documented run left behind. Only the handle crosses the
+ * wire — the frames are blobs in IndexedDB, which every extension context reads
+ * for itself.
+ */
+export interface ArtifactPayload {
+  recordingId: string;
+  title: string;
+  /** Documented steps, gaps included — what the card counts. */
+  frames: number;
+  status: RecordingStatus;
+  sites: string[];
+}
+
 export type Event =
   /**
    * The resolved engine for this run — the concrete model id ("auto" is
@@ -166,6 +181,14 @@ export type Event =
   | { type: "done"; summary?: string; question?: boolean; stopped?: boolean }
   /** Who an external agent is in the browser — null when the browser is yours again */
   | { type: "run_active"; active: BridgeActive | null }
+  /**
+   * The run is documenting itself. Drives the REC state everywhere it shows —
+   * the panel's run band, the driven tab's badge, the toolbar badge. Emitted
+   * the moment the `document` tool arms, not at run start.
+   */
+  | { type: "recording"; on: boolean }
+  /** A finished walkthrough — the run's deliverable, rendered as a card. */
+  | ({ type: "artifact" } & ArtifactPayload)
   /**
    * A compaction finished. The summary message is already in storage (the panel
    * sees it through the transcript watch); these are the receipt's numbers, in

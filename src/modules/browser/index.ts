@@ -8,6 +8,7 @@ export {
   refreshAgentIndicator,
   waitAgentIndicator,
   clearAgentWait,
+  setAgentDocumenting,
 } from "./indicator";
 export { syncActionBadge } from "./action-badge";
 export { SUPPORTED_KEYS, SUPPORTED_MODIFIERS, detachAll, waitForLoad } from "./cdp-driver";

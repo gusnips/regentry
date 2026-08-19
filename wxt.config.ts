@@ -60,6 +60,10 @@ export default defineConfig({
       "tabGroups",
       // The MCP bridge's reconcile alarm — wakes a suspended worker to reconnect.
       "alarms",
+      // Walkthrough frames are blobs in IndexedDB and a documented run can run
+      // to tens of megabytes. No install prompt, and it exempts us from the
+      // eviction that would otherwise take a recording the user meant to keep.
+      "unlimitedStorage",
       // Lets the browser strip Origin from our own provider calls: a subscription
       // OAuth token is refused by Anthropic's per-organization CORS gate when it
       // arrives with a browser Origin, which is exactly what the worker's fetch

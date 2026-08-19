@@ -18,6 +18,13 @@ export function renderTranscriptMessage(m: Message): string {
         : `NOTE: ${m.content}`;
     case "error":
       return `ERROR: ${m.content}`;
+    // The document itself is images in another store; what a later run needs to
+    // know is that it exists and what it covers, so "did you write that up?" has
+    // an answer.
+    case "artifact":
+      return m.artifact
+        ? `WALKTHROUGH saved: ${m.artifact.title} (${m.artifact.frames} steps)`
+        : "";
     case "plan":
       return m.steps?.length ? `PLAN: ${m.steps.join(" | ")}` : "";
     // Reasoning is the one thing never worth carrying: it argues about a page

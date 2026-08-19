@@ -76,7 +76,9 @@
       "docsLink": "Guía completa de configuración →",
       "extensionId": "ID de la extensión",
       "extensionIdHint": "Asigna este valor a TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID del daemon."
-    }
+    },
+    "walkthroughs": "Ejecuciones documentadas",
+    "walkthroughsHint": "Deja que el agente convierta una tarea en una guía paso a paso que puedas compartir cuando se lo pidas. Las capturas se quedan en este equipo y nunca se envían al modelo."
   },
   "instructions": {
     "title": "Instrucciones",
@@ -221,6 +223,66 @@
       "deleteRunning": "Eliminar esta programación y detener la ejecución en curso",
       "count": "{{n}} de {{max}}"
     }
+  },
+  "walkthrough": {
+    "rec": "REC",
+    "step": {
+      "armed": "Documentando esta ejecución",
+      "gap": "Pantalla no capturada",
+      "start": "Punto de partida",
+      "result": "Resultado",
+      "navigate": "Ve a {{where}}",
+      "openTab": "Abre {{where}} en una pestaña nueva",
+      "goBack": "Vuelve atrás",
+      "switchTab": "Cambia a {{title}}",
+      "click": "Haz clic en {{what}}",
+      "clickBare": "Haz clic en el elemento resaltado",
+      "fill": "Escribe esto en {{field}}",
+      "fillBare": "Rellena el campo",
+      "fillSecret": "Escribe tu propio {{field}}",
+      "fillSecretBare": "Escribe tus propias credenciales",
+      "type": "Escribe esto",
+      "typeSecret": "Escribe tus propias credenciales",
+      "pressKey": "Pulsa {{keys}}",
+      "evaluate": "Ejecuta un script en la página",
+      "evaluateIntent": "Ejecuta un script: {{intent}}"
+    },
+    "doc": {
+      "eyebrow": "Guía paso a paso",
+      "stepCount_one": "{{count}} paso",
+      "stepCount_other": "{{count}} pasos",
+      "prerequisite": "Antes de empezar: inicia sesión en {{host}} con una cuenta que pueda hacer esto.",
+      "notePartial": "Esta ejecución se interrumpió, así que la guía termina antes de que el proceso acabara.",
+      "noteTruncated": "El proceso fue más largo de lo que cabe en un documento — los últimos pasos no aparecen.",
+      "noteLateArm_one": "La documentación empezó tras la primera acción, que no aparece aquí.",
+      "noteLateArm_other": "La documentación empezó tras las primeras {{count}} acciones, que no aparecen aquí.",
+      "noteDegraded": "Algunas pantallas no se pudieron capturar en este navegador, así que varios pasos no tienen imagen.",
+      "noteStopped": "La ejecución se detuvo a mano antes de terminar.",
+      "noteFailed": "La ejecución terminó con un error, así que el último paso puede no haber funcionado.",
+      "missingShot": "No se pudo capturar esta pantalla",
+      "outcome": "Resultado",
+      "madeWith": "Hecho con"
+    },
+    "card": {
+      "title": "Guía paso a paso",
+      "steps_one": "{{count}} paso",
+      "steps_other": "{{count}} pasos",
+      "open": "Abrir",
+      "partial": "Parcial",
+      "truncated": "Acortada",
+      "review": "Revisa las capturas antes de compartir — muestran todo lo que había en pantalla."
+    },
+    "viewer": {
+      "download": "Descargar HTML",
+      "branding": "Incluir crédito de TabRunner",
+      "loading": "Cargando la guía…",
+      "missingTitle": "Esta guía ya no existe",
+      "missingBody": "Sus capturas se borraron — una guía desaparece con su conversación, o cuando se llena el almacenamiento.",
+      "missingFix": "Vuelve a lanzar la tarea y pide a TabRunner que la documente.",
+      "emptyTitle": "No se capturó nada",
+      "emptyBody": "La ejecución se documentó pero no se pudo capturar ninguna pantalla — quizá la pestaña se cerró o estaba bloqueada."
+    },
+    "badgeTitle": "TabRunner · REC — documentando esta ejecución"
   },
   "addProvider": {
     "title": "Añadir proveedor",
@@ -550,7 +612,8 @@
   "indicator": {
     "driving": "TabRunner está controlando esta pestaña",
     "waiting": "TabRunner te está esperando",
-    "open": "Abrir el panel de TabRunner"
+    "open": "Abrir el panel de TabRunner",
+    "documenting": "TabRunner está documentando esta pestaña"
   },
   "plan": {
     "title": "Plan",
@@ -592,7 +655,8 @@
       "done": "Terminando",
       "retry": "Reintentando",
       "warn": "Trabajando",
-      "interrupted": "Detenido"
+      "interrupted": "Detenido",
+      "document": "Documentando"
     },
     "idle": [
       "Pensando",
@@ -693,7 +757,8 @@
     "skills": "¿Le enseñaste algo en este chat? /skill new guarda la receta para la próxima.",
     "siteInstructions": "En Instrucciones, una línea “## site: acme.com” limita todo lo que sigue a ese sitio.",
     "enginePicker": "El chip junto a Enviar elige proveedor, modelo y esfuerzo — /model también sirve.",
-    "help": "Pulsa ? con el campo vacío para ver atajos y comandos — /help también sirve."
+    "help": "Pulsa ? con el campo vacío para ver atajos y comandos — /help también sirve.",
+    "walkthrough": "Pide “y documéntalo” y el agente escribe el proceso como una guía para compartir."
   },
   "notify": {
     "doneFallback": "Tarea terminada."
@@ -805,6 +870,7 @@
     "memoryEmpty": "No hay nada que memorizar: envía el dato como una frase.",
     "skillLoaded": "Habilidad \"{{name}}\" cargada",
     "skillNotFound": "No hay ninguna habilidad llamada \"{{name}}\". Disponibles: {{list}}",
-    "usageUnreadable": "La respuesta de uso del proveedor llegó en un formato que TabRunner no reconoció — prueba Actualizar."
+    "usageUnreadable": "La respuesta de uso del proveedor llegó en un formato que TabRunner no reconoció — prueba Actualizar.",
+    "documentUnavailable": "La documentación está desactivada para esta ejecución — actívala en Ajustes."
   }
 }

@@ -57,10 +57,18 @@ describe("toolHint", () => {
   });
 
   it("never lets a stray intent displace an argument that already reads well", () => {
-    expect(toolHint("type", { text: "gus@example.com", intent: "the email field" })).toBe(
-      "gus@example.com",
-    );
+    // press_key declares no intent (agent/prompt.ts) — one arriving anyway is
+    // noise, and "Enter" already says everything the row needs.
     expect(toolHint("press_key", { key: "Enter", intent: "submit the form" })).toBe("Enter");
+  });
+
+  it("pairs a typed value with the field it went into, the way fill does", () => {
+    // `type` gained an intent when walkthroughs did: a documented typing step
+    // has no other source for the field's name, and the row reads better too.
+    expect(toolHint("type", { text: "gus@example.com", intent: "the email field" })).toBe(
+      "the email field: gus@example.com",
+    );
+    expect(toolHint("type", { text: "gus@example.com" })).toBe("gus@example.com");
   });
 
   it("names a tab switch by its result, never its id — the id is the drawer's trace", () => {

@@ -35,6 +35,7 @@ import {
   useMessageScrollerScrollable,
 } from "@/components/MessageScroller";
 import { ZoomableImage } from "@/components/ZoomableImage";
+import { ArtifactCard } from "@/modules/walkthrough/ui";
 import { useStoredItem } from "@/components/useStoredItem";
 
 type HintKey =
@@ -804,6 +805,8 @@ const MessageBubble = memo(function MessageBubble({
       ) : (
         <StepRow msg={msg} />
       );
+    case "artifact":
+      return msg.artifact ? <ArtifactCard artifact={msg.artifact} /> : null;
     case "plan":
       return msg.steps?.length ? (
         <PlanCard

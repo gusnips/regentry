@@ -76,7 +76,9 @@
       "docsLink": "Full setup guide →",
       "extensionId": "Extension ID",
       "extensionIdHint": "Set the daemon's TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID to this."
-    }
+    },
+    "walkthroughs": "Documented runs",
+    "walkthroughsHint": "Let the agent turn a task into a shareable step-by-step walkthrough when you ask it to. Screenshots stay on this computer and are never sent to the model."
   },
   "instructions": {
     "title": "Instructions",
@@ -221,6 +223,66 @@
       "deleteRunning": "Delete this schedule and stop the run in progress",
       "count": "{{n}} of {{max}}"
     }
+  },
+  "walkthrough": {
+    "rec": "REC",
+    "step": {
+      "armed": "Documenting this run",
+      "gap": "Screen not captured",
+      "start": "Starting point",
+      "result": "Result",
+      "navigate": "Go to {{where}}",
+      "openTab": "Open {{where}} in a new tab",
+      "goBack": "Go back",
+      "switchTab": "Switch to {{title}}",
+      "click": "Click {{what}}",
+      "clickBare": "Click the highlighted element",
+      "fill": "Enter this in {{field}}",
+      "fillBare": "Fill in the field",
+      "fillSecret": "Enter your own {{field}}",
+      "fillSecretBare": "Enter your own credentials",
+      "type": "Type this",
+      "typeSecret": "Type your own credentials",
+      "pressKey": "Press {{keys}}",
+      "evaluate": "Run a script on the page",
+      "evaluateIntent": "Run a script: {{intent}}"
+    },
+    "doc": {
+      "eyebrow": "Walkthrough",
+      "stepCount_one": "{{count}} step",
+      "stepCount_other": "{{count}} steps",
+      "prerequisite": "Before you start: sign in to {{host}} with an account that can do this.",
+      "notePartial": "This run was interrupted, so the walkthrough stops before the process finished.",
+      "noteTruncated": "The process ran longer than one document holds — the later steps are not shown.",
+      "noteLateArm_one": "Documenting started after the first action, which is not shown.",
+      "noteLateArm_other": "Documenting started after the first {{count}} actions, which are not shown.",
+      "noteDegraded": "Some screens could not be captured on this browser, so a few steps have no picture.",
+      "noteStopped": "The run was stopped by hand before it finished.",
+      "noteFailed": "The run ended on an error, so the last step may not have worked.",
+      "missingShot": "This screen could not be captured",
+      "outcome": "Result",
+      "madeWith": "Made with"
+    },
+    "card": {
+      "title": "Walkthrough",
+      "steps_one": "{{count}} step",
+      "steps_other": "{{count}} steps",
+      "open": "Open",
+      "partial": "Partial",
+      "truncated": "Shortened",
+      "review": "Check the screenshots before sharing — they show whatever was on screen."
+    },
+    "viewer": {
+      "download": "Download HTML",
+      "branding": "Include TabRunner credit",
+      "loading": "Loading the walkthrough…",
+      "missingTitle": "This walkthrough is gone",
+      "missingBody": "Its screenshots were deleted — a walkthrough goes when its conversation does, or when storage fills up.",
+      "missingFix": "Run the task again and ask TabRunner to document it.",
+      "emptyTitle": "Nothing was captured",
+      "emptyBody": "The run was documented but no screen could be captured — the tab may have been closed or blocked."
+    },
+    "badgeTitle": "TabRunner · REC — documenting this run"
   },
   "addProvider": {
     "title": "Add provider",
@@ -550,7 +612,8 @@
   "indicator": {
     "driving": "TabRunner is controlling this tab",
     "waiting": "TabRunner is waiting for you",
-    "open": "Open the TabRunner panel"
+    "open": "Open the TabRunner panel",
+    "documenting": "TabRunner is documenting this tab"
   },
   "plan": {
     "title": "Plan",
@@ -592,7 +655,8 @@
       "done": "Wrapping up",
       "retry": "Retrying",
       "warn": "Working",
-      "interrupted": "Stopped"
+      "interrupted": "Stopped",
+      "document": "Documenting"
     },
     "idle": [
       "Thinking",
@@ -693,7 +757,8 @@
     "skills": "Taught it something in this chat? /skill new saves the recipe for next time.",
     "siteInstructions": "In Instructions, a “## site: acme.com” line scopes everything under it to that site.",
     "enginePicker": "The chip by Send picks provider, model, and effort for the next task — /model works too.",
-    "help": "Press ? on an empty composer for every shortcut and command — /help works too."
+    "help": "Press ? on an empty composer for every shortcut and command — /help works too.",
+    "walkthrough": "Ask “and document it” and the agent writes the process up as a shareable guide."
   },
   "notify": {
     "doneFallback": "Task finished."
@@ -805,6 +870,7 @@
     "memoryEmpty": "Nothing to remember — pass the fact as a sentence.",
     "skillLoaded": "Loaded skill \"{{name}}\"",
     "skillNotFound": "No skill named \"{{name}}\". Available: {{list}}",
-    "usageUnreadable": "The provider's usage reply came back in a format TabRunner didn't recognize — try Refresh."
+    "usageUnreadable": "The provider's usage reply came back in a format TabRunner didn't recognize — try Refresh.",
+    "documentUnavailable": "Documenting is off for this run — turn on Documented runs in Settings."
   }
 }

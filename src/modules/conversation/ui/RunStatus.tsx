@@ -20,6 +20,7 @@ export function RunStatus() {
   const runEndedAt = useConversationStore((s) => s.runEndedAt);
   const runStopped = useConversationStore((s) => s.runStopped);
   const replanning = useConversationStore((s) => s.replanning);
+  const recording = useConversationStore((s) => s.recording);
   const usage = useConversationStore((s) => s.usage);
   const bridgeActive = useConversationStore((s) => s.bridgeActive);
   // Selecting only the plan message (reference-stable until rewritten) keeps
@@ -244,7 +245,21 @@ export function RunStatus() {
         ) : (
           <span className="shimmer-text min-w-0 flex-1 truncate font-semibold">{verb}…</span>
         )}
-        <span className="telemetry ml-auto shrink-0 text-xs" aria-hidden="true">
+        {/* Gold, beside the clock: recording is the run measuring itself, and
+            the two things this row measures belong together. Red would be the
+            product's only red and already means "failed" here. The dot is
+            small and still — the left-hand one is the live signal, and two
+            competing pulses would say nothing. */}
+        {recording && (
+          <span className="telemetry ml-auto flex shrink-0 items-center gap-1 text-[11px] font-semibold tracking-wide">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
+            {t("walkthrough.rec")}
+          </span>
+        )}
+        <span
+          className={`telemetry shrink-0 text-xs ${recording ? "" : "ml-auto"}`}
+          aria-hidden="true"
+        >
           {formatDuration(now - liveStartedAt)}
           {tokenNote}
         </span>

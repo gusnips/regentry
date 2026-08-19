@@ -20,7 +20,9 @@ export function stepHint(
     typeof value === "string" && value.trim() ? truncateTo(value, 48) : undefined;
   // Tools that declare an `intent` (agent/prompt.ts) — see the panel twin for
   // why the phrase replaces the locator but never a readable value.
-  const intent = ["navigate", "go_back", "open_tab", "click", "fill", "evaluate"].includes(tool)
+  const intent = ["navigate", "go_back", "open_tab", "click", "type", "fill", "evaluate"].includes(
+    tool,
+  )
     ? text(args.intent)
     : undefined;
   switch (tool) {
@@ -43,8 +45,10 @@ export function stepHint(
       return text(args.query);
     case "click":
       return intent ?? text(args.ref);
-    case "type":
-      return text(args.text);
+    case "type": {
+      const value = text(args.text);
+      return intent && value ? `${intent}: ${value}` : (intent ?? value);
+    }
     case "fill": {
       const where = intent ?? (typeof args.ref === "string" ? truncateTo(args.ref, 12) : undefined);
       const value = text(args.text);

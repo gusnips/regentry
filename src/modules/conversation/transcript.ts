@@ -205,6 +205,26 @@ export class TranscriptWriter {
         break;
       }
 
+      case "artifact": {
+        // The deliverable lands after the run's closing word, which is where a
+        // reader looks for it. Content doubles as the fallback label for any
+        // surface that renders messages as plain text.
+        this.flushReasoning();
+        this.flushStreaming();
+        this.append(
+          makeMsg("artifact", event.title, {
+            artifact: {
+              recordingId: event.recordingId,
+              title: event.title,
+              frames: event.frames,
+              status: event.status,
+              sites: event.sites,
+            },
+          }),
+        );
+        break;
+      }
+
       case "plan": {
         this.flushReasoning();
         this.flushStreaming();

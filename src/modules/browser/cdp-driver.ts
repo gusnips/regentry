@@ -296,12 +296,43 @@ export async function scroll(deltaX: number, deltaY: number): Promise<void> {
  * several times larger for no readability gain at q80 — on a slow uplink that
  * difference is seconds per step.
  */
-export async function screenshot(): Promise<string> {
+export async function screenshot(quality = 80): Promise<string> {
   const result = (await send("Page.captureScreenshot", {
     format: "jpeg",
-    quality: 80,
+    quality,
   })) as { data: string };
   return `data:image/jpeg;base64,${result.data}`;
+}
+
+/** The tab this session is currently pointed at, or null when nothing is attached. */
+export function attachedTab(): TabId | null {
+  return activeTab;
+}
+
+/**
+ * A screenshot plus the CSS viewport it was taken of — what a walkthrough needs
+ * to place a click marker on the image later. The click arrives in CSS pixels
+ * and the JPEG is in device pixels, so the viewport size is the only thing that
+ * relates the two.
+ *
+ * Deliberately attaches nothing: with no session this throws, and the recorder
+ * turns that into an honest gap rather than raising Chrome's debugging infobar
+ * on a page the user never approved touching.
+ */
+export async function captureFrame(
+  quality: number,
+): Promise<{ dataUrl: string; viewport: { width: number; height: number } }> {
+  const [dataUrl, metrics] = await Promise.all([
+    screenshot(quality),
+    send("Page.getLayoutMetrics") as Promise<{
+      cssLayoutViewport?: { clientWidth: number; clientHeight: number };
+    }>,
+  ]);
+  const vp = metrics.cssLayoutViewport;
+  return {
+    dataUrl,
+    viewport: { width: vp?.clientWidth ?? 0, height: vp?.clientHeight ?? 0 },
+  };
 }
 
 /** A runaway page script gets this long before CDP terminates the evaluation. */

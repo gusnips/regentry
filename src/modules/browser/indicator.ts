@@ -65,6 +65,13 @@ const markedTabs = new Set<TabId>();
  * panel's question would overwrite this tracking, not the first tab's mark).
  */
 let waitingTabId: TabId | null = null;
+/**
+ * The run is documenting itself. Not per-tab: one run drives at a time, and it
+ * is the run that records, not the page. The badge says "Documenting" instead
+ * of "Driving" for as long as it holds — the strongest of the REC signals,
+ * because it sits on the page the screenshots are being taken of.
+ */
+let documenting = false;
 
 /** Solid amber dot — the favicon the driven tab shows in the tab strip. */
 const FAVICON_DATA_URL =
@@ -233,6 +240,40 @@ export function setMarksInert(hostIds: string[], inert: boolean): void {
 }
 
 /**
+ * Runs in the page: take our marks off the screen entirely, for the length of
+ * one screenshot. Inert is not enough here — a walkthrough frame is a document
+ * the user hands to someone else, and unlike a live mark it cannot be scrubbed
+ * off afterwards. Display, not visibility, so nothing reserves a box.
+ */
+export function setMarksHidden(hostIds: string[], hidden: boolean): void {
+  for (const id of hostIds) {
+    const host = document.getElementById(id);
+    if (host) host.style.display = hidden ? "none" : "";
+  }
+}
+
+/**
+ * Take a screenshot with our own marks off the page, then put them back.
+ * Best-effort on both sides, exactly like the click-through sibling: a page
+ * that refuses the toggle has no marks to hide either, and a capture must never
+ * fail because the badge would not move. The restore runs even when the capture
+ * throws — a run that lost its screenshot must not also lose its badge.
+ *
+ * ponytail: a repaint landing mid-capture rebuilds the host without the hidden
+ * flag, so a navigation finishing at exactly the wrong moment can still put a
+ * badge in one frame. The ceiling is one blemished frame; the upgrade path is
+ * a paint suppression flag consulted by paintIndicator itself.
+ */
+export async function withMarksHidden<T>(tabId: TabId, act: () => Promise<T>): Promise<T> {
+  await inject(tabId, setMarksHidden, [MARK_HOST_IDS, true]);
+  try {
+    return await act();
+  } finally {
+    await inject(tabId, setMarksHidden, [MARK_HOST_IDS, false]);
+  }
+}
+
+/**
  * Run a coordinate click with our marks click-through, so a badge sitting over
  * the element the agent aimed at can never eat the click (and open the panel
  * mid-run, which would move a screen a background run promised not to touch).
@@ -299,7 +340,9 @@ async function inject<A extends unknown[]>(
 async function paintMarks(tabId: TabId, waiting: boolean): Promise<void> {
   const painted = await inject(tabId, paintIndicator, [
     HOST_ID,
-    i18n.t(waiting ? "indicator.waiting" : "indicator.driving"),
+    i18n.t(
+      waiting ? "indicator.waiting" : documenting ? "indicator.documenting" : "indicator.driving",
+    ),
     i18n.t("indicator.open"),
     FAVICON_LINK_ID,
     waiting ? FAVICON_WAITING_URL : FAVICON_DATA_URL,
@@ -309,6 +352,17 @@ async function paintMarks(tabId: TabId, waiting: boolean): Promise<void> {
   // A still state has nothing to beat; a refused paint would beat at nothing.
   if (painted && !waiting) startPulse(tabId);
   else stopPulse(tabId);
+}
+
+/**
+ * Turn the REC label on or off, repainting every marked tab so the change lands
+ * on the page the user is watching. Arming happens mid-run, so this can never
+ * be folded into the initial paint. Cleared with the run.
+ */
+export async function setAgentDocumenting(on: boolean): Promise<void> {
+  if (documenting === on) return;
+  documenting = on;
+  await Promise.all([...markedTabs].map((tabId) => paintMarks(tabId, waitingTabId === tabId)));
 }
 
 export async function showAgentIndicator(tabId: TabId): Promise<void> {
@@ -325,6 +379,7 @@ export async function refreshAgentIndicator(tabId: TabId): Promise<void> {
 
 export async function hideAgentIndicator(tabId: TabId): Promise<void> {
   if (waitingTabId === tabId) waitingTabId = null;
+  documenting = false;
   markedTabs.delete(tabId);
   stopPulse(tabId);
   await inject(tabId, removeIndicator, [HOST_ID, FAVICON_LINK_ID, RESTORE_LINK_ID]);

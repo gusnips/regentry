@@ -2,6 +2,7 @@ import { createWriteQueue, defineItem } from "@/lib/storage";
 import { truncateTo } from "@/lib/format";
 import { cancelQueued, listQueue } from "@/modules/agent/run-queue";
 import { deleteSchedule, disarmSchedule, schedulesForConversation } from "@/modules/schedule";
+import { removeRecordingsFor } from "@/modules/walkthrough";
 import type { Message } from "./types";
 import type { ReasoningEffort } from "@/modules/providers/types";
 
@@ -302,7 +303,15 @@ async function ensureConversation(
   };
   const kept = [meta, ...list].slice(0, MAX_CONVERSATIONS);
   const evicted = list.slice(MAX_CONVERSATIONS - 1);
-  await Promise.all(evicted.map((c) => messagesItem(c.id).remove()));
+  // A conversation's walkthroughs are megabytes of blobs in another store —
+  // orphaning them here would quietly own the disk with nothing left pointing
+  // at them. Best-effort: eviction must not fail because a blob store did.
+  await Promise.all(
+    evicted.flatMap((c) => [
+      messagesItem(c.id).remove(),
+      removeRecordingsFor(c.id).catch(() => {}),
+    ]),
+  );
   await indexItem.set(kept);
   return meta;
 }
@@ -425,6 +434,7 @@ export async function deleteConversation(id: string): Promise<void> {
     await disarmSchedule(s.id);
   }
   await messagesItem(id).remove();
+  await removeRecordingsFor(id).catch(() => {});
   await indexItem.set((await indexItem.get()).filter((c) => c.id !== id));
   if ((await activeItem.get()) === id) await activeItem.set(null);
 }

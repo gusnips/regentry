@@ -58,6 +58,8 @@ interface ConversationState {
   pendingStepId: string | null;
   /** Id of this run's plan card — updates rewrite it rather than stacking copies */
   planMsgId: string | null;
+  /** The running task is documenting itself — the band shows REC while it is. */
+  recording: boolean;
   /** A proposed plan parked on the user's answer — the run resumes on approve, ends on reject. */
   planApproval: { steps: string[]; reapproval: boolean } | null;
   /** This run's plan has the user's yes — the walk-away gate. Closing the panel
@@ -299,6 +301,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     planMsgId: null,
     planApproval: null,
     planApproved: false,
+    recording: false,
     queued: [],
     pendingSend: null,
     draft: "",
@@ -367,6 +370,9 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       drivingTab: null,
       queuedRun: null,
       planApproved: false,
+      // The worker clears this too; doing it here covers a panel that
+      // reconnected mid-run and never saw the recording event.
+      recording: false,
       replanning: false,
     }));
   };
@@ -444,6 +450,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       planMsgId: null,
       planApproval: null,
       planApproved: false,
+      recording: false,
     });
     p.postMessage({
       type: "run",
@@ -550,6 +557,31 @@ export const useConversationStore = create<ConversationState>((set, get) => {
       case "run_active":
         set({ bridgeActive: event.active });
         break;
+
+      case "recording":
+        // Arming happens mid-run, whenever the model gets to the `document`
+        // call — so the band cannot infer it from the run starting.
+        set({ recording: event.on });
+        break;
+
+      case "artifact": {
+        flushReasoning();
+        flushStreaming();
+        // The run's deliverable. Display-only here: the worker owns persistence,
+        // and this is the same message it is writing to the transcript.
+        pushDisplay(
+          makeMsg("artifact", event.title, {
+            artifact: {
+              recordingId: event.recordingId,
+              title: event.title,
+              frames: event.frames,
+              status: event.status,
+              sites: event.sites,
+            },
+          }),
+        );
+        break;
+      }
 
       case "token":
         flushReasoning();
@@ -864,6 +896,7 @@ export const useConversationStore = create<ConversationState>((set, get) => {
     planMsgId: null,
     planApproval: null,
     planApproved: false,
+    recording: false,
     queued: [],
     pendingSend: null,
     draft: "",

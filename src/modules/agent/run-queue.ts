@@ -44,6 +44,10 @@ export interface RunBoard {
     tabId?: number;
     /** Parked on the user's answer (plan approval) — alive, but not working. */
     awaiting?: boolean;
+    /** The run is documenting itself: screens of the driven tab are being kept.
+     *  Ambient, because the surfaces that must say so (toolbar title, driven-tab
+     *  badge) outlive the panel that would otherwise be the only witness. */
+    recording?: boolean;
   };
   /**
    * An ask_user question the run ended on — the slot is free, but the answer is
@@ -144,6 +148,16 @@ export function markRunningTab(conversationId: string, tabId: number): void {
 export function markRunningAwaiting(conversationId: string, awaiting: boolean): void {
   if (!running || running.conversationId !== conversationId) return;
   running = { ...running, awaiting };
+  void writeBoard();
+}
+
+/**
+ * The running entry started documenting itself. Same stale-guard as its
+ * siblings; arming happens mid-run, so this is never known at submit.
+ */
+export function markRunningRecording(conversationId: string, recording: boolean): void {
+  if (!running || running.conversationId !== conversationId) return;
+  running = { ...running, recording };
   void writeBoard();
 }
 
