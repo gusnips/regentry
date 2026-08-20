@@ -36,7 +36,7 @@
     "backgroundTasks": "Tarefas em segundo plano",
     "sidePanel": "Painel lateral",
     "showTips": "Dicas",
-    "showTipsHint": "Atalhos e dicas de recursos de vez em quando, abaixo do campo de texto e do status da tarefa.",
+    "showTipsHint": "Atalhos e dicas de recursos de vez em quando, abaixo do campo de texto e enquanto uma tarefa roda.",
     "invalidUrl": "Digite uma URL completa começando com http:// ou https://",
     "languageAutoShort": "Auto",
     "about": "Sobre",
@@ -46,7 +46,7 @@
       "general": "Geral",
       "behavior": "Comportamento",
       "schedules": "Agendamentos",
-      "knowledge": "Conhecimento",
+      "knowledge": "Memória",
       "skills": "Habilidades",
       "providers": "Provedores",
       "mcp": "MCP"
@@ -77,20 +77,20 @@
       "extensionId": "ID da extensão",
       "extensionIdHint": "Defina TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID do daemon com este valor."
     },
-    "walkthroughs": "Execuções documentadas",
+    "walkthroughs": "Guias passo a passo",
     "walkthroughsHint": "Deixe o agente transformar uma tarefa em um passo a passo compartilhável quando você pedir. As capturas ficam neste computador e nunca vão para o modelo."
   },
   "instructions": {
     "title": "Instruções",
     "help": "Coisas que o TabRunner deve sempre fazer — ou nunca fazer — em todas as conversas. Escreva como frases simples. Comece uma linha com \"## site: acme.com\" para que tudo abaixo dela valha só nesse site.",
     "placeholder": "Sempre me pergunte antes de enviar um e-mail ou fazer um pagamento.\nMeu e-mail de trabalho é eu@acme.com.\n\n## site: github.com\nSempre trabalhe na organização acme-corp.",
-    "autosave": "As mudanças são salvas automaticamente e valem a partir da próxima tarefa."
+    "autosave": "Salvo enquanto você escreve. Vale a partir da próxima tarefa."
   },
   "memory": {
     "title": "O que o TabRunner lembra",
     "help": "Fatos que o TabRunner aprendeu com suas tarefas, para não ter que perguntar duas vezes. Fatos ligados a um site só carregam quando uma tarefa começa nele. Apague o que estiver errado.",
     "enable": "Lembrar o que aprende",
-    "empty": "Nada ainda. Quando uma tarefa ensinar algo ao TabRunner sobre você ou um site que você usa, aparece aqui.",
+    "empty": "Nada ainda. Conforme suas tarefas rodam, o que valer a pena lembrar sobre você ou um site que você usa aparece aqui sozinho — não há nada para adicionar à mão.",
     "off": "A memória está desligada — o TabRunner não está salvando o que aprende. Ligue acima para retomar.",
     "saved": "Salvo",
     "deleteMemory": "Excluir este fato",
@@ -101,7 +101,7 @@
     "help": "Receitas salvas que o TabRunner oferece ao modelo quando a tarefa combina — o seu jeito de fazer algo, guardado. Uma habilidade presa a sites só é oferecida quando a tarefa começa neles.",
     "newButton": "Nova habilidade",
     "importButton": "Importar",
-    "empty": "Habilidades ensinam ao TabRunner o seu jeito de fazer uma tarefa — os passos, as manhas, o site. Crie uma a partir de uma conversa com /skill new no painel, escreva uma aqui em Nova habilidade, ou traga uma com Importar.",
+    "empty": "Nenhuma habilidade ainda. Uma habilidade é o seu jeito de fazer uma tarefa, escrito uma vez só — os passos, as manhas, o site. Salve uma a partir de uma conversa com /skill new, escreva uma aqui em Nova habilidade, ou traga a de outra pessoa com Importar.",
     "everySite": "Todos os sites",
     "enable": "Ativada",
     "edit": "Editar habilidade",
@@ -220,15 +220,15 @@
       "running": "Executando agora",
       "open": "Abrir a conversa dela",
       "delete": "Excluir este agendamento",
-      "deleteRunning": "Excluir este agendamento e parar a execução em andamento",
+      "deleteRunning": "Excluir este agendamento e parar a tarefa em andamento",
       "count": "{{n}} de {{max}}"
     }
   },
   "walkthrough": {
     "rec": "REC",
     "step": {
-      "armed": "Documentando esta execução",
-      "gap": "Tela não capturada",
+      "armed": "Documentando esta tarefa",
+      "gap": "Esta tela não foi capturada",
       "start": "Ponto de partida",
       "result": "Resultado",
       "navigate": "Acesse {{where}}",
@@ -251,14 +251,14 @@
       "stepCount_one": "{{count}} passo",
       "stepCount_other": "{{count}} passos",
       "prerequisite": "Antes de começar: entre em {{hosts}} com uma conta que possa fazer isso.",
-      "notePartial": "Esta execução foi interrompida, então o passo a passo termina antes do fim do processo.",
+      "notePartial": "Esta tarefa foi interrompida, então o passo a passo termina antes do fim do processo.",
       "noteTruncated": "O processo foi mais longo do que cabe em um documento — os passos finais não aparecem.",
       "noteLateArm_one": "A documentação começou após a primeira ação, que não aparece aqui.",
       "noteLateArm_other": "A documentação começou após as primeiras {{count}} ações, que não aparecem aqui.",
       "noteDegraded": "Algumas telas não puderam ser capturadas neste navegador, então alguns passos ficaram sem imagem.",
-      "noteStopped": "A execução foi interrompida manualmente antes de terminar.",
-      "noteFailed": "A execução terminou com erro, então o último passo pode não ter funcionado.",
-      "missingShot": "Não foi possível capturar esta tela",
+      "noteStopped": "A tarefa foi interrompida manualmente antes de terminar.",
+      "noteFailed": "A tarefa terminou com erro, então o último passo pode não ter funcionado.",
+      "missingShot": "Esta tela não foi capturada",
       "shotAlt": "Tela: {{title}}",
       "outcome": "Resultado",
       "madeWith": "Feito com"
@@ -281,9 +281,9 @@
       "missingBody": "As capturas foram apagadas — um passo a passo some junto com a conversa dele, ou quando o armazenamento enche.",
       "missingFix": "Rode a tarefa de novo e peça para o TabRunner documentar.",
       "emptyTitle": "Nada foi capturado",
-      "emptyBody": "A execução foi documentada, mas nenhuma tela pôde ser capturada — a aba pode ter sido fechada ou bloqueada."
+      "emptyBody": "A tarefa foi documentada, mas nenhuma tela pôde ser capturada — a aba provavelmente foi fechada ou bloqueada antes da primeira captura. Rode de novo para gerar um registro novo."
     },
-    "badgeTitle": "TabRunner · REC — documentando esta execução"
+    "badgeTitle": "TabRunner · REC — documentando esta tarefa"
   },
   "addProvider": {
     "title": "Adicionar provedor",
@@ -304,10 +304,10 @@
     "apiKey": "Chave de API",
     "apiKeyPlaceholder": "sk-…",
     "apiKeyPlaceholderSaved": "Salva — deixe vazio para manter",
-    "nameRequired": "O nome é obrigatório — ex.: o nome do serviço ou gateway.",
-    "baseUrlRequired": "A URL base é obrigatória para um endpoint personalizado.",
+    "nameRequired": "Dê um nome — qualquer um que ajude você a reconhecê-lo.",
+    "baseUrlRequired": "Um endpoint personalizado precisa de uma URL base.",
     "baseUrlInvalid": "A URL base não é válida — inclua https:// e o caminho, ex.: https://api.example.com/v1.",
-    "apiKeyRequired": "A chave de API é obrigatória — cole-a acima. (Endpoints locais como Ollama não precisam de uma.)",
+    "apiKeyRequired": "Cole uma chave de API acima. Endpoints locais como o Ollama não precisam de uma.",
     "keyHintLocal": "Opcional para endpoints locais.",
     "keyHintKeep": "Deixe vazio para manter a chave salva.",
     "keyHintGet": "Obter uma chave de API →",
@@ -333,7 +333,7 @@
     "signInExpiredTitle": "A janela de aprovação expirou",
     "signInExpiredBody": "Links e códigos de login valem apenas alguns minutos. Recomece para gerar um novo.",
     "signInDeniedBody": "O pedido foi rejeitado na página de aprovação. Recomece e aprove para conectar {{provider}}.",
-    "signInErrorTitle": "O login falhou",
+    "signInErrorTitle": "O login não deu certo",
     "signInConnected": "Conectado a {{provider}}"
   },
   "providerList": {
@@ -399,7 +399,7 @@
     "empty": "O provedor não informou o uso desta vez — tente Atualizar."
   },
   "sidepanel": {
-    "busyRunning": "Pare a execução antes de trocar de conversa",
+    "busyRunning": "Pare a tarefa antes de trocar de conversa",
     "close": "Fechar o painel — uma tarefa em andamento continua"
   },
   "history": {
@@ -417,10 +417,10 @@
     "renameAria": "Renomear conversa: {{title}}",
     "renamePlaceholder": "Nomeie esta conversa",
     "deleteTitle": "Excluir esta conversa?",
-    "deleteBody": "A transcrição é removida deste dispositivo. O que o TabRunner aprendeu fica na memória dele — você pode apagar isso nas Configurações.",
-    "deleteScheduledBody": "Esta é a conversa de uma tarefa agendada ({{recurrence}}), e a transcrição é a memória que cada execução lê. Excluí-la também cancela o agendamento. Para parar só por um tempo, pause nas Configurações.",
-    "emptyTitle": "Nenhuma conversa ainda",
-    "emptyBody": "Cada tarefa que você envia fica guardada aqui como histórico — abra uma para reler o que o agente fez, ou exclua as que não precisa mais.",
+    "deleteBody": "A transcrição é apagada deste dispositivo e não dá para recuperar. O que o TabRunner aprendeu com ela fica na memória dele — você pode limpar isso nas Configurações.",
+    "deleteScheduledBody": "Esta é a conversa de uma tarefa agendada ({{recurrence}}), e a transcrição dela é o que cada execução lê de volta. Excluí-la também cancela o agendamento. Para parar só por um tempo, pause nas Configurações.",
+    "emptyTitle": "Nada aqui ainda",
+    "emptyBody": "Cada tarefa que você envia fica guardada aqui — abra uma para reler o que aconteceu, ou exclua as que você já não precisa.",
     "emptyAction": "Começar uma tarefa",
     "storedNote": "Guardadas neste dispositivo · ficam as 50 mais recentes"
   },
@@ -437,9 +437,9 @@
     "emptyTitle": "O que devo fazer?",
     "emptyBody": "Descreva uma tarefa e eu dirijo o navegador — navegar, ler páginas, clicar, digitar — na página que você está vendo, ou abre uma aba própria quando não há página para trabalhar. Usa seus logins existentes.",
     "emptyExample": "Exemplo: \"pegue a nota fiscal mais recente do e-mail e lance no relatório de despesas\"",
-    "portLost": "A conexão com o agente foi perdida — a execução parou. Envie a tarefa novamente para tentar de novo.",
+    "portLost": "Perdemos a conexão com o agente, então a tarefa parou. Envie de novo para continuar.",
     "reloaded": "O TabRunner foi recarregado — feche e reabra este painel para continuar.",
-    "runStopped": "Você interrompeu esta execução — sua próxima mensagem pode continuar daqui.",
+    "runStopped": "Você parou esta tarefa — sua próxima mensagem pode continuar daqui.",
     "working": "Trabalhando",
     "jumpToLatest": "Ir para o final ↓",
     "answerReady": "Resposta pronta ↓",
@@ -468,7 +468,7 @@
     "queue": "Enfileirar",
     "queueTitle": "Entra entre as próximas chamadas de ferramenta",
     "queuePlaceholder": "Adicione à tarefa em andamento…",
-    "queuedSteerTitle": "Na fila para a execução — entra entre as próximas chamadas de ferramenta",
+    "queuedSteerTitle": "Na fila para a tarefa em andamento — entra entre as próximas chamadas de ferramenta",
     "unqueueAria": "Descartar mensagem enfileirada",
     "queueNoImages": "Imagens não podem entrar numa tarefa em andamento — enfileire o texto agora e cole a imagem na próxima tarefa.",
     "pasteToken": "{{count}} linhas coladas",
@@ -479,7 +479,7 @@
     "answerPlaceholder": "Escreva a sua resposta…",
     "planPlaceholder": "Aprove o plano acima, ou escreva o que deve mudar…",
     "planSendTitle": "Devolver o plano com a sua observação",
-    "planNoImages": "Imagens não acompanham a nota do plano — escreva o que deve mudar e cole a imagem quando a execução continuar.",
+    "planNoImages": "Imagens não acompanham a nota do plano — escreva o que deve mudar e cole a imagem quando a tarefa estiver andando.",
     "thinkingFor": "Pensando · {{duration}}",
     "thoughtFor": "Pensou por {{duration}}",
     "reasoningToggle": "Mostrar ou ocultar o raciocínio do modelo (vale para todas as conversas)",
@@ -511,8 +511,8 @@
     "unknown": "O comando /{{name}} não existe — digite / para ver a lista.",
     "nextTask": "Vale para a próxima tarefa, não para a que está rodando.",
     "deferred": {
-      "chip": "Quando terminar",
-      "title": "Esperando a execução terminar — dispara assim que nada estiver rodando aqui",
+      "chip": "Depois da tarefa",
+      "title": "Esperando a tarefa terminar — dispara assim que nada estiver rodando aqui",
       "cancelAria": "Descartar o comando em espera"
     },
     "stop": {
@@ -523,10 +523,10 @@
     },
     "background": {
       "description": "Alterna onde a próxima tarefa roda — nesta página ou em segundo plano",
-      "current": "Destino: {{target}}.",
-      "invalid": "O destino \"{{value}}\" não existe — escolha on ou off.",
-      "nowBackground": "Destino → segundo plano — o painel fecha quando você aprova o plano; a tarefa continua sem você.",
-      "nowThisPage": "Destino → esta página — a próxima tarefa dirige a aba que você está vendo enquanto você acompanha."
+      "current": "A próxima tarefa roda: {{target}}.",
+      "invalid": "Não existe uma opção chamada “{{value}}” — escolha on ou off.",
+      "nowBackground": "A próxima tarefa roda em segundo plano — o painel fecha quando você aprova o plano, e a tarefa continua sem você.",
+      "nowThisPage": "A próxima tarefa roda nesta página — ela dirige a aba que você está vendo enquanto você acompanha."
     },
     "effort": {
       "description": "Define o esforço de raciocínio — none, low, medium, high, max ou default",
@@ -549,9 +549,9 @@
     },
     "rename": {
       "description": "Nomeia esta conversa — sem argumento, mostra o nome atual",
-      "current": "Esta conversa é \"{{title}}\" — /rename <nome> para mudar.",
+      "current": "Esta conversa é “{{title}}” — /rename <nome> para mudar.",
       "none": "Envie uma tarefa primeiro — uma conversa sem mensagens não tem o que nomear.",
-      "set": "Conversa → \"{{title}}\""
+      "set": "Conversa → “{{title}}”"
     },
     "new": {
       "description": "Começa uma nova conversa"
@@ -580,8 +580,8 @@
       "description": "Resume esta conversa até aqui, para liberar contexto",
       "running": "Compactando a conversa…",
       "nothing": "Nada para compactar ainda — esta conversa ainda cabe inteira no replay.",
-      "busy": "Uma execução está em andamento — compacte quando ela terminar.",
-      "failed": "Não deu para compactar: {{message}}"
+      "busy": "Uma tarefa está em andamento — compacte quando ela terminar.",
+      "failed": "Não deu para compactar — {{message}}"
     },
     "help": {
       "description": "Mostra todos os atalhos e comandos"
@@ -653,7 +653,7 @@
       "press_key": "Pressionando teclas",
       "scroll": "Rolando",
       "screenshot": "Capturando",
-      "read_history": "Lendo o histórico",
+      "read_history": "Lendo a transcrição",
       "read_network_requests": "Lendo requisições de rede",
       "read_console_messages": "Lendo o console",
       "remember": "Guardando na memória",
@@ -720,9 +720,9 @@
     "bridgeStopTitle": "Interrompe a tarefa e devolve o navegador",
     "background": "Em segundo plano",
     "thisPage": "Esta página",
-    "targetAria": "Destino: {{target}}",
+    "targetAria": "A próxima tarefa roda: {{target}}",
     "backgroundNow": "Rodar em segundo plano",
-    "backgroundNowTitle": "Fecha o painel e deixa esta execução terminar sozinha — ela nunca mexe na sua tela. Reabra quando quiser acompanhar.",
+    "backgroundNowTitle": "Fecha o painel e deixa esta tarefa terminar sozinha — ela nunca mexe na sua tela. Reabra quando quiser acompanhar.",
     "backgroundNowGated": "Aprove o plano primeiro — fechar agora deixaria a aprovação presa em uma notificação.",
     "targetTitle": "“Esta página” deixa o chat aberto para você acompanhar; “Em segundo plano” fecha o painel e segue trabalhando sozinho, sem tirar a tela de você — trocar durante a tarefa já vale (com o plano aprovado)"
   },
@@ -768,7 +768,7 @@
     "walkthrough": "Peça “e documente isso” e o agente escreve o processo como um guia compartilhável."
   },
   "notify": {
-    "doneFallback": "Tarefa concluída."
+    "doneFallback": "Tarefa concluída — abra o TabRunner para ver como foi."
   },
   "progress": {
     "interrupted": "Esta execução foi interrompida antes de terminar. O que ela já havia feito:",
@@ -782,23 +782,23 @@
     "alreadyRunningMCP": "Uma tarefa de um cliente MCP externo já está em execução. Pare-a pelo cliente (tabrunner.stop) ou aguarde terminar.",
     "alreadyRunningPanel": "Uma tarefa já está em execução no painel do TabRunner. Abra o painel e pare-a, ou aguarde terminar.",
     "noActiveProvider": "Nenhum provedor ativo — escolha um no seletor do painel ou adicione um nas Configurações.",
-    "noActiveTab": "Nenhuma aba ativa encontrada.",
-    "runCancelled": "A tarefa na fila foi cancelada antes de começar",
+    "noActiveTab": "Nenhuma aba ativa para trabalhar. Clique na aba que você quer e envie a tarefa de novo.",
+    "runCancelled": "Essa tarefa na fila foi cancelada antes de começar",
     "tabCreateFailed": "Não foi possível abrir uma aba para a tarefa: {{message}}",
-    "tabClosed": "A aba que esta tarefa estava controlando ({{title}}) foi fechada — a execução parou. O TabRunner precisa que a aba fique aberta; reabra a página e envie a tarefa de novo.",
-    "providerError": "Erro do provedor: {{message}}",
-    "outputLimit": "O modelo atingiu seu limite de saída no meio da resposta — a resposta pode estar incompleta",
+    "tabClosed": "A aba que esta tarefa estava controlando ({{title}}) foi fechada, então a tarefa parou. O TabRunner precisa que a aba fique aberta — reabra a página e envie a tarefa de novo.",
+    "providerError": "O provedor não conseguiu fazer isso — {{message}}",
+    "outputLimit": "O modelo atingiu o limite de saída no meio da resposta, então ela pode estar cortada — peça para ele continuar, ou estreite a pergunta.",
     "textOnlyImages": "Este modelo não recebe imagens — as imagens que você anexou não foram enviadas. Ele trabalha com snapshots de texto da página.",
-    "taskComplete": "Tarefa concluída",
+    "taskComplete": "Terminou, mas não disse o que encontrou. Pergunte o que aconteceu e ele relê os próprios passos.",
     "doneLostSummary": "Você atingiu o limite de saída e o resumo final chegou vazio. Retome direto — sem desculpas, sem recapitular, sem chamar mais ferramentas. A análise completa já está nesta conversa como sua mensagem anterior. Chame `done` e coloque essa resposta no resumo — se for longa, quebre-a em partes menores para não ser cortada de novo.",
-    "stepBudgetExhausted": "Limite de passos esgotado",
+    "stepBudgetExhausted": "Ficou sem passos antes de terminar. É o limite de segurança, não uma falha — envie a tarefa de novo para continuar, ou estreite o escopo.",
     "retrying": "Instabilidade de conexão — tentando de novo ({{attempt}}/{{max}})",
-    "capturedElements_one": "{{count}} elemento capturado",
-    "capturedElements_other": "{{count}} elementos capturados",
+    "capturedElements_one": "Leu {{count}} elemento",
+    "capturedElements_other": "Leu {{count}} elementos",
     "clicked": "Clicou",
-    "keyPressed": "Tecla pressionada",
-    "fieldFilled": "Campo preenchido",
-    "evaluated": "Script executado",
+    "keyPressed": "Pressionou a tecla",
+    "fieldFilled": "Preencheu o campo",
+    "evaluated": "Executou o script",
     "requestsRead_one": "{{count}} requisição",
     "requestsRead_other": "{{count}} requisições",
     "messagesRead_one": "{{count}} mensagem",
@@ -811,19 +811,19 @@
     "tabGroupOtherWindow": "Essa aba está em outra janela — grupos de abas não abrangem janelas. Você ainda pode usar switch_tab nela e trabalhar lá; ela só fica fora do grupo.",
     "tabsListed_one": "Listou {{count}} aba aberta",
     "tabsListed_other": "Listou {{count}} abas abertas",
-    "screenshotCaptured": "Captura de tela feita",
-    "historyRead_one": "{{count}} entrada do histórico lida",
-    "historyRead_other": "{{count}} entradas do histórico lidas",
-    "historyEmpty": "Nenhuma entrada no histórico ainda.",
-    "historyNoMatches": "Nenhuma entrada do histórico corresponde a \"{{query}}\".",
-    "historyUnavailable": "Esta execução não tem uma conversa associada — não há histórico para ler.",
+    "screenshotCaptured": "Tirou uma captura de tela",
+    "historyRead_one": "{{count}} entrada da transcrição lida",
+    "historyRead_other": "{{count}} entradas da transcrição lidas",
+    "historyEmpty": "Nada na transcrição ainda — esta conversa não rodou nenhuma tarefa.",
+    "historyNoMatches": "Nada na transcrição corresponde a “{{query}}” — tente uma frase mais curta.",
+    "historyUnavailable": "Esta execução não tem uma conversa associada — não há transcrição para ler.",
     "failed": "Falha: {{error}}",
-    "toolCompleted": "{{tool}} concluído",
+    "toolCompleted": "Terminou {{tool}}",
     "unknownTool": "Ferramenta desconhecida: {{name}}",
-    "modelListError": "Erro ao listar modelos, status {{status}}: {{detail}}",
+    "modelListError": "Não foi possível carregar a lista de modelos — o endpoint respondeu {{status}}. {{detail}}",
     "noModel": "Nenhum modelo definido para {{name}} e o endpoint não lista nenhum. Escolha um modelo nas Configurações.",
-    "noModelData": "A resposta da lista de modelos não trouxe um array de dados.",
-    "apiError": "Erro da API {{provider}}, status {{status}}: {{detail}}",
+    "noModelData": "O endpoint respondeu, mas não com uma lista de modelos. Digite um id de modelo você mesmo, ou deixe vazio para escolher automaticamente na execução.",
+    "apiError": "{{provider}} respondeu {{status}} — {{detail}}",
     "kindEntitlement": "{{provider}} aceitou a chave, mas seu plano não inclui esta API — faça upgrade do plano na sua conta {{provider}}",
     "kindQuota": "Seu uso no {{provider}} acabou — aguarde o limite reiniciar ou recarregue na sua conta {{provider}}",
     "kindAuth": "{{provider}} rejeitou a chave de API — confira ou substitua a chave nas configurações do provedor",
@@ -839,20 +839,20 @@
     "kindContext": "Esta conversa passou do que {{provider}} consegue ler em uma requisição — compacte para continuar",
     "compactEmpty": "O modelo devolveu um resumo vazio, então nada foi compactado. Tente de novo, ou comece uma conversa nova para zerar o contexto.",
     "oauthRefreshExpired": "Seu login em {{name}} expirou e não pôde ser renovado — entre novamente nas Configurações.",
-    "signInFailed": "Falha ao entrar: {{detail}}",
+    "signInFailed": "O login não deu certo — {{detail}}",
     "signInRateLimited": "O serviço de login do provedor está recusando pedidos agora — muitos em pouco tempo. Isso não tem a ver com o uso do seu plano. Espere um minuto e recomece.",
     "signInRateLimitedFor": "O serviço de login do provedor está recusando pedidos agora — muitos em pouco tempo. Isso não tem a ver com o uso do seu plano. Tente de novo em cerca de {{seconds}}s.",
     "signInTokenResponse": "A resposta do login veio incompleta — sem um token utilizável. Recomece para tentar de novo.",
     "signInDeviceResponse": "O serviço de login respondeu em um formato que o TabRunner não reconheceu. Tente de novo em instantes.",
-    "noResponseBody": "Resposta sem corpo",
+    "noResponseBody": "O provedor enviou uma resposta vazia.",
     "restrictedPage": "O TabRunner não consegue ler esta página — o Chrome bloqueia extensões em páginas chrome:// e da Web Store. Navegue a aba para uma página comum e reenvie a tarefa.",
     "pageNavigating": "A página ainda estava carregando ou navegando — aguarde ela estabilizar e tente de novo.",
-    "snapshotFailed": "Falha ao ler a página: ela pode ter mudado ou ser uma URL restrita (chrome://, Web Store).",
+    "snapshotFailed": "Não foi possível ler a página — ela pode ter navegado, ou é uma das que o Chrome bloqueia (chrome://, Web Store). Tente de novo quando ela estabilizar.",
     "refNotFound": "Referência de elemento \"{{ref}}\" não encontrada. Leia a página primeiro para obter referências atualizadas.",
     "notAField": "Esse elemento não pode ser preenchido ({{tag}}) — use clique para botões, caixas de seleção e radios.",
     "noSuchOption": "Nenhuma opção corresponde a \"{{text}}\". Opções: {{options}}",
     "captureEmpty": "Nada capturado ainda — a captura começa quando a run se anexa à aba (primeira ação, screenshot ou evaluate). Dispare o que você quer ver e leia de novo.",
-    "noTabAttached": "Nenhuma aba anexada. Chame attach primeiro.",
+    "noTabAttached": "Ainda não há uma aba anexada — anexe uma antes de agir na página.",
     "unsupportedKey": "Tecla não suportada: {{key}}. Suportadas: {{supported}}",
     "unsupportedModifier": "Modificador não suportado: {{modifier}}. Suportados: {{supported}}",
     "noHistoryBack": "Esta aba não tem para onde voltar — o histórico dela começa aqui. Navegue direto para a página que você quer.",
@@ -871,13 +871,13 @@
     "tabOpenFailed": "Não foi possível abrir uma nova aba. Navegue a aba atual para lá, ou tente de novo.",
     "closedTabNamed": "Fechou {{title}}",
     "planEmpty": "O plano precisa de pelo menos um passo — envie uma lista não vazia de frases curtas.",
-    "planRejected": "Plano rejeitado — interrompido antes de qualquer ação na página.",
+    "planRejected": "Plano rejeitado — nada na página foi tocado.",
     "planGate": "Bloqueado — o plano precisa da sua aprovação primeiro",
     "planGateModel": "Blocked: no plan is approved yet. Call the plan tool with your intended steps first; the user must approve the plan before any page action runs.",
     "memoryEmpty": "Nada para guardar — envie o fato como uma frase.",
     "skillLoaded": "Habilidade \"{{name}}\" carregada",
     "skillNotFound": "Nenhuma habilidade chamada \"{{name}}\". Disponíveis: {{list}}",
     "usageUnreadable": "A resposta de uso do provedor veio num formato que o TabRunner não reconheceu — tente Atualizar.",
-    "documentUnavailable": "A documentação está desligada para esta execução — ative Execuções documentadas nas Configurações."
+    "documentUnavailable": "A documentação está desligada — ative Guias passo a passo nas Configurações e peça de novo."
   }
 }

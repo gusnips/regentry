@@ -222,7 +222,9 @@ function BehaviorPane() {
             label={t("settings.defaultStartUrl")}
             hint={
               urlError ? (
-                <span className="text-red-600 dark:text-red-400">{t("settings.invalidUrl")}</span>
+                <span className="arrive block text-red-600 dark:text-red-400">
+                  {t("settings.invalidUrl")}
+                </span>
               ) : (
                 t("settings.defaultStartUrlHint")
               )
@@ -433,23 +435,28 @@ export default function App() {
         </nav>
 
         <main className="min-w-0 flex-1">
-          {visiblePage === "general" && <GeneralPane />}
-          {visiblePage === "behavior" && <BehaviorPane />}
-          {visiblePage === "schedules" && <SchedulesSection />}
-          {visiblePage === "knowledge" && (
-            /* The module sections carry their own mt-8 — flush the first. */
-            <div className="[&>section:first-child]:mt-0">
-              <InstructionsSection />
-              <MemorySection />
-            </div>
-          )}
-          {visiblePage === "skills" && (
-            <div className="[&>section:first-child]:mt-0">
-              <SkillsSection />
-            </div>
-          )}
-          {visiblePage === "providers" && <ProvidersPane />}
-          {visiblePage === "mcp" && <McpPane />}
+          {/* Keyed on the page so the beat replays on every switch — the rail
+              stays put and only the pane changes, so without it the swap is a
+              hard cut with nothing saying which half moved. */}
+          <div key={visiblePage} className="arrive">
+            {visiblePage === "general" && <GeneralPane />}
+            {visiblePage === "behavior" && <BehaviorPane />}
+            {visiblePage === "schedules" && <SchedulesSection />}
+            {visiblePage === "knowledge" && (
+              /* The module sections carry their own mt-8 — flush the first. */
+              <div className="[&>section:first-child]:mt-0">
+                <InstructionsSection />
+                <MemorySection />
+              </div>
+            )}
+            {visiblePage === "skills" && (
+              <div className="[&>section:first-child]:mt-0">
+                <SkillsSection />
+              </div>
+            )}
+            {visiblePage === "providers" && <ProvidersPane />}
+            {visiblePage === "mcp" && <McpPane />}
+          </div>
         </main>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { Fragment, useId } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckIcon, ChevronDownIcon } from "./Icon";
+import { overlayMotion } from "./chrome";
 
 export interface SelectOption {
   value: string;
@@ -187,7 +188,11 @@ export function Select({
             earlier options above the viewport in a short side panel — they got clipped
             and looked missing. A plain dropdown always shows the list from the top. */}
         <BaseSelect.Positioner sideOffset={4} alignItemWithTrigger={false} className="z-50">
-          <BaseSelect.Popup className="max-h-72 w-max min-w-[var(--anchor-width)] max-w-72 overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+          {/* Grows out of the trigger, not out of its own middle — the
+              Positioner publishes the resolved side as `--transform-origin`. */}
+          <BaseSelect.Popup
+            className={`max-h-72 w-max min-w-[var(--anchor-width)] max-w-72 origin-[var(--transform-origin)] overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 ${overlayMotion}`}
+          >
             {sections(options).map((section, i) =>
               section.group ? (
                 <BaseSelect.Group key={section.group}>

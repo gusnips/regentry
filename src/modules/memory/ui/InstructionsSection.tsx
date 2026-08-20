@@ -31,7 +31,15 @@ export function InstructionsSection() {
       />
 
       <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        {saved ? t("memory.saved") : t("instructions.autosave")}
+        {/* Its own element so each save replays the beat — the standing line is
+            just text, and text swapped in place says nothing happened. */}
+        {saved ? (
+          // inline-block, or the rise half of `arrive` is dropped — inline boxes
+          // aren't transformable.
+          <span className="arrive inline-block">{t("memory.saved")}</span>
+        ) : (
+          t("instructions.autosave")
+        )}
       </p>
     </section>
   );

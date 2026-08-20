@@ -6,7 +6,7 @@ import { AddProviderDialog, useProvidersStore, activeProviderOf } from "@/module
 import { openHelp } from "@/modules/conversation/ui";
 import { Button, buttonClasses } from "@/components/Button";
 import { Switch } from "@/components/Switch";
-import { overlayCard } from "@/components/chrome";
+import { overlayCard, overlayMotion } from "@/components/chrome";
 import { useStoredItem } from "@/components/useStoredItem";
 import { ThemeToggle } from "@/components/ThemeControl";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -67,7 +67,11 @@ export function SettingsMenu() {
         />
         <Popover.Portal>
           <Popover.Positioner sideOffset={6} align="end" className="z-50">
-            <Popover.Popup className={`w-64 p-2 ${overlayCard}`}>
+            {/* Anchored, so it grows from the gear it hangs off rather than
+                from its own centre — same recipe as the options page's menus. */}
+            <Popover.Popup
+              className={`w-64 origin-[var(--transform-origin)] p-2 ${overlayCard} ${overlayMotion}`}
+            >
               <Section label={t("settings.appearance")}>
                 <ThemeToggle className="w-full" />
               </Section>

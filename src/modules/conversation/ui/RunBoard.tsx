@@ -91,7 +91,7 @@ export function RunBoard() {
   return (
     <section
       aria-label={t("board.title")}
-      className="flex flex-col gap-1 border-b border-neutral-100 px-3 py-2 dark:border-neutral-800"
+      className="arrive flex flex-col gap-1 border-b border-neutral-100 px-3 py-2 dark:border-neutral-800"
     >
       {running && (
         <div className="flex items-center gap-1.5">

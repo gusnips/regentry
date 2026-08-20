@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
+import { CometPose } from "@/components/CometPose";
 import { Switch } from "@/components/Switch";
 import { Icon, TrashIcon } from "@/components/Icon";
 import { useStoredItem } from "@/components/useStoredItem";
@@ -125,16 +126,20 @@ export function SchedulesSection() {
       <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t("schedule.ui.help")}</p>
 
       {schedules.length === 0 ? (
-        <div className="mt-3 rounded-lg bg-neutral-50 px-3 py-3 dark:bg-neutral-900/50">
-          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
-            {t("schedule.ui.emptyTitle")}
-          </p>
-          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            {t("schedule.ui.emptyBody")}
-          </p>
-          <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-300">
-            {t("schedule.ui.emptyAction")}
-          </p>
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-3 dark:bg-neutral-900/50">
+          {/* Gold and holding station — a schedule is work on the clock. */}
+          <CometPose pose="waiting" size={40} className="shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+              {t("schedule.ui.emptyTitle")}
+            </p>
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              {t("schedule.ui.emptyBody")}
+            </p>
+            <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-300">
+              {t("schedule.ui.emptyAction")}
+            </p>
+          </div>
         </div>
       ) : (
         <ul className="mt-3 space-y-1.5">

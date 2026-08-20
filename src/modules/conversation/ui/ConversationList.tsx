@@ -5,6 +5,7 @@ import type { ConversationMeta } from "../conversations";
 import { describeRecurrence, type Schedule } from "@/modules/schedule";
 import { useSchedules } from "@/modules/schedule/ui";
 import { Button } from "@/components/Button";
+import { CometPose } from "@/components/CometPose";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon, PencilIcon, TrashIcon } from "@/components/Icon";
 import { TitleInput } from "./TitleInput";
@@ -195,7 +196,7 @@ function ConversationRow({
           <Button
             variant="ghost"
             size="sm"
-            className="shrink-0 px-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            className="shrink-0 px-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             title={t("history.rename")}
             aria-label={t("history.renameAria", { title })}
             onClick={() => setEditing(true)}
@@ -207,7 +208,7 @@ function ConversationRow({
               <Button
                 variant="ghost-danger"
                 size="sm"
-                className="shrink-0 px-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                className="shrink-0 px-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                 title={t("history.delete")}
                 aria-label={t("history.deleteAria", { title })}
               >
@@ -262,6 +263,10 @@ export function ConversationList({ onClose }: { onClose: () => void }) {
 
       {conversations.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
+          {/* Parked, not waiting on anything: history is empty because nothing
+              has run yet, so the comet has no route to show — just a stub of
+              trail from a run that never happened. */}
+          <CometPose pose="resting" size={44} className="mb-1" />
           <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
             {t("history.emptyTitle")}
           </div>

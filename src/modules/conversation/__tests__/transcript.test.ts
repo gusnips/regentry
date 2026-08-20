@@ -121,7 +121,7 @@ describe("TranscriptWriter", () => {
     expect(rows[0]).toEqual(["step", "Captured 154 elements"]);
     expect(rows[1]).toEqual([
       "step",
-      "You stopped this run — your next message can pick up from here.",
+      "You stopped this task — your next message can pick up from here.",
     ]);
     expect(rows[2]?.[0]).toBe("assistant");
     expect(rows[2]?.[1]).toContain("The user stopped this run");

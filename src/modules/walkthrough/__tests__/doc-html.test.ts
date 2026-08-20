@@ -127,7 +127,7 @@ describe("buildDocHtml", () => {
 
   it("renders a gap frame as a named placeholder, never a missing step", () => {
     const html = build(recording(), [frame(0, "click", { intent: "Save" }, { gap: "timeout" })]);
-    expect(html).toContain("could not be captured");
+    expect(html).toContain("didn't get captured");
   });
 
   it("drops the whole footer when the user unticks the credit", () => {

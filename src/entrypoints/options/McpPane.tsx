@@ -33,7 +33,13 @@ function CopyButton({ text }: { text: string }) {
         setTimeout(() => setCopied(false), 1500);
       }}
     >
-      {copied ? t("settings.mcp.copied") : t("settings.mcp.copy")}
+      {copied ? (
+        // inline-block, or the rise half of `arrive` is dropped — inline boxes
+        // aren't transformable.
+        <span className="arrive inline-block">{t("settings.mcp.copied")}</span>
+      ) : (
+        t("settings.mcp.copy")
+      )}
     </Button>
   );
 }
@@ -89,14 +95,16 @@ export function McpPane() {
         />
       </div>
 
+      {/* The page's biggest collapse — everything below the switch appears at
+          once, so it arrives instead of materializing. */}
       {bridge.enabled && (
-        <>
+        <div className="arrive">
           <div className="mt-4 max-w-40">
             <TextField
               label={t("settings.mcp.port")}
               hint={
                 portError ? (
-                  <span className="text-red-600 dark:text-red-400">
+                  <span className="arrive block text-red-600 dark:text-red-400">
                     {t("settings.mcp.invalidPort")}
                   </span>
                 ) : (
@@ -157,7 +165,7 @@ export function McpPane() {
               {chrome.runtime.id}
             </code>
           </div>
-        </>
+        </div>
       )}
     </section>
   );

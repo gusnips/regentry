@@ -16,6 +16,7 @@ import { showReasoning } from "@/lib/prefs";
 import { AddProviderDialog, useProvidersStore, activeProviderOf } from "@/modules/providers/ui";
 import type { ProviderConfig } from "@/modules/providers/types";
 import { Button, buttonClasses } from "@/components/Button";
+import { CometPose } from "@/components/CometPose";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -910,6 +911,11 @@ export function MessageList() {
   if (messages.length === 0 && !streamingText) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
+        {/* The tagline, drawn: the comet parked at the head of a route it hasn't
+            run, marching toward a target it hasn't reached. This is the panel's
+            largest empty slot and the one place the question "what is this for"
+            is literally being asked, so it gets the pose with somewhere to go. */}
+        <CometPose pose="ready" size={54} className="mb-2" />
         <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
           {t("chat.emptyTitle")}
         </div>
@@ -988,7 +994,11 @@ function WorkingDots() {
   const busy = useConversationStore((s) => s.streamingText !== "" || s.reasoningText !== "");
   if (busy) return null;
   return (
-    <MessageScrollerItem>
+    // These mount and unmount in every gap between tool calls, shifting the
+    // column each time. The fade takes the flinch out of a move the reader
+    // can't predict — deliberately the smallest beat, since it is also the
+    // most frequently repeated one in the panel.
+    <MessageScrollerItem className="arrive">
       <Bubble variant="muted" role="status" aria-label={t("chat.working")} className="py-2.5">
         <span className="flex items-center gap-1">
           {[0, 150, 300].map((d) => (
@@ -1143,6 +1153,9 @@ function Transcript() {
   // resume intent: compact, then carry on with the task that hit the wall.
   const compact = useConversationStore((s) => s.compact);
   const compactResume = useCallback(() => compact({ resume: true }), [compact]);
+  const rendered = showReasoningOn
+    ? shown.map((m) => ({ kind: "message" as const, msg: m }))
+    : groupBursts(shown, status === "running");
 
   return (
     <MessageScroller>
@@ -1158,16 +1171,27 @@ function Transcript() {
           </div>
         )}
         <MessageScrollerContent>
-          {(showReasoningOn
-            ? shown.map((m) => ({ kind: "message" as const, msg: m }))
-            : groupBursts(shown, status === "running")
-          ).map((item) =>
+          {rendered.map((item, i) =>
+            // Only the tail arrives. Everything else is either already on screen
+            // or was prepended by the unfold above — and animating a prepend is
+            // exactly the "fifty new messages" illusion the note above exists to
+            // prevent. The tail is the one row that is genuinely new, and it is
+            // a new element (keyed by id), so the class runs on mount and never
+            // replays for the rows it moves off.
             item.kind === "burst" ? (
-              <MessageScrollerItem key={item.id} messageId={item.id}>
+              <MessageScrollerItem
+                key={item.id}
+                messageId={item.id}
+                className={i === rendered.length - 1 ? "arrive" : ""}
+              >
                 <BurstCard burst={item} onToggleReasoning={toggleReasoning} />
               </MessageScrollerItem>
             ) : (
-              <MessageScrollerItem key={item.msg.id} messageId={item.msg.id}>
+              <MessageScrollerItem
+                key={item.msg.id}
+                messageId={item.msg.id}
+                className={i === rendered.length - 1 ? "arrive" : ""}
+              >
                 <MessageBubble
                   msg={item.msg}
                   activeProvider={activeProvider}
@@ -1189,7 +1213,10 @@ function Transcript() {
           <CompactingRow />
           <LiveReasoning show={showReasoningOn} onToggle={toggleReasoning} />
           {planApproval && (
-            <MessageScrollerItem>
+            // `settle` rather than `arrive`: this is a discrete object asking for
+            // a decision, not another line of transcript, and it should read as
+            // one — it comes in from slightly under size instead of flowing up.
+            <MessageScrollerItem className="settle">
               <PlanApprovalCard
                 steps={planApproval.steps}
                 reapproval={planApproval.reapproval}
@@ -1207,21 +1234,29 @@ function Transcript() {
         </MessageScrollerContent>
       </MessageScrollerViewport>
       {offEnd && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void scrollToEnd({ behavior: "smooth" })}
-          className={`absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border shadow-md ${
-            status === "idle"
-              ? // The run ended while the reader was scrolled up: say the answer
-                // is here, don't just say "scroll down". Brand accent, since the
-                // thing they were waiting for landed.
-                "border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100 dark:border-brand-800 dark:bg-brand-950 dark:text-brand-200 dark:hover:bg-brand-900"
-              : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-          }`}
-        >
-          {status === "idle" ? t("chat.answerReady") : t("chat.jumpToLatest")}
-        </Button>
+        // Centered by a full-width flex row rather than `left-1/2
+        // -translate-x-1/2`: `arrive` animates `transform`, and with
+        // `fill-mode: both` it would hold `transform: none` afterwards and strip
+        // the centering off the button for good. The row ignores pointer events
+        // so it can span the viewport without swallowing clicks on the
+        // transcript underneath it.
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void scrollToEnd({ behavior: "smooth" })}
+            className={`arrive pointer-events-auto rounded-full border shadow-md ${
+              status === "idle"
+                ? // The run ended while the reader was scrolled up: say the answer
+                  // is here, don't just say "scroll down". Brand accent, since the
+                  // thing they were waiting for landed.
+                  "border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100 dark:border-brand-800 dark:bg-brand-950 dark:text-brand-200 dark:hover:bg-brand-900"
+                : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+            }`}
+          >
+            {status === "idle" ? t("chat.answerReady") : t("chat.jumpToLatest")}
+          </Button>
+        </div>
       )}
     </MessageScroller>
   );

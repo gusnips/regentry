@@ -65,7 +65,7 @@ function QueueCard({
   removeAria: string;
 }) {
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-amber-400 bg-neutral-50 px-2.5 py-1.5 dark:border-neutral-800 dark:border-l-amber-500 dark:bg-neutral-900">
+    <div className="settle flex items-start gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-amber-400 bg-neutral-50 px-2.5 py-1.5 dark:border-neutral-800 dark:border-l-amber-500 dark:bg-neutral-900">
       <span
         title={title}
         className="mt-px shrink-0 rounded border border-amber-300 px-1 py-px text-[10px] font-medium text-amber-700 dark:border-amber-700 dark:text-amber-300"

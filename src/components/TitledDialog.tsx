@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog } from "@base-ui-components/react";
 import { XIcon } from "./Icon";
-import { overlayCard, scrim } from "./chrome";
+import { overlayCard, overlayMotion, scrim, scrimMotion } from "./chrome";
 
 /**
  * The titled modal frame — backdrop, centered auto-height popup, header with
@@ -34,9 +34,9 @@ export function TitledDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       {trigger && <Dialog.Trigger render={trigger as ReactElement<Record<string, unknown>>} />}
       <Dialog.Portal>
-        <Dialog.Backdrop className={scrim} />
+        <Dialog.Backdrop className={`${scrim} ${scrimMotion}`} />
         <Dialog.Popup
-          className={`fixed top-1/2 left-1/2 z-50 max-h-[90vh] ${widthClass} -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-4 ${overlayCard}`}
+          className={`fixed top-1/2 left-1/2 z-50 max-h-[90vh] ${widthClass} -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-4 ${overlayCard} ${overlayMotion}`}
         >
           <div className="flex items-start justify-between gap-2">
             <div>

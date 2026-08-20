@@ -34,7 +34,7 @@ export function SlashMenu({
       id="slash-menu"
       role="listbox"
       aria-label={t("commands.menuAria")}
-      className="absolute inset-x-0 bottom-full z-50 mb-1.5 max-h-48 overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+      className="settle absolute inset-x-0 bottom-full z-50 mb-1.5 max-h-48 overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
     >
       {items.map((item, i) => (
         <button

@@ -116,7 +116,7 @@ describe("a compaction the panel asked for", () => {
     const state = useConversationStore.getState();
     // Otherwise the shimmer keeps promising a fold nobody is doing.
     expect(state.compacting).toBe(false);
-    expect(state.messages.some((m) => m.content.startsWith("Couldn't compact:"))).toBe(true);
+    expect(state.messages.some((m) => m.content.startsWith("Couldn't compact —"))).toBe(true);
   });
 });
 

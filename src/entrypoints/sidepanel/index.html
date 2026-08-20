@@ -18,13 +18,17 @@
       html {
         background: #fff;
       }
+      /* #070b16 is neutral-950 as theme.css retints it. It used to be #0a0a0a —
+         Tailwind's stock neutral-950, left behind by the deep-field retint — so
+         the boot screen flashed a flatter, warmer dark than the app painted over
+         it. A runtime copy of a token, like the injected page CSS keeps. */
       @media (prefers-color-scheme: dark) {
         html {
-          background: #0a0a0a;
+          background: #070b16;
         }
       }
       html.dark {
-        background: #0a0a0a;
+        background: #070b16;
       }
       #boot {
         position: fixed;
@@ -44,6 +48,15 @@
         }
         to {
           opacity: 1;
+        }
+      }
+      /* The mark starts at opacity 0 and is made visible BY the animation, so
+         plain `animation: none` here would hide it outright. One pass of the
+         same keyframe, held — the 150ms delay stays, so a warm load still never
+         flashes it; it just doesn't breathe. */
+      @media (prefers-reduced-motion: reduce) {
+        #boot img {
+          animation: boot-breathe 300ms ease-out 0.15s forwards;
         }
       }
     </style>

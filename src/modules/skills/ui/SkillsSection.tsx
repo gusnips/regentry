@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
+import { CometPose } from "@/components/CometPose";
 import { Switch } from "@/components/Switch";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CheckIcon, Icon, PencilIcon, TrashIcon } from "@/components/Icon";
@@ -63,9 +64,12 @@ export function SkillsSection() {
       </div>
 
       {skills.length === 0 ? (
-        <p className="mt-3 rounded-lg bg-neutral-50 px-3 py-3 text-xs text-neutral-500 dark:bg-neutral-900/50 dark:text-neutral-400">
-          {t("skills.empty")}
-        </p>
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-3 dark:bg-neutral-900/50">
+          <CometPose pose="resting" size={40} className="shrink-0" />
+          <p className="min-w-0 text-xs text-neutral-500 dark:text-neutral-400">
+            {t("skills.empty")}
+          </p>
+        </div>
       ) : (
         <ul className="mt-3 space-y-1.5">
           {skills.map((skill) => (
@@ -120,7 +124,7 @@ export function SkillsSection() {
                   title={copiedId === skill.id ? t("skills.copied") : t("skills.export")}
                   onClick={() => exportSkill(skill)}
                 >
-                  {copiedId === skill.id ? <CheckIcon /> : <CopyIcon />}
+                  {copiedId === skill.id ? <CheckIcon className="arrive" /> : <CopyIcon />}
                 </Button>
                 <ConfirmDialog
                   trigger={

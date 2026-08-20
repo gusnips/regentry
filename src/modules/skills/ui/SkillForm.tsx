@@ -144,7 +144,13 @@ export function SkillForm({
           {t("skills.form.replaces", { name: collision.name })}
         </p>
       )}
-      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+      {/* Keyed on the message: two saves can fail for different reasons, and a
+          swap in place would look like the second one did nothing. */}
+      {error && (
+        <p key={error} className="arrive text-xs text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      )}
 
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onCancel}>

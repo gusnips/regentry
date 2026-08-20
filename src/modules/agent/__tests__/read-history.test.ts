@@ -16,7 +16,7 @@ describe("formatTranscriptWindow", () => {
   it("reports an empty transcript instead of a blank log", () => {
     const window = formatTranscriptWindow([], {});
     expect(window).toMatchObject({ total: 0, from: 0, to: 0 });
-    expect(window.log).toBe("No transcript entries yet.");
+    expect(window.log).toBe("Nothing in the transcript yet — this chat hasn't run a task.");
   });
 
   it("drops reasoning and run-internal chatter, numbering what remains", () => {
@@ -139,6 +139,6 @@ describe("formatTranscriptWindow", () => {
   it("says so when nothing matches, instead of claiming an empty transcript", () => {
     const window = formatTranscriptWindow([msg("user", "hi")], { query: "zebra" });
     expect(window).toMatchObject({ total: 0, from: 0, to: 0 });
-    expect(window.log).toBe('No transcript entries match "zebra".');
+    expect(window.log).toBe("Nothing in the transcript matches “zebra” — try a shorter phrase.");
   });
 });

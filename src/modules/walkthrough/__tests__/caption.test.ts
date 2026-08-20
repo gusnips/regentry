@@ -92,7 +92,7 @@ describe("buildSteps", () => {
     seq = 0;
     const steps = buildSteps([frame("click", { intent: "Save" }, { gap: "timeout", ok: true })]);
     expect(steps).toHaveLength(1);
-    expect(steps[0]?.caption).toBe("Screen not captured");
+    expect(steps[0]?.caption).toBe("This screen didn't get captured");
   });
 
   it("keeps the bookend frames, which never had an action to succeed at", () => {

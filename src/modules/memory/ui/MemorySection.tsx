@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
+import { CometPose } from "@/components/CometPose";
 import { Switch } from "@/components/Switch";
 import { TrashIcon } from "@/components/Icon";
 import { useStoredItem } from "@/components/useStoredItem";
@@ -60,18 +61,25 @@ export function MemorySection() {
       </div>
 
       {!enabled && (
-        <p className="attention mt-3 rounded-lg px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300">
-          {t("memory.off")}
-        </p>
+        <div className="attention mt-3 flex items-center gap-2 rounded-lg px-3 py-2">
+          {/* Leaned back off the direction of travel: this one genuinely can't go. */}
+          <CometPose pose="blocked" size={36} className="shrink-0" />
+          <p className="min-w-0 text-xs text-neutral-700 dark:text-neutral-300">
+            {t("memory.off")}
+          </p>
+        </div>
       )}
 
       {/* Off + empty: the notice above is the whole state — an empty card
           promising future memories contradicts the toggle that just stopped
           them. */}
       {enabled && groups.length === 0 ? (
-        <p className="mt-3 rounded-lg bg-neutral-50 px-3 py-3 text-xs text-neutral-500 dark:bg-neutral-900/50 dark:text-neutral-400">
-          {t("memory.empty")}
-        </p>
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-3 dark:bg-neutral-900/50">
+          <CometPose pose="resting" size={40} className="shrink-0" />
+          <p className="min-w-0 text-xs text-neutral-500 dark:text-neutral-400">
+            {t("memory.empty")}
+          </p>
+        </div>
       ) : enabled ? (
         <div className="mt-3 space-y-3">
           {groups.map((group) => (

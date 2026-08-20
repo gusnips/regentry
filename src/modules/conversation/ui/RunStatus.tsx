@@ -158,7 +158,7 @@ export function RunStatus() {
       finishedTokens > 0 ? ` · ${t("run.tokens", { count: formatTokens(finishedTokens) })}` : "";
     const failed = finished.ok === false;
     return (
-      <div className="flex flex-col gap-0.5 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
+      <div className="arrive flex flex-col gap-0.5 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
         <div className="flex items-center gap-2">
           <span className={failed ? "text-red-600 dark:text-red-400" : undefined}>
             {awaitingAnswer
@@ -212,39 +212,56 @@ export function RunStatus() {
   // that may be shorter than the index we are sitting on.
   const verb = idleVerbs[verbIdx % idleVerbs.length] ?? idleVerbs[0] ?? "";
 
+  // Parked on the user: an approval gate or an open question. The run is
+  // blocked on the answer (the timer keeps counting) — nothing is working, so
+  // the shimmer would be lying.
+  const parked = awaiting && !replanning;
+  const statusLabel = replanning
+    ? // A revision was just sent and the revised plan is still being drawn. The
+      // generic verb would read as "it ignored your note" — name the gap.
+      t("run.revisingPlan")
+    : parked
+      ? awaitingApproval || boardRun?.awaiting === true
+        ? t("run.awaitingApproval")
+        : t("run.awaitingAnswer")
+      : `${verb}…`;
+
   /**
    * Loud on purpose. Something is clicking and typing in your browser right now,
    * and the muted one-liner this replaced read like a footer — you could scroll
    * past it and not register that a run was live.
+   *
+   * `run-band-live` is the panel's one authored moment: the band rises into
+   * place and a single wash of brand light crosses it, once, on mount. Taking
+   * the wheel of a browser somebody is sitting in front of is the event this
+   * product is *about*, and it used to happen by subtree swap — the footer
+   * blinked from settled to live and shoved the transcript with no transition.
    */
   return (
     <div
       role="status"
       aria-live="polite"
-      className="flex flex-col gap-0.5 border-t border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-900 dark:bg-brand-950/60"
+      className="run-band-live flex flex-col gap-0.5 border-t border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-900 dark:bg-brand-950/60"
     >
       <div className="flex items-center gap-2 text-sm">
         {/* One motion only — the shimmering verb is the live signal, so the dot stays still. */}
         <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400" />
-        {replanning ? (
-          // A revision was just sent and the revised plan is still being drawn.
-          // The generic verb would read as "it ignored your note" — name the gap.
-          <span className="shimmer-text min-w-0 flex-1 truncate font-semibold">
-            {t("run.revisingPlan")}
+        {/* Keyed on the words, so a verb rotation or a park/resume fades the new
+            state in rather than substituting it between frames — the wrapper
+            carries the fade because `arrive` and `shimmer-text` are both the
+            `animation` shorthand and would overwrite each other on one element.
+            Truncates: es/pt-BR at 320px would otherwise eat the timer. */}
+        <span key={statusLabel} className="arrive min-w-0 flex-1 truncate">
+          <span
+            className={
+              parked
+                ? "font-semibold text-brand-700 dark:text-brand-300"
+                : "shimmer-text font-semibold"
+            }
+          >
+            {statusLabel}
           </span>
-        ) : awaiting ? (
-          // Parked on the user: an approval gate or an open question. The run is
-          // blocked on the answer (the timer keeps counting) — nothing is
-          // working, so the shimmer would be lying. Truncates: es/pt-BR at 320px
-          // would otherwise eat the timer.
-          <span className="min-w-0 flex-1 truncate font-semibold text-brand-700 dark:text-brand-300">
-            {awaitingApproval || boardRun?.awaiting === true
-              ? t("run.awaitingApproval")
-              : t("run.awaitingAnswer")}
-          </span>
-        ) : (
-          <span className="shimmer-text min-w-0 flex-1 truncate font-semibold">{verb}…</span>
-        )}
+        </span>
         {/* Gold, beside the clock: recording is the run measuring itself, and
             the two things this row measures belong together. Red would be the
             product's only red and already means "failed" here. The dot is
@@ -360,7 +377,7 @@ function BridgeActiveBand({ active }: { active: BridgeActive }) {
     <div
       role="status"
       aria-live="polite"
-      className="flex items-center gap-2 border-t border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-900 dark:bg-brand-950/60"
+      className="arrive flex items-center gap-2 border-t border-brand-200 bg-brand-50 px-3 py-2 dark:border-brand-900 dark:bg-brand-950/60"
     >
       {/* The one motion — a breathing dot. Nothing is streaming, so the copy is
           still; the dot carries the "alive" signal the live band gives its

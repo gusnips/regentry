@@ -253,3 +253,148 @@ body {
     animation: none;
   }
 }
+
+/*
+ * ── The comet poses (components/CometPose.tsx) ──────────────────────────────
+ *
+ * The `ready` pose's route to its target: marching dashes, so the trajectory
+ * reads as live and waiting rather than as a decorative dotted rule. This is
+ * an empty state asking for a goal, and a static dotted line says nothing.
+ * Period is 8 user units, so -16 lands exactly two dashes on and the loop is
+ * seamless. The other three poses are still on purpose — the panel already has
+ * three loops (the shimmer, the thinking dots, this), and a fourth competing
+ * "alive" signal would dilute all of them.
+ */
+@keyframes tabrunner-march {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+.comet-runway {
+  animation: tabrunner-march 1.9s linear infinite;
+}
+
+/* The route is the pose's whole point, so it keeps its dashes when motion stops. */
+@media (prefers-reduced-motion: reduce) {
+  .comet-runway {
+    animation: none;
+  }
+}
+
+/*
+ * ── The run band takes the wheel ────────────────────────────────────────────
+ *
+ * The one authored moment in the panel. Starting a run is when the agent takes
+ * control of a browser the user is still sitting in front of, and until now the
+ * footer swapped subtrees with no transition — the band simply blinked from
+ * settled to live and shoved the transcript. The comet crossing its own status
+ * band is the motion this product already owns: a single wash of brand light
+ * travels left to right, once, and the band rises into place behind it. It runs
+ * on mount only, so a long run never repeats it.
+ */
+/*
+ * Swept by background-position rather than by translating the layer, which is
+ * the same trick .shimmer-text uses — one material idea in the panel, and it
+ * means the band needs no `overflow: hidden` to contain the light. That
+ * matters: the band's Stop button sits on a negative margin, and clipping the
+ * band would clip its focus ring.
+ */
+@keyframes tabrunner-wash {
+  from {
+    background-position: 150% center;
+  }
+  to {
+    background-position: -50% center;
+  }
+}
+
+.run-band-live {
+  position: relative;
+  animation: tabrunner-rise 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.run-band-live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklab, var(--color-brand-400) 38%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  animation: tabrunner-wash 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The band still arrives — it just arrives without the light crossing it. */
+@media (prefers-reduced-motion: reduce) {
+  .run-band-live {
+    animation: none;
+  }
+  .run-band-live::after {
+    display: none;
+  }
+}
+
+/*
+ * ── Things arriving ─────────────────────────────────────────────────────────
+ *
+ * Two beats, kept distinct on purpose. Text flowing into the transcript is
+ * continuous and frequent, so it gets the smallest move that still says
+ * "this is new" — anything larger becomes a tic at message rate. A card is a
+ * discrete object appearing and asking for a decision, so it settles in from
+ * slightly under size instead. Both are enters only; nothing exits, because a
+ * message that lingers after it is gone would be a lie about state.
+ */
+@keyframes tabrunner-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tabrunner-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.arrive {
+  animation: tabrunner-arrive 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settle {
+  animation: tabrunner-settle 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/*
+ * The third and last entrance, and the only one meant to be staggered: first
+ * run, where the panel has nothing to show yet and the whole screen IS the
+ * content. Call sites set their own `animationDelay` rather than earning a
+ * named class each — the sign-in card's `.connected-*` ladder is the shape to
+ * avoid repeating, since those delays are one budget and these are not. Do not
+ * reach for this to make an ordinary section appear; that is what `arrive` is.
+ */
+.rise-in {
+  animation: tabrunner-rise 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrive,
+  .settle,
+  .rise-in {
+    animation: none;
+  }
+}

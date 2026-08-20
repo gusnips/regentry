@@ -36,7 +36,7 @@
     "backgroundTasks": "Background tasks",
     "sidePanel": "Side panel",
     "showTips": "Tips",
-    "showTipsHint": "Occasional shortcuts and feature tips under the composer and the run status.",
+    "showTipsHint": "Occasional shortcuts and feature tips under the composer, and while a task runs.",
     "invalidUrl": "Enter a full URL starting with http:// or https://",
     "languageAutoShort": "Auto",
     "about": "About",
@@ -46,7 +46,7 @@
       "general": "General",
       "behavior": "Behavior",
       "schedules": "Schedules",
-      "knowledge": "Knowledge",
+      "knowledge": "Memory",
       "skills": "Skills",
       "providers": "Providers",
       "mcp": "MCP"
@@ -77,20 +77,20 @@
       "extensionId": "Extension ID",
       "extensionIdHint": "Set the daemon's TABRUNNER_BRIDGE_EXPECTED_EXTENSION_ID to this."
     },
-    "walkthroughs": "Documented runs",
+    "walkthroughs": "Walkthroughs",
     "walkthroughsHint": "Let the agent turn a task into a shareable step-by-step walkthrough when you ask it to. Screenshots stay on this computer and are never sent to the model."
   },
   "instructions": {
     "title": "Instructions",
     "help": "Things TabRunner should always do — or never do — in every chat. Write them like plain sentences. Start a line with \"## site: acme.com\" to make everything under it apply only on that site.",
     "placeholder": "Always ask me before sending an email or making a payment.\nMy work email is me@acme.com.\n\n## site: github.com\nAlways work in the acme-corp organization.",
-    "autosave": "Changes save automatically and take effect on the next task."
+    "autosave": "Saved as you type. Takes effect on your next task."
   },
   "memory": {
     "title": "What TabRunner remembers",
     "help": "Facts TabRunner has picked up from your tasks, so it doesn't have to ask twice. Facts tied to one site load only when a task starts there. Delete anything that's wrong.",
     "enable": "Remember what it learns",
-    "empty": "Nothing yet. When a task teaches TabRunner something about you or a site you use, it will show up here.",
+    "empty": "Nothing yet. As tasks run, anything worth remembering about you or a site you use lands here on its own — there's nothing to add by hand.",
     "off": "Memory is off — TabRunner isn't saving what it learns. Turn it on above to resume.",
     "saved": "Saved",
     "deleteMemory": "Delete this fact",
@@ -101,7 +101,7 @@
     "help": "Saved recipes TabRunner offers the model when a task matches — your way of doing a thing, kept. A skill tied to sites is offered only when a task starts there.",
     "newButton": "New skill",
     "importButton": "Import",
-    "empty": "Skills teach TabRunner your way of doing a task — the steps, the quirks, the site. Create one from a conversation with /skill new in the panel, write one here with New skill, or bring one in with Import.",
+    "empty": "No skills yet. A skill is your way of doing a task, written down once — the steps, the quirks, the site. Save one from a chat with /skill new, write one here with New skill, or bring in somebody else's with Import.",
     "everySite": "All sites",
     "enable": "Enabled",
     "edit": "Edit skill",
@@ -151,12 +151,12 @@
       "errorNothingPasted": "Paste the skill's markdown first — frontmatter plus instructions."
     },
     "draft": {
-      "title": "New skill from this conversation",
-      "description": "TabRunner distills what this conversation worked out into a reusable recipe — review and edit before saving.",
-      "working": "Distilling this conversation…",
+      "title": "New skill from this chat",
+      "description": "TabRunner distills what this chat worked out into a reusable recipe — review and edit before saving.",
+      "working": "Distilling this chat…",
       "retry": "Try again",
       "manual": "Write it by hand",
-      "errorNothing": "This conversation has nothing to distill yet — run a task first, then save what it worked out.",
+      "errorNothing": "This chat has nothing to distill yet — run a task first, then save what it worked out.",
       "errorTimeout": "The model didn't answer within 90 seconds — it may be overloaded. Try again.",
       "errorEmpty": "The model answered with nothing to save. Try again, or write the skill by hand."
     },
@@ -204,7 +204,7 @@
     },
     "ui": {
       "title": "Scheduled tasks",
-      "help": "Work TabRunner runs on its own, in a tab of its own. Each one keeps its own conversation, and notifies you when it finishes.",
+      "help": "Work TabRunner runs on its own, in a tab of its own. Each one keeps its own chat, and notifies you when it finishes.",
       "emptyTitle": "Nothing scheduled",
       "emptyBody": "Scheduled tasks run with nobody watching — a morning inbox summary, an hourly price check.",
       "emptyAction": "Ask for one in the side panel: “every weekday at 9am, summarize my inbox”. Approve the plan and it appears here.",
@@ -216,19 +216,19 @@
       "running": "Running now",
       "queued": "Queued — starts when the current task finishes",
       "paused": "Paused",
-      "pause": "Pause — keeps the task and its conversation, stops the timer",
+      "pause": "Pause — keeps the task and its chat, stops the timer",
       "resume": "Resume — the next fire is recalculated from now",
-      "open": "Open its conversation",
+      "open": "Open its chat",
       "delete": "Delete this schedule",
-      "deleteRunning": "Delete this schedule and stop the run in progress",
+      "deleteRunning": "Delete this schedule and stop the task in progress",
       "count": "{{n}} of {{max}}"
     }
   },
   "walkthrough": {
     "rec": "REC",
     "step": {
-      "armed": "Documenting this run",
-      "gap": "Screen not captured",
+      "armed": "Documenting this task",
+      "gap": "This screen didn't get captured",
       "start": "Starting point",
       "result": "Result",
       "navigate": "Go to {{where}}",
@@ -251,14 +251,14 @@
       "stepCount_one": "{{count}} step",
       "stepCount_other": "{{count}} steps",
       "prerequisite": "Before you start: sign in to {{hosts}} with an account that can do this.",
-      "notePartial": "This run was interrupted, so the walkthrough stops before the process finished.",
+      "notePartial": "This task was interrupted, so the walkthrough stops before the process finished.",
       "noteTruncated": "The process ran longer than one document holds — the later steps are not shown.",
       "noteLateArm_one": "Documenting started after the first action, which is not shown.",
       "noteLateArm_other": "Documenting started after the first {{count}} actions, which are not shown.",
       "noteDegraded": "Some screens could not be captured on this browser, so a few steps have no picture.",
-      "noteStopped": "The run was stopped by hand before it finished.",
-      "noteFailed": "The run ended on an error, so the last step may not have worked.",
-      "missingShot": "This screen could not be captured",
+      "noteStopped": "The task was stopped by hand before it finished.",
+      "noteFailed": "The task ended on an error, so the last step may not have worked.",
+      "missingShot": "This screen didn't get captured",
       "shotAlt": "Screen: {{title}}",
       "outcome": "Result",
       "madeWith": "Made with"
@@ -278,12 +278,12 @@
       "branding": "Include TabRunner credit",
       "loading": "Loading the walkthrough…",
       "missingTitle": "This walkthrough is gone",
-      "missingBody": "Its screenshots were deleted — a walkthrough goes when its conversation does, or when storage fills up.",
+      "missingBody": "Its screenshots were deleted — a walkthrough goes when its chat does, or when storage fills up.",
       "missingFix": "Run the task again and ask TabRunner to document it.",
       "emptyTitle": "Nothing was captured",
-      "emptyBody": "The run was documented but no screen could be captured — the tab may have been closed or blocked."
+      "emptyBody": "The task was documented, but no screen could be captured — the tab was probably closed or blocked before the first shot. Run it again to get a fresh recording."
     },
-    "badgeTitle": "TabRunner · REC — documenting this run"
+    "badgeTitle": "TabRunner · REC — documenting this task"
   },
   "addProvider": {
     "title": "Add provider",
@@ -304,10 +304,10 @@
     "apiKey": "API key",
     "apiKeyPlaceholder": "sk-…",
     "apiKeyPlaceholderSaved": "Saved — leave empty to keep",
-    "nameRequired": "Name is required — e.g. the service or gateway name.",
-    "baseUrlRequired": "Base URL is required for a custom endpoint.",
+    "nameRequired": "Give it a name — whatever you'll recognize it by.",
+    "baseUrlRequired": "A custom endpoint needs a base URL.",
     "baseUrlInvalid": "Base URL isn't a valid URL — include https:// and any path, e.g. https://api.example.com/v1.",
-    "apiKeyRequired": "API key is required — paste it above. (Local endpoints like Ollama don't need one.)",
+    "apiKeyRequired": "Paste an API key above. Local endpoints like Ollama don't need one.",
     "keyHintLocal": "Optional for local endpoints.",
     "keyHintKeep": "Leave empty to keep the saved key.",
     "keyHintGet": "Get an API key →",
@@ -333,7 +333,7 @@
     "signInExpiredTitle": "The approval window expired",
     "signInExpiredBody": "Sign-in links and codes are only valid for a few minutes. Start over to get a fresh one.",
     "signInDeniedBody": "The request was rejected on the approval page. Start over and approve it to connect {{provider}}.",
-    "signInErrorTitle": "The sign-in failed",
+    "signInErrorTitle": "Sign-in didn't go through",
     "signInConnected": "Connected to {{provider}}"
   },
   "providerList": {
@@ -399,7 +399,7 @@
     "empty": "The provider didn't report usage this time — try Refresh."
   },
   "sidepanel": {
-    "busyRunning": "Stop the run before switching conversations",
+    "busyRunning": "Stop the task before switching chats",
     "close": "Close the panel — a running task keeps going"
   },
   "history": {
@@ -412,15 +412,15 @@
     "tasks_one": "{{count}} task",
     "tasks_other": "{{count}} tasks",
     "delete": "Delete",
-    "deleteAria": "Delete conversation: {{title}}",
+    "deleteAria": "Delete chat: {{title}}",
     "rename": "Rename",
-    "renameAria": "Rename conversation: {{title}}",
-    "renamePlaceholder": "Name this conversation",
-    "deleteTitle": "Delete this conversation?",
-    "deleteBody": "The transcript is removed from this device. What TabRunner has learned stays in its memory — you can delete any of those in Settings.",
-    "deleteScheduledBody": "This is a scheduled task's own thread ({{recurrence}}), and the transcript is the memory each run reads back. Deleting it cancels the schedule too. To stop it only for a while, pause it in Settings instead.",
-    "emptyTitle": "No conversations yet",
-    "emptyBody": "Every task you send is kept here as a transcript — open one to reread what the agent did, or delete the ones you're done with.",
+    "renameAria": "Rename chat: {{title}}",
+    "renamePlaceholder": "Name this chat",
+    "deleteTitle": "Delete this chat?",
+    "deleteBody": "The transcript is deleted from this device and can't be recovered. Anything TabRunner learned from it stays in its memory — you can clear those in Settings.",
+    "deleteScheduledBody": "This is a scheduled task's own chat ({{recurrence}}), and its transcript is what each run reads back. Deleting it cancels the schedule too. To stop it for a while instead, pause it in Settings.",
+    "emptyTitle": "Nothing here yet",
+    "emptyBody": "Every task you send is kept here — open one to reread what happened, or delete the ones you're done with.",
     "emptyAction": "Start a task",
     "storedNote": "Stored on this device · the 50 most recent are kept"
   },
@@ -437,9 +437,9 @@
     "emptyTitle": "What should I do?",
     "emptyBody": "Describe a task and I'll drive the browser — navigate, read pages, click, type — on the page you're looking at, or open its own tab when there's no page to work. Uses your existing logins.",
     "emptyExample": "Example: \"pull the latest invoice from my inbox into the expense report\"",
-    "portLost": "Connection to the agent was lost — the run stopped. Send the task again to retry.",
+    "portLost": "Lost the connection to the agent, so the task stopped. Send it again to pick up.",
     "reloaded": "TabRunner was reloaded — close and reopen this panel to keep going.",
-    "runStopped": "You stopped this run — your next message can pick up from here.",
+    "runStopped": "You stopped this task — your next message can pick up from here.",
     "working": "Working",
     "jumpToLatest": "Jump to latest ↓",
     "answerReady": "Answer ready ↓",
@@ -468,7 +468,7 @@
     "queue": "Queue",
     "queueTitle": "Inserted between the next tool calls",
     "queuePlaceholder": "Add to the running task…",
-    "queuedSteerTitle": "Queued for the run — lands between the next tool calls",
+    "queuedSteerTitle": "Queued for the running task — lands between the next tool calls",
     "unqueueAria": "Drop queued message",
     "queueNoImages": "Images can't join a running task — queue the text now and paste the image with the next task.",
     "pasteToken": "Pasted {{count}} lines",
@@ -479,10 +479,10 @@
     "answerPlaceholder": "Write your answer…",
     "planPlaceholder": "Approve the plan above, or type what should change…",
     "planSendTitle": "Send the plan back with your note",
-    "planNoImages": "Images can't ride a plan note — type what should change, and paste the image once the run is moving.",
+    "planNoImages": "Images can't ride a plan note — type what should change, and paste the image once the task is moving.",
     "thinkingFor": "Thinking · {{duration}}",
     "thoughtFor": "Thought for {{duration}}",
-    "reasoningToggle": "Show or hide the model's reasoning (saved for all conversations)",
+    "reasoningToggle": "Show or hide the model's reasoning (saved for all chats)",
     "burstCount": {
       "navigate_one": "{{count}} navigation",
       "navigate_other": "{{count}} navigations",
@@ -511,22 +511,22 @@
     "unknown": "No command /{{name}} — type / for the list.",
     "nextTask": "Applies to the next task, not the one running.",
     "deferred": {
-      "chip": "After the run",
-      "title": "Waiting for the run to finish — it fires the moment nothing is working here",
+      "chip": "After the task",
+      "title": "Waiting for the task to finish — it fires the moment nothing is working here",
       "cancelAria": "Drop the waiting command"
     },
     "stop": {
       "description": "Stop the running task",
       "none": "Nothing is running here — there's no task to stop.",
-      "elsewhere": "Nothing is running in this conversation — the task working now belongs to another one.",
+      "elsewhere": "Nothing is running in this chat — the task working now belongs to another one.",
       "cancelledQueued": "Took your task out of the queue — nothing was started."
     },
     "background": {
       "description": "Toggle where the next task runs — this page, or background",
-      "current": "Run target: {{target}}.",
-      "invalid": "No run target \"{{value}}\" — pick on or off.",
-      "nowBackground": "Run target → background — the panel closes once you approve the plan; the run carries on without you.",
-      "nowThisPage": "Run target → this page — the next run drives the tab you're looking at while you watch."
+      "current": "Next task runs: {{target}}.",
+      "invalid": "No setting called “{{value}}” — pick on or off.",
+      "nowBackground": "Next task runs in the background — the panel closes once you approve the plan, and the task carries on without you.",
+      "nowThisPage": "Next task runs on this page — it drives the tab you're looking at while you watch."
     },
     "effort": {
       "description": "Set reasoning effort — none, low, medium, high, max, or default",
@@ -548,10 +548,10 @@
       "unknown": "No provider \"{{value}}\" — configured: {{list}}."
     },
     "rename": {
-      "description": "Name this conversation — no argument shows the current name",
-      "current": "This conversation is \"{{title}}\" — /rename <name> to change it.",
+      "description": "Name this chat — no argument shows the current name",
+      "current": "This chat is “{{title}}” — /rename <name> to change it.",
       "none": "Send a task first — a chat with no messages has nothing to name.",
-      "set": "Conversation → \"{{title}}\""
+      "set": "Chat → “{{title}}”"
     },
     "new": {
       "description": "Start a new chat"
@@ -566,9 +566,9 @@
       "hint": "Type the task after /document — or add “and document it” to any task."
     },
     "skill": {
-      "description": "Run a saved skill — /skill new turns this conversation into one",
-      "newLabel": "New skill from this conversation…",
-      "none": "No skills yet — /skill new turns this conversation into one, or import one in Settings → Skills.",
+      "description": "Run a saved skill — /skill new turns this chat into one",
+      "newLabel": "New skill from this chat…",
+      "none": "No skills yet — /skill new turns this chat into one, or import one in Settings → Skills.",
       "list": "Skills: {{list}}. \"/skill <name>\" runs one.",
       "unknown": "No skill named \"{{name}}\". You have: {{list}}",
       "disabled": "\"{{name}}\" is disabled — enable it in Settings → Skills.",
@@ -577,11 +577,11 @@
       "taskWithArgs": "Use the \"{{name}}\" skill for this task: {{args}}"
     },
     "compact": {
-      "description": "Summarize this conversation so far, to free up context",
-      "running": "Compacting the conversation…",
-      "nothing": "Nothing to compact yet — this conversation is still short enough to replay in full.",
-      "busy": "A run is working — compact once it finishes.",
-      "failed": "Couldn't compact: {{message}}"
+      "description": "Summarize this chat so far, to free up context",
+      "running": "Compacting the chat…",
+      "nothing": "Nothing to compact yet — this chat is still short enough to replay in full.",
+      "busy": "A task is working — compact once it finishes.",
+      "failed": "Couldn't compact — {{message}}"
     },
     "help": {
       "description": "Show every shortcut and command"
@@ -613,8 +613,8 @@
   "context": {
     "used": "{{used}} context",
     "usedOf": "{{used}} / {{window}}",
-    "tooltip": "Context: the last turn sent {{used}} of the model's {{window}} window — click to summarize the conversation and free some up",
-    "tooltipUnknown": "Context: the last turn sent {{used}}. This model's window size isn't known, so there's no percentage to show — click to summarize the conversation and free some up"
+    "tooltip": "Context: the last turn sent {{used}} of the model's {{window}} window — click to summarize the chat and free some up",
+    "tooltipUnknown": "Context: the last turn sent {{used}}. This model's window size isn't known, so there's no percentage to show — click to summarize the chat and free some up"
   },
   "indicator": {
     "driving": "TabRunner is controlling this tab",
@@ -720,9 +720,9 @@
     "bridgeStopTitle": "Stops the task and hands the browser back",
     "background": "In background",
     "thisPage": "This page",
-    "targetAria": "Run target: {{target}}",
+    "targetAria": "Next task runs: {{target}}",
     "backgroundNow": "Run in background",
-    "backgroundNowTitle": "Close the panel and let this run finish on its own — it never moves your screen. Reopen any time to watch.",
+    "backgroundNowTitle": "Close the panel and let this task finish on its own — it never moves your screen. Reopen any time to watch.",
     "backgroundNowGated": "Approve the plan first — closing now would leave the approval waiting on a notification.",
     "targetTitle": "“This page” keeps the chat open so you can watch; “In background” closes the panel and works unattended without ever moving your screen — flipping mid-run applies at once (once the plan is approved)"
   },
@@ -768,7 +768,7 @@
     "walkthrough": "Ask “and document it” and the agent writes the process up as a shareable guide."
   },
   "notify": {
-    "doneFallback": "Task finished."
+    "doneFallback": "Task finished — open TabRunner to see how it went."
   },
   "progress": {
     "interrupted": "This run was interrupted before it could finish. What it had already done:",
@@ -782,23 +782,23 @@
     "alreadyRunningMCP": "A task from an external MCP client is already running. Stop it from the client (tabrunner.stop), or wait for it to finish.",
     "alreadyRunningPanel": "A task is already running in the TabRunner panel. Open the panel and stop it, or wait for it to finish.",
     "noActiveProvider": "No active provider — pick one in the panel dropdown, or add one in Settings.",
-    "noActiveTab": "No active tab found.",
-    "runCancelled": "The queued task was canceled before it started",
+    "noActiveTab": "No active tab to work with. Click the tab you want, then send the task again.",
+    "runCancelled": "That queued task was cancelled before it started",
     "tabCreateFailed": "Couldn't open a tab for the task: {{message}}",
-    "tabClosed": "The tab this task was driving ({{title}}) was closed — the run stopped. TabRunner needs the tab to stay open; reopen the page and send the task again.",
-    "providerError": "Provider error: {{message}}",
-    "outputLimit": "Model hit its output limit mid-response — answer may be incomplete",
+    "tabClosed": "The tab this task was driving ({{title}}) was closed, so the task stopped. TabRunner needs the tab to stay open — reopen the page and send the task again.",
+    "providerError": "The provider couldn't do that — {{message}}",
+    "outputLimit": "The model hit its output limit mid-answer, so this may be cut short — ask it to carry on, or narrow the question.",
     "textOnlyImages": "This model can't receive images — the images you attached weren't sent to it. It works from text snapshots of the page.",
-    "taskComplete": "Task complete",
+    "taskComplete": "Finished, but it didn't say what it found. Ask what happened and it'll read back its own steps.",
     "doneLostSummary": "You hit the output limit and the closing summary arrived empty. Resume directly — no apology, no recap, no more tool calls. The full analysis is already in this conversation as your earlier message. Call `done` and put that answer in the summary — if it's long, break it into smaller pieces so it isn't cut again.",
-    "stepBudgetExhausted": "Step budget exhausted",
+    "stepBudgetExhausted": "Ran out of steps before finishing. That's the safety cap, not a crash — send the task again to carry on, or narrow it down.",
     "retrying": "Connection hiccup — retrying ({{attempt}}/{{max}})",
-    "capturedElements_one": "Captured {{count}} element",
-    "capturedElements_other": "Captured {{count}} elements",
+    "capturedElements_one": "Read {{count}} element",
+    "capturedElements_other": "Read {{count}} elements",
     "clicked": "Clicked",
-    "keyPressed": "Key pressed",
-    "fieldFilled": "Field set",
-    "evaluated": "Script ran",
+    "keyPressed": "Pressed the key",
+    "fieldFilled": "Filled the field",
+    "evaluated": "Ran the script",
     "requestsRead_one": "{{count}} request",
     "requestsRead_other": "{{count}} requests",
     "messagesRead_one": "{{count}} message",
@@ -811,19 +811,19 @@
     "tabGroupOtherWindow": "That tab is in another window — tab groups can't span windows. You can still switch_tab to it and work there; it just stays outside the group.",
     "tabsListed_one": "Listed {{count}} open tab",
     "tabsListed_other": "Listed {{count}} open tabs",
-    "screenshotCaptured": "Screenshot captured",
+    "screenshotCaptured": "Took a screenshot",
     "historyRead_one": "Read the transcript — {{count}} entry",
     "historyRead_other": "Read the transcript — {{count}} entries",
-    "historyEmpty": "No transcript entries yet.",
-    "historyNoMatches": "No transcript entries match \"{{query}}\".",
-    "historyUnavailable": "This run has no conversation attached — there is no transcript to read.",
+    "historyEmpty": "Nothing in the transcript yet — this chat hasn't run a task.",
+    "historyNoMatches": "Nothing in the transcript matches “{{query}}” — try a shorter phrase.",
+    "historyUnavailable": "This run has no chat attached — there is no transcript to read.",
     "failed": "Failed: {{error}}",
-    "toolCompleted": "{{tool}} completed",
+    "toolCompleted": "Finished {{tool}}",
     "unknownTool": "Unknown tool: {{name}}",
-    "modelListError": "Model list error {{status}}: {{detail}}",
+    "modelListError": "Couldn't load the model list — the endpoint answered {{status}}. {{detail}}",
     "noModel": "No model set for {{name}} and the endpoint doesn't list any. Pick a model in Settings.",
-    "noModelData": "Model list response had no data array.",
-    "apiError": "{{provider}} API error {{status}}: {{detail}}",
+    "noModelData": "The endpoint answered, but not with a model list. Type a model id yourself, or leave it empty to auto-pick at run time.",
+    "apiError": "{{provider}} answered {{status}} — {{detail}}",
     "kindEntitlement": "{{provider}} accepted the key, but your plan doesn't include this API — upgrade the plan on your {{provider}} account",
     "kindQuota": "{{provider}} is out of usage — wait for the limit to reset, or top up on your {{provider}} account",
     "kindAuth": "{{provider}} rejected the API key — check it or replace it in the provider settings",
@@ -836,23 +836,23 @@
     "windowWeekly": "weekly",
     "windowMonthly": "monthly",
     "kindOverload": "{{provider}} is overloaded right now — try again in a few minutes",
-    "kindContext": "This conversation outgrew what {{provider}} can read in one request — compact it to carry on",
+    "kindContext": "This chat outgrew what {{provider}} can read in one request — compact it to carry on",
     "compactEmpty": "The model returned an empty summary, so nothing was compacted. Try again, or start a new chat to reset the context.",
     "oauthRefreshExpired": "Your {{name}} sign-in expired and couldn't be renewed — sign in again in Settings.",
-    "signInFailed": "Sign-in failed: {{detail}}",
+    "signInFailed": "Sign-in didn't go through — {{detail}}",
     "signInRateLimited": "The provider's sign-in service is turning requests down right now — too many in a short window. This isn't about your plan's usage. Wait a minute, then start over.",
     "signInRateLimitedFor": "The provider's sign-in service is turning requests down right now — too many in a short window. This isn't about your plan's usage. Try again in about {{seconds}}s.",
     "signInTokenResponse": "The sign-in response came back incomplete — no usable token. Start over to try again.",
     "signInDeviceResponse": "The sign-in service replied in a format TabRunner didn't recognize. Try again in a moment.",
-    "noResponseBody": "No response body",
+    "noResponseBody": "The provider sent an empty response.",
     "restrictedPage": "TabRunner can't read this page — Chrome blocks extensions on chrome:// and Web Store pages. Navigate the tab to a regular page and resend the task.",
     "pageNavigating": "The page was still loading or navigating — wait for it to settle and retry.",
-    "snapshotFailed": "Snapshot failed: the page may have navigated or be a restricted URL (chrome://, Web Store).",
+    "snapshotFailed": "Couldn't read the page — it may have navigated, or it's one Chrome blocks (chrome://, Web Store). Try again once it settles.",
     "refNotFound": "Element ref \"{{ref}}\" not found. Run snapshot first to get fresh refs.",
     "notAField": "That element can't be filled ({{tag}}) — click buttons, checkboxes and radios instead.",
     "noSuchOption": "No option matches \"{{text}}\". Options: {{options}}",
     "captureEmpty": "Nothing captured yet — capture starts when the run attaches to the tab (its first action, screenshot, or evaluate). Trigger what you want to see, then read again.",
-    "noTabAttached": "No tab attached. Call attach first.",
+    "noTabAttached": "Not attached to a tab yet — attach to one before acting on the page.",
     "unsupportedKey": "Unsupported key: {{key}}. Supported: {{supported}}",
     "unsupportedModifier": "Unsupported modifier: {{modifier}}. Supported: {{supported}}",
     "noHistoryBack": "This tab has nothing to go back to — its history starts here. Navigate to the page you want instead.",
@@ -871,13 +871,13 @@
     "tabOpenFailed": "Couldn't open a new tab. Navigate the current one there instead, or try again.",
     "closedTabNamed": "Closed {{title}}",
     "planEmpty": "The plan needs at least one step — pass a non-empty list of short phrases.",
-    "planRejected": "Plan rejected — stopped before any page action ran.",
+    "planRejected": "Plan rejected — nothing on the page was touched.",
     "planGate": "Blocked — the plan needs your approval first",
     "planGateModel": "Blocked: no plan is approved yet. Call the plan tool with your intended steps first; the user must approve the plan before any page action runs.",
     "memoryEmpty": "Nothing to remember — pass the fact as a sentence.",
     "skillLoaded": "Loaded skill \"{{name}}\"",
     "skillNotFound": "No skill named \"{{name}}\". Available: {{list}}",
     "usageUnreadable": "The provider's usage reply came back in a format TabRunner didn't recognize — try Refresh.",
-    "documentUnavailable": "Documenting is off for this run — turn on Documented runs in Settings."
+    "documentUnavailable": "Documenting is off — turn on Walkthroughs in Settings, then ask again."
   }
 }

@@ -37,7 +37,12 @@ function WindowRow({ label, window, now }: { label: string; window?: UsageWindow
         <span className="telemetry">{t("usage.usedPercent", { percent: pct })}</span>
       </div>
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
-        <div className={`h-full rounded-full ${tone}`} style={{ width: `${pct}%` }} />
+        {/* Same fill as ContextGauge's — a refresh moves the bar rather than
+            teleporting it, which is what says the number is live. */}
+        <div
+          className={`h-full rounded-full transition-[width] duration-500 ${tone}`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
       {window.resetsAtMs !== undefined && (
         <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
