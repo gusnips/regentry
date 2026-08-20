@@ -8,11 +8,17 @@
  * pulled the whole design language louder than the product is). Two lights
  * only. Burn emerald is the action/motion color — the green a comet burns on
  * entry, and the runner's "go". Tailwind's emerald under the brand alias so
- * every brand-* usage recolors from here. Fills take DARK ink (brand-950 on
- * brand-500 is ~6:1). Gold is the run talking back: it measures (`telemetry`)
- * and it asks for attention (`attention` — waiting, caution, never errors,
- * which are red). Emerald never measures, gold never acts, and no third
- * saturated hue earns a place.
+ * every brand-* usage recolors from here. A saturated brand fill takes DARK ink
+ * (brand-950 on brand-500 is ~6:1) and belongs to SHORT labels — a button, a
+ * badge, a step numeral — where being the brightest thing on screen is the
+ * whole point. Prose on brand re-decides per mode instead of reusing that pair:
+ * on the dark ground the fill drops into the brand-900/950 family and the ink
+ * runs light, because emerald bright enough to read as the brand is too light
+ * to carry white (white on brand-500 is 2.5:1), and a paragraph-sized slab of
+ * it out-shouts the answer beside it. Gold is the run talking back: it measures
+ * (`telemetry`) and it asks for attention (`attention` — waiting, caution,
+ * never errors, which are red). Emerald never measures, gold never acts, and
+ * no third saturated hue earns a place.
  */
 @theme {
   --color-brand-50: #ecfdf5;
