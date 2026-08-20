@@ -72,26 +72,31 @@ data.
   inputs are excluded from the accessibility tree, so they are not sent to the model. And before
   any script result can join the conversation, values that look like credentials — tokens, API
   keys, cookies — are stripped.
-- **Screenshots are transient.** A screenshot taken for the model's context is compressed (JPEG
-  q80) and is stripped before the conversation is saved to storage. Your own image attachments,
-  when the model supports images, are stored as part of that conversation.
+- **Screenshots taken for the model are transient.** A screenshot taken for the model's context is
+  compressed (JPEG q80) and is stripped before the transcript is saved to storage. Your own image
+  attachments, when the model supports images, are stored as part of that transcript.
+- **Walkthrough recordings stay on the device.** If you ask for a task to be documented, the
+  screenshots of each step are kept in this browser's own local database. They are never added to
+  what is sent to the model, so a recording cannot reach your provider. They are deleted with the
+  chat they belong to, and the whole feature can be switched off at Settings → Walkthroughs.
 - **Local-only storage.** All configuration and history lives in your browser's local storage on
   this device. Uninstalling the extension removes it.
 
 ## 4. Your controls
 
-- **Delete a conversation** — History → ⋯ → Delete. Removes that transcript from this device.
-- **Clear memory** — Settings → Memory → Clear, per file. Stops those contents being sent with
-  future runs.
+- **Delete a chat** — History → ⋯ → Delete. Removes that transcript from this device.
+- **Clear memory** — Settings → Memory. Delete any remembered fact from its row, or switch off
+  "Remember what it learns" to stop new ones being saved. Stops those contents being sent with
+  future tasks.
 - **Remove a provider** — Settings → Providers → Remove. Deletes the stored API key; you can add it
   again any time.
 - **Delete a skill** — Settings → Skills. The switch pauses one without deleting it; delete
-  removes it from every future run.
-- **Stop anytime** — Esc or the Stop button in the panel, the stop in the Run Board's task list,
-  or closing the tab a task is driving stops its run. Closing the panel does NOT stop a run:
+  removes it from every future task.
+- **Stop anytime** — Esc or the Stop button in the panel, the stop in the Tasks band's list,
+  or closing the tab a task is driving stops that task. Closing the panel does NOT stop a task:
   a task adopts your current tab (or opens its own when there's no page to work) and keeps
   working after the panel closes — that's the point of dispatch-and-forget. Nothing is sent
-  after a run stops.
+  after a task stops.
 - **Uninstall** — removing the extension from `chrome://extensions` deletes all of its local
   storage.
 

@@ -19,6 +19,9 @@ the matching block here first.
 > - **2026-08-18 — memory, schedules and skills landed after approval.** §2 (all three locales)
 >   and §4 (single purpose, storage, alarms, notifications, host permissions) are updated below —
 >   paste them into the dashboard. Listing edit only: no package, no review.
+> - **2026-08-20 — walkthroughs landed, and the run/conversation vocabulary retired.** §2 (all
+>   three locales) gains the walkthroughs paragraph, and §2–§4 now say task/chat where the
+>   shipped UI does. Listing edit only: no package, no review.
 
 ---
 
@@ -99,19 +102,25 @@ Trusted input — clicks and keystrokes go through the Chrome DevTools Protocol,
 genuine trusted events, not synthetic dispatches sites can ignore.
 
 See the work — a live plan, current action, token spend and elapsed time while the agent runs.
-Every step is logged in the conversation.
+Every step is logged in the chat.
 
 It remembers how you work — your standing instructions and the facts it learns along the way load
-into every run, per site or globally. Review, edit or delete all of it in Settings, or turn memory
+into every task, per site or globally. Review, edit or delete all of it in Settings, or turn memory
 off entirely.
 
-Skills are saved recipes — turn a finished conversation into a reusable skill, write one by hand,
+Skills are saved recipes — turn a finished chat into a reusable skill, write one by hand,
 or import one as markdown from a URL. A skill tied to a site is offered automatically when a task
 starts there, and every skill is yours to edit, export, disable or delete in Settings.
 
 Set it on a schedule — a task can run once at a time you pick, daily, or every few minutes within
-the hours you allow. Each schedule keeps its own conversation, so a recurring run can see what it
+the hours you allow. Each schedule keeps its own chat, so a recurring run can see what it
 did last time.
+
+Turn a task into a walkthrough — ask "and document it" and the finished task becomes a
+shareable, step-by-step guide with a screenshot of each step. Those screenshots stay on this
+computer and never enter the chat sent to the model, so a recording cannot reach your
+provider. If one comes out incomplete, the guide says so in its own introduction. On by
+default; switch it off in Settings.
 
 HOW IT WORKS
 
@@ -125,7 +134,7 @@ PRIVATE BY DESIGN
 
 No TabRunner server exists. The extension speaks to your provider directly.
 
-Provider configs and conversation history live in chrome.storage on this device.
+Provider configs and chat history live in chrome.storage on this device.
 
 The model never receives raw HTML — it works from a compact semantic tree of the page, and
 sensitive fields (passwords, one-time codes, card numbers) never leave the page.
@@ -140,7 +149,7 @@ intends to do.
 Ask before acting — consequential actions (paying, sending, deleting) come back for your
 confirmation in the panel before they happen.
 
-Stop is real — Esc or the Stop button ends the run on the spot; anything you've already typed
+Stop is real — Esc or the Stop button ends the task on the spot; anything you've already typed
 becomes the next task.
 
 Reasoning effort — pin none to max per task, or leave Auto and TabRunner runs the newest model
@@ -180,7 +189,7 @@ Veja o trabalho acontecer — plano ao vivo, ação atual, tokens gastos e tempo
 agente trabalha. Cada passo fica registrado na conversa.
 
 Ele lembra como você trabalha — suas instruções fixas e os fatos que ele aprende pelo caminho
-entram em cada execução, por site ou globais. Revise, edite ou apague tudo nas Configurações, ou
+entram em cada tarefa, por site ou globais. Revise, edite ou apague tudo nas Configurações, ou
 desligue a memória por completo.
 
 Habilidades são receitas salvas — transforme uma conversa concluída em uma habilidade
@@ -191,6 +200,11 @@ editada, exportada, desativada ou excluída nas Configurações.
 Agende — uma tarefa pode rodar uma única vez no horário que você escolher, todo dia, ou a cada
 poucos minutos dentro das horas que você permitir. Cada agendamento mantém a própria conversa,
 então uma execução recorrente vê o que fez da última vez.
+
+Guias passo a passo — peça "e documente isso" e a tarefa terminada vira um passo a passo
+compartilhável, com uma captura de cada passo. Essas capturas ficam neste computador e nunca
+entram na conversa enviada ao modelo, então não têm como chegar ao seu provedor. Se a gravação
+ficar incompleta, o guia diz isso na introdução. Vem ligado; desligue nas Configurações.
 
 COMO FUNCIONA
 
@@ -220,7 +234,7 @@ ele pretende fazer.
 Pergunta antes de agir — ações com consequência (pagar, enviar, excluir) voltam para você
 confirmar no painel antes de acontecerem.
 
-Parar é parar mesmo — Esc ou o botão Parar encerra a execução na hora; o que você já tiver
+Parar é parar mesmo — Esc ou o botão Parar encerra a tarefa na hora; o que você já tiver
 digitado vira a próxima tarefa.
 
 Esforço de raciocínio — fixe de none a max por tarefa, ou deixe em Auto e o TabRunner usa o
@@ -258,20 +272,26 @@ Entrada confiable — los clics y las teclas pasan por el Chrome DevTools Protoc
 eventos confiables de verdad, no disparos sintéticos que los sitios pueden ignorar.
 
 Mira el trabajo — plan en vivo, acción actual, tokens gastados y tiempo transcurrido mientras el
-agente trabaja. Cada paso queda registrado en la conversación.
+agente trabaja. Cada paso queda registrado en el chat.
 
 Recuerda cómo trabajas — tus instrucciones fijas y los datos que aprende por el camino entran en
-cada ejecución, por sitio o globales. Revisa, edita o borra todo en la Configuración, o apaga la
+cada tarea, por sitio o globales. Revisa, edita o borra todo en la Configuración, o apaga la
 memoria por completo.
 
-Las habilidades son recetas guardadas — convierte una conversación terminada en una habilidad
+Las habilidades son recetas guardadas — convierte un chat terminado en una habilidad
 reutilizable, escribe una a mano, o importa una en markdown desde una URL. Una habilidad ligada a
 un sitio se ofrece automáticamente cuando una tarea empieza allí, y cada una se puede editar,
 exportar, desactivar o eliminar en la Configuración.
 
 Prográmalo — una tarea puede ejecutarse una sola vez a la hora que elijas, cada día, o cada pocos
-minutos dentro de las horas que permitas. Cada programación conserva su propia conversación, así
+minutos dentro de las horas que permitas. Cada programación conserva su propio chat, así
 que una ejecución recurrente ve lo que hizo la última vez.
+
+Guías paso a paso — añade "y documéntalo" a cualquier tarea y obtendrás una guía para
+compartir, con una captura de cada paso. Esas capturas se guardan en este equipo y nunca
+entran en el chat que se envía al modelo, así que una grabación no puede llegar a tu
+proveedor. Si la grabación queda incompleta, la guía lo dice en su propia introducción.
+Vienen activadas; apágalas en la Configuración.
 
 CÓMO FUNCIONA
 
@@ -285,7 +305,7 @@ PRIVADO POR DISEÑO
 
 No existe ningún servidor de TabRunner. La extensión habla directamente con tu proveedor.
 
-La configuración del proveedor y el historial de conversaciones viven en chrome.storage, en este
+La configuración del proveedor y el historial de chats viven en chrome.storage, en este
 dispositivo.
 
 El modelo nunca recibe el HTML crudo — trabaja con un árbol semántico compacto de la página, y los
@@ -301,7 +321,7 @@ pretende hacer.
 Pregunta antes de actuar — las acciones con consecuencias (pagar, enviar, eliminar) vuelven a ti
 para confirmarlas en el panel antes de ocurrir.
 
-Detener es detener — Esc o el botón Detener termina la ejecución al instante; lo que ya hayas
+Detener es detener — Esc o el botón Detener termina la tarea al instante; lo que ya hayas
 escrito se convierte en la siguiente tarea.
 
 Esfuerzo de razonamiento — fíjalo de none a max por tarea, o déjalo en Auto y TabRunner usa el
@@ -323,9 +343,9 @@ Four **1280×800 PNGs**, uploaded in this order — the first is the card image.
 | #   | Image                                                                                                                             | What it shows                                                                                                                                                                 |
 | --- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | [![Side panel beside a Wikipedia article, task typed but not sent](screenshots/01-side-panel.png)](screenshots/01-side-panel.png) | **Card image.** Wikipedia's "Web browser" article with the side panel beside it, pre-task: the task typed but not yet sent. The panel is the product, not a browser takeover. |
-| 2   | [![A finished run in the panel: plan card, tool trace and summary](screenshots/02-chat.png)](screenshots/02-chat.png)             | A finished run: user bubble, plan card, tool trace, the agent's summary — with the "controlling this tab" badge on the page.                                                  |
+| 2   | [![A finished task in the panel: plan card, tool trace and summary](screenshots/02-chat.png)](screenshots/02-chat.png)            | A finished task: user bubble, plan card, tool trace, the agent's summary — with the "controlling this tab" badge on the page.                                                 |
 | 3   | [![Options page Providers tab with subscription and API-key rows](screenshots/03-providers.png)](screenshots/03-providers.png)    | The options page's Providers tab: subscription rows (Claude, ChatGPT) and an API-key row (DeepSeek), active provider highlighted.                                             |
-| 4   | [![Hacker News with a second conversation and the floating status widget](screenshots/04-chat-2.png)](screenshots/04-chat-2.png)  | Hacker News with a second conversation and the floating status pill bottom-right (task · +1 queued · Hide — the pill itself is the way back to the run).                      |
+| 4   | [![Hacker News with a second chat and the floating status widget](screenshots/04-chat-2.png)](screenshots/04-chat-2.png)          | Hacker News with a second chat and the floating status pill bottom-right (task · +1 queued · Hide — the pill itself is the way back to the task).                             |
 
 Regenerate with `bun run build && bun run shots` — it rewrites all four in place and refreshes the
 site's webp derivatives when `../site` is checked out. Rerun after any UI rebrand and eyeball them
@@ -374,7 +394,7 @@ payment fields and most modern web apps ignore them. The same channel runs the a
 in-page scripts (an approved plan covers every action) and reads the tab's network and console
 activity — addresses and statuses, never response bodies. TabRunner attaches to the single tab the
 user's task is running in and detaches when the task ends. Chrome's "started debugging" banner
-stays visible for the whole run, so the user always knows.
+stays visible for the whole task, so the user always knows.
 ```
 
 **`scripting`**
@@ -390,7 +410,7 @@ keystrokes don't land on a misbehaving page.
 
 ```
 Hosts the extension's entire interface: the panel where the user writes a task, watches each step
-as it happens, answers the agent's questions, and stops the run.
+as it happens, answers the agent's questions, and stops the task.
 ```
 
 **`tabs`**
@@ -419,7 +439,7 @@ agent is working in and close it in one action.
 
 ```
 Stores what the user creates, locally in chrome.storage on their own device: AI provider settings,
-conversation history, standing instructions, remembered facts, scheduled tasks and skill recipes.
+chat history, standing instructions, remembered facts, scheduled tasks and skill recipes.
 Nothing is uploaded — there is no TabRunner server.
 ```
 
@@ -430,7 +450,7 @@ A task adopts the user's current tab, or opens its own when there's no page to w
 working after the side panel closes. A notification reports when a task — including one the user
 scheduled to run on its own — finishes or fails, and when it pauses to ask the user a question
 (for example, before sending something on their behalf). Fired only while the panel is closed —
-never for runs the user stopped themselves.
+never for tasks the user stopped themselves.
 ```
 
 **`alarms`**

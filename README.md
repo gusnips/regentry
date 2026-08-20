@@ -99,8 +99,8 @@ side panel (React) ──Port──▶ background service worker ──▶ provi
 
 An open Port keeps the MV3 service worker alive while the panel is open; with the panel closed
 (after a background submit it closes itself) a periodic alarm holds it through long silences.
-Durable state is written to storage as it changes, and runs keep working with the panel closed —
-stop them from the Run Board or by closing the driven tab.
+Durable state is written to storage as it changes, and tasks keep working with the panel closed —
+stop them from the Tasks band or by closing the driven tab.
 
 ## Development
 
