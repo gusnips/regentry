@@ -157,10 +157,24 @@ export function RunStatus() {
     const finishedNote =
       finishedTokens > 0 ? ` · ${t("run.tokens", { count: formatTokens(finishedTokens) })}` : "";
     const failed = finished.ok === false;
+    // The ink is the panel's one quiet-text pair, not its inverse: this band
+    // carries the verdict, and at neutral-400/500 it read fainter than the gold
+    // measurement beside it — the number out-shouting the outcome.
     return (
-      <div className="arrive flex flex-col gap-0.5 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-500">
+      <div className="arrive flex flex-col gap-0.5 border-t border-neutral-100 px-3 py-1.5 text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
         <div className="flex items-center gap-2">
-          <span className={failed ? "text-red-600 dark:text-red-400" : undefined}>
+          {/* Two states earn an accent here, and only these two: red for a run
+              that failed, gold for the one outcome still asking something of
+              the user. "Done"/"Stopped" want no colour — nothing is owed. */}
+          <span
+            className={
+              awaitingAnswer
+                ? "text-amber-700 dark:text-amber-300"
+                : failed
+                  ? "text-red-600 dark:text-red-400"
+                  : undefined
+            }
+          >
             {awaitingAnswer
               ? t("run.awaitingAnswer")
               : failed
@@ -252,10 +266,14 @@ export function RunStatus() {
             `animation` shorthand and would overwrite each other on one element.
             Truncates: es/pt-BR at 320px would otherwise eat the timer. */}
         <span key={statusLabel} className="arrive min-w-0 flex-1 truncate">
+          {/* Gold, not brand: emerald means the agent is acting, and parked is
+              the opposite — the run is stopped dead on the user. It joins the
+              amber dot beside it, the board's "?" chip and the queue card's
+              amber rail, which already speak for this state everywhere else. */}
           <span
             className={
               parked
-                ? "font-semibold text-brand-700 dark:text-brand-300"
+                ? "font-semibold text-amber-700 dark:text-amber-300"
                 : "shimmer-text font-semibold"
             }
           >

@@ -318,17 +318,37 @@ async function shootPage(url: string, mark?: "badge" | "widget"): Promise<string
   return String(buf);
 }
 
-async function shootPanel(typeIntoComposer?: string): Promise<string> {
+/**
+ * The panel half of a composite — `stageUrl` is the page it will be pasted
+ * beside.
+ *
+ * That argument is load-bearing, not cosmetic. The composer asks whether the
+ * *active* tab is one Chrome blocks (`useRestrictedPage`), and a panel shot on
+ * its own answers "yes" — because the only tab open is the panel's own
+ * `chrome-extension://` page, which genuinely is blocked. The composite then
+ * pasted that warning next to a Wikipedia article, so the store's lead image
+ * said the product could not work on the page beside it, directly under a "This
+ * page" chip saying it would. Parking the real page in front makes the panel
+ * answer about the page the shot actually shows.
+ */
+async function shootPanel(stageUrl: string, typeIntoComposer?: string): Promise<string> {
   const page = await browser.newPage();
   await page.setViewport({ width: PANEL_W, height: H });
   await page.goto(`chrome-extension://${extId}/sidepanel.html`, { waitUntil: "networkidle0" });
   await new Promise((r) => setTimeout(r, 800));
+  // Typed while the panel still holds focus; the stage comes forward after.
   if (typeIntoComposer) {
     await page.click("textarea");
     await page.type("textarea", typeIntoComposer, { delay: 8 });
     await new Promise((r) => setTimeout(r, 300));
   }
+  const stage = await browser.newPage();
+  await stage.goto(stageUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
+  await stage.bringToFront();
+  // The panel re-asks on chrome.tabs.onActivated — give that round trip a beat.
+  await new Promise((r) => setTimeout(r, 600));
   const buf = await page.screenshot({ encoding: "base64" });
+  await stage.close();
   await page.close();
   return String(buf);
 }
@@ -370,17 +390,24 @@ async function composite(page64: string, panel64: string, out: string) {
 }
 
 // ── the captured set (order matches store-listing.md §4) ─────────────────────
+// Each composite's two halves must be looking at the SAME page — the panel asks
+// the active tab what it is, so a mismatch shows up as the panel narrating a
+// page that isn't the one beside it. One constant per shot, used twice.
+const SHOT_01_URL = "https://en.wikipedia.org/wiki/Web_browser";
+const SHOT_02_URL = "https://en.wikipedia.org/wiki/Intelligent_agent";
+const SHOT_04_URL = "https://news.ycombinator.com";
+
 await seed(null); // fresh conversation for the card shot
 await composite(
-  await shootPage("https://en.wikipedia.org/wiki/Web_browser"),
-  await shootPanel("search for LLM browser agents and summarize for me"),
+  await shootPage(SHOT_01_URL),
+  await shootPanel(SHOT_01_URL, "search for LLM browser agents and summarize for me"),
   join(outDir, "01-side-panel.png"),
 );
 
 await seed("c-agents");
 await composite(
-  await shootPage("https://en.wikipedia.org/wiki/Intelligent_agent", "badge"),
-  await shootPanel(),
+  await shootPage(SHOT_02_URL, "badge"),
+  await shootPanel(SHOT_02_URL),
   join(outDir, "02-chat.png"),
 );
 
@@ -405,8 +432,8 @@ await composite(
 
 await seed("c-hn");
 await composite(
-  await shootPage("https://news.ycombinator.com", "widget"),
-  await shootPanel(),
+  await shootPage(SHOT_04_URL, "widget"),
+  await shootPanel(SHOT_04_URL),
   join(outDir, "04-chat-2.png"),
 );
 

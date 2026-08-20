@@ -158,6 +158,12 @@ export function ChatInput() {
   // empty — the moment there's text, ↑ Send/Queue takes the slot back, so the
   // two never compete for the same click.
   const stopVisible = steering && !text.trim();
+  // The paste refusal only holds while the gate does. Nothing else cleared it
+  // until the next send, so a run that ended on its own left a red alert pinned
+  // over the composer naming a rule that had already lifted. Adjusted during
+  // render like the slash menu's state below, not in an effect — the render
+  // that lifts the gate is the one that must not draw the message.
+  if (!steering && attachError !== null) setAttachError(null);
   // Composer sub-state lives in the store alongside the draft: the draft itself
   // has store-side writers (recalls, conversation resets), and those must reset
   // the collapse state too — two copies would drift.
@@ -502,7 +508,10 @@ export function ChatInput() {
   return (
     <div className="flex flex-col gap-2 border-t border-neutral-200 p-3 dark:border-neutral-800">
       {queued.length > 0 && (
-        <div className="flex flex-col gap-1">
+        // Capped and scrolled: nothing bounds how many steers you can queue, and
+        // the transcript is the only `min-h-0 flex-1` sibling — so an unbounded
+        // stack is the composer squeezing the conversation to zero height.
+        <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
           {queued.map((q, i) => (
             <QueueCard
               key={q.id}

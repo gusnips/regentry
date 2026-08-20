@@ -74,7 +74,7 @@ function formatStatus(status: BridgeStatus): string {
       lines.push(
         status.queue.length > 0
           ? "state: idle — nothing is running right now, but the queue below is waiting."
-          : "state: idle — no task has been started in this conversation yet. Start one with run.",
+          : "state: idle — no task has been started in this chat yet. Start one with run.",
       );
       break;
     case "running":
@@ -145,7 +145,7 @@ function formatStatus(status: BridgeStatus): string {
     }
   }
   if (status.state === "done") {
-    lines.push("", `answer: ${status.summary ?? "(the run ended without a closing summary)"}`);
+    lines.push("", `answer: ${status.summary ?? "(the task ended without a closing summary)"}`);
   }
   if (status.state === "error" && status.error) {
     lines.push("", `error: ${status.error}`);
@@ -153,7 +153,7 @@ function formatStatus(status: BridgeStatus): string {
   if (status.state === "running") {
     lines.push(
       "",
-      "next: call get_status again to wait for the next change, or steer to nudge the run.",
+      "next: call get_status again to wait for the next change, or steer to nudge the task.",
     );
   }
 
@@ -229,7 +229,7 @@ server.registerTool(
   {
     title: "Run a browser task",
     description:
-      "Give TabRunner a task to do in the user's real Chrome, with their existing logins and sessions — navigate, read pages, click, type, fill forms, extract data. Describe the goal in plain language, as you would to a person; TabRunner plans and executes the steps itself. Returns immediately: follow the run with get_status. By default the task opens its own background tab (optionally at url), leaving the user's current page alone; pass background: false only when the task is explicitly about what the user is looking at.",
+      "Give TabRunner a task to do in the user's real Chrome, with their existing logins and sessions — navigate, read pages, click, type, fill forms, extract data. Describe the goal in plain language, as you would to a person; TabRunner plans and executes the steps itself. Returns immediately: follow the task with get_status. By default the task opens its own background tab (optionally at url), leaving the user's current page alone; pass background: false only when the task is explicitly about what the user is looking at.",
     inputSchema: {
       task: z.string().describe("What to do, in plain language. Include any URL to start from."),
       url: z
@@ -285,14 +285,14 @@ server.registerTool(
 server.registerTool(
   "get_status",
   {
-    title: "Follow the run",
+    title: "Follow the task",
     description:
       "Where the current task stands: the plan, the steps taken, and — when it ends — the answer, the question it stopped on, or the error. By default this WAITS for the next change instead of returning immediately, so following a ten-minute task costs one call per real event. Keep calling it until state is done, error, or question.",
     inputSchema: {
       wait: z
         .boolean()
         .optional()
-        .describe("Block until the run changes state (default true). false returns immediately."),
+        .describe("Block until the task changes state (default true). false returns immediately."),
       waitSeconds: z
         .number()
         .optional()
@@ -326,7 +326,7 @@ server.registerTool(
   {
     title: "Answer TabRunner's question",
     description:
-      "Reply to the question a run stopped on (state: question) and let it continue. TabRunner stops to ask before consequential actions — paying, sending on the user's behalf, deleting, submitting — so relay the question to the user and send THEIR decision, never your own.",
+      "Reply to the question a task stopped on (state: question) and let it continue. TabRunner stops to ask before consequential actions — paying, sending on the user's behalf, deleting, submitting — so relay the question to the user and send THEIR decision, never your own.",
     inputSchema: { text: z.string().describe("The user's answer, in their words.") },
   },
   async ({ text: answerText }) =>
@@ -345,7 +345,7 @@ server.registerTool(
         );
       }
       link.startRun(result.runId, result.conversationId);
-      return text("Answered — the run continues. Follow it with get_status.");
+      return text("Answered — the task continues. Follow it with get_status.");
     }),
 );
 
@@ -354,7 +354,7 @@ server.registerTool(
   {
     title: "Steer the running task",
     description:
-      "Send a note into a task that is already running — a correction, an extra constraint, a change of approach. It lands between tool calls, so the run absorbs it without restarting. Use this instead of stop+run when the goal is still the same.",
+      "Send a note into a task that is already running — a correction, an extra constraint, a change of approach. It lands between tool calls, so the task absorbs it without restarting. Use this instead of stop+run when the goal is still the same.",
     inputSchema: { text: z.string().describe("The note for the running agent.") },
   },
   async ({ text: note }) =>
@@ -367,7 +367,7 @@ server.registerTool(
 server.registerTool(
   "stop",
   {
-    title: "Stop the run",
+    title: "Stop the task",
     description:
       "Stop the current task. Stopping is normal control flow, not an error, and it leaves the browser exactly as it is — nothing is undone.",
   },
@@ -411,24 +411,24 @@ server.registerTool(
 server.registerTool(
   "new_conversation",
   {
-    title: "Start a fresh thread",
+    title: "Start a fresh chat",
     description:
-      "Forget the current thread and start clean. TabRunner keeps one conversation for this bridge — each run continues the previous ones, so it remembers the pages it visited and what it found. Reset only when the new task has nothing to do with the old one.",
+      "Forget the current chat and start clean. TabRunner keeps one chat for this bridge — each task continues the previous ones, so it remembers the pages it visited and what it found. Reset only when the new task has nothing to do with the old one.",
   },
   async () =>
     withLink(async () => {
       await link.request("newConversation");
       link.reset();
-      return text("New thread — the next run starts with no history.");
+      return text("New chat — the next task starts with no history.");
     }),
 );
 
 server.registerTool(
   "compact",
   {
-    title: "Compact the thread",
+    title: "Compact the chat",
     description:
-      "Summarize this thread's history so far, so every run replays a summary instead of the whole transcript — the raw messages stay in the user's panel; only what the model re-reads changes, and nothing is deleted. Reach for it when a long thread's runs get slow or one dies on a context-length error. Cannot run while a task is in flight.",
+      "Summarize this chat's history so far, so every task replays a summary instead of the whole transcript — the raw messages stay in the user's panel; only what the model re-reads changes, and nothing is deleted. Reach for it when a long chat's tasks get slow or one dies on a context-length error. Cannot run while a task is in flight.",
   },
   async () =>
     withLink(async () => {
@@ -439,9 +439,9 @@ server.registerTool(
         nothing?: boolean;
       }>("compact");
       if (result.nothing)
-        return text("Nothing to compact — this thread is still short enough to replay in full.");
+        return text("Nothing to compact — this chat is still short enough to replay in full.");
       return text(
-        `Compacted ${result.messages} messages — the thread now replays ~${result.after} tokens instead of ~${result.before}.`,
+        `Compacted ${result.messages} messages — the chat now replays ~${result.after} tokens instead of ~${result.before}.`,
       );
     }),
 );
@@ -515,11 +515,11 @@ server.registerTool(
   {
     title: "Start driving the browser yourself",
     description:
-      "Open a direct-control session and get the first page snapshot. Use this instead of run when you want to drive step by step rather than hand TabRunner the whole task — run is still the better choice for anything long or open-ended, because TabRunner's own model plans it. State the goal: it names the conversation the user will see in TabRunner's history, and every action you take is recorded under it. IMPORTANT: driving directly bypasses TabRunner's own model and its rule of stopping to ask before consequential actions — so paying, sending on the user's behalf, deleting, or submitting is yours to put to the user first.",
+      "Open a direct-control session and get the first page snapshot. Use this instead of run when you want to drive step by step rather than hand TabRunner the whole task — run is still the better choice for anything long or open-ended, because TabRunner's own model plans it. State the goal: it names the chat the user will see in TabRunner's history, and every action you take is recorded under it. IMPORTANT: driving directly bypasses TabRunner's own model and its rule of stopping to ask before consequential actions — so paying, sending on the user's behalf, deleting, or submitting is yours to put to the user first.",
     inputSchema: {
       goal: z
         .string()
-        .describe("What you're setting out to do, in the user's terms. Titles the conversation."),
+        .describe("What you're setting out to do, in the user's terms. Titles the chat."),
     },
   },
   async ({ goal }) =>

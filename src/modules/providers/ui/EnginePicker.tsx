@@ -234,7 +234,7 @@ function ModelList({
   if (listed.length === 0) {
     if (loading) {
       return (
-        <div className="px-2 py-1 text-xs text-neutral-400 dark:text-neutral-500">
+        <div className="px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400">
           {t("enginePicker.loadingModels")}
         </div>
       );
@@ -303,7 +303,7 @@ function ModelList({
         </p>
       )}
       {hidden > 0 && (
-        <p className="px-2 py-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+        <p className="px-2 py-1 text-[11px] text-neutral-500 dark:text-neutral-400">
           {t("enginePicker.moreModels", { n: hidden })}
         </p>
       )}
@@ -312,7 +312,7 @@ function ModelList({
       {provider.model && !listed.some((m) => m.id === provider.model) && (
         <Row selected onClick={() => onPick(provider.model)} title={t("modelPicker.notListed")}>
           <span className="min-w-0 truncate">{provider.model}</span>
-          <span className="ml-auto shrink-0 text-[10px] text-neutral-400 dark:text-neutral-500">
+          <span className="ml-auto shrink-0 text-[10px] text-neutral-500 dark:text-neutral-400">
             {t("modelPicker.notListed")}
           </span>
         </Row>

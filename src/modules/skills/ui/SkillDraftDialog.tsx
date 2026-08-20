@@ -55,7 +55,7 @@ function DraftBody({ conversationId }: { conversationId: string | null }) {
 
   if (stage.kind === "working") {
     return (
-      <p className="animate-pulse py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+      <p className="animate-pulse py-6 text-center text-sm text-neutral-500 motion-reduce:animate-none dark:text-neutral-400">
         {t("skills.draft.working")}
       </p>
     );

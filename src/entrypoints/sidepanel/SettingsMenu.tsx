@@ -80,7 +80,10 @@ export function SettingsMenu() {
               </Section>
               <div className="flex items-center justify-between gap-3 px-1 py-1.5">
                 <div className="min-w-0">
-                  <div className="text-[11px] font-medium tracking-wide text-neutral-400 uppercase dark:text-neutral-500">
+                  {/* A control's label, not a Section overline — wearing the
+                      heading type made the menu read as a third section whose
+                      only content was a switch floating beside its own title. */}
+                  <div className="text-xs font-medium text-neutral-700 dark:text-neutral-200">
                     {t("settings.showWidget")}
                   </div>
                   <div className="mt-0.5 text-[11px] leading-snug text-neutral-500 dark:text-neutral-400">

@@ -90,21 +90,21 @@ Delegating is the better path for anything long or open-ended — TabRunner's ow
 you pay one MCP turn instead of one per click. But sometimes you want the clicks. `browser_start`
 opens a direct-control session, and every `browser_*` tool drives the real tab:
 
-| Tool                                        | What it does                                                                                     |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `browser_start(goal)`                       | Take the wheel, and get the first snapshot. The goal names the conversation the user sees.       |
-| `browser_snapshot()`                        | The page as an accessibility tree, with a `ref` on every interactive element.                    |
-| `browser_network_requests(filter?, limit?)` | What the tab asked the network — method, URL, status, failures. No bodies.                       |
-| `browser_console_messages(errors?, limit?)` | The tab's console output and uncaught exceptions.                                                |
-| `browser_navigate(url)`                     | Go somewhere.                                                                                    |
-| `browser_click(ref)`                        | Click by ref — a real trusted event, not a synthetic dispatch.                                   |
-| `browser_type(text)`                        | Type into whatever is focused (click the field first).                                           |
-| `browser_fill(ref, text)`                   | Set a field's value by ref — lands where typed keystrokes don't; `""` clears.                    |
-| `browser_evaluate(js)`                      | Run JS in the page — attributes, shadow DOM, the page's own fetch. Bounded, credential-stripped. |
-| `browser_press_key(key)`                    | `Enter`, `Escape`, `Tab`, an arrow.                                                              |
-| `browser_scroll(direction, amount?)`        | Content below the fold isn't in a snapshot until you scroll to it.                               |
-| `browser_tabs()` / `browser_switch_tab(id)` | Find another tab, re-target every later action at it.                                            |
-| `browser_end()`                             | Hand the browser back.                                                                           |
+| Tool                                             | What it does                                                                                     |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `browser_start(goal)`                            | Take the wheel, and get the first snapshot. The goal names the conversation the user sees.       |
+| `browser_snapshot()`                             | The page as an accessibility tree, with a `ref` on every interactive element.                    |
+| `browser_network_requests(url_filter?, limit?)`  | What the tab asked the network — method, URL, status, failures. No bodies.                       |
+| `browser_console_messages(only_errors?, limit?)` | The tab's console output and uncaught exceptions.                                                |
+| `browser_navigate(url)`                          | Go somewhere.                                                                                    |
+| `browser_click(ref)`                             | Click by ref — a real trusted event, not a synthetic dispatch.                                   |
+| `browser_type(text)`                             | Type into whatever is focused (click the field first).                                           |
+| `browser_fill(ref, text)`                        | Set a field's value by ref — lands where typed keystrokes don't; `""` clears.                    |
+| `browser_evaluate(expression)`                   | Run JS in the page — attributes, shadow DOM, the page's own fetch. Bounded, credential-stripped. |
+| `browser_press_key(key)`                         | `Enter`, `Escape`, `Tab`, an arrow.                                                              |
+| `browser_scroll(direction, amount?)`             | Content below the fold isn't in a snapshot until you scroll to it.                               |
+| `browser_tabs()` / `browser_switch_tab(tab_id)`  | Find another tab, re-target every later action at it.                                            |
+| `browser_end()`                                  | Hand the browser back.                                                                           |
 
 Every verb goes through the **same `executeTool` the agent loop uses** — one browser
 implementation, no second catalog to drift. On the wire they all arrive as a single `browserAct`
@@ -167,17 +167,17 @@ in order as the slot frees. Only direct-control sessions refuse a second starter
 
 Every failure comes back as text that says what happened, why, and what to do next.
 
-| Situation                          | What you get                                                                                                                                    |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Extension not connected            | How to enable the bridge (Settings → MCP), install the extension, and wake the worker. It reconnects on its own within ~30s.                    |
-| A different extension connected    | The id that connected, and the env var to accept it (a dev build has its own id).                                                               |
-| No provider configured             | `health` says so up front. Add one in TabRunner's settings and pick it in the panel header.                                                     |
-| Provider needs a sign-in or key    | `health` names it and which of the two it wants. Direct `browser_*` control keeps working without a provider.                                   |
-| No tab to drive                    | Open a tab in the window you want TabRunner to work in.                                                                                         |
-| A run is already going             | Your task queues behind it (position reported, `get_status` shows the line) — a direct session is the only case that still refuses.             |
-| The link drops mid-run             | **The run keeps going.** The extension reconnects and re-syncs; `get_status` picks up where it left off. A long task survives a daemon restart. |
-| Chrome suspends the worker mid-run | Reported as an interrupted run, not left polling a ghost. A keepalive alarm holds the worker while tasks are up, so this should be rare.        |
-| Another daemon owns the port       | Which port, and how to give this one its own. Every MCP client spawns its own daemon, so this is normal with two clients open.                  |
+| Situation                          | What you get                                                                                                                                                   |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Extension not connected            | How to enable the bridge (Settings → MCP), install the extension, and wake the worker. It reconnects on its own within ~30s.                                   |
+| A different extension connected    | The id that connected, and the env var to accept it (a dev build has its own id).                                                                              |
+| No provider configured             | `health` says so up front. Add one in TabRunner's settings and pick it in the panel header.                                                                    |
+| Provider needs a sign-in or key    | `health` names it and which of the two it wants. Direct `browser_*` control keeps working without a provider.                                                  |
+| No tab to drive                    | Open a tab in the window you want TabRunner to work in.                                                                                                        |
+| A run is already going             | Your task queues behind it (position reported, `get_status` shows the line) — a direct session is the only case that still refuses.                            |
+| The link drops mid-run             | **The run keeps going.** The extension reconnects and re-syncs; `get_status` picks up where it left off. A long task survives a daemon restart.                |
+| Chrome suspends the worker mid-run | Reported as an interrupted run, not left polling a ghost. A 30s keepalive alarm holds the worker for as long as the bridge is enabled, so this should be rare. |
+| Another daemon owns the port       | Which port, and how to give this one its own. Every MCP client spawns its own daemon, so this is normal with two clients open.                                 |
 
 ## Security
 

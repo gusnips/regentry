@@ -91,9 +91,9 @@ export function ArtifactCard({ artifact }: { artifact: ArtifactPayload }) {
             {flag && (
               // Gold: a recording that stopped short is a measurement of what
               // was caught, not a failure — and never a silent one.
-              <span className="text-telemetry shrink-0 rounded-full bg-amber-400/15 px-1.5">
-                {flag}
-              </span>
+              // `telemetry` is a theme.css @utility, not a color token — as
+              // `text-telemetry` it compiled to nothing and the flag went grey.
+              <span className="telemetry shrink-0 rounded-full bg-amber-400/15 px-1.5">{flag}</span>
             )}
           </div>
         </div>

@@ -137,7 +137,7 @@ run. So watching produces a recipe in words — "open the expense tool, pick the
 match it to the card charge" — and the agent re-solves the page every time. Brittleness is what
 macro recorders sell; resilience is what we sell.
 
-**What is genuinely hard about the watch half.** Documented runs key every frame off a tool call,
+**What is genuinely hard about the watch half.** Walkthroughs key every frame off a tool call,
 which is what lets a caption say "Click Compose" instead of "click #btn-42". A watched user makes
 no tool calls, so that advantage has to be recovered a different way: our own snapshot already
 names elements readably, page-side (`browser/snapshot-script.ts`), so a click listener can resolve
@@ -238,13 +238,13 @@ them to arbitrary files is most of the work.
 
 ---
 
-### 7. Documented-run follow-ups
+### 7. Walkthrough follow-ups
 
 `walkthrough/` shipped in v0.5.2: the agent performs a process and hands back a self-contained HTML
 guide. These are the pieces deliberately left out of that first cut, roughly in the order they earn
 their keep. Watch-and-repeat (#3) is the destination all of this is walking toward.
 
-**Skill emission** — the bridge to #3, and the shortest path to it. A documented run already holds
+**Skill emission** — the bridge to #3, and the shortest path to it. A walkthrough already holds
 everything `skills/distill.ts` needs, so "also save this as a Skill?" on the artifact card is
 mostly wiring: a `skillOfferPref` of `ask` / `always` / `never`, defaulting to `ask`, with the
 first-time offer inline on the card. `always` skips the ask, never the editable review — an

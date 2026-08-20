@@ -46,7 +46,7 @@ export function Onboarding() {
         }
       />
       <p
-        className="rise-in mt-2.5 max-w-[300px] text-[11px] leading-relaxed text-neutral-400 dark:text-neutral-500"
+        className="rise-in mt-2.5 max-w-[300px] text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400"
         style={{ animationDelay: "370ms" }}
       >
         {t("onboarding.presetsNote", { count: PRESETS.length })}

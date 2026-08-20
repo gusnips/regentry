@@ -174,17 +174,34 @@ export default function App() {
           <ClosePanelButton />
         </div>
       </header>
-      {needsProvider ? (
+      {/* Nothing until the provider list resolves. `needsProvider` needs
+          `loaded` to mean anything, so falling through to the chat while it is
+          still false shows a fresh install one frame of a composer it cannot
+          use before Onboarding replaces it. */}
+      {!loaded ? (
+        <div className="flex-1" />
+      ) : needsProvider ? (
         <Onboarding />
-      ) : historyOpen ? (
-        <ConversationList onClose={() => setHistoryOpen(false)} />
       ) : (
-        <>
-          <RunBoard />
-          <MessageList />
-          <RunStatus />
-          <ChatInput />
-        </>
+        // Keyed on the branch so the body swap gets the same beat the options
+        // rail got — this is the higher-traffic of the two by a wide margin, and
+        // it was the one still hard-cutting. Onboarding stays outside the key:
+        // it owns a staggered `rise-in` ladder and would be animated twice.
+        <div
+          key={historyOpen ? "history" : "chat"}
+          className="arrive flex min-h-0 flex-1 flex-col"
+        >
+          {historyOpen ? (
+            <ConversationList onClose={() => setHistoryOpen(false)} />
+          ) : (
+            <>
+              <RunBoard />
+              <MessageList />
+              <RunStatus />
+              <ChatInput />
+            </>
+          )}
+        </div>
       )}
       {/* One instance for all three doors (/help, "?", the settings item) —
           portaled, so its tree position carries no layout weight. */}

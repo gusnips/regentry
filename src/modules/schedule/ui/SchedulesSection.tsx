@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
 import { CometPose } from "@/components/CometPose";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Switch } from "@/components/Switch";
 import { Icon, TrashIcon } from "@/components/Icon";
 import { useStoredItem } from "@/components/useStoredItem";
@@ -127,8 +128,7 @@ export function SchedulesSection() {
 
       {schedules.length === 0 ? (
         <div className="mt-3 flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-3 dark:bg-neutral-900/50">
-          {/* Gold and holding station — a schedule is work on the clock. */}
-          <CometPose pose="waiting" size={40} className="shrink-0" />
+          <CometPose pose="resting" size={40} className="shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
               {t("schedule.ui.emptyTitle")}
@@ -162,20 +162,23 @@ export function SchedulesSection() {
                     <span>{describeRecurrence(s.recurrence)}</span>
                     <span aria-hidden="true">·</span>
                     {/* Gold measures, per the two-lights rule — so it carries the
-                        live number, and nothing else. "Paused" is a state, not a
-                        measurement, and a held row's stale next-fire is not a
-                        time anything will happen at. */}
+                        next-fire time, and nothing else. "Paused" and "Queued"
+                        are states rather than measurements, "Running" is the
+                        action state and therefore emerald's, and a held row's
+                        stale next-fire is not a time anything will happen at.
+                        `tabular-nums` travels with the number for the same
+                        reason: it is the only branch that has one. */}
                     {held ? (
                       <span className="font-medium">{t("schedule.ui.paused")}</span>
+                    ) : running ? (
+                      <span className="font-medium text-brand-700 dark:text-brand-400">
+                        {t("schedule.ui.running")}
+                      </span>
+                    ) : queued ? (
+                      <span className="font-medium">{t("schedule.ui.queued")}</span>
                     ) : (
                       <span className="telemetry tabular-nums">
-                        {running
-                          ? t("schedule.ui.running")
-                          : queued
-                            ? t("schedule.ui.queued")
-                            : t("schedule.ui.next", {
-                                when: formatWhen(s.nextFireAt, i18n.language),
-                              })}
+                        {t("schedule.ui.next", { when: formatWhen(s.nextFireAt, i18n.language) })}
                       </span>
                     )}
                     {s.lastRun && (
@@ -237,15 +240,29 @@ export function SchedulesSection() {
                       <path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" />
                     </Icon>
                   </Button>
-                  <Button
-                    variant="ghost-danger"
-                    size="sm"
-                    aria-label={t(running ? "schedule.ui.deleteRunning" : "schedule.ui.delete")}
-                    title={t(running ? "schedule.ui.deleteRunning" : "schedule.ui.delete")}
-                    onClick={() => void remove(s, running)}
-                  >
-                    <TrashIcon />
-                  </Button>
+                  {/* Confirmed, like the skill list's delete — and this one has
+                      the stronger claim on a gate: a schedule is authored through
+                      the panel's plan gate, so it cannot be re-made from here,
+                      and deleting a live one stops the task mid-flight. */}
+                  <ConfirmDialog
+                    trigger={
+                      <Button
+                        variant="ghost-danger"
+                        size="sm"
+                        aria-label={t(
+                          running ? "schedule.ui.deleteRunning" : "schedule.ui.delete",
+                        )}
+                        title={t(running ? "schedule.ui.deleteRunning" : "schedule.ui.delete")}
+                      >
+                        <TrashIcon />
+                      </Button>
+                    }
+                    title={t("schedule.ui.deleteTitle")}
+                    description={t(
+                      running ? "schedule.ui.deleteBodyRunning" : "schedule.ui.deleteBody",
+                    )}
+                    onConfirm={() => void remove(s, running)}
+                  />
                 </div>
               </li>
             );

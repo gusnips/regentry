@@ -139,7 +139,7 @@ never reach the service-worker bundle.
   pasted markdown — fetched from the page context, https-only, size-capped, always previewed in
   full before saving (untrusted prose headed for the system prompt). Managed in Settings →
   Skills. Background-only except `ui/`.
-- `walkthrough/` — documented runs: "do X and document it" turns the run into a shareable
+- `walkthrough/` — walkthroughs: "do X and document it" turns the task into a shareable
   step-by-step guide. The model arms it with the `document` tool (offered only while
   `walkthroughsEnabled`, the `buildToolDefs` gate); ungated bookkeeping, since capture changes
   nothing on the page. Frames come from `Page.captureScreenshot` over the session the run already

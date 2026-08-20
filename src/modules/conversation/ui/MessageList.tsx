@@ -1235,11 +1235,17 @@ function Transcript() {
       </MessageScrollerViewport>
       {offEnd && (
         // Centered by a full-width flex row rather than `left-1/2
-        // -translate-x-1/2`: `arrive` animates `transform`, and with
-        // `fill-mode: both` it would hold `transform: none` afterwards and strip
-        // the centering off the button for good. The row ignores pointer events
-        // so it can span the viewport without swallowing clicks on the
-        // transcript underneath it.
+        // -translate-x-1/2`. Not because the two would collide — Tailwind v4
+        // compiles `-translate-x-1/2` to the standalone `translate` property
+        // (see the note in `components/chrome.ts`), which `arrive`'s filled
+        // `transform: none` cannot strip. The row is simply the sturdier
+        // centering, and it keeps the button clear of the real hazard of
+        // `fill-mode: both`: a filled animation pins `transform` AND `opacity`
+        // at animation-origin priority, which outranks author declarations — so
+        // what it defeats is a raw `transform:` (inline, arbitrary-value, or an
+        // SVG `transform` attribute) and any `opacity-*` utility on the same
+        // element. The row also ignores pointer events, so it can span the
+        // viewport without swallowing clicks on the transcript underneath it.
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
           <Button
             variant="ghost"

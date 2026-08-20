@@ -247,25 +247,24 @@ function BehaviorPane() {
           setting that decides whether pictures of the user's browser are
           written to disk, and burying it under "background tasks" would hide
           the one knob a privacy-minded user comes here for. */}
+      {/* One control, so the switch rides the heading. The other sections pair a
+          category heading with differently-named rows under it; this one has a
+          single row named after its own section, so the intermediate label was
+          the same words twice, 12px apart, and read as a rendering bug. */}
       <section className="mt-8">
-        <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-          {t("settings.walkthroughs")}
-        </h2>
-        <div className="mt-3 flex items-start justify-between gap-4">
-          <div>
-            <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
-              {t("settings.walkthroughs")}
-            </div>
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              {t("settings.walkthroughsHint")}
-            </p>
-          </div>
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+            {t("settings.walkthroughs")}
+          </h2>
           <Switch
             checked={walkthroughs}
             onChange={(v) => void walkthroughsEnabled.set(v)}
             ariaLabel={t("settings.walkthroughs")}
           />
         </div>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          {t("settings.walkthroughsHint")}
+        </p>
       </section>
 
       {/* Panel-only chrome — nothing here touches a background run. */}

@@ -389,9 +389,9 @@ untrusted prose that will ride the system prompt on matching runs, and a skill i
 badly is user-approved content by construction. Nothing in a body is ever executed or fetched.
 Export is copy-as-markdown, which round-trips through the same parser.
 
-### `walkthrough/` — documented runs
+### `walkthrough/` — walkthroughs
 
-"Do X and document it": the run performs the process and leaves behind a shareable,
+"Do X and document it": the task performs the process and leaves behind a shareable,
 step-by-step guide. The structural advantage over a Scribe-style recorder is that we know
 what each action _meant_ — tool, `intent`, result, click point — so a caption reads "Click
 Compose" where DOM diffing can only manage "click #btn-42". Nothing here infers.
@@ -470,7 +470,7 @@ metadata (id, title, counts, driven tabs) plus one `conversation:<id>` key per t
 conversation: the panel appends by the id it is showing (`appendMessageTo`) and mints a
 fresh thread outright (`appendMessageFresh`), so the worker appends (e.g. a cancelled
 queued run's breadcrumb) the same way. The shared `active-conversation` slot is never a
-routing input — a pill or notification click can re-point it between "New conversation"
+routing input — a pill or notification click can re-point it between "New chat"
 and the first keystroke, and an append that resolved it would file the fresh opener under
 the thread the user just left (the "conversation switched itself" bug). The `run` command
 carries the adopted conversation id for the same reason: the run files where its task

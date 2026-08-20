@@ -60,10 +60,14 @@ export function MemorySection() {
         </label>
       </div>
 
+      {/* Deliberately NOT the `attention` gold, and deliberately the same parked
+          pose as the empty state below. The user just chose this. Gold is for
+          states that ask something of them, and a caution treatment on a privacy
+          preference editorializes a call that is theirs to make — the toggle
+          that reverses it is 40px above. */}
       {!enabled && (
-        <div className="attention mt-3 flex items-center gap-2 rounded-lg px-3 py-2">
-          {/* Leaned back off the direction of travel: this one genuinely can't go. */}
-          <CometPose pose="blocked" size={36} className="shrink-0" />
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-2 dark:bg-neutral-900/50">
+          <CometPose pose="resting" size={40} className="shrink-0" />
           <p className="min-w-0 text-xs text-neutral-700 dark:text-neutral-300">
             {t("memory.off")}
           </p>

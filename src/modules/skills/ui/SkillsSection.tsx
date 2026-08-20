@@ -95,7 +95,7 @@ export function SkillsSection() {
                       </span>
                     ))
                   ) : (
-                    <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
                       {t("skills.everySite")}
                     </span>
                   )}

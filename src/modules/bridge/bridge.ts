@@ -245,7 +245,7 @@ export class Bridge {
     // steer — the message would land in a queue nothing drains.
     const run = getActiveRun();
     if (this.direct.open || !run || run.owner !== "bridge") {
-      this.fail(requestId, "no-run", "No run is in progress to steer. Start one with run.");
+      this.fail(requestId, "no-run", "No task is in progress to steer. Start one with run.");
       return;
     }
     run.injectedQueue.push({ id: crypto.randomUUID(), text });
@@ -341,7 +341,7 @@ export class Bridge {
       this.fail(
         requestId,
         "run-in-progress",
-        "This thread has a run in progress — stop it first, then start the new one.",
+        "This chat has a task in progress — stop it first, then start the new one.",
       );
       return;
     }
@@ -359,7 +359,7 @@ export class Bridge {
       this.fail(
         requestId,
         "nothing-to-compact",
-        "This thread has no history yet — it starts on the first run.",
+        "This chat has no history yet — it starts on the first task.",
       );
       return;
     }
@@ -371,7 +371,7 @@ export class Bridge {
       this.fail(
         requestId,
         "run-in-progress",
-        "This thread has a run in progress — compact once it finishes.",
+        "This chat has a task in progress — compact once it finishes.",
       );
       return;
     }

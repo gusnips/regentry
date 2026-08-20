@@ -46,12 +46,19 @@ export function ProviderList() {
 
   if (!loaded) return null;
 
+  // The page's other empty states are informational; this one blocks — you
+  // cannot run anything until it is filled — so it keeps the centred CTA
+  // layout. It does not keep a card material of its own: one dashed border on a
+  // page of solid ones read as a different component.
   if (providers.length === 0) {
     return (
-      <div className="arrive rounded-lg border border-dashed border-neutral-300 p-6 text-center dark:border-neutral-700">
-        {/* The one empty state on this page that is asking for a goal, so it
-            gets the pose with somewhere to be. */}
-        <CometPose pose="ready" size={52} className="mx-auto mb-2" />
+      <div className="arrive rounded-lg bg-neutral-50 p-6 text-center dark:bg-neutral-900/50">
+        {/* Parked, not `ready`. Zero providers is the one state where TabRunner
+            genuinely cannot go anywhere, so a comet at the head of a live route
+            toward a target promises motion the product can't make yet. `ready`
+            belongs to the empty chat and nowhere else — it is the tagline drawn,
+            and it means something because it appears exactly once. */}
+        <CometPose pose="resting" size={44} className="mx-auto mb-2" />
         <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
           {t("providerList.emptyTitle")}
         </div>

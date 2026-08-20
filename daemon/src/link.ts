@@ -24,7 +24,7 @@ export const NOT_CONNECTED =
   "Fix: enable the bridge under TabRunner's Settings → MCP, then open its side panel once to wake the worker. It reconnects on its own within ~30s — call health again then.";
 
 const WORKER_GONE =
-  "The run stopped: Chrome suspended or restarted TabRunner's service worker while it was working.\n" +
+  "The task stopped: Chrome suspended or restarted TabRunner's service worker while it was working.\n" +
   "Fix: send the task again with run. Keeping the side panel open while a long task runs prevents this.";
 
 const TIMED_OUT =

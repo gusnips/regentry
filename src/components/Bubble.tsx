@@ -11,8 +11,15 @@ const VARIANTS: Record<Variant, string> = {
    *  lighter than the assistant's card — so a thread of them reads as a ladder
    *  of highlighter slabs sitting above the answers the user came for. brand-900
    *  stays unmistakably the user's, and lets the ink run light like every other
-   *  string in the panel (5.97:1 → 9.2:1). */
-  user: "bg-brand-500 text-brand-950 dark:bg-brand-900 dark:text-brand-50",
+   *  string in the panel (5.97:1 → 9.2:1).
+   *
+   *  Also the one variant that carries `whitespace-pre-wrap`: its child is the
+   *  raw text the user typed, so its newlines are the message. Every other
+   *  variant's child is parsed markdown (or its own `<pre>`), where the newlines
+   *  BETWEEN block elements are just source formatting — under `pre-wrap` each
+   *  one draws an empty line box, so a bullet list grew blank rows and model
+   *  prose broke at the model's column instead of the panel's. */
+  user: "bg-brand-500 text-brand-950 whitespace-pre-wrap dark:bg-brand-900 dark:text-brand-50",
   secondary: "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100",
   muted: "bg-neutral-100 dark:bg-neutral-800",
   /** An error is a notice, not an alarm: a whisper of red for shape, neutral
@@ -36,7 +43,7 @@ export function Bubble({
       data-slot="bubble"
       data-variant={variant}
       data-align={align}
-      className={`flex w-fit max-w-[85%] min-w-0 flex-col rounded-lg px-3 py-2 text-sm break-words whitespace-pre-wrap data-[align=end]:self-end ${VARIANTS[variant]} ${className}`}
+      className={`flex w-fit max-w-[85%] min-w-0 flex-col rounded-lg px-3 py-2 text-sm break-words data-[align=end]:self-end ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );

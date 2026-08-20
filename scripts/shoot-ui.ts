@@ -161,12 +161,13 @@ async function seedConversation() {
           tool: "snapshot",
           ok: true,
           content: "",
-          detail: "Captured 214 elements",
+          detail: "Read 214 elements",
         }),
         msg({ role: "step", tool: "click", ok: true, content: "", args: { ref: "e42" } }),
         msg({
           role: "error",
-          content: "The tab this task was driving (Inbox — webmail) was closed — the run stopped.",
+          content:
+            "The tab this task was driving (Inbox — webmail) was closed, so the task stopped. TabRunner needs the tab to stay open — reopen the page and send the task again.",
           kind: "network",
         }),
         msg({
@@ -206,7 +207,7 @@ async function seedLongThread() {
         tool: "snapshot",
         ok: true,
         content: "",
-        detail: "Captured 118 elements",
+        detail: "Read 118 elements",
       }),
       msg({ role: "step", tool: "click", ok: true, content: "", args: { ref: "e12" } }),
       msg({ role: "assistant", content: `Order #${1000 + i} ships on the 12th.` }),
