@@ -33,14 +33,15 @@ function esc(s: string): string {
 }
 
 /**
- * What the reader needs before step 1. Derived, not guessed: the run worked on
- * these hosts with the user's own sessions, so a reader who is not signed in
- * will fall off at the first step and never know why.
+ * What the reader needs before step 1, and the only place the sites appear.
+ * Derived, not guessed: the run worked on these hosts with the user's own
+ * sessions, so a reader who is not signed in falls off at the first step and
+ * never learns why. Naming them inside the sentence that says why they matter
+ * beats a row of host chips repeating the same words with none of the reason.
  */
 function prerequisite(recording: Recording): string | null {
-  const [host] = recording.sites;
-  if (!host) return null;
-  return i18n.t("walkthrough.doc.prerequisite", { host });
+  if (recording.sites.length === 0) return null;
+  return i18n.t("walkthrough.doc.prerequisite", { hosts: recording.sites.join(", ") });
 }
 
 /**
@@ -77,8 +78,14 @@ function marker(step: DocStep): string {
 
 function stepHtml(step: DocStep, images: Map<number, string>): string {
   const image = images.get(step.frame.seq);
+  // The caption is the line directly above the picture; repeating it as alt
+  // text makes a screen reader say every step twice. What the image adds is
+  // which screen this is, so that is what it says.
+  const alt = step.frame.title
+    ? i18n.t("walkthrough.doc.shotAlt", { title: step.frame.title })
+    : step.caption;
   const shot = image
-    ? `<div class="shot">${marker(step)}<img src="${image}" alt="${esc(step.caption)}" loading="lazy"></div>`
+    ? `<div class="shot">${marker(step)}<img src="${image}" alt="${esc(alt)}"></div>`
     : `<div class="shot missing">${esc(i18n.t("walkthrough.doc.missingShot"))}</div>`;
   const value = step.value ? `<p class="value"><code>${esc(step.value)}</code></p>` : "";
   return `<li class="step">
@@ -95,7 +102,9 @@ export function buildDocHtml(input: DocInput): string {
     recording.endedAt && recording.endedAt > recording.startedAt
       ? formatDuration(recording.endedAt - recording.startedAt)
       : null;
-  const date = new Date(recording.startedAt).toLocaleDateString(undefined, {
+  // The document's own language, not the machine's: an English walkthrough
+  // with "19 de agosto de 2025" in its header was written by nobody.
+  const date = new Date(recording.startedAt).toLocaleDateString(i18n.language, {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -112,19 +121,21 @@ export function buildDocHtml(input: DocInput): string {
   // Light-first: this file gets printed, pasted into wikis, and opened by
   // people who have never heard of us. The dark variant is a courtesy for
   // reading it on screen, never the document's identity.
-  return `<meta charset="utf-8">
+  return `<!doctype html>
+<html lang="${esc(i18n.language)}">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(recording.title)}</title>
 <style>
   :root {
     --bg: #ffffff; --panel: #f7f8fb; --ink: #10162a; --muted: #5b6480;
-    --line: #e2e6f0; --brand: #059669; --brand-soft: #d1fae5; --note: #fffbeb;
+    --line: #e2e6f0; --brand: #047857; --note: #fffbeb;
     --note-line: #fcd34d; --note-ink: #713f12;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0b1224; --panel: #131b31; --ink: #e8eefb; --muted: #97a1bd;
-      --line: #263153; --brand: #34d399; --brand-soft: #064e3b; --note: #2a2109;
+      --bg: #0b1224; --panel: #131c33; --ink: #e8eefb; --muted: #97a1bd;
+      --line: #263153; --brand: #34d399; --note: #2a2109;
       --note-line: #a16207; --note-ink: #fde68a;
     }
   }
@@ -135,34 +146,30 @@ export function buildDocHtml(input: DocInput): string {
     -webkit-font-smoothing: antialiased;
   }
   main { max-width: 820px; margin: 0 auto }
-  .eyebrow {
-    font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-    color: var(--brand); margin: 0 0 8px;
-  }
   h1 { font-size: 30px; line-height: 1.25; margin: 0 0 12px; letter-spacing: -.02em }
   .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; color: var(--muted); font-size: 14px; margin: 0 }
   .meta span:not(:last-child)::after { content: "·"; margin-left: 10px }
-  .sites { margin: 14px 0 0; display: flex; flex-wrap: wrap; gap: 6px }
-  .site {
-    font-size: 12px; padding: 3px 9px; border-radius: 999px;
-    background: var(--brand-soft); color: var(--brand); font-weight: 600;
-  }
   .pre, .note {
     margin: 24px 0 0; padding: 12px 16px; border-radius: 10px;
     border: 1px solid var(--line); background: var(--panel); font-size: 14px; color: var(--muted);
   }
   .note { background: var(--note); border-color: var(--note-line); color: var(--note-ink) }
+  .note p { margin: 0 }
   .note ul { margin: 0; padding-left: 18px }
   .note li + li { margin-top: 4px }
   hr { border: 0; border-top: 1px solid var(--line); margin: 32px 0 }
   ol { list-style: none; padding: 0; margin: 0 }
   .step { margin: 0 0 40px; break-inside: avoid }
-  .head { display: flex; align-items: baseline; gap: 12px }
+  .head { display: flex; align-items: flex-start; gap: 12px }
+  /* The one mark that keeps its color in every mode and on paper: a numeral is
+     the shortest label there is, so it can hold the saturated fill the app's
+     primary button holds — and it takes the same dark ink. White on emerald
+     was the old pairing and it failed everywhere (3.8:1 light, 1.9:1 dark). */
   .num {
     flex: none; width: 28px; height: 28px; border-radius: 999px;
-    background: var(--brand); color: #fff; font-size: 14px; font-weight: 700;
+    background: #10b981; color: #022c22; font-size: 14px; font-weight: 700;
     display: inline-flex; align-items: center; justify-content: center;
-    align-self: flex-start; margin-top: 2px;
+    margin-top: 2px;
   }
   h2 { font-size: 18px; font-weight: 600; margin: 0; line-height: 1.4 }
   .value { margin: 10px 0 0 40px }
@@ -187,30 +194,44 @@ export function buildDocHtml(input: DocInput): string {
     border-radius: 999px; background: #34d39933;
     box-shadow: 0 0 0 2px #059669, inset 0 0 0 7px #05966933; pointer-events: none;
   }
-  footer { margin: 48px 0 0; padding-top: 20px; border-top: 1px solid var(--line);
-    color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 12px }
+  footer {
+    margin: 48px 0 0; padding-top: 20px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 13px;
+  }
   footer a { color: var(--brand); text-decoration: none }
+  /* On a phone the 40px step indent is a tenth of the screen, spent hanging a
+     screenshot off a number that is already directly above it. */
+  @media (max-width: 560px) {
+    .value, .shot { margin-left: 0 }
+  }
+  /* Print is the PDF export, so it gets the same care as the screen. Two things
+     would quietly ruin it: Chrome drops backgrounds unless told otherwise —
+     which would drop the step numbers' disc and erase the click marker —
+     and it carries a dark OS theme onto paper. Force the light palette, then
+     force the ink back on for the three marks that ARE their color. */
   @media print {
-    body { padding: 0; background: #fff; color: #000 }
+    :root {
+      --bg: #fff; --panel: #f7f8fb; --ink: #10162a; --muted: #4a5268;
+      --line: #d7dcea; --brand: #047857; --note: #fffbeb;
+      --note-line: #fcd34d; --note-ink: #713f12;
+    }
+    body { padding: 0 }
+    .num, .mark, .note { -webkit-print-color-adjust: exact; print-color-adjust: exact }
     .step { page-break-inside: avoid }
-    .shot { border-color: #ccc }
     footer { page-break-before: avoid }
   }
 </style>
 <main>
-  <p class="eyebrow">${esc(t("walkthrough.doc.eyebrow"))}</p>
   <h1>${esc(recording.title)}</h1>
   <p class="meta">${meta.map((m) => `<span>${esc(m)}</span>`).join("")}</p>
-  ${
-    recording.sites.length > 0
-      ? `<p class="sites">${recording.sites.map((s) => `<span class="site">${esc(s)}</span>`).join("")}</p>`
-      : ""
-  }
   ${pre ? `<p class="pre">${esc(pre)}</p>` : ""}
   ${
-    notes.length > 0
-      ? `<div class="note"><ul>${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>`
-      : ""
+    // A list of one is not a list — the lone bullet reads as a stray mark.
+    notes.length === 0
+      ? ""
+      : notes.length === 1
+        ? `<div class="note"><p>${esc(notes[0] ?? "")}</p></div>`
+        : `<div class="note"><ul>${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>`
   }
   <hr>
   <ol>
@@ -221,10 +242,13 @@ ${steps.map((s) => stepHtml(s, images)).join("\n")}
       ? `<hr><h2>${esc(t("walkthrough.doc.outcome"))}</h2><p>${esc(recording.summary)}</p>`
       : ""
   }
-  <footer>
-    <span>${esc(date)}</span>
-    ${branding ? `<span>${esc(t("walkthrough.doc.madeWith"))} <a href="https://tabrunner.app">TabRunner</a></span>` : ""}
-  </footer>
+  ${
+    // Nothing but the credit lives down here, so unticking it has to take the
+    // rule above it too — an empty bordered footer reads as a lost paragraph.
+    branding
+      ? `<footer>${esc(t("walkthrough.doc.madeWith"))} <a href="https://tabrunner.app" target="_blank" rel="noopener">TabRunner</a></footer>`
+      : ""
+  }
 </main>
 `;
 }

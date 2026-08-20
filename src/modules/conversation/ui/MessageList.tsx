@@ -773,7 +773,7 @@ const MessageBubble = memo(function MessageBubble({
       return (
         <div className="flex flex-col items-end gap-0.5">
           {showTab && msg.tab && <TabStamp tab={msg.tab} />}
-          <Bubble variant="default" align="end" className="gap-1.5">
+          <Bubble variant="user" align="end" className="gap-1.5">
             {msg.images?.map((src, i) => (
               <ZoomableImage
                 key={i}
@@ -916,14 +916,15 @@ export function MessageList() {
         <p className="max-w-[240px] text-xs text-neutral-500 dark:text-neutral-400">
           {t("chat.emptyBody")}
         </p>
-        <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-          {t("chat.emptyExample")}
-        </p>
-        {/* The one feature whose trigger is a phrase rather than a control —
-            without a line here it is only findable by accident. */}
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-          {t("chat.emptyExampleDoc")}
-        </p>
+        {/* The two things worth typing first: one whole task, and the phrase
+            that turns any task into a shareable guide — the one feature whose
+            trigger is a phrase rather than a control, and so findable only by
+            accident without a line here. Same measure as the copy above, so the
+            column reads as one paragraph-width thing rather than three widths. */}
+        <div className="mt-1 flex max-w-[240px] flex-col gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+          <p>{t("chat.emptyExample")}</p>
+          <p>{t("chat.emptyExampleDoc")}</p>
+        </div>
       </div>
     );
   }

@@ -239,7 +239,7 @@
       "clickBare": "Haz clic en el elemento resaltado",
       "fill": "Escribe esto en {{field}}",
       "fillBare": "Rellena el campo",
-      "fillSecret": "Escribe tu propio {{field}}",
+      "fillSecret": "Escribe tu propio valor en {{field}}",
       "fillSecretBare": "Escribe tus propias credenciales",
       "type": "Escribe esto",
       "typeSecret": "Escribe tus propias credenciales",
@@ -248,10 +248,9 @@
       "evaluateIntent": "Ejecuta un script: {{intent}}"
     },
     "doc": {
-      "eyebrow": "Guía paso a paso",
       "stepCount_one": "{{count}} paso",
       "stepCount_other": "{{count}} pasos",
-      "prerequisite": "Antes de empezar: inicia sesión en {{host}} con una cuenta que pueda hacer esto.",
+      "prerequisite": "Antes de empezar: inicia sesión en {{hosts}} con una cuenta que pueda hacer esto.",
       "notePartial": "Esta ejecución se interrumpió, así que la guía termina antes de que el proceso acabara.",
       "noteTruncated": "El proceso fue más largo de lo que cabe en un documento — los últimos pasos no aparecen.",
       "noteLateArm_one": "La documentación empezó tras la primera acción, que no aparece aquí.",
@@ -260,6 +259,7 @@
       "noteStopped": "La ejecución se detuvo a mano antes de terminar.",
       "noteFailed": "La ejecución terminó con un error, así que el último paso puede no haber funcionado.",
       "missingShot": "No se pudo capturar esta pantalla",
+      "shotAlt": "Pantalla: {{title}}",
       "outcome": "Resultado",
       "madeWith": "Hecho con"
     },
@@ -273,6 +273,7 @@
       "review": "Revisa las capturas antes de compartir — muestran todo lo que había en pantalla."
     },
     "viewer": {
+      "tabTitle": "Guía paso a paso",
       "download": "Descargar HTML",
       "branding": "Incluir crédito de TabRunner",
       "loading": "Cargando la guía…",

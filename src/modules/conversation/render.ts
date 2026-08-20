@@ -23,7 +23,7 @@ export function renderTranscriptMessage(m: Message): string {
     // an answer.
     case "artifact":
       return m.artifact
-        ? `WALKTHROUGH saved: ${m.artifact.title} (${m.artifact.frames} steps)`
+        ? `WALKTHROUGH saved: ${m.artifact.title} (${m.artifact.frames} screens captured)`
         : "";
     case "plan":
       return m.steps?.length ? `PLAN: ${m.steps.join(" | ")}` : "";

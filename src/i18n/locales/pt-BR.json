@@ -239,7 +239,7 @@
       "clickBare": "Clique no elemento destacado",
       "fill": "Digite isto em {{field}}",
       "fillBare": "Preencha o campo",
-      "fillSecret": "Digite seu próprio {{field}}",
+      "fillSecret": "Digite seu próprio valor em {{field}}",
       "fillSecretBare": "Digite suas próprias credenciais",
       "type": "Digite isto",
       "typeSecret": "Digite suas próprias credenciais",
@@ -248,10 +248,9 @@
       "evaluateIntent": "Execute um script: {{intent}}"
     },
     "doc": {
-      "eyebrow": "Passo a passo",
       "stepCount_one": "{{count}} passo",
       "stepCount_other": "{{count}} passos",
-      "prerequisite": "Antes de começar: entre em {{host}} com uma conta que possa fazer isso.",
+      "prerequisite": "Antes de começar: entre em {{hosts}} com uma conta que possa fazer isso.",
       "notePartial": "Esta execução foi interrompida, então o passo a passo termina antes do fim do processo.",
       "noteTruncated": "O processo foi mais longo do que cabe em um documento — os passos finais não aparecem.",
       "noteLateArm_one": "A documentação começou após a primeira ação, que não aparece aqui.",
@@ -260,6 +259,7 @@
       "noteStopped": "A execução foi interrompida manualmente antes de terminar.",
       "noteFailed": "A execução terminou com erro, então o último passo pode não ter funcionado.",
       "missingShot": "Não foi possível capturar esta tela",
+      "shotAlt": "Tela: {{title}}",
       "outcome": "Resultado",
       "madeWith": "Feito com"
     },
@@ -273,6 +273,7 @@
       "review": "Confira as capturas antes de compartilhar — elas mostram tudo o que estava na tela."
     },
     "viewer": {
+      "tabTitle": "Passo a passo",
       "download": "Baixar HTML",
       "branding": "Incluir crédito do TabRunner",
       "loading": "Carregando o passo a passo…",

@@ -239,7 +239,7 @@
       "clickBare": "Click the highlighted element",
       "fill": "Enter this in {{field}}",
       "fillBare": "Fill in the field",
-      "fillSecret": "Enter your own {{field}}",
+      "fillSecret": "Enter your own value in {{field}}",
       "fillSecretBare": "Enter your own credentials",
       "type": "Type this",
       "typeSecret": "Type your own credentials",
@@ -248,10 +248,9 @@
       "evaluateIntent": "Run a script: {{intent}}"
     },
     "doc": {
-      "eyebrow": "Walkthrough",
       "stepCount_one": "{{count}} step",
       "stepCount_other": "{{count}} steps",
-      "prerequisite": "Before you start: sign in to {{host}} with an account that can do this.",
+      "prerequisite": "Before you start: sign in to {{hosts}} with an account that can do this.",
       "notePartial": "This run was interrupted, so the walkthrough stops before the process finished.",
       "noteTruncated": "The process ran longer than one document holds — the later steps are not shown.",
       "noteLateArm_one": "Documenting started after the first action, which is not shown.",
@@ -260,6 +259,7 @@
       "noteStopped": "The run was stopped by hand before it finished.",
       "noteFailed": "The run ended on an error, so the last step may not have worked.",
       "missingShot": "This screen could not be captured",
+      "shotAlt": "Screen: {{title}}",
       "outcome": "Result",
       "madeWith": "Made with"
     },
@@ -273,6 +273,7 @@
       "review": "Check the screenshots before sharing — they show whatever was on screen."
     },
     "viewer": {
+      "tabTitle": "Walkthrough",
       "download": "Download HTML",
       "branding": "Include TabRunner credit",
       "loading": "Loading the walkthrough…",

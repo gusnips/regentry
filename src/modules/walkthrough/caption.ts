@@ -51,6 +51,25 @@ export function isPostAction(tool: string): boolean {
   return POST_ACTION_TOOLS.has(tool);
 }
 
+/**
+ * The protocol's modifier names, as a person writes them. `Mod` and `Meta` are
+ * the model's vocabulary (`SUPPORTED_MODIFIERS`), not a reader's — and "Press
+ * Meta+Enter" in a shared document is the mouse-log register this module
+ * exists to avoid. `Mod` keeps both halves because the doc outlives the machine
+ * it was recorded on: the colleague opening it may not be on the same OS.
+ */
+const MODIFIER_LABELS: Record<string, string> = {
+  mod: "Ctrl/Cmd",
+  meta: "Cmd",
+  cmd: "Cmd",
+  command: "Cmd",
+  control: "Ctrl",
+  ctrl: "Ctrl",
+  alt: "Alt",
+  option: "Alt",
+  shift: "Shift",
+};
+
 /** Longer than this and a step title stops being scannable. */
 const MAX_TARGET = 60;
 /** A value a reader copies — long enough for a URL, short of a pasted essay. */
@@ -139,7 +158,9 @@ function captionFor(frame: Frame): { caption: string; value?: string } {
 
     case "press_key": {
       const mods = Array.isArray(args.modifiers)
-        ? args.modifiers.filter((m): m is string => typeof m === "string" && m.trim() !== "")
+        ? args.modifiers
+            .filter((m): m is string => typeof m === "string" && m.trim() !== "")
+            .map((m) => MODIFIER_LABELS[m.trim().toLowerCase()] ?? m.trim())
         : [];
       const key = text(args.key) ?? "";
       return { caption: t("walkthrough.step.pressKey", { keys: [...mods, key].join("+") }) };

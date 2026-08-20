@@ -60,10 +60,37 @@ describe("buildDocHtml", () => {
     expect(html).not.toContain("<script");
   });
 
-  it("prints the prerequisite and the site the process runs on", () => {
+  it("names every site once, inside the sentence that says why it matters", () => {
+    const html = build(recording({ sites: ["reports.example.com", "drive.example.com"] }), [
+      frame(0, "click", { intent: "Export" }),
+    ]);
+    expect(html).toContain("sign in to reports.example.com, drive.example.com");
+    // Once, not twice: a row of host chips above the sentence said the same
+    // words with none of the reason.
+    expect(html.match(/reports\.example\.com/g)).toHaveLength(1);
+  });
+
+  it("declares the document's language so it can be read aloud and translated", () => {
     const html = build(recording(), [frame(0, "click", { intent: "Export" })]);
-    expect(html).toContain("reports.example.com");
-    expect(html).toContain("sign in to reports.example.com");
+    expect(html).toMatch(/^<!doctype html>\n<html lang="[a-zA-Z-]+">/);
+  });
+
+  it("keeps the marks that ARE their color when the doc is printed to PDF", () => {
+    // Chrome drops backgrounds in print unless told otherwise, which would
+    // print the step numbers white-on-white and erase the click marker — and
+    // print IS the PDF export.
+    const html = build(recording(), [frame(0, "click", { intent: "Export" })]);
+    const print = html.slice(html.indexOf("@media print"));
+    expect(print).toContain("print-color-adjust: exact");
+    expect(print).toMatch(/\.num, \.mark, \.note/);
+    // …and it must not carry a dark OS theme onto paper.
+    expect(print).toContain("--bg: #fff");
+  });
+
+  it("describes which screen a shot shows rather than repeating the caption", () => {
+    const html = build(recording(), [frame(0, "click", { intent: "Export" })]);
+    expect(html).toContain('alt="Screen: Q3"');
+    expect(html.match(/Click Export/g)).toHaveLength(1);
   });
 
   it("discloses a partial recording instead of presenting it as whole", () => {
@@ -103,11 +130,13 @@ describe("buildDocHtml", () => {
     expect(html).toContain("could not be captured");
   });
 
-  it("drops the credit when the user unticks it", () => {
+  it("drops the whole footer when the user unticks the credit", () => {
     const withCredit = build(recording(), [frame(0, "go_back", {})], true);
     const without = build(recording(), [frame(0, "go_back", {})], false);
     expect(withCredit).toContain("tabrunner.app");
     expect(without).not.toContain("tabrunner.app");
+    // An empty bordered footer would read as a paragraph that went missing.
+    expect(without).not.toContain("<footer");
   });
 
   it("escapes page-supplied text so a hostile title cannot inject markup", () => {

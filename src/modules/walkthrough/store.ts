@@ -128,23 +128,15 @@ export async function settleFrame(
   seq: number,
   settled: { ok: boolean; click?: { x: number; y: number } },
 ): Promise<void> {
-  const frame = await run<Frame | undefined>(FRAMES, "readonly", (s) =>
-    s.get([recordingId, seq] as unknown as IDBValidKey),
-  );
+  const frame = await run<Frame | undefined>(FRAMES, "readonly", (s) => s.get([recordingId, seq]));
   if (!frame) return;
   await putFrame({ ...frame, ...settled });
 }
 
 /** Every frame of one recording, in capture order. */
 export async function listFrames(recordingId: string): Promise<Frame[]> {
-  const frames = await open().then(
-    (db) =>
-      new Promise<Frame[]>((resolve, reject) => {
-        const tx = db.transaction(FRAMES, "readonly");
-        const req = tx.objectStore(FRAMES).index(BY_RECORDING).getAll(recordingId);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error ?? new Error("indexedDB read failed"));
-      }),
+  const frames = await run<Frame[]>(FRAMES, "readonly", (s) =>
+    s.index(BY_RECORDING).getAll(recordingId),
   );
   return frames.sort((a, b) => a.seq - b.seq);
 }

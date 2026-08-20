@@ -47,12 +47,14 @@ function toDataUrl(blob: Blob): Promise<string> {
  * Problem, cause, fix — the house rule. A viewer opened on a recording that has
  * since been evicted must say why it is gone and what to do, never render blank.
  */
-function renderMessage(title: string, body: string, fix?: string): void {
+function renderMessage(body: string, title?: string, fix?: string): void {
   root.replaceChildren();
   const wrap = el("div", "mx-auto max-w-lg px-6 py-24 text-center");
   if (title)
-    wrap.append(el("h1", "text-lg font-semibold text-neutral-900 dark:text-neutral-100", title));
-  wrap.append(el("p", "mt-2 text-sm text-neutral-600 dark:text-neutral-400", body));
+    wrap.append(
+      el("h1", "mb-2 text-lg font-semibold text-neutral-900 dark:text-neutral-100", title),
+    );
+  wrap.append(el("p", "text-sm text-neutral-600 dark:text-neutral-400", body));
   if (fix) wrap.append(el("p", "mt-1 text-sm text-neutral-600 dark:text-neutral-400", fix));
   root.append(wrap);
 }
@@ -89,14 +91,21 @@ function render(recording: Recording, steps: DocStep[], images: Map<number, stri
   credit.checked = branding;
   creditLabel.append(credit, document.createTextNode(i18n.t("walkthrough.viewer.branding")));
 
+  // No React on this page, so <Button> is out of reach — these are the classes
+  // buttonClasses("primary", "md") paints, focus ring included.
   const download = el(
     "button",
-    "cursor-pointer rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-brand-950 transition-colors hover:bg-brand-600",
+    "cursor-pointer rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-brand-950 transition-colors hover:bg-brand-600 active:bg-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 focus-visible:ring-offset-white focus-visible:outline-none dark:focus-visible:ring-offset-neutral-950",
     i18n.t("walkthrough.viewer.download"),
   );
 
   const frame = el("iframe", "min-h-0 flex-1 border-0 bg-white");
   frame.title = recording.title;
+  // Belt to the CSP's braces: srcdoc would otherwise inherit this page's
+  // extension origin, and the document is built from text the visited pages
+  // supplied. An opaque origin with no scripts; allow-popups only so the
+  // credit link still opens.
+  frame.setAttribute("sandbox", "allow-popups allow-popups-to-escape-sandbox");
 
   credit.addEventListener("change", () => {
     branding = credit.checked;
@@ -123,18 +132,18 @@ function render(recording: Recording, steps: DocStep[], images: Map<number, stri
 async function main(): Promise<void> {
   initTheme();
   await initI18n();
-  document.title = i18n.t("walkthrough.doc.eyebrow");
+  document.title = i18n.t("walkthrough.viewer.tabTitle");
 
   // Decoding a 50-frame document to data URLs takes a moment; a blank tab in
   // the meantime reads as a broken link.
-  renderMessage("", i18n.t("walkthrough.viewer.loading"));
+  renderMessage(i18n.t("walkthrough.viewer.loading"));
 
   const id = recordingIdFromUrl(window.location.href);
   const loaded = id ? await loadRecording(id) : undefined;
   if (!loaded) {
     renderMessage(
-      i18n.t("walkthrough.viewer.missingTitle"),
       i18n.t("walkthrough.viewer.missingBody"),
+      i18n.t("walkthrough.viewer.missingTitle"),
       i18n.t("walkthrough.viewer.missingFix"),
     );
     return;
@@ -143,8 +152,8 @@ async function main(): Promise<void> {
   const steps = buildSteps(loaded.frames);
   if (steps.length === 0) {
     renderMessage(
-      i18n.t("walkthrough.viewer.emptyTitle"),
       i18n.t("walkthrough.viewer.emptyBody"),
+      i18n.t("walkthrough.viewer.emptyTitle"),
       i18n.t("walkthrough.viewer.missingFix"),
     );
     return;
