@@ -1,6 +1,6 @@
 # TabRunner Privacy Policy
 
-_Last updated: 2026-08-08 · Applies to TabRunner for Chromium browsers (Chrome, Brave, Edge, Arc,
+_Last updated: 2026-08-20 · Applies to TabRunner for Chromium browsers (Chrome, Brave, Edge, Arc,
 Opera, Vivaldi)._
 
 **The short version:** TabRunner is a browser agent you run. There is no TabRunner server, no
@@ -23,27 +23,27 @@ namespaced `local:tabrunner:*`):
 - **Provider configuration** — the providers you add (name, base URL, API shape, optional model
   preference) and the **API key** you paste in. Keys are stored locally so you only enter them
   once.
-- **Conversation history** — the transcripts of your tasks, including the task text you typed, the
-  provider's replies, and a record of the actions TabRunner took. The 50 most recent conversations
+- **Chat history** — the transcripts of your tasks, including the task text you typed, the
+  provider's replies, and a record of the actions TabRunner took. The 50 most recent chats
   are kept.
 - **Memory documents** — the optional `AGENTS.md` (your standing instructions) and `MEMORY.md`
   (what TabRunner has learned) files shown in the Settings → Memory panel.
 - **Skills** — the optional recipes shown in Settings → Skills (name, description, sites,
-  instructions), whether written by hand, distilled from a conversation, or imported.
+  instructions), whether written by hand, distilled from a chat, or imported.
 - **Preferences** — theme and language choices.
 
 ## 2. What TabRunner processes, and where it goes
 
 When a task runs, TabRunner reads the page you're working on and turns it into a **compact
 accessibility-tree snapshot** (`[ref=e12] button "Submit"`) — not raw HTML, not the page's scripts
-or media. That snapshot, your task text, the conversation so far, and (when it captures one) a
+or media. That snapshot, your task text, the chat so far, and (when it captures one) a
 screenshot of the page are sent **to the provider you configured**, using your own API key, over
 HTTPS. The provider's replies and its tool calls come back to the extension, which executes them
 in your browser as real user input. When the tree and keystrokes aren't enough, a tool call can
 also **run a short script inside the page** (to set a stubborn field's value, or read something
 the tree omits) and read the tab's **network and console activity** (addresses and statuses —
 never response bodies). Script results are size-bounded and stripped of anything that looks like
-a credential before they join the conversation, and — like every other action — they run only
+a credential before they join the chat, and — like every other action — they run only
 inside a task whose plan you approved.
 
 **TabRunner never uploads your data anywhere else.** The complete list of network recipients is:
@@ -70,7 +70,7 @@ data.
 
 - **Sensitive fields never leave the page.** Password, card-number, and other `password`/sensitive
   inputs are excluded from the accessibility tree, so they are not sent to the model. And before
-  any script result can join the conversation, values that look like credentials — tokens, API
+  any script result can join the chat, values that look like credentials — tokens, API
   keys, cookies — are stripped.
 - **Screenshots taken for the model are transient.** A screenshot taken for the model's context is
   compressed (JPEG q80) and is stripped before the transcript is saved to storage. Your own image
@@ -102,18 +102,20 @@ data.
 
 ## 5. Permissions, explained
 
-| Permission                      | What it's for                                                                                                                                                                                                                       |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `debugger`                      | Real trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol so sites can't ignore them. Also the channel for the in-page script tool and the network/console log, all inside the task you approved. |
-| `scripting`                     | Injects the accessibility-tree snapshot script into the tab TabRunner reads, and the one that sets a field's value when keystrokes don't land.                                                                                      |
-| `sidePanel`                     | Hosts the chat UI where you write tasks and watch the run.                                                                                                                                                                          |
-| `tabs`                          | Adopts your current tab or opens a task's own tab, reads URL/title, and switches tabs when a task references another open tab.                                                                                                      |
-| `activeTab`                     | Grants access to the tab you submit a task from, per action.                                                                                                                                                                        |
-| `tabGroups`                     | Groups each task's tab and labels the group with the task (✓/✗/? when it finishes, then collapses it).                                                                                                                              |
-| `storage`                       | Persists provider configs, history, and memory locally.                                                                                                                                                                             |
-| `notifications`                 | Tells you when a background task finishes, errs, or stops to ask you something while the panel is closed.                                                                                                                           |
-| `alarms`                        | Periodic wake-ups: reconnects the local MCP bridge, and keeps the worker alive through a long task while the panel is closed. It runs no task and touches no page.                                                                  |
-| Host permissions (`<all_urls>`) | TabRunner must be able to navigate, read, and interact with any site you ask it to use. It uses this only when a task is running.                                                                                                   |
+| Permission                            | What it's for                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `debugger`                            | Real trusted input — clicks and keystrokes are dispatched over the Chrome DevTools Protocol so sites can't ignore them. Also the channel for the in-page script tool and the network/console log, all inside the task you approved.                                                                                                                                                                                                |
+| `scripting`                           | Injects the accessibility-tree snapshot script into the tab TabRunner reads, and the one that sets a field's value when keystrokes don't land.                                                                                                                                                                                                                                                                                     |
+| `sidePanel`                           | Hosts the chat UI where you write tasks and watch the run.                                                                                                                                                                                                                                                                                                                                                                         |
+| `tabs`                                | Adopts your current tab or opens a task's own tab, reads URL/title, and switches tabs when a task references another open tab.                                                                                                                                                                                                                                                                                                     |
+| `activeTab`                           | Grants access to the tab you submit a task from, per action.                                                                                                                                                                                                                                                                                                                                                                       |
+| `tabGroups`                           | Groups each task's tab and labels the group with the task (✓/✗/? when it finishes, then collapses it).                                                                                                                                                                                                                                                                                                                             |
+| `storage`                             | Persists provider configs, history, and memory locally.                                                                                                                                                                                                                                                                                                                                                                            |
+| `unlimitedStorage`                    | Keeps walkthrough recordings from being evicted. A documented task saves a screenshot of each step in this browser's local database, and one recording can run to tens of megabytes. The frames stay on the device and are never sent to the model.                                                                                                                                                                                |
+| `notifications`                       | Tells you when a background task finishes, errs, or stops to ask you something while the panel is closed.                                                                                                                                                                                                                                                                                                                          |
+| `alarms`                              | Periodic wake-ups: reconnects the local MCP bridge, and keeps the worker alive through a long task while the panel is closed. It runs no task and touches no page.                                                                                                                                                                                                                                                                 |
+| `declarativeNetRequestWithHostAccess` | Removes the `Origin` header from TabRunner's own calls to the provider you configured. A subscription sign-in (as opposed to a pasted API key) is refused when the request arrives with a browser origin. The rule matches a fixed list of provider API hostnames and changes only request headers on those hosts — never on pages you visit or the site being automated. It blocks nothing, redirects nothing, and reads no page. |
+| Host permissions (`<all_urls>`)       | TabRunner must be able to navigate, read, and interact with any site you ask it to use. It uses this only when a task is running.                                                                                                                                                                                                                                                                                                  |
 
 ## 6. Guardrails
 

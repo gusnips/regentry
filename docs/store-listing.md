@@ -22,6 +22,10 @@ the matching block here first.
 > - **2026-08-20 — walkthroughs landed, and the run/conversation vocabulary retired.** §2 (all
 >   three locales) gains the walkthroughs paragraph, and §2–§4 now say task/chat where the
 >   shipped UI does. Listing edit only: no package, no review.
+> - **2026-08-20 — `unlimitedStorage` had shipped undocumented.** It entered the manifest with
+>   walkthroughs (a516dfa, in v0.5.2) and never got a §4 block, so the dashboard has been a
+>   permission short since that upload. Its justification is below — paste it. The package
+>   already requests it, so this is a listing edit, not a new package.
 
 ---
 
@@ -441,6 +445,17 @@ agent is working in and close it in one action.
 Stores what the user creates, locally in chrome.storage on their own device: AI provider settings,
 chat history, standing instructions, remembered facts, scheduled tasks and skill recipes.
 Nothing is uploaded — there is no TabRunner server.
+```
+
+**`unlimitedStorage`**
+
+```
+Walkthroughs. The user can ask for a task to be documented, and TabRunner saves a screenshot of
+each step so the finished task can be shared as a step-by-step guide. Those screenshots are held
+as images in the browser's own local database on the user's device, and a single recording can
+reach tens of megabytes. Without this permission Chrome can evict a recording the user meant to
+keep. It grants no new access to anything: nothing is uploaded, there is no TabRunner server, and
+these screenshots are never sent to the AI provider.
 ```
 
 **`notifications`**
